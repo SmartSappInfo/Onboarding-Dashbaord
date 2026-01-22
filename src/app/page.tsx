@@ -5,22 +5,18 @@ import FindSchoolForm from '@/components/find-school-form';
 export default function Home() {
   return (
     <>
-      <section className="py-16 md:py-24">
+      <section className="py-16 text-center md:py-24">
         <div className="container">
-          <div className="grid grid-cols-1 items-center gap-12 md:grid-cols-2">
-            <div className="text-center md:text-left">
-              <h1 className="mb-4 font-headline text-4xl font-black tracking-tighter text-primary md:text-5xl lg:text-6xl">
-                Onboarding Portal
-              </h1>
-              <p className="mb-8 max-w-xl text-lg text-muted-foreground mx-auto md:mx-0">
-                Welcome to SmartSapp. Find your school to get started with the
-                onboarding process.
-              </p>
-              <FindSchoolForm />
-            </div>
-            <div>
-              <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
-            </div>
+          <h1 className="mb-4 font-headline text-4xl font-black tracking-tighter text-primary md:text-5xl lg:text-6xl">
+            Onboarding Portal
+          </h1>
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
+            Welcome to SmartSapp. Find your school to get started with the
+            onboarding process.
+          </p>
+          <FindSchoolForm />
+          <div className="mt-12">
+            <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
           </div>
         </div>
       </section>
