@@ -1,5 +1,4 @@
-import { Button } from './ui/button';
-import { GooglePlayIcon, AppleAppStoreIcon, HuaweiAppGalleryIcon } from './icons';
+import Image from 'next/image';
 
 const storeLinks = {
   android: 'https://play.google.com/store/apps/details?id=com.smartsapp&hl=en',
@@ -9,34 +8,16 @@ const storeLinks = {
 
 const AppStoreButtons = () => {
   return (
-    <div className="flex flex-col gap-4 sm:flex-row justify-center">
-      <Button variant="outline" size="lg" asChild className="justify-start">
-        <a href={storeLinks.android} target="_blank" rel="noopener noreferrer">
-          <GooglePlayIcon className="mr-3 h-6 w-6" />
-          <div>
-            <div className="text-xs">GET IT ON</div>
-            <div className="text-lg font-semibold -mt-1">Google Play</div>
-          </div>
-        </a>
-      </Button>
-      <Button variant="outline" size="lg" asChild className="justify-start">
-        <a href={storeLinks.ios} target="_blank" rel="noopener noreferrer">
-          <AppleAppStoreIcon className="mr-3 h-6 w-6" />
-          <div>
-            <div className="text-xs">Download on the</div>
-            <div className="text-lg font-semibold -mt-1">App Store</div>
-          </div>
-        </a>
-      </Button>
-      <Button variant="outline" size="lg" asChild className="justify-start">
-        <a href={storeLinks.huawei} target="_blank" rel="noopener noreferrer">
-          <HuaweiAppGalleryIcon className="mr-3 h-6 w-6" />
-          <div>
-            <div className="text-xs">EXPLORE IT ON</div>
-            <div className="text-lg font-semibold -mt-1">AppGallery</div>
-          </div>
-        </a>
-      </Button>
+    <div className="flex flex-wrap items-center justify-center gap-4">
+      <a href={storeLinks.android} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+        <Image src="https://smartsapp.com/wp-content/uploads/2021/04/google-play-badge.png" alt="Get it on Google Play" width={162} height={48} className="h-12 w-auto" />
+      </a>
+      <a href={storeLinks.ios} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+        <Image src="https://smartsapp.com/wp-content/uploads/2021/04/apple-store-badge.png" alt="Download on the App Store" width={162} height={48} className="h-12 w-auto" />
+      </a>
+      <a href={storeLinks.huawei} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
+        <Image src="https://smartsapp.com/wp-content/uploads/2021/04/huawei-app-gallery.png" alt="Explore it on AppGallery" width={162} height={48} className="h-12 w-auto" />
+      </a>
     </div>
   );
 };
