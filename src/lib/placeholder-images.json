@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "home-hero",
-      "description": "A welcoming image for the onboarding homepage.",
-      "imageUrl": "https://images.unsplash.com/photo-1603354350317-6f7aaa5911c5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxlZHVjYXRpb24lMjB0ZWNobm9sb2d5fGVufDB8fHx8MTc2OTAwNTIxNHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "education technology"
+      "description": "A person holding a phone showing an app screen.",
+      "imageUrl": "https://images.unsplash.com/photo-1551650975-87deedd944c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxhcHAlMjBzY3JlZW58ZW58MHx8fHwxNzY5MTAxNTUxfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "app screen"
     },
     {
       "id": "school-logo",

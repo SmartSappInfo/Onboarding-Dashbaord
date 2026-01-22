@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Search } from "lucide-react";
 
 export default function FindSchoolForm() {
   const [schoolName, setSchoolName] = useState("");
@@ -29,13 +28,12 @@ export default function FindSchoolForm() {
         type="text"
         value={schoolName}
         onChange={(e) => setSchoolName(e.target.value)}
-        placeholder="E.g., Ghana International School"
+        placeholder="Enter your school's name"
         className="h-12 text-lg"
         aria-label="School name"
       />
       <Button type="submit" size="lg" className="h-12">
-        <Search className="mr-2 h-5 w-5" />
-        Find
+        Find my school
       </Button>
     </form>
   );

@@ -1,5 +1,5 @@
 import Image from 'next/image';
-import { School, User, Video } from 'lucide-react';
+import { Search, Calendar, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import FindSchoolForm from '@/components/find-school-form';
@@ -8,21 +8,21 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 export default function Home() {
   const heroImage = PlaceHolderImages.find((p) => p.id === 'home-hero');
 
-  const features = [
+  const howItWorks = [
     {
-      icon: <School className="h-8 w-8 text-primary" />,
-      title: 'Customized for Your School',
-      description: "Each onboarding page is tailored with your school's name, logo, and slogan for a personalized experience.",
+      icon: <Search className="h-8 w-8 text-primary" />,
+      title: 'Find your school',
+      description: "Enter your school's name to find its dedicated onboarding page.",
     },
     {
-      icon: <User className="h-8 w-8 text-primary" />,
-      title: 'Seamless Parent Engagement',
-      description: 'Provide parents with a central hub for meeting details, important links, and easy-to-follow instructions.',
+      icon: <Calendar className="h-8 w-8 text-primary" />,
+      title: 'Join the meeting',
+      description: 'Get details for the live onboarding meeting, including date, time, and a link to join.',
     },
     {
-      icon: <Video className="h-8 w-8 text-primary" />,
-      title: 'Guided Video Tutorials',
-      description: 'Embedded videos guide parents through app installation and usage, reducing support requests.',
+      icon: <Download className="h-8 w-8 text-primary" />,
+      title: 'Download the app',
+      description: 'Access links to download the SmartsApp from the App Store and Google Play.',
     },
   ];
 
@@ -35,13 +35,12 @@ export default function Home() {
             Welcome to SmartsApp Onboarding
           </h1>
           <p className="mb-8 text-lg text-muted-foreground md:text-xl">
-            The simplest way to get your school community connected. Find your school below to get started with a
-            personalized onboarding experience.
+            The simplest way for your school community to get connected. Enter your school's name below to get started.
           </p>
           <FindSchoolForm />
         </div>
         {heroImage && (
-          <div className="mx-auto mt-12 max-w-6xl overflow-hidden rounded-lg shadow-2xl md:mt-16">
+          <div className="mx-auto mt-12 max-w-4xl overflow-hidden rounded-lg shadow-2xl md:mt-16">
             <Image
               src={heroImage.imageUrl}
               alt={heroImage.description}
@@ -55,39 +54,36 @@ export default function Home() {
         )}
       </section>
 
-      {/* Features Section */}
+      {/* How it works Section */}
       <section className="container mx-auto">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Everything Parents Need in One Place</h2>
-          <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">
-            Our onboarding pages are designed to be clear, helpful, and engaging.
-          </p>
+          <h2 className="text-3xl font-bold tracking-tight md:text-4xl">How it works</h2>
         </div>
         <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-          {features.map((feature) => (
-            <Card key={feature.title} className="bg-card/70 text-center backdrop-blur-sm">
+          {howItWorks.map((step) => (
+            <Card key={step.title} className="bg-card/70 text-center backdrop-blur-sm">
               <CardHeader>
-                <div className="mx-auto mb-4 w-fit rounded-full bg-primary/10 p-3">{feature.icon}</div>
-                <CardTitle className="text-xl font-bold">{feature.title}</CardTitle>
+                <div className="mx-auto mb-4 w-fit rounded-full bg-primary/10 p-3">{step.icon}</div>
+                <CardTitle className="text-xl font-bold">{step.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground">{feature.description}</p>
+                <p className="text-muted-foreground">{step.description}</p>
               </CardContent>
             </Card>
           ))}
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Onboarding for Schools CTA Section */}
       <section className="bg-muted/40">
         <div className="container mx-auto py-16 text-center md:py-24">
-          <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">Ready to Connect Your School?</h2>
+          <h2 className="mb-4 text-3xl font-bold tracking-tight md:text-4xl">Onboarding for Schools</h2>
           <p className="mx-auto mb-8 max-w-2xl text-lg text-muted-foreground">
-            Join hundreds of schools using SmartsApp to improve communication and parent engagement.
+            Want to create a page for your school? It's easy and free.
           </p>
           <Button size="lg" asChild>
-            <a href="https://smartsapp.com/" target="_blank" rel="noopener noreferrer">
-              Learn More About SmartsApp
+            <a href="https://smartsapp.com/contact-us" target="_blank" rel="noopener noreferrer">
+              Get started
             </a>
           </Button>
         </div>
