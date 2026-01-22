@@ -4,7 +4,7 @@ import AppStoreButtons from '@/components/app-store-buttons';
 export default function Home() {
   return (
     <div className="container py-12 md:py-16">
-      <div className="rounded-xl bg-card p-6 py-12 text-center shadow-lg md:p-12 md:py-20">
+      <div className="text-center">
         <h1 className="mb-4 font-headline text-4xl font-black tracking-tight text-primary md:text-5xl">
           Welcome Onboard
         </h1>
