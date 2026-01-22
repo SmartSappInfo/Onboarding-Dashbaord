@@ -10,7 +10,7 @@ const AppStoreButtons = () => {
   return (
     <div className="flex flex-wrap items-center justify-center gap-4">
       <a href={storeLinks.android} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
-        <Image src="https://smartsapp.com/wp-content/uploads/2021/04/google-play-badge.png" alt="Get it on Google Play" width={162} height={48} className="h-12 w-auto" />
+        <Image src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" width={300} height={89} className="h-12 w-auto" />
       </a>
       <a href={storeLinks.ios} target="_blank" rel="noopener noreferrer" className="transition-transform hover:scale-105">
         <Image src="https://smartsapp.com/wp-content/uploads/2021/04/apple-store-badge.png" alt="Download on the App Store" width={162} height={48} className="h-12 w-auto" />
