@@ -35,6 +35,7 @@ const formSchema = z.object({
   location: z.string().min(5, { message: "Location must be at least 5 characters." }),
   nominalRoll: z.coerce.number().min(1, { message: "Nominal roll must be at least 1." }),
   modules: z.string().min(10, { message: "Modules description must be at least 10 characters." }),
+  includeDroneFootage: z.boolean().default(false),
   implementationDate: z.date({
     required_error: "An implementation date is required.",
   }),
@@ -59,6 +60,7 @@ export default function NewSchoolSignupForm() {
       location: "",
       nominalRoll: 0,
       modules: "",
+      includeDroneFootage: false,
       referee: "",
       notifySchool: true,
       notifySchoolEmails: [],
@@ -82,6 +84,7 @@ export default function NewSchoolSignupForm() {
 
       const finalData: Record<string, any> = { ...data };
       
+      finalData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
       finalData.notifySchoolEmails = [...new Set(schoolEmails)].join(', ');
       finalData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
       finalData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
@@ -207,6 +210,26 @@ export default function NewSchoolSignupForm() {
                 <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="includeDroneFootage"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Include Drone Footage</FormLabel>
+                <FormDescription>
+                  Select if drone footage is required for the school.
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
             </FormItem>
           )}
         />
