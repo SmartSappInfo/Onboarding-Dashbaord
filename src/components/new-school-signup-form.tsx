@@ -92,7 +92,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Contact Person</FormLabel>
               <FormControl>
-                <Input placeholder="John Doe" {...field} />
+                <Input placeholder="Yaw Mensah" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -105,7 +105,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="john.doe@example.com" {...field} />
+                <Input type="email" placeholder="yaw.mensah@example.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -118,7 +118,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Phone</FormLabel>
               <FormControl>
-                <Input type="tel" placeholder="+1234567890" {...field} />
+                <Input type="tel" placeholder="+233 24 123 4567" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -131,7 +131,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Organization</FormLabel>
               <FormControl>
-                <Input placeholder="Global Tech Inc." {...field} />
+                <Input placeholder="Lincoln Community School" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -144,7 +144,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Location</FormLabel>
               <FormControl>
-                <Textarea placeholder="123 Main St, Anytown, USA" {...field} />
+                <Textarea placeholder="123 High Street, Airport Residential Area, Accra" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -170,7 +170,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Modules (Needs Discovery)</FormLabel>
               <FormControl>
-                <Textarea placeholder="Describe the modules required..." {...field} />
+                <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -188,16 +188,16 @@ export default function NewSchoolSignupForm() {
                     <Button
                       variant={"outline"}
                       className={cn(
-                        "w-full pl-3 text-left font-normal",
+                        "w-full justify-start pl-3 text-left font-normal",
                         !field.value && "text-muted-foreground"
                       )}
                     >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
                       {field.value ? (
                         format(field.value, "PPP")
                       ) : (
                         <span>Pick a date</span>
                       )}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                     </Button>
                   </FormControl>
                 </PopoverTrigger>
@@ -207,7 +207,7 @@ export default function NewSchoolSignupForm() {
                     selected={field.value}
                     onSelect={field.onChange}
                     disabled={(date) =>
-                      date < new Date() || date < new Date("1900-01-01")
+                      date < new Date(new Date().setHours(0, 0, 0, 0))
                     }
                     initialFocus
                   />
@@ -224,7 +224,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Referee</FormLabel>
               <FormControl>
-                <Input placeholder="Jane Smith" {...field} />
+                <Input placeholder="Ama Serwaa" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
