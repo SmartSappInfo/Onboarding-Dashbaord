@@ -69,7 +69,9 @@ export default function NewSchoolSignupForm() {
     },
   });
 
-  const [additionalEmailInput, setAdditionalEmailInput] = React.useState("");
+  const [emailInputValue, setEmailInputValue] = React.useState("");
+  const emailInputRef = React.useRef<HTMLInputElement>(null);
+
   const watchNotifySchool = form.watch("notifySchool");
   const watchMainEmail = form.watch("email");
   const isMainEmailValid = z.string().email().safeParse(watchMainEmail).success;
@@ -316,54 +318,96 @@ export default function NewSchoolSignupForm() {
              <FormField
               control={form.control}
               name="notifySchoolEmails"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Additional Notification Emails</FormLabel>
-                  <FormControl>
-                    <div className="flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background">
-                      {isMainEmailValid && (
-                        <Badge variant="outline">{watchMainEmail}</Badge>
-                      )}
-                      {field.value.map((email, index) => (
-                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                          {email}
-                          <button
-                            type="button"
-                            className="rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                            onClick={() => {
-                              const newEmails = [...field.value];
-                              newEmails.splice(index, 1);
-                              field.onChange(newEmails);
-                            }}
+              render={({ field, fieldState }) => {
+                const addEmail = (email: string) => {
+                  const newEmail = email.trim();
+                  if (newEmail) {
+                    const validation = z.string().email().safeParse(newEmail);
+                    if (validation.success) {
+                      if (!field.value.includes(newEmail) && newEmail !== watchMainEmail) {
+                        field.onChange([...field.value, newEmail]);
+                        setEmailInputValue('');
+                        form.clearErrors('notifySchoolEmails');
+                      }
+                    } else {
+                      form.setError('notifySchoolEmails', { type: 'manual', message: 'Invalid email address.' });
+                    }
+                  }
+                };
+
+                const removeEmail = (emailToRemove: string) => {
+                    field.onChange(field.value.filter((email) => email !== emailToRemove));
+                };
+
+                const editEmail = (emailToEdit: string) => {
+                    removeEmail(emailToEdit);
+                    setEmailInputValue(emailToEdit);
+                    emailInputRef.current?.focus();
+                };
+
+                const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addEmail(emailInputValue);
+                    if (z.string().email().safeParse(emailInputValue).success) {
+                      setEmailInputValue('');
+                    }
+                  }
+                };
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Additional Notification Emails</FormLabel>
+                    <FormControl>
+                      <div
+                        className={cn(
+                          "flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background",
+                          fieldState.error && "border-destructive"
+                        )}
+                        onClick={() => emailInputRef.current?.focus()}
+                      >
+                        {isMainEmailValid && (
+                          <Badge variant="outline">{watchMainEmail}</Badge>
+                        )}
+                        {field.value.map((email, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="group/badge flex cursor-pointer items-center gap-1"
+                            onDoubleClick={() => editEmail(email)}
                           >
-                            <X className="h-3 w-3" />
-                            <span className="sr-only">Remove {email}</span>
-                          </button>
-                        </Badge>
-                      ))}
-                      <Input
-                        type="email"
-                        placeholder="Add email and press Enter..."
-                        value={additionalEmailInput}
-                        onChange={(e) => setAdditionalEmailInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const newEmail = additionalEmailInput.trim();
-                            const validation = z.string().email().safeParse(newEmail);
-                            if (validation.success && !field.value.includes(newEmail) && newEmail !== watchMainEmail) {
-                              field.onChange([...field.value, newEmail]);
-                              setAdditionalEmailInput('');
-                            }
-                          }
-                        }}
-                        className="flex-1 border-0 p-0 shadow-none focus-visible:ring-0"
-                      />
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+                            {email}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${email}`}
+                              className="rounded-full opacity-50 outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 group-hover/badge:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeEmail(email);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <Input
+                          ref={emailInputRef}
+                          type="text"
+                          placeholder="Add email and press Enter or comma..."
+                          value={emailInputValue}
+                          onChange={(e) => {
+                            setEmailInputValue(e.target.value);
+                            if (fieldState.error) form.clearErrors('notifySchoolEmails');
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="flex-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           )}
 
