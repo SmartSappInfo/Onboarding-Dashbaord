@@ -20,7 +20,7 @@ const AppStoreButtons = () => {
       </a>
       <a href={storeLinks.ios} target="_blank" rel="noopener noreferrer" className="relative block h-12 w-36 transition-transform hover:scale-105">
         <Image 
-          src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Download_on_the_App_Store_Badge.svg/1280px-Download_on_the_App_Store_Badge.svg.png" 
+          src="https://smartsapp.com/wp-content/uploads/2021/04/app-store.png" 
           alt="Download on the App Store" 
           fill
           sizes="144px"
