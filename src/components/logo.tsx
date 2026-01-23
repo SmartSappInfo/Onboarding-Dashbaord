@@ -5,15 +5,21 @@ const Logo = (props: SVGProps<SVGSVGElement>) => (
     <defs>
       <style>{`
         .logo-text {
-          font-family: 'PT Sans', sans-serif;
+          font-family: 'Poppins', sans-serif;
           font-weight: 700;
           font-size: 28px;
           fill: hsl(var(--primary));
         }
       `}</style>
     </defs>
-    <circle cx="20" cy="20" r="18" fill="hsl(var(--primary))" />
-    <path d="M26 13C20.5 13 18 17.5 18 20s2.5 7 8 7m-12 0C16.5 27 14 22.5 14 20S16.5 13 22 13" stroke="white" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+    <g>
+      <path
+        fillRule="evenodd"
+        d="M20 2a18 18 0 1 0 0 36a18 18 0 1 0 0-36zm-7.5 11.5L23 13.5l-2 6-10.5.5zM17 20.5l10.5.5-2 6-10.5-.5zM27 16a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM13 24a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"
+        clipRule="evenodd"
+        fill="hsl(var(--primary))"
+      />
+    </g>
     <text x="45" y="29" className="logo-text">SmartSapp</text>
   </svg>
 );
