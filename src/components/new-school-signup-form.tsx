@@ -1,15 +1,17 @@
 "use client";
 
+import * as React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,6 +23,9 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Calendar } from "./ui/calendar";
+import { Separator } from "./ui/separator";
+import { Switch } from "./ui/switch";
+import { Badge } from "./ui/badge";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -34,6 +39,10 @@ const formSchema = z.object({
     required_error: "An implementation date is required.",
   }),
   referee: z.string().optional(),
+  notifySchool: z.boolean().default(true),
+  notifySchoolEmails: z.array(z.string().email()).default([]),
+  notifySmartSapp: z.boolean().default(true),
+  notifyOnboarding: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -51,17 +60,42 @@ export default function NewSchoolSignupForm() {
       nominalRoll: 0,
       modules: "",
       referee: "",
+      notifySchool: true,
+      notifySchoolEmails: [],
+      notifySmartSapp: true,
+      notifyOnboarding: true,
     },
   });
 
+  const [additionalEmailInput, setAdditionalEmailInput] = React.useState("");
+  const watchNotifySchool = form.watch("notifySchool");
+  const watchMainEmail = form.watch("email");
+  const isMainEmailValid = z.string().email().safeParse(watchMainEmail).success;
+
   const onSubmit = async (data: FormData) => {
     try {
+      const schoolEmails = [];
+      if (data.notifySchool) {
+        if (data.email) schoolEmails.push(data.email);
+        if (data.notifySchoolEmails) schoolEmails.push(...data.notifySchoolEmails);
+      }
+
+      const finalData: Record<string, any> = { ...data };
+      
+      finalData.notifySchoolEmails = [...new Set(schoolEmails)].join(', ');
+      finalData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
+      finalData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
+
+      delete finalData.notifySchool;
+      delete finalData.notifySmartSapp;
+      delete finalData.notifyOnboarding;
+
       const response = await fetch("https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(finalData),
       });
 
       if (response.ok) {
@@ -105,7 +139,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Email</FormLabel>
               <FormControl>
-                <Input type="email" placeholder="yaw.mensah@example.com" {...field} />
+                <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -131,7 +165,7 @@ export default function NewSchoolSignupForm() {
             <FormItem>
               <FormLabel>Organization</FormLabel>
               <FormControl>
-                <Input placeholder="Lincoln Community School" {...field} />
+                <Input placeholder="Ghana International School" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -207,7 +241,7 @@ export default function NewSchoolSignupForm() {
                     selected={field.value}
                     onSelect={field.onChange}
                     disabled={(date) =>
-                      date < new Date(new Date().setHours(0, 0, 0, 0))
+                      date < new Date(new Date().setDate(new Date().getDate() - 1))
                     }
                     initialFocus
                   />
@@ -230,6 +264,128 @@ export default function NewSchoolSignupForm() {
             </FormItem>
           )}
         />
+        
+        <Separator className="my-8" />
+
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">Email Notifications</h3>
+          <FormField
+            control={form.control}
+            name="notifySchool"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Notify School</FormLabel>
+                  <FormDescription>
+                    Send signup confirmation to the school's primary email.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          {watchNotifySchool && (
+             <FormField
+              control={form.control}
+              name="notifySchoolEmails"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Additional Notification Emails</FormLabel>
+                  <FormControl>
+                    <div className="flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background">
+                      {isMainEmailValid && (
+                        <Badge variant="outline">{watchMainEmail}</Badge>
+                      )}
+                      {field.value.map((email, index) => (
+                        <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                          {email}
+                          <button
+                            type="button"
+                            className="rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            onClick={() => {
+                              const newEmails = [...field.value];
+                              newEmails.splice(index, 1);
+                              field.onChange(newEmails);
+                            }}
+                          >
+                            <X className="h-3 w-3" />
+                            <span className="sr-only">Remove {email}</span>
+                          </button>
+                        </Badge>
+                      ))}
+                      <Input
+                        type="email"
+                        placeholder="Add email and press Enter..."
+                        value={additionalEmailInput}
+                        onChange={(e) => setAdditionalEmailInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const newEmail = additionalEmailInput.trim();
+                            const validation = z.string().email().safeParse(newEmail);
+                            if (validation.success && !field.value.includes(newEmail) && newEmail !== watchMainEmail) {
+                              field.onChange([...field.value, newEmail]);
+                              setAdditionalEmailInput('');
+                            }
+                          }
+                        }}
+                        className="flex-1 border-0 p-0 shadow-none focus-visible:ring-0"
+                      />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+
+          <FormField
+            control={form.control}
+            name="notifySmartSapp"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Notify SmartSapp</FormLabel>
+                  <FormDescription>
+                    Internal notification to team@minex360.com
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="notifyOnboarding"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Notify Onboarding Team</FormLabel>
+                  <FormDescription>
+                    Notifies the onboarding and finance teams.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+        </div>
 
         <div className="flex justify-end gap-4">
           <Button type="button" variant="outline" onClick={() => form.reset()}>
