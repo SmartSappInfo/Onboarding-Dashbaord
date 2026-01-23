@@ -44,6 +44,8 @@ const formSchema = z.object({
   notifySchoolEmails: z.array(z.string().email()).default([]),
   notifySmartSapp: z.boolean().default(true),
   notifyOnboarding: z.boolean().default(true),
+  notifySchoolBySms: z.boolean().default(true),
+  notifySchoolSmsNumbers: z.array(z.string().min(10, { message: "Phone number must be at least 10 digits." })).default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -66,15 +68,23 @@ export default function NewSchoolSignupForm() {
       notifySchoolEmails: [],
       notifySmartSapp: true,
       notifyOnboarding: true,
+      notifySchoolBySms: true,
+      notifySchoolSmsNumbers: [],
     },
   });
 
   const [emailInputValue, setEmailInputValue] = React.useState("");
   const emailInputRef = React.useRef<HTMLInputElement>(null);
+  const [smsInputValue, setSmsInputValue] = React.useState("");
+  const smsInputRef = React.useRef<HTMLInputElement>(null);
 
   const watchNotifySchool = form.watch("notifySchool");
   const watchMainEmail = form.watch("email");
   const isMainEmailValid = z.string().email().safeParse(watchMainEmail).success;
+
+  const watchNotifySchoolBySms = form.watch("notifySchoolBySms");
+  const watchMainPhone = form.watch("phone");
+  const isMainPhoneValid = z.string().min(10).safeParse(watchMainPhone).success;
 
   const onSubmit = async (data: FormData) => {
     try {
@@ -83,17 +93,25 @@ export default function NewSchoolSignupForm() {
         if (data.email) schoolEmails.push(data.email);
         if (data.notifySchoolEmails) schoolEmails.push(...data.notifySchoolEmails);
       }
+      
+      const schoolSmsNumbers = [];
+      if (data.notifySchoolBySms) {
+          if (data.phone) schoolSmsNumbers.push(data.phone);
+          if (data.notifySchoolSmsNumbers) schoolSmsNumbers.push(...data.notifySchoolSmsNumbers);
+      }
 
       const finalData: Record<string, any> = { ...data };
       
       finalData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
       finalData.notifySchoolEmails = [...new Set(schoolEmails)].join(', ');
+      finalData.notifySchoolSmsNumbers = [...new Set(schoolSmsNumbers)].join(',');
       finalData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
       finalData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
 
       delete finalData.notifySchool;
       delete finalData.notifySmartSapp;
       delete finalData.notifyOnboarding;
+      delete finalData.notifySchoolBySms;
 
       const response = await fetch("https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc", {
         method: 'POST',
@@ -452,6 +470,128 @@ export default function NewSchoolSignupForm() {
               </FormItem>
             )}
           />
+        </div>
+
+        <Separator className="my-8" />
+        
+        <div className="space-y-4">
+          <h3 className="text-lg font-medium">SMS Notifications</h3>
+          <FormField
+            control={form.control}
+            name="notifySchoolBySms"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                <div className="space-y-0.5">
+                  <FormLabel className="text-base">Notify School by SMS</FormLabel>
+                  <FormDescription>
+                    Send signup confirmation to the school's primary phone number.
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+          {watchNotifySchoolBySms && (
+             <FormField
+              control={form.control}
+              name="notifySchoolSmsNumbers"
+              render={({ field, fieldState }) => {
+                const addSmsNumber = (number: string) => {
+                  const newNumber = number.trim();
+                  if (newNumber) {
+                    const validation = z.string().min(10, { message: "Phone number must be at least 10 digits." }).safeParse(newNumber);
+                    if (validation.success) {
+                      if (!field.value.includes(newNumber) && newNumber !== watchMainPhone) {
+                        field.onChange([...field.value, newNumber]);
+                        setSmsInputValue('');
+                        form.clearErrors('notifySchoolSmsNumbers');
+                      }
+                    } else {
+                      form.setError('notifySchoolSmsNumbers', { type: 'manual', message: 'Phone number must be at least 10 digits.' });
+                    }
+                  }
+                };
+
+                const removeSmsNumber = (numberToRemove: string) => {
+                    field.onChange(field.value.filter((number) => number !== numberToRemove));
+                };
+
+                const editSmsNumber = (numberToEdit: string) => {
+                    removeSmsNumber(numberToEdit);
+                    setSmsInputValue(numberToEdit);
+                    smsInputRef.current?.focus();
+                };
+
+                const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addSmsNumber(smsInputValue);
+                    if (z.string().min(10).safeParse(smsInputValue).success) {
+                      setSmsInputValue('');
+                    }
+                  }
+                };
+                
+                return (
+                  <FormItem>
+                    <FormLabel>Additional Notification Phone Numbers</FormLabel>
+                    <FormControl>
+                      <div
+                        className={cn(
+                          "flex min-h-10 w-full flex-wrap items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-base ring-offset-background",
+                          fieldState.error && "border-destructive"
+                        )}
+                        onClick={() => smsInputRef.current?.focus()}
+                      >
+                        {isMainPhoneValid && (
+                          <Badge variant="outline">{watchMainPhone}</Badge>
+                        )}
+                        {field.value.map((number, index) => (
+                          <Badge 
+                            key={index} 
+                            variant="secondary" 
+                            className="group/badge flex cursor-pointer items-center gap-1"
+                            onDoubleClick={() => editSmsNumber(number)}
+                          >
+                            {number}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${number}`}
+                              className="rounded-full opacity-50 outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 group-hover/badge:opacity-100"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeSmsNumber(number);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                        <Input
+                          ref={smsInputRef}
+                          type="text"
+                          placeholder="Add number and press Enter or comma..."
+                          value={smsInputValue}
+                          onChange={(e) => {
+                            setSmsInputValue(e.target.value);
+                            if (fieldState.error) form.clearErrors('notifySchoolSmsNumbers');
+                          }}
+                          onKeyDown={handleKeyDown}
+                          className="flex-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
+                        />
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
+            />
+          )}
         </div>
 
         <div className="flex justify-end gap-4">
