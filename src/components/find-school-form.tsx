@@ -19,7 +19,7 @@ export default function FindSchoolForm() {
       .replace(/\s+/g, "-")
       .replace(/[^a-z0-9-]/g, "");
     
-    router.push(`/pe/${slug}`);
+    router.push(`/meetings/${slug}`);
   };
 
   return (
