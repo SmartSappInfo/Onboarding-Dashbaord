@@ -6,13 +6,13 @@
       "type": "object",
       "description": "Represents a school using the SmartSApp onboarding platform.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the School entity."
-        },
-        "fullName": {
+        "name": {
           "type": "string",
           "description": "The full name of the school."
+        },
+        "slug": {
+          "type": "string",
+          "description": "The dynamically generated page name for the school (e.g., 'ghana-international-school')."
         },
         "slogan": {
           "type": "string",
@@ -23,17 +23,63 @@
           "description": "URL of the school's logo.",
           "format": "uri"
         },
-        "pageName": {
+        "heroImageUrl": {
           "type": "string",
-          "description": "The dynamically generated page name for the school (e.g., 'pe-ghana-international-school')."
+          "description": "URL of the hero image for the meeting page.",
+          "format": "uri"
+        },
+        "meetingTime": {
+          "type": "string",
+          "description": "The date and time of the meeting.",
+          "format": "date-time"
+        },
+        "meetingLink": {
+          "type": "string",
+          "description": "URL for joining the meeting.",
+          "format": "uri"
+        },
+        "contactPerson": {
+          "type": "string",
+          "description": "Admin contact for the school."
+        },
+        "email": {
+          "type": "string",
+          "description": "School contact email.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "School contact phone."
+        },
+        "location": {
+          "type": "string",
+          "description": "City / Region of the school."
+        },
+        "nominalRoll": {
+          "type": "number",
+          "description": "Student population size."
+        },
+        "modules": {
+          "type": "string",
+          "description": "Modules being onboarded."
+        },
+        "implementationDate": {
+          "type": "string",
+          "description": "Go-live date.",
+          "format": "date-time"
+        },
+        "referee": {
+          "type": "string",
+          "description": "Who introduced the school."
+        },
+        "includeDroneFootage": {
+          "type": "boolean",
+          "description": "Whether to include drone footage."
         }
       },
       "required": [
-        "id",
-        "fullName",
-        "slogan",
-        "logoUrl",
-        "pageName"
+        "name",
+        "slug"
       ]
     },
     "MeetingPage": {
@@ -254,3 +300,5 @@
     ]
   }
 }
+
+    

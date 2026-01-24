@@ -3,7 +3,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { collection } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { School } from '@/lib/data';
+import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { MoreHorizontal } from 'lucide-react';
@@ -92,7 +92,7 @@ export default function SchoolsPage() {
             ) : (
               <TableRow>
                 <TableCell colSpan={4} className="h-24 text-center">
-                  No schools found.
+                  No schools found. Create one to get started.
                 </TableCell>
               </TableRow>
             )}
@@ -102,3 +102,5 @@ export default function SchoolsPage() {
     </div>
   );
 }
+
+    

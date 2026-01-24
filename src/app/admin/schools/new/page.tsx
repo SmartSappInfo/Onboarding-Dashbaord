@@ -1,10 +1,385 @@
+'use client';
+
+import * as React from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { format } from 'date-fns';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { collection, addDoc } from 'firebase/firestore';
+
+import { Button } from '@/components/ui/button';
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFirestore } from '@/firebase';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
+  slogan: z.string().optional(),
+  logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  
+  meetingTime: z.date().optional(),
+  meetingLink: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  
+  contactPerson: z.string().optional(),
+  email: z.string().email({ message: 'Please enter a valid email.' }).optional(),
+  phone: z.string().optional(),
+  location: z.string().optional(),
+  
+  nominalRoll: z.coerce.number().optional(),
+  modules: z.string().optional(),
+  implementationDate: z.date().optional(),
+  referee: z.string().optional(),
+  includeDroneFootage: z.boolean().default(false),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
 export default function NewSchoolPage() {
+  const { toast } = useToast();
+  const router = useRouter();
+  const firestore = useFirestore();
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: '',
+      slogan: '',
+      logoUrl: '',
+      heroImageUrl: '',
+      meetingLink: '',
+      contactPerson: '',
+      email: '',
+      phone: '',
+      location: '',
+      modules: '',
+      referee: '',
+      includeDroneFootage: false,
+    },
+  });
+
+  const onSubmit = async (data: FormData) => {
+    if (!firestore) {
+      toast({
+        variant: "destructive",
+        title: "Firestore not available",
+        description: "Please check your Firebase connection.",
+      });
+      return;
+    }
+    
+    const slug = data.name
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    try {
+      await addDoc(collection(firestore, 'schools'), {
+        ...data,
+        slug,
+        meetingTime: data.meetingTime?.toISOString(),
+        implementationDate: data.implementationDate?.toISOString(),
+      });
+
+      toast({
+        title: 'School Created',
+        description: `${data.name} has been added successfully.`,
+      });
+      router.push('/admin/schools');
+    } catch (error: any) {
+      console.error('Error adding document: ', error);
+      toast({
+        variant: 'destructive',
+        title: 'Uh oh! Something went wrong.',
+        description: error.message || 'There was a problem saving the school.',
+      });
+    }
+  };
+
   return (
     <div>
       <h1 className="text-4xl font-bold tracking-tight mb-8">Add New School</h1>
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm p-8 max-w-4xl mx-auto">
-        <p className="text-center text-muted-foreground">The school creation form will be implemented in the next step.</p>
-      </div>
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>School Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>School Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Ghana International School" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="slogan"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Slogan</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., Understanding of each other" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="logoUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Logo URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com/logo.png" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="heroImageUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Hero Image URL</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://example.com/hero.jpg" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="meetingTime"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Onboarding Meeting Time</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP p") : <span>Pick a date and time</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="meetingLink"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meeting Link (Google Meet)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="https://meet.google.com/abc-xyz-pqr" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="contactPerson"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Person</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Yaw Mensah" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email</FormLabel>
+                      <FormControl>
+                        <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="+233 24 123 4567" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="location"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Accra, Ghana" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="nominalRoll"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nominal Roll (Number of Students)</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="referee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Referee</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ama Serwaa" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="implementationDate"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Implementation Date</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant={"outline"}
+                              className={cn(
+                                "w-full justify-start pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={field.value}
+                            onSelect={field.onChange}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="includeDroneFootage"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-base">Include Drone Footage</FormLabel>
+                      </div>
+                      <FormControl>
+                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+               <FormField
+                  control={form.control}
+                  name="modules"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Modules (Needs Discovery)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+              <div className="flex justify-end gap-4">
+                <Button type="button" variant="outline" onClick={() => router.push('/admin/schools')}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={form.formState.isSubmitting}>
+                  {form.formState.isSubmitting ? 'Creating...' : 'Create School'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
+
+    
