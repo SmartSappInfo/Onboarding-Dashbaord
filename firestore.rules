@@ -6,32 +6,18 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Allow public read-only access to schools and their subcollections.
+    // Allow public read-only access to schools.
     match /schools/{schoolId} {
       allow get, list: if true;
       // For this project, we'll allow any authenticated user to act as an admin.
       // In a real-world scenario, this would check for a specific admin claim.
       allow create, update, delete: if request.auth != null;
+    }
 
-      match /meetingPages/{meetingPageId} {
+    // Allow public read-only access to meetings and admin write access.
+    match /meetings/{meetingId} {
         allow get, list: if true;
         allow create, update, delete: if request.auth != null;
-
-        match /downloadLinks/{downloadLinkId} {
-          allow get, list: if true;
-          allow create, update, delete: if request.auth != null;
-        }
-
-        match /helpVideos/{helpVideoId} {
-          allow get, list: if true;
-          allow create, update, delete: if request.auth != null;
-        }
-
-        match /testimonials/{testimonialId} {
-          allow get, list: if true;
-          allow create, update, delete: if request.auth != null;
-        }
-      }
     }
   }
 }
