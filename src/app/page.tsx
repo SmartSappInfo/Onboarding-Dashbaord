@@ -2,6 +2,8 @@ import VideoEmbed from '@/components/video-embed';
 import AppStoreButtons from '@/components/app-store-buttons';
 import FindSchoolForm from '@/components/find-school-form';
 import { Card, CardContent } from '@/components/ui/card';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
 
 export default function Home() {
   const helpVideos = [
@@ -40,138 +42,144 @@ export default function Home() {
   ];
 
   return (
-    <div className="space-y-20 py-20 md:space-y-28 md:py-28">
-      <section className="container mx-auto px-6 text-center">
-        <h1 className="mb-6 font-headline text-4xl font-black tracking-tighter text-primary sm:text-5xl md:text-6xl lg:text-7xl">
-          Onboarding Portal
-        </h1>
-        <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
-          Welcome to SmartSapp. Find your school to get started with the
-          onboarding process.
-        </p>
-        <FindSchoolForm />
-        <div className="mt-16">
-          <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
-        </div>
-      </section>
+    <>
+      <Header />
+      <main className="flex-grow">
+        <div className="space-y-20 py-20 md:space-y-28 md:py-28">
+        <section className="container mx-auto px-6 text-center">
+          <h1 className="mb-6 font-headline text-4xl font-black tracking-tighter text-primary sm:text-5xl md:text-6xl lg:text-7xl">
+            Onboarding Portal
+          </h1>
+          <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+            Welcome to SmartSapp. Find your school to get started with the
+            onboarding process.
+          </p>
+          <FindSchoolForm />
+          <div className="mt-16">
+            <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
+          </div>
+        </section>
 
-      {/* Section 1: Download */}
-      <section id="download" className="container mx-auto px-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-          1
-        </div>
-        <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
-          Want to get Started?
-        </h2>
-        <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">
-          You can download SmartSapp below by clicking the icon that applies
-          to your phone type
-        </p>
-        <p className="mb-10">
-          <a
-            href="#download-links"
-            className="font-semibold text-primary hover:underline"
-          >
-            Click To Download Now!
-          </a>
-        </p>
-        <div id="download-links" className="flex justify-center">
-          <AppStoreButtons />
-        </div>
-      </section>
-
-      {/* Section 2: Setup */}
-      <section id="setup-profile" className="container mx-auto px-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-          2
-        </div>
-        <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
-          How to setup your profile and Confirm your child&apos;s details
-        </h2>
-        <p className="mx-auto mb-8 max-w-2xl text-lg">
-          <a
-            href="https://youtu.be/WJRKrl5S5tM"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-semibold text-primary hover:underline"
-          >
-            Here&apos;s a help video
-          </a>
-        </p>
-        <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
-      </section>
-
-      {/* Section 3: Support & Help Videos */}
-      <section id="support" className="container mx-auto px-6 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-          3
-        </div>
-        <div className="mx-auto max-w-3xl">
-          <p className="mb-6 text-lg text-muted-foreground">
-            We try to make everything as seamless and smooth as possible, but
-            sometimes things happen. So if you need support with anything or
-            want to ask a question about SmartSapp, Please WhatsApp us on{' '}
+        {/* Section 1: Download */}
+        <section id="download" className="container mx-auto px-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+            1
+          </div>
+          <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
+            Want to get Started?
+          </h2>
+          <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">
+            You can download SmartSapp below by clicking the icon that applies
+            to your phone type
+          </p>
+          <p className="mb-10">
             <a
-              href="https://wa.me/233501626873"
+              href="#download-links"
+              className="font-semibold text-primary hover:underline"
+            >
+              Click To Download Now!
+            </a>
+          </p>
+          <div id="download-links" className="flex justify-center">
+            <AppStoreButtons />
+          </div>
+        </section>
+
+        {/* Section 2: Setup */}
+        <section id="setup-profile" className="container mx-auto px-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+            2
+          </div>
+          <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
+            How to setup your profile and Confirm your child&apos;s details
+          </h2>
+          <p className="mx-auto mb-8 max-w-2xl text-lg">
+            <a
+              href="https://youtu.be/WJRKrl5S5tM"
               target="_blank"
               rel="noopener noreferrer"
               className="font-semibold text-primary hover:underline"
             >
-              +233 50 162 6873
+              Here&apos;s a help video
             </a>
-            .
           </p>
-          <p className="mb-6 text-lg text-muted-foreground">
-            We look forward to making it easy for you to be involved with your
-            child&apos;s school life.
+          <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
+        </section>
+
+        {/* Section 3: Support & Help Videos */}
+        <section id="support" className="container mx-auto px-6 text-center">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+            3
+          </div>
+          <div className="mx-auto max-w-3xl">
+            <p className="mb-6 text-lg text-muted-foreground">
+              We try to make everything as seamless and smooth as possible, but
+              sometimes things happen. So if you need support with anything or
+              want to ask a question about SmartSapp, Please WhatsApp us on{' '}
+              <a
+                href="https://wa.me/233501626873"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-primary hover:underline"
+              >
+                +233 50 162 6873
+              </a>
+              .
+            </p>
+            <p className="mb-6 text-lg text-muted-foreground">
+              We look forward to making it easy for you to be involved with your
+              child&apos;s school life.
+            </p>
+            <p className="text-lg font-semibold text-foreground">
+              SmartSapp Team
+            </p>
+          </div>
+
+          <h2 className="mb-12 mt-16 font-headline text-3xl font-bold md:text-4xl">
+            Useful Help Videos
+          </h2>
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {helpVideos.map((url, index) => (
+              <VideoEmbed key={index} url={url} />
+            ))}
+          </div>
+        </section>
+
+        {/* Section 4: Testimonials */}
+        <section id="testimonials" className="container mx-auto px-6 text-center">
+          <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
+            Why Parents and Schools are going
+            <br />
+            Wild over SmartSapp
+          </h2>
+          <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">
+            Watch these testimonials to see how parents are ensuring their
+            child's security with SmartSapp
           </p>
-          <p className="text-lg font-semibold text-foreground">
-            SmartSapp Team
+          <p className="mb-12 text-lg font-semibold">
+            👇 Click To Watch These Videos. It&apos;s Super Important👇
           </p>
+
+          <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">
+            {testimonials.map((testimonial, index) => (
+              <Card
+                key={index}
+                className="overflow-hidden shadow-lg"
+              >
+                <VideoEmbed url={testimonial.videoUrl} />
+                <CardContent className="p-6">
+                  <p className="font-quote italic text-muted-foreground">
+                    &quot;{testimonial.quote}&quot;
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </section>
         </div>
-
-        <h2 className="mb-12 mt-16 font-headline text-3xl font-bold md:text-4xl">
-          Useful Help Videos
-        </h2>
-
-        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {helpVideos.map((url, index) => (
-            <VideoEmbed key={index} url={url} />
-          ))}
-        </div>
-      </section>
-
-      {/* Section 4: Testimonials */}
-      <section id="testimonials" className="container mx-auto px-6 text-center">
-        <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
-          Why Parents and Schools are going
-          <br />
-          Wild over SmartSapp
-        </h2>
-        <p className="mx-auto mb-6 max-w-2xl text-lg text-muted-foreground">
-          Watch these testimonials to see how parents are ensuring their
-          child's security with SmartSapp
-        </p>
-        <p className="mb-12 text-lg font-semibold">
-          👇 Click To Watch These Videos. It&apos;s Super Important👇
-        </p>
-
-        <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">
-          {testimonials.map((testimonial, index) => (
-            <Card
-              key={index}
-              className="overflow-hidden shadow-lg"
-            >
-              <VideoEmbed url={testimonial.videoUrl} />
-              <CardContent className="p-6">
-                <p className="font-quote italic text-muted-foreground">
-                  &quot;{testimonial.quote}&quot;
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-    </div>
+      </main>
+      <Footer />
+    </>
   );
 }

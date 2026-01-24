@@ -2,6 +2,8 @@ import { getSchoolBySlug } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import MeetingHero from '@/components/meeting-hero';
 import type { Metadata } from 'next';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
 
 export const metadata: Metadata = {
     title: 'Ghana International School | Onboarding Meeting',
@@ -18,8 +20,12 @@ export default async function SchoolMeetingPage() {
   }
 
   return (
-    <div>
-      <MeetingHero school={school} />
-    </div>
+    <>
+      <Header />
+      <main className="flex-grow">
+        <MeetingHero school={school} />
+      </main>
+      <Footer />
+    </>
   );
 }

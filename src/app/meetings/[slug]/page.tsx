@@ -2,6 +2,8 @@ import { getSchoolBySlug } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import MeetingHero from '@/components/meeting-hero';
 import type { Metadata, ResolvingMetadata } from 'next';
+import Header from '@/components/header';
+import Footer from '@/components/footer';
 
 interface SchoolMeetingPageProps {
   params: {
@@ -36,8 +38,12 @@ export default async function SchoolMeetingPage({ params }: SchoolMeetingPagePro
   }
 
   return (
-    <div>
-      <MeetingHero school={school} />
-    </div>
+    <>
+      <Header />
+      <main className="flex-grow">
+        <MeetingHero school={school} />
+      </main>
+      <Footer />
+    </>
   );
 }
