@@ -1,7 +1,7 @@
 'use client';
 import { useMemo } from 'react';
 import Link from 'next/link';
-import { collection, orderBy } from 'firebase/firestore';
+import { collection, orderBy, query } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Meeting } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,7 @@ export default function MeetingsPage() {
   // You might want to order meetings by date
   const meetingsQuery = useMemoFirebase(() => {
     if (!meetingsCol) return null;
-    return orderBy(meetingsCol, 'meetingTime', 'desc');
+    return query(meetingsCol, orderBy('meetingTime', 'desc'));
   }, [meetingsCol]);
 
   const { data: meetings, isLoading, error } = useCollection<Meeting>(meetingsQuery);
