@@ -1,47 +1,19 @@
-import { getSchoolBySlug } from '@/lib/data';
-import { notFound } from 'next/navigation';
-import MeetingHero from '@/components/meeting-hero';
-import type { Metadata, ResolvingMetadata } from 'next';
+'use client';
+import { useParams } from 'next/navigation';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
+import SchoolMeetingLoader from '@/components/school-meeting-loader';
 
-interface SchoolMeetingPageProps {
-  params: {
-    slug: string;
-  }
-}
-
-export async function generateMetadata(
-  { params }: SchoolMeetingPageProps,
-  parent: ResolvingMetadata
-): Promise<Metadata> {
-  const school = await getSchoolBySlug(params.slug);
-
-  if (!school) {
-    return {
-      title: 'School Not Found',
-      description: 'The school you are looking for could not be found.',
-    };
-  }
-
-  return {
-    title: `${school.name} | Onboarding Meeting`,
-    description: `Join us for a short onboarding session for ${school.name} parents.`,
-  };
-}
-
-export default async function SchoolMeetingPage({ params }: SchoolMeetingPageProps) {
-  const school = await getSchoolBySlug(params.slug);
-
-  if (!school) {
-    notFound();
-  }
+export default function SchoolMeetingPage() {
+  const params = useParams();
+  const slug = params.slug as string;
 
   return (
     <>
       <Header />
       <main className="flex-grow">
-        <MeetingHero school={school} />
+        {/* Render loader only when slug is available */}
+        {slug && <SchoolMeetingLoader slug={slug} />}
       </main>
       <Footer />
     </>

@@ -1,6 +1,5 @@
 import Image from 'next/image';
-import type { School } from '@/lib/data';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import type { School } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingButton from '@/components/join-meeting-button';
 
@@ -9,8 +8,6 @@ interface MeetingHeroProps {
 }
 
 export default function MeetingHero({ school }: MeetingHeroProps) {
-  const schoolLogo = PlaceHolderImages.find((p) => p.id === school.logoUrlId);
-  const heroImage = PlaceHolderImages.find((p) => p.id === school.heroImageUrlId);
 
   return (
     <section className="w-full bg-background px-4 py-10 md:py-20">
@@ -18,15 +15,14 @@ export default function MeetingHero({ school }: MeetingHeroProps) {
         {/* Left Column */}
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
           
-          {schoolLogo && (
+          {school.logoUrl && (
             <div className="mb-6 flex items-center gap-4">
               <Image
-                src={schoolLogo.imageUrl}
+                src={school.logoUrl}
                 alt={`${school.name} logo`}
                 width={64}
                 height={64}
-                data-ai-hint={schoolLogo.imageHint}
-                className="rounded-full bg-white p-1 shadow-md"
+                className="rounded-full bg-white p-1 shadow-md object-contain"
               />
               <div>
                 <h2 className="text-2xl font-bold">{school.name}</h2>
@@ -43,26 +39,27 @@ export default function MeetingHero({ school }: MeetingHeroProps) {
           </p>
 
           <div className="my-10 w-full max-w-lg">
-            <CountdownTimer targetDate={school.meetingTime} />
+            <CountdownTimer targetDate={school.meetingTime || new Date().toISOString()} />
           </div>
           
           <div className="w-full md:w-auto">
-            <JoinMeetingButton meetingTime={school.meetingTime} meetingLink={school.meetingLink} />
+            <JoinMeetingButton meetingTime={school.meetingTime || ''} meetingLink={school.meetingLink || ''} />
           </div>
 
         </div>
 
         {/* Right Column */}
         <div className="relative h-80 w-full rounded-xl shadow-2xl md:h-[500px] order-first md:order-last">
-          {heroImage && (
+          {school.heroImageUrl ? (
             <Image
-              src={heroImage.imageUrl}
-              alt={heroImage.description}
+              src={school.heroImageUrl}
+              alt={`Hero image for ${school.name}`}
               fill
               className="rounded-xl object-cover"
-              data-ai-hint={heroImage.imageHint}
               priority
             />
+          ) : (
+             <div className="h-full w-full rounded-xl bg-muted"></div>
           )}
            <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent"></div>
         </div>
