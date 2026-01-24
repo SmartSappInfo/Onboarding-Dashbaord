@@ -1,13 +1,14 @@
 import Image from 'next/image';
-import type { School } from '@/lib/types';
+import type { School, Meeting } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingButton from '@/components/join-meeting-button';
 
 interface MeetingHeroProps {
   school: School;
+  meeting: Meeting;
 }
 
-export default function MeetingHero({ school }: MeetingHeroProps) {
+export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
 
   return (
     <section className="w-full bg-background px-4 py-10 md:py-20">
@@ -39,11 +40,11 @@ export default function MeetingHero({ school }: MeetingHeroProps) {
           </p>
 
           <div className="my-10 w-full max-w-lg">
-            <CountdownTimer targetDate={school.meetingTime || new Date().toISOString()} />
+            <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
           </div>
           
           <div className="w-full md:w-auto">
-            <JoinMeetingButton meetingTime={school.meetingTime || ''} meetingLink={school.meetingLink || ''} />
+            <JoinMeetingButton meetingTime={meeting.meetingTime || ''} meetingLink={meeting.meetingLink || ''} />
           </div>
 
         </div>

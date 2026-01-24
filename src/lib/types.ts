@@ -5,8 +5,6 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  meetingTime?: string; // ISO string
-  meetingLink?: string;
   contactPerson?: string;
   email?: string;
   phone?: string;
@@ -18,4 +16,12 @@ export interface School {
   includeDroneFootage?: boolean;
 }
 
-    
+export interface Meeting {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  schoolSlug: string;
+  meetingTime: string; // ISO string
+  meetingLink: string;
+  recordingUrl?: string;
+}

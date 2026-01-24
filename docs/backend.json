@@ -28,16 +28,6 @@
           "description": "URL of the hero image for the meeting page.",
           "format": "uri"
         },
-        "meetingTime": {
-          "type": "string",
-          "description": "The date and time of the meeting.",
-          "format": "date-time"
-        },
-        "meetingLink": {
-          "type": "string",
-          "description": "URL for joining the meeting.",
-          "format": "uri"
-        },
         "contactPerson": {
           "type": "string",
           "description": "Admin contact for the school."
@@ -82,19 +72,23 @@
         "slug"
       ]
     },
-    "MeetingPage": {
+    "Meeting": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "MeetingPage",
+      "title": "Meeting",
       "type": "object",
-      "description": "Represents a dynamically generated meeting page for a specific school.",
+      "description": "Represents a scheduled meeting for a school.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the MeetingPage entity."
-        },
         "schoolId": {
           "type": "string",
-          "description": "Reference to School. (Relationship: School 1:N MeetingPage)"
+          "description": "The ID of the school this meeting is for."
+        },
+        "schoolName": {
+          "type": "string",
+          "description": "The name of the school this meeting is for."
+        },
+        "schoolSlug": {
+          "type": "string",
+          "description": "The slug of the school for generating the meeting page URL."
         },
         "meetingTime": {
           "type": "string",
@@ -106,137 +100,13 @@
           "description": "URL for joining the meeting.",
           "format": "uri"
         },
-        "heroImage": {
+        "recordingUrl": {
           "type": "string",
-          "description": "URL of the hero image for the meeting page.",
-          "format": "uri"
-        },
-        "heroText": {
-          "type": "string",
-          "description": "Main text displayed in the hero section."
-        },
-        "heroDescription": {
-          "type": "string",
-          "description": "Descriptive text accompanying the hero text."
-        },
-        "videoCaption": {
-          "type": "string",
-          "description": "Caption for the video section."
-        },
-        "videoDescription": {
-          "type": "string",
-          "description": "Description accompanying the video section."
-        }
-      },
-      "required": [
-        "id",
-        "schoolId",
-        "meetingTime",
-        "meetingLink",
-        "heroImage",
-        "heroText",
-        "heroDescription",
-        "videoCaption",
-        "videoDescription"
-      ]
-    },
-    "DownloadLink": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "DownloadLink",
-      "type": "object",
-      "description": "Represents a download link for the SmartSApp mobile app on a specific platform.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the DownloadLink entity."
-        },
-        "meetingPageId": {
-          "type": "string",
-          "description": "Reference to MeetingPage. (Relationship: MeetingPage 1:N DownloadLink)"
-        },
-        "platform": {
-          "type": "string",
-          "description": "The platform for which the download link is provided (e.g., Android, iOS, Huawei)."
-        },
-        "url": {
-          "type": "string",
-          "description": "The URL for downloading the app on the specified platform.",
+          "description": "URL of the meeting recording (e.g., YouTube).",
           "format": "uri"
         }
       },
-      "required": [
-        "id",
-        "meetingPageId",
-        "platform",
-        "url"
-      ]
-    },
-    "HelpVideo": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "HelpVideo",
-      "type": "object",
-      "description": "Represents a helpful video resource for users.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the HelpVideo entity."
-        },
-        "meetingPageId": {
-          "type": "string",
-          "description": "Reference to MeetingPage. (Relationship: MeetingPage 1:N HelpVideo)"
-        },
-        "title": {
-          "type": "string",
-          "description": "The title of the help video."
-        },
-        "url": {
-          "type": "string",
-          "description": "The URL of the help video (e.g., YouTube link).",
-          "format": "uri"
-        }
-      },
-      "required": [
-        "id",
-        "meetingPageId",
-        "title",
-        "url"
-      ]
-    },
-    "Testimonial": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Testimonial",
-      "type": "object",
-      "description": "Represents a video testimonial from a user.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the Testimonial entity."
-        },
-        "meetingPageId": {
-          "type": "string",
-          "description": "Reference to MeetingPage. (Relationship: MeetingPage 1:N Testimonial)"
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the person giving the testimonial."
-        },
-        "title": {
-          "type": "string",
-          "description": "Title or role of the person giving the testimonial."
-        },
-        "videoUrl": {
-          "type": "string",
-          "description": "The URL of the testimonial video.",
-          "format": "uri"
-        }
-      },
-      "required": [
-        "id",
-        "meetingPageId",
-        "name",
-        "title",
-        "videoUrl"
-      ]
+      "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink"]
     }
   },
   "auth": {
@@ -257,48 +127,16 @@
           "description": "Stores school data. Each document represents a school using the SmartSApp onboarding platform."
         }
       },
-      {
-        "path": "/schools/{schoolId}/meetingPages/{meetingPageId}",
+       {
+        "path": "/meetings/{meetingId}",
         "definition": {
-          "entityName": "MeetingPage",
+          "entityName": "Meeting",
           "schema": {
-            "$ref": "#/backend/entities/MeetingPage"
+            "$ref": "#/backend/entities/Meeting"
           },
-          "description": "Stores dynamically generated meeting pages for each school. Each document represents a specific meeting page associated with a school."
-        }
-      },
-      {
-        "path": "/schools/{schoolId}/meetingPages/{meetingPageId}/downloadLinks/{downloadLinkId}",
-        "definition": {
-          "entityName": "DownloadLink",
-          "schema": {
-            "$ref": "#/backend/entities/DownloadLink"
-          },
-          "description": "Stores download links for the SmartSApp mobile app for specific meeting pages."
-        }
-      },
-      {
-        "path": "/schools/{schoolId}/meetingPages/{meetingPageId}/helpVideos/{helpVideoId}",
-        "definition": {
-          "entityName": "HelpVideo",
-          "schema": {
-            "$ref": "#/backend/entities/HelpVideo"
-          },
-          "description": "Stores helpful video resources for users associated with a specific meeting page."
-        }
-      },
-      {
-        "path": "/schools/{schoolId}/meetingPages/{meetingPageId}/testimonials/{testimonialId}",
-        "definition": {
-          "entityName": "Testimonial",
-          "schema": {
-            "$ref": "#/backend/entities/Testimonial"
-          },
-          "description": "Stores video testimonials from users associated with a specific meeting page."
+          "description": "Stores meeting data for schools. Each document represents a specific meeting."
         }
       }
     ]
   }
 }
-
-    

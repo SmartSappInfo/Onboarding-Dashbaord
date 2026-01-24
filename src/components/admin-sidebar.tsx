@@ -1,13 +1,14 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, School, Settings } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar } from 'lucide-react';
 import Logo from './logo';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
+  { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
 ];
 
 const bottomNavItems = [

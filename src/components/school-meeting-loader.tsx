@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
-import type { School } from '@/lib/types';
+import type { School, Meeting } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -45,7 +45,8 @@ interface SchoolMeetingLoaderProps {
 
 export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) {
     const firestore = useFirestore();
-    const [school, setSchool] = useState<School | null | undefined>(undefined);
+    const [school, setSchool] = useState<School | null>(null);
+    const [meeting, setMeeting] = useState<Meeting | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -61,33 +62,56 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             return;
         };
 
-        const fetchSchool = async () => {
+        const fetchSchoolAndMeeting = async () => {
           setIsLoading(true);
-          setSchool(undefined);
+          setSchool(null);
+          setMeeting(null);
           setError(null);
-          try {
-            const schoolsCollection = collection(firestore, 'schools');
-            const q = query(schoolsCollection, where('slug', '==', slug));
-            const querySnapshot = await getDocs(q);
 
-            if (querySnapshot.empty) {
-              setSchool(null);
-            } else {
-              const schoolDoc = querySnapshot.docs[0];
-              setSchool({ ...schoolDoc.data(), id: schoolDoc.id } as School);
+          try {
+            // 1. Fetch the school by slug
+            const schoolsCollection = collection(firestore, 'schools');
+            const schoolQuery = query(schoolsCollection, where('slug', '==', slug));
+            const schoolSnapshot = await getDocs(schoolQuery);
+
+            if (schoolSnapshot.empty) {
+              setError("School not found.");
+              setIsLoading(false);
+              return;
             }
+            
+            const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
+            setSchool(foundSchool);
+
+            // 2. Fetch the latest meeting for that school
+            const meetingsCollection = collection(firestore, 'meetings');
+            const meetingQuery = query(
+              meetingsCollection, 
+              where('schoolSlug', '==', slug),
+              orderBy('meetingTime', 'desc'),
+              limit(1)
+            );
+            const meetingSnapshot = await getDocs(meetingQuery);
+
+            if (meetingSnapshot.empty) {
+              setError("No upcoming meeting found for this school.");
+            } else {
+              const foundMeeting = { ...meetingSnapshot.docs[0].data(), id: meetingSnapshot.docs[0].id } as Meeting;
+              setMeeting(foundMeeting);
+            }
+
           } catch (e: any) {
             console.error(e);
-            setError("Failed to load school data. Please try again later.");
+            setError("Failed to load school or meeting data. Please try again later.");
           } finally {
             setIsLoading(false);
           }
         };
 
-        fetchSchool();
+        fetchSchoolAndMeeting();
     }, [firestore, slug]);
       
-    if (isLoading || school === undefined) {
+    if (isLoading) {
         return (
             <section className="w-full bg-background">
                 <MeetingPageSkeleton />
@@ -99,14 +123,14 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
         return <div className="container mx-auto py-20 text-center text-destructive">{error}</div>;
     }
 
-    if (!school) {
+    if (!school || !meeting) {
         return (
             <div className="container mx-auto py-20 text-center">
-                <h1 className="text-4xl font-bold">School Not Found</h1>
-                <p className="text-muted-foreground mt-4">The meeting page for this school could not be found. Please check the name and try again.</p>
+                <h1 className="text-4xl font-bold">Meeting Information Unavailable</h1>
+                <p className="text-muted-foreground mt-4">The meeting page for this school could not be fully loaded. Please check the name and try again, or contact support.</p>
             </div>
         )
     }
 
-    return <MeetingHero school={school} />;
+    return <MeetingHero school={school} meeting={meeting} />;
 }

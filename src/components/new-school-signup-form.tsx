@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
+import { collection, addDoc } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +27,7 @@ import { Calendar } from "./ui/calendar";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
+import { useFirestore } from "@/firebase";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -52,6 +54,8 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function NewSchoolSignupForm() {
   const { toast } = useToast();
+  const firestore = useFirestore();
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -87,6 +91,8 @@ export default function NewSchoolSignupForm() {
   const isMainPhoneValid = z.string().min(10).safeParse(watchMainPhone).success;
 
   const onSubmit = async (data: FormData) => {
+    
+    // 1. Send to Pabbly Webhook
     try {
       const schoolEmails = [];
       if (data.notifySchool) {
@@ -100,41 +106,84 @@ export default function NewSchoolSignupForm() {
           if (data.notifySchoolSmsNumbers) schoolSmsNumbers.push(...data.notifySchoolSmsNumbers);
       }
 
-      const finalData: Record<string, any> = { ...data };
+      const webhookData: Record<string, any> = { ...data };
       
-      finalData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
-      finalData.notifySchoolEmails = [...new Set(schoolEmails)].join(', ');
-      finalData.notifySchoolSmsNumbers = [...new Set(schoolSmsNumbers)].join(',');
-      finalData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
-      finalData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
+      webhookData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
+      webhookData.notifySchoolEmails = [...new Set(schoolEmails)].join(',');
+      webhookData.notifySchoolSmsNumbers = [...new Set(schoolSmsNumbers)].join(',');
+      webhookData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
+      webhookData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
 
-      delete finalData.notifySchool;
-      delete finalData.notifySmartSapp;
-      delete finalData.notifyOnboarding;
-      delete finalData.notifySchoolBySms;
+      delete webhookData.notifySchool;
+      delete webhookData.notifySmartSapp;
+      delete webhookData.notifyOnboarding;
+      delete webhookData.notifySchoolBySms;
 
       const response = await fetch("https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc", {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(finalData),
+        body: JSON.stringify(webhookData),
       });
 
-      if (response.ok) {
-        toast({
-          title: "Registration Successful!",
-          description: "Your new school signup has been submitted.",
-        });
-        form.reset();
-      } else {
+      if (!response.ok) {
         throw new Error("Webhook submission failed");
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: "There was a problem with your request. Please try again.",
+        description: "There was a problem with the webhook submission. Please try again.",
+      });
+      return; // Stop if webhook fails
+    }
+
+    // 2. Save to Firestore
+    if (!firestore) {
+      toast({
+        variant: "destructive",
+        title: "Firestore not available",
+        description: "Could not save school record. Please check your connection.",
+      });
+      return;
+    }
+
+    const slug = data.organization
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    const schoolData = {
+      name: data.organization,
+      slug,
+      contactPerson: data.contactPerson,
+      email: data.email,
+      phone: data.phone,
+      location: data.location,
+      nominalRoll: data.nominalRoll,
+      modules: data.modules,
+      implementationDate: data.implementationDate.toISOString(),
+      referee: data.referee,
+      includeDroneFootage: data.includeDroneFootage,
+    };
+
+    try {
+      await addDoc(collection(firestore, 'schools'), schoolData);
+      
+      toast({
+        title: "Registration Successful!",
+        description: "Your new school signup has been submitted and saved.",
+      });
+      form.reset();
+
+    } catch (error: any) {
+      console.error("Error adding document to Firestore: ", error);
+      toast({
+        variant: "destructive",
+        title: "Submission Saved, but Firestore Failed",
+        description: "Webhook sent, but failed to save the school record. Please check the admin dashboard.",
       });
     }
   };

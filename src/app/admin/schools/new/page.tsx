@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -34,9 +33,6 @@ const formSchema = z.object({
   slogan: z.string().optional(),
   logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
   heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
-  
-  meetingTime: z.date().optional(),
-  meetingLink: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
   
   contactPerson: z.string().optional(),
   email: z.string().email({ message: 'Please enter a valid email.' }).optional(),
@@ -64,7 +60,6 @@ export default function NewSchoolPage() {
       slogan: '',
       logoUrl: '',
       heroImageUrl: '',
-      meetingLink: '',
       contactPerson: '',
       email: '',
       phone: '',
@@ -95,7 +90,6 @@ export default function NewSchoolPage() {
       await addDoc(collection(firestore, 'schools'), {
         ...data,
         slug,
-        meetingTime: data.meetingTime?.toISOString(),
         implementationDate: data.implementationDate?.toISOString(),
       });
 
@@ -172,53 +166,6 @@ export default function NewSchoolPage() {
                       <FormLabel>Hero Image URL</FormLabel>
                       <FormControl>
                         <Input placeholder="https://example.com/hero.jpg" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="meetingTime"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Onboarding Meeting Time</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP p") : <span>Pick a date and time</span>}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="meetingLink"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Meeting Link (Google Meet)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://meet.google.com/abc-xyz-pqr" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -381,5 +328,3 @@ export default function NewSchoolPage() {
     </div>
   );
 }
-
-    
