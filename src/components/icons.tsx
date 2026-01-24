@@ -1,5 +1,41 @@
 import type { SVGProps } from 'react';
 
+export const SmartSappLogo = ({ variant = 'primary', ...props }: SVGProps<SVGSVGElement> & { variant?: 'primary' | 'white' }) => {
+  const color = variant === 'white' ? '#FFFFFF' : 'hsl(var(--primary))';
+  
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" width="144" height="32" {...props}>
+      <g>
+        <path
+          fillRule="evenodd"
+          d="M20 2a18 18 0 1 0 0 36a18 18 0 1 0 0-36zm-7.5 11.5L23 13.5l-2 6-10.5.5zM17 20.5l10.5.5-2 6-10.5-.5zM27 16a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM13 24a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"
+          clipRule="evenodd"
+          fill={color}
+        />
+      </g>
+      <text 
+        x="45" 
+        y="29" 
+        style={{
+            fontFamily: "'Poppins', sans-serif",
+            fontWeight: 700,
+            fontSize: '28px',
+            fill: color
+        }}
+      >
+        SmartSapp
+      </text>
+    </svg>
+  );
+};
+
+export const MinexLogo = (props: SVGProps<SVGSVGElement>) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 40" {...props}>
+        <text x="0" y="28" fontFamily="'Poppins', sans-serif" fontSize="20" fontWeight="bold" fill="white">MINEX 360</text>
+    </svg>
+);
+
+
 export const GooglePlayIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 512 512" {...props}>
     <path fill="#4CAF50" d="M373.1,235.3l-133.5-77.1c-5.8-3.3-12.8,1.3-12.8,7.9v154.1c0,6.6,7,11.3,12.8,7.9l133.5-77.1C378.9,244.7,378.9,238.7,373.1,235.3z" />

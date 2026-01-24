@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, School, Settings, Calendar } from 'lucide-react';
-import Logo from './logo';
+import { SmartSappLogo as Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 const navItems = [

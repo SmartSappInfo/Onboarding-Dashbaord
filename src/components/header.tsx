@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Logo from './logo';
+import { SmartSappLogo as Logo } from '@/components/icons';
 import { Button } from './ui/button';
 import { Phone } from 'lucide-react';
 
