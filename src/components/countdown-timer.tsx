@@ -43,30 +43,36 @@ const CountdownTimer = ({ targetDate }: CountdownTimerProps) => {
     return () => clearInterval(timer);
   }, [targetDate]);
 
+  const TimeBlock = ({ value, label }: { value: number, label: string }) => (
+    <div className="flex flex-col items-center justify-center rounded-lg bg-primary/10 p-4 shadow-inner w-24">
+      <span className="font-mono text-4xl font-bold text-primary sm:text-5xl">
+        {String(value).padStart(2, '0')}
+      </span>
+      <span className="text-sm uppercase text-primary/80">{label}</span>
+    </div>
+  );
+
   if (!isClient) {
-    return <div className="grid grid-flow-col gap-5 text-center auto-cols-max justify-center animate-pulse">
-        <div className="flex flex-col p-4 bg-primary/10 rounded-lg w-24 shadow-inner"><span className="font-mono text-5xl text-primary font-bold">--</span><span className="text-primary/80 uppercase text-sm">days</span></div>
-        <div className="flex flex-col p-4 bg-primary/10 rounded-lg w-24 shadow-inner"><span className="font-mono text-5xl text-primary font-bold">--</span><span className="text-primary/80 uppercase text-sm">hours</span></div>
-        <div className="flex flex-col p-4 bg-primary/10 rounded-lg w-24 shadow-inner"><span className="font-mono text-5xl text-primary font-bold">--</span><span className="text-primary/80 uppercase text-sm">min</span></div>
-        <div className="flex flex-col p-4 bg-primary/10 rounded-lg w-24 shadow-inner"><span className="font-mono text-5xl text-primary font-bold">--</span><span className="text-primary/80 uppercase text-sm">sec</span></div>
+    return (
+      <div className="grid grid-cols-4 gap-2 sm:gap-5 justify-center">
+        <TimeBlock value={0} label="days" />
+        <TimeBlock value={0} label="hours" />
+        <TimeBlock value={0} label="min" />
+        <TimeBlock value={0} label="sec" />
       </div>
+    )
   }
   
-  const timerComponents = Object.entries(timeLeft).map(([interval, value]) => {
-    const paddedValue = String(value).padStart(2, '0');
-    return (
-      <div key={interval} className="flex flex-col p-4 bg-black/20 backdrop-blur-sm rounded-lg w-24 shadow-inner border border-white/10">
-        <span className="font-mono text-5xl text-white font-bold">
-          {paddedValue}
-        </span>
-        <span className="text-white/80 uppercase text-sm">{interval}</span>
-      </div>
-    );
-  });
+  if (Object.values(timeLeft).every(v => v === 0)) {
+    return <div className="text-center text-2xl font-bold p-4 bg-green-100 text-green-800 rounded-lg">The meeting has started!</div>
+  }
 
   return (
-    <div className="grid grid-flow-col gap-5 text-center auto-cols-max justify-center">
-      {Object.values(timeLeft).some(v => v > 0) ? timerComponents : <span className="text-2xl font-bold p-4 bg-black/20 rounded-lg">The meeting has started!</span>}
+    <div className="grid grid-cols-4 gap-2 sm:gap-5 justify-center">
+      <TimeBlock value={timeLeft.days} label="days" />
+      <TimeBlock value={timeLeft.hours} label="hours" />
+      <TimeBlock value={timeLeft.minutes} label="min" />
+      <TimeBlock value={timeLeft.seconds} label="sec" />
     </div>
   );
 };

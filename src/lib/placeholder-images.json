@@ -19,6 +19,12 @@
       "imageHint": "school campus"
     },
     {
+      "id": "meeting-hero",
+      "description": "Parents and teachers looking at a tablet in a school hallway.",
+      "imageUrl": "https://images.unsplash.com/photo-1576267423445-b2e0074d68a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwYXJlbnRzJTIwc2Nob29sJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3NjkyMTE4Mjl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "parents technology"
+    },
+    {
       "id": "testimonial-1",
       "description": "Thumbnail for a video testimonial.",
       "imageUrl": "https://images.unsplash.com/photo-1525186402429-b4ff38bedec6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxoYXBweSUyMHBlcnNvbnxlbnwwfHx8fDE3Njg5MjU3MTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",

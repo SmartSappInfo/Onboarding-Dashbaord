@@ -18,8 +18,8 @@ const schoolData: School[] = [
     name: 'Ghana International School',
     slogan: 'Understanding of each other',
     logoUrlId: 'school-logo',
-    heroImageUrlId: 'school-hero',
-    meetingTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days from now
+    heroImageUrlId: 'meeting-hero', // Use the new hero image
+    meetingTime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
     meetingLink: 'https://meet.google.com/abc-xyz-pqr',
     usefulLinks: [
       {
