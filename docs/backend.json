@@ -208,13 +208,7 @@
           "schema": {
             "$ref": "#/backend/entities/School"
           },
-          "description": "Stores school data. Each document represents a school using the SmartSApp onboarding platform.",
-          "params": [
-            {
-              "name": "schoolId",
-              "description": "Unique identifier for the school."
-            }
-          ]
+          "description": "Stores school data. Each document represents a school using the SmartSApp onboarding platform."
         }
       },
       {
@@ -224,17 +218,7 @@
           "schema": {
             "$ref": "#/backend/entities/MeetingPage"
           },
-          "description": "Stores dynamically generated meeting pages for each school. Each document represents a specific meeting page associated with a school.",
-          "params": [
-            {
-              "name": "schoolId",
-              "description": "Unique identifier for the school."
-            },
-            {
-              "name": "meetingPageId",
-              "description": "Unique identifier for the meeting page."
-            }
-          ]
+          "description": "Stores dynamically generated meeting pages for each school. Each document represents a specific meeting page associated with a school."
         }
       },
       {
@@ -244,21 +228,7 @@
           "schema": {
             "$ref": "#/backend/entities/DownloadLink"
           },
-          "description": "Stores download links for the SmartSApp mobile app for specific meeting pages.",
-          "params": [
-            {
-              "name": "schoolId",
-              "description": "Unique identifier for the school."
-            },
-            {
-              "name": "meetingPageId",
-              "description": "Unique identifier for the meeting page."
-            },
-            {
-              "name": "downloadLinkId",
-              "description": "Unique identifier for the download link."
-            }
-          ]
+          "description": "Stores download links for the SmartSApp mobile app for specific meeting pages."
         }
       },
       {
@@ -268,21 +238,7 @@
           "schema": {
             "$ref": "#/backend/entities/HelpVideo"
           },
-          "description": "Stores helpful video resources for users associated with a specific meeting page.",
-          "params": [
-            {
-              "name": "schoolId",
-              "description": "Unique identifier for the school."
-            },
-            {
-              "name": "meetingPageId",
-              "description": "Unique identifier for the meeting page."
-            },
-            {
-              "name": "helpVideoId",
-              "description": "Unique identifier for the help video."
-            }
-          ]
+          "description": "Stores helpful video resources for users associated with a specific meeting page."
         }
       },
       {
@@ -292,24 +248,9 @@
           "schema": {
             "$ref": "#/backend/entities/Testimonial"
           },
-          "description": "Stores video testimonials from users associated with a specific meeting page.",
-          "params": [
-            {
-              "name": "schoolId",
-              "description": "Unique identifier for the school."
-            },
-            {
-              "name": "meetingPageId",
-              "description": "Unique identifier for the meeting page."
-            },
-            {
-              "name": "testimonialId",
-              "description": "Unique identifier for the testimonial."
-            }
-          ]
+          "description": "Stores video testimonials from users associated with a specific meeting page."
         }
       }
-    ],
-    "reasoning": "The Firestore structure is designed to support the SmartOnboard app's features, focusing on schools and dynamically generated meeting pages. The structure is optimized for simplicity and security. Schools are stored in a top-level `/schools` collection. Meeting pages are stored as subcollections under each school (`/schools/{schoolId}/meetingPages`). This hierarchical structure enforces ownership (a meeting page belongs to a school) and allows for efficient querying and data management.\n\nThis design ensures Authorization Independence by avoiding `get()` calls in security rules. Instead of relying on parent document data, necessary attributes for authorization (e.g., school administrators) would be denormalized into the `meetingPages` documents (if needed, based on future authorization requirements). Currently, since access control isn't explicitly specified for meeting pages, denormalization isn't added at this point but would be added if necessary in the future.\n\nThis structure supports QAPs (Rules are not Filters) by structuring the data in a way that allows straightforward security rules based on the path and, if required in the future, denormalized data. Listing meeting pages is secure because the rules can be applied at the collection level, ensuring that only authorized users can access specific meeting pages based on the `schoolId`."
+    ]
   }
 }

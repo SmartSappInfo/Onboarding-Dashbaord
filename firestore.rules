@@ -1,135 +1,28 @@
-/**
- * This ruleset enforces a public, read-only security model for the SmartOnboard application.
- *
- * Core Philosophy:
- * The primary goal is to make all school and meeting page data publicly accessible for viewing,
- * while completely disallowing any form of data creation, modification, or deletion from client applications.
- * This secure-by-default posture assumes that data is managed exclusively through a trusted backend
- * environment (e.g., Admin SDK) until a specific user-facing administrative role is defined.
- *
- * Data Structure:
- * The data is organized hierarchically. A top-level `/schools` collection holds all school documents.
- * Each school can have a subcollection of `/meetingPages`, which in turn contains subcollections for
- * `/downloadLinks`, `/helpVideos`, and `/testimonials`. This structure logically groups related data.
- *
- * Key Security Decisions:
- * - Public Read-Only Access: All collections and documents are readable by anyone, including unauthenticated users.
- *   This is suitable for a public-facing information portal.
- * - No Client-Side Writes: All write operations (create, update, delete) are explicitly denied (`if false;`).
- *   This is the most secure approach given that the provided data schemas do not contain any fields
- *   (like `ownerId` or `adminIds`) that could be used to authorize writes.
- * - No User-Specific Data: The ruleset does not handle any user-specific or private data. All data is treated
- *   as public content.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper Functions
-    // =================================
-
-    /**
-     * Checks if a user is authenticated.
-     * Note: This function is not used in the current public-only model but is included for future expansion.
-     */
-    function isSignedIn() {
-      return request.auth != null;
+    // By default, deny all reads and writes.
+    match /{document=**} {
+      allow read, write: if false;
     }
 
-    // Collection Rules
-    // =================================
-
-    /**
-     * @description
-     *   Allows public read-only access to School documents. All write operations are disabled.
-     * @path
-     *   /schools/{schoolId}
-     * @allow
-     *   (get) Any user, signed-in or not, can read a specific school's data.
-     * @deny
-     *   (create) No user can create a new school document from the client.
-     * @principle
-     *   Provides public read-only access while restricting all modifications by default.
-     */
+    // Allow public read-only access to schools and their subcollections.
     match /schools/{schoolId} {
       allow get, list: if true;
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
 
-      /**
-       * @description
-       *   Allows public read-only access to a school's Meeting Page documents. All write operations are disabled.
-       * @path
-       *   /schools/{schoolId}/meetingPages/{meetingPageId}
-       * @allow
-       *   (list) Any user can list all meeting pages for a given school.
-       * @deny
-       *   (update) No user can update an existing meeting page.
-       * @principle
-       *   Provides public read-only access while restricting all modifications by default.
-       */
       match /meetingPages/{meetingPageId} {
         allow get, list: if true;
-        allow create: if false;
-        allow update: if false;
-        allow delete: if false;
 
-        /**
-         * @description
-         *   Allows public read-only access to Download Link documents within a meeting page. All writes are disabled.
-         * @path
-         *   /schools/{schoolId}/meetingPages/{meetingPageId}/downloadLinks/{downloadLinkId}
-         * @allow
-         *   (get) Any user can read a specific download link.
-         * @deny
-         *   (delete) No user can delete a download link.
-         * @principle
-         *   Provides public read-only access while restricting all modifications by default.
-         */
         match /downloadLinks/{downloadLinkId} {
           allow get, list: if true;
-          allow create: if false;
-          allow update: if false;
-          allow delete: if false;
         }
 
-        /**
-         * @description
-         *   Allows public read-only access to Help Video documents within a meeting page. All writes are disabled.
-         * @path
-         *   /schools/{schoolId}/meetingPages/{meetingPageId}/helpVideos/{helpVideoId}
-         * @allow
-         *   (list) Any user can list all help videos for a meeting page.
-         * @deny
-         *   (create) No user can create a new help video.
-         * @principle
-         *   Provides public read-only access while restricting all modifications by default.
-         */
         match /helpVideos/{helpVideoId} {
           allow get, list: if true;
-          allow create: if false;
-          allow update: if false;
-          allow delete: if false;
         }
 
-        /**
-         * @description
-         *   Allows public read-only access to Testimonial documents within a meeting page. All writes are disabled.
-         * @path
-         *   /schools/{schoolId}/meetingPages/{meetingPageId}/testimonials/{testimonialId}
-         * @allow
-         *   (get) Any user can read a specific testimonial.
-         * @deny
-         *   (update) No user can update an existing testimonial.
-         * @principle
-         *   Provides public read-only access while restricting all modifications by default.
-         */
         match /testimonials/{testimonialId} {
           allow get, list: if true;
-          allow create: if false;
-          allow update: if false;
-          allow delete: if false;
         }
       }
     }

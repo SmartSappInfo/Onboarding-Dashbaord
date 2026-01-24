@@ -8,6 +8,7 @@ import VideoEmbed from '@/components/video-embed';
 import AppStoreButtons from '@/components/app-store-buttons';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlayCircle, Link as LinkIcon } from 'lucide-react';
+import JoinMeetingButton from '@/components/join-meeting-button';
 
 interface PageProps {
   params: {
@@ -56,15 +57,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
           <div className="my-10">
             <CountdownTimer targetDate={school.meetingTime} />
           </div>
-          <Button
-            size="lg"
-            className="bg-accent px-10 py-6 text-lg text-accent-foreground hover:bg-accent/90"
-            asChild
-          >
-            <a href={school.meetingLink} target="_blank" rel="noopener noreferrer">
-              Join Meeting
-            </a>
-          </Button>
+          <JoinMeetingButton meetingTime={school.meetingTime} meetingLink={school.meetingLink} />
         </div>
       </section>
 
