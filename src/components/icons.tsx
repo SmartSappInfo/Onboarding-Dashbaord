@@ -29,6 +29,22 @@ export const SmartSappLogo = ({ variant = 'primary', ...props }: SVGProps<SVGSVG
   );
 };
 
+export const SmartSappIcon = (props: SVGProps<SVGSVGElement>) => {
+    const color = 'hsl(var(--primary))';
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="32" height="32" {...props}>
+            <g>
+                <path
+                fillRule="evenodd"
+                d="M20 2a18 18 0 1 0 0 36a18 18 0 1 0 0-36zm-7.5 11.5L23 13.5l-2 6-10.5.5zM17 20.5l10.5.5-2 6-10.5-.5zM27 16a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM13 24a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"
+                clipRule="evenodd"
+                fill={color}
+                />
+            </g>
+        </svg>
+    )
+};
+
 export const MinexLogo = (props: SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 40" {...props}>
         <text x="0" y="28" fontFamily="'Poppins', sans-serif" fontSize="20" fontWeight="bold" fill="white">MINEX 360</text>
