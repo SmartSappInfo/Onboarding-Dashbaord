@@ -5,12 +5,11 @@ import { collection, query, orderBy, getFirestore } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
 
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle } from 'lucide-react';
 import MediaAssetCard from './components/media-asset-card';
+import UploadButton from './components/upload-button';
 
 const TABS = ['images', 'videos', 'audio', 'documents'];
 
@@ -55,10 +54,7 @@ export default function MediaLibraryPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-4xl font-bold tracking-tight">Media Library</h1>
-        <Button onClick={() => alert('Uploader coming in Phase 3!')}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Upload Media
-        </Button>
+        <UploadButton />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
