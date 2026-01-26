@@ -27,6 +27,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { MediaSelect } from '../components/media-select';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -164,7 +165,7 @@ export default function NewSchoolPage() {
                     <FormItem>
                       <FormLabel>Logo URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/logo.png" {...field} />
+                        <MediaSelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -177,7 +178,7 @@ export default function NewSchoolPage() {
                     <FormItem>
                       <FormLabel>Hero Image URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/hero.jpg" {...field} />
+                        <MediaSelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -29,6 +29,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { MediaSelect } from '../components/media-select';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -183,7 +184,10 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Logo URL</FormLabel>
                         <FormControl>
-                            <Input placeholder="https://example.com/logo.png" {...field} />
+                             <MediaSelect 
+                                value={field.value} 
+                                onValueChange={field.onChange} 
+                             />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -196,7 +200,10 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Hero Image URL</FormLabel>
                         <FormControl>
-                            <Input placeholder="https://example.com/hero.jpg" {...field} />
+                           <MediaSelect 
+                                value={field.value} 
+                                onValueChange={field.onChange} 
+                           />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

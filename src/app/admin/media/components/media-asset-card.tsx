@@ -35,13 +35,22 @@ import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface MediaAssetCardProps {
   asset: MediaAsset;
+  onCardClick?: (asset: MediaAsset) => void;
 }
 
-export default function MediaAssetCard({ asset }: MediaAssetCardProps) {
+export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  const handleMainClick = () => {
+    if (onCardClick) {
+      onCardClick(asset);
+    } else {
+      setIsPreviewOpen(true);
+    }
+  };
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(asset.url);
@@ -107,7 +116,7 @@ export default function MediaAssetCard({ asset }: MediaAssetCardProps) {
         <CardContent className="p-0">
           <div
             className="aspect-square w-full bg-muted flex items-center justify-center cursor-pointer"
-            onClick={() => setIsPreviewOpen(true)}
+            onClick={handleMainClick}
           >
             {asset.type === 'image' ? (
               <Image
@@ -166,7 +175,9 @@ export default function MediaAssetCard({ asset }: MediaAssetCardProps) {
         </AlertDialogContent>
       </AlertDialog>
 
-      <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
+      {!onCardClick && (
+        <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
+      )}
     </>
   );
 }
