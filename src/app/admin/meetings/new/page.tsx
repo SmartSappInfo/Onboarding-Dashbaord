@@ -26,16 +26,16 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
-  school: z.custom<School>(),
+  school: z.custom<School>().refine(value => value, { message: "School is required." }),
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
-  recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -60,7 +60,7 @@ export default function NewMeetingPage() {
     },
   });
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = (data: FormData) => {
     if (!firestore) {
       toast({
         variant: "destructive",
@@ -79,23 +79,32 @@ export default function NewMeetingPage() {
         recordingUrl: data.recordingUrl || ''
     };
 
-    try {
-      await addDoc(collection(firestore, 'meetings'), meetingData);
+    const meetingsCollection = collection(firestore, 'meetings');
+    form.control.disabled = true;
 
-      toast({
-        title: 'Meeting Created',
-        description: `Meeting for ${data.school.name} has been scheduled.`,
+    addDoc(meetingsCollection, meetingData)
+      .then(() => {
+        toast({
+          title: 'Meeting Created',
+          description: `Meeting for ${data.school.name} has been scheduled.`,
+        });
+        router.push('/admin/meetings');
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+            path: meetingsCollection.path,
+            operation: 'create',
+            requestResourceData: meetingData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Uh oh! Something went wrong.',
+          description: 'There was a problem saving the meeting.',
+        });
+      }).finally(() => {
+        form.control.disabled = false;
       });
-      router.push('/admin/meetings');
-    } catch (error: any)
- {
-      console.error('Error adding document: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message || 'There was a problem saving the meeting.',
-      });
-    }
   };
 
   return (

@@ -26,13 +26,13 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFirestore } from '@/firebase';
+import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
   slogan: z.string().optional(),
-  logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
-  heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   
   contactPerson: z.string().optional(),
   email: z.string().email({ message: 'Please enter a valid email.' }).optional(),
@@ -70,7 +70,7 @@ export default function NewSchoolPage() {
     },
   });
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = (data: FormData) => {
     if (!firestore) {
       toast({
         variant: "destructive",
@@ -86,26 +86,38 @@ export default function NewSchoolPage() {
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '');
 
-    try {
-      await addDoc(collection(firestore, 'schools'), {
-        ...data,
-        slug,
-        implementationDate: data.implementationDate?.toISOString(),
-      });
+    const schoolData = {
+      ...data,
+      slug,
+      implementationDate: data.implementationDate?.toISOString(),
+    };
 
-      toast({
-        title: 'School Created',
-        description: `${data.name} has been added successfully.`,
+    const schoolsCollection = collection(firestore, 'schools');
+    form.control.disabled = true;
+
+    addDoc(schoolsCollection, schoolData)
+      .then(() => {
+        toast({
+          title: 'School Created',
+          description: `${data.name} has been added successfully.`,
+        });
+        router.push('/admin/schools');
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+            path: schoolsCollection.path,
+            operation: 'create',
+            requestResourceData: schoolData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Uh oh! Something went wrong.',
+          description: 'There was a problem saving the school.',
+        });
+      }).finally(() => {
+        form.control.disabled = false;
       });
-      router.push('/admin/schools');
-    } catch (error: any) {
-      console.error('Error adding document: ', error);
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: error.message || 'There was a problem saving the school.',
-      });
-    }
   };
 
   return (
