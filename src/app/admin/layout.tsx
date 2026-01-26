@@ -14,9 +14,12 @@ import {
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
+import { useUser } from '@/firebase';
+import { Skeleton } from '@/components/ui/skeleton';
+import * as React from 'react';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -25,8 +28,51 @@ const navItems = [
   { href: '/admin/media', icon: Film, label: 'Media' },
 ];
 
+
+function AdminDashboardSkeleton() {
+  return (
+    <div className="flex min-h-screen w-full bg-muted/30">
+        <div className="hidden md:flex flex-col gap-4 border-r bg-background p-2 w-72">
+            <div className="p-2 h-14 flex items-center justify-center">
+                <Skeleton className="h-8 w-32" />
+            </div>
+            <div className="flex flex-col gap-2 p-2">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+            </div>
+        </div>
+        <div className="flex-1">
+             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
+                <Skeleton className="h-8 w-8" />
+            </header>
+            <main className="flex-1 p-4 sm:p-6 md:p-8">
+                <Skeleton className="h-screen w-full" />
+            </main>
+        </div>
+    </div>
+  );
+}
+
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+
+  React.useEffect(() => {
+    // If loading is finished and there's no user, redirect to login.
+    if (!isUserLoading && !user) {
+      router.push('/login');
+    }
+  }, [isUserLoading, user, router]);
+
+  // While loading or if there's no user (before redirect happens), show a skeleton.
+  if (isUserLoading || !user) {
+    return <AdminDashboardSkeleton />;
+  }
+
 
   return (
     <SidebarProvider>
