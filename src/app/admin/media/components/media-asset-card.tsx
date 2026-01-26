@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Copy, Trash2, Video, AudioWave, FileText } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
@@ -104,7 +104,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
   const AssetIcon = () => {
     switch (asset.type) {
       case 'video': return <Video className="w-16 h-16 text-muted-foreground" />;
-      case 'audio': return <AudioWave className="w-16 h-16 text-muted-foreground" />;
+      case 'audio': return <AudioWaveform className="w-16 h-16 text-muted-foreground" />;
       case 'document': return <FileText className="w-16 h-16 text-muted-foreground" />;
       default: return null;
     }
