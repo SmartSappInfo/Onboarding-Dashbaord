@@ -15,13 +15,14 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
+  { href: '/admin/media', icon: Film, label: 'Media' },
 ];
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

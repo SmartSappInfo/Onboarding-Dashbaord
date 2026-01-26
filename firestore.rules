@@ -19,5 +19,11 @@ service cloud.firestore {
         allow get, list: if true;
         allow create, update, delete: if request.auth != null;
     }
+
+    // Allow public read-only access to media assets and admin write access.
+    match /media/{mediaId} {
+      allow get, list: if true;
+      allow create, update, delete: if request.auth != null;
+    }
   }
 }

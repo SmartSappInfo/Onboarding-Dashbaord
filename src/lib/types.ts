@@ -25,3 +25,15 @@ export interface Meeting {
   meetingLink: string;
   recordingUrl?: string;
 }
+
+export interface MediaAsset {
+  id: string;
+  name: string;
+  url: string;
+  fullPath: string;
+  type: 'image' | 'video' | 'audio' | 'document';
+  mimeType: string;
+  size: number;
+  uploadedBy: string;
+  createdAt: string; // ISO string
+}

@@ -107,6 +107,50 @@
         }
       },
       "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink"]
+    },
+    "MediaAsset": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Media Asset",
+      "type": "object",
+      "description": "Represents a media file (image, video, audio, document) in the library.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The original filename of the media asset."
+        },
+        "url": {
+          "type": "string",
+          "description": "The public download URL from Firebase Storage.",
+          "format": "uri"
+        },
+        "fullPath": {
+          "type": "string",
+          "description": "The full path to the file within Firebase Storage (e.g., 'media/image/file.png')."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of media asset.",
+          "enum": ["image", "video", "audio", "document"]
+        },
+        "mimeType": {
+          "type": "string",
+          "description": "The MIME type of the file (e.g., 'image/png')."
+        },
+        "size": {
+          "type": "number",
+          "description": "The file size in bytes."
+        },
+        "uploadedBy": {
+          "type": "string",
+          "description": "The UID of the user who uploaded the asset."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "The ISO timestamp when the asset was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "url", "fullPath", "type", "mimeType", "size", "uploadedBy", "createdAt"]
     }
   },
   "auth": {
@@ -135,6 +179,16 @@
             "$ref": "#/backend/entities/Meeting"
           },
           "description": "Stores meeting data for schools. Each document represents a specific meeting."
+        }
+      },
+      {
+        "path": "/media/{mediaId}",
+        "definition": {
+          "entityName": "MediaAsset",
+          "schema": {
+            "$ref": "#/backend/entities/MediaAsset"
+          },
+          "description": "Stores all media assets uploaded to the application."
         }
       }
     ]
