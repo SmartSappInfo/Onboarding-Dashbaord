@@ -12,9 +12,9 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
 
   return (
     <section className="w-full bg-background px-4 py-10 md:py-20">
-      <div className="container mx-auto grid grid-cols-1 items-center gap-12 md:grid-cols-2 lg:gap-20">
+      <div className="container mx-auto grid grid-cols-1 gap-12 md:grid-cols-2 lg:gap-20">
         {/* Left Column */}
-        <div className="flex flex-col items-center text-center md:items-start md:text-left">
+        <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">
           
           {school.logoUrl && (
             <div className="mb-6 flex items-center gap-4">
@@ -50,7 +50,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
         </div>
 
         {/* Right Column */}
-        <div className="relative h-80 w-full md:h-[500px] order-first md:order-last">
+        <div className="relative min-h-[300px] w-full order-first md:order-last">
           {school.heroImageUrl ? (
             <Image
               src={school.heroImageUrl}
