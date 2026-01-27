@@ -2,13 +2,20 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface DateTimePickerProps {
   value: Date | undefined;
@@ -20,6 +27,11 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
   const [date, setDate] = React.useState<Date | undefined>(value);
   const [open, setOpen] = React.useState(false);
 
+  // When the external value changes, update the internal date state.
+  React.useEffect(() => {
+    setDate(value);
+  }, [value]);
+
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!selectedDate) {
       setDate(undefined);
@@ -27,9 +39,9 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
       return;
     }
 
-    // If a date is already set, preserve the time. Otherwise, default to midnight.
-    const hours = date?.getHours() ?? 0;
-    const minutes = date?.getMinutes() ?? 0;
+    // Preserve the time part if it exists, otherwise default to the current time.
+    const hours = date?.getHours() ?? new Date().getHours();
+    const minutes = date?.getMinutes() ?? new Date().getMinutes();
     
     const newDate = new Date(
       selectedDate.getFullYear(),
@@ -41,25 +53,34 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
     
     setDate(newDate);
     onChange(newDate);
-  };
-
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const time = e.target.value;
-    if (!time || !date) return;
-
-    const [hours, minutes] = time.split(':').map(Number);
-    const newDate = new Date(date);
-    newDate.setHours(hours);
-    newDate.setMinutes(minutes);
-
-    setDate(newDate);
-    onChange(newDate);
+    // Do not close popover, allow time selection.
   };
   
-  // When the external value changes, update the internal date state.
-  React.useEffect(() => {
-    setDate(value);
-  }, [value]);
+  const handleTimeChange = (part: 'hour' | 'minute', val: string) => {
+    if (!date) return;
+
+    const newDate = new Date(date);
+    const numericValue = parseInt(val, 10);
+    
+    if (part === 'hour') {
+      newDate.setHours(numericValue);
+    } else {
+      newDate.setMinutes(numericValue);
+    }
+    
+    setDate(newDate);
+    onChange(newDate);
+  }
+  
+  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  // Use 5-minute intervals for a better user experience
+  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
+
+  const selectedHour = date ? format(date, 'HH') : undefined;
+  
+  // Snap the minute to the nearest 5-minute interval for display in the select
+  const selectedMinute = date ? (Math.floor(date.getMinutes() / 5) * 5).toString().padStart(2, '0') : undefined;
+
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -82,14 +103,44 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
           selected={date}
           onSelect={handleDateSelect}
           initialFocus
+          disabled={disabled}
         />
-        <div className="p-3 border-t border-border">
-          <Input
-            type="time"
-            value={date ? format(date, 'HH:mm') : ''}
-            onChange={handleTimeChange}
-            disabled={!date || disabled}
-          />
+        <div className="p-3 border-t border-border space-y-2">
+          <Label className="flex items-center gap-2 text-sm font-medium">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            Time
+          </Label>
+          <div className="flex items-center gap-1">
+            <Select
+              value={selectedHour}
+              onValueChange={(value) => handleTimeChange('hour', value)}
+              disabled={!date || disabled}
+            >
+              <SelectTrigger className="w-[80px] focus:ring-primary focus:ring-offset-0">
+                <SelectValue placeholder="Hour" />
+              </SelectTrigger>
+              <SelectContent>
+                {hours.map(hour => (
+                  <SelectItem key={hour} value={hour}>{hour}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="font-bold text-muted-foreground">:</span>
+            <Select
+              value={selectedMinute}
+              onValueChange={(value) => handleTimeChange('minute', value)}
+              disabled={!date || disabled}
+            >
+              <SelectTrigger className="w-[80px] focus:ring-primary focus:ring-offset-0">
+                <SelectValue placeholder="Min" />
+              </SelectTrigger>
+              <SelectContent>
+                {minutes.map(minute => (
+                  <SelectItem key={minute} value={minute}>{minute}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
