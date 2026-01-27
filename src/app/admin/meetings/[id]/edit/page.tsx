@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Check, ChevronsUpDown } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { collection, doc, updateDoc } from 'firebase/firestore';
 
@@ -20,10 +19,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
@@ -43,7 +40,6 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
-  const [openSchoolPopover, setOpenSchoolPopover] = React.useState(false);
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -146,59 +142,30 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                 control={form.control}
                 name="school"
                 render={({ field }) => (
-                  <FormItem className="flex flex-col">
+                  <FormItem>
                     <FormLabel>School</FormLabel>
-                      <Popover open={openSchoolPopover} onOpenChange={setOpenSchoolPopover}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value
-                                ? schools?.find(
-                                    (school) => school.id === field.value.id
-                                  )?.name
-                                : "Select school"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search school..." />
-                            <CommandEmpty>No school found.</CommandEmpty>
-                            <CommandGroup>
-                              <CommandList>
-                                {schools?.map((school) => (
-                                  <CommandItem
-                                    value={school.name}
-                                    key={school.id}
-                                    onSelect={() => {
-                                      form.setValue("school", school)
-                                      setOpenSchoolPopover(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value?.id === school.id
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    {school.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandList>
-                            </CommandGroup>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
+                    {isLoadingSchools ? <Skeleton className="h-10 w-full" /> : (
+                      <Select
+                        onValueChange={(schoolId: string) => {
+                          const school = schools?.find((s) => s.id === schoolId);
+                          field.onChange(school);
+                        }}
+                        value={field.value?.id}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a school" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {schools?.map((school) => (
+                            <SelectItem key={school.id} value={school.id}>
+                              {school.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
