@@ -50,19 +50,19 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
         </div>
 
         {/* Right Column */}
-        <div className="relative h-80 w-full rounded-xl shadow-2xl md:h-[500px] order-first md:order-last">
+        <div className="relative h-80 w-full md:h-[500px] order-first md:order-last">
           {school.heroImageUrl ? (
             <Image
               src={school.heroImageUrl}
               alt={`Hero image for ${school.name}`}
               fill
-              className="rounded-xl object-cover"
+              className="object-cover"
               priority
             />
           ) : (
-             <div className="h-full w-full rounded-xl bg-muted"></div>
+             <div className="h-full w-full bg-muted"></div>
           )}
-           <div className="absolute inset-0 rounded-xl bg-gradient-to-t from-black/20 to-transparent"></div>
+           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
         </div>
       </div>
     </section>
