@@ -28,11 +28,21 @@ export const SmartSappIcon = ({ className, ...props }: { className?: string } & 
     )
 };
 
-export const MinexLogo = (props: SVGProps<SVGSVGElement>) => (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 40" {...props}>
-        <text x="0" y="28" fontFamily="'Poppins', sans-serif" fontSize="20" fontWeight="bold" fill="white">MINEX 360</text>
-    </svg>
-);
+const minexLogoUrl = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/minex-logo.svg?alt=media&token=c3683958-f57d-4bf0-b004-44823d5b75e8";
+
+export const MinexLogo = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
+  return (
+    <div className={cn("relative w-32", className)} {...props}>
+        <Image 
+            src={minexLogoUrl} 
+            alt="Minex 360 Logo" 
+            fill
+            sizes="128px"
+            className="object-contain"
+        />
+    </div>
+  )
+};
 
 
 export const GooglePlayIcon = (props: SVGProps<SVGSVGElement>) => (
