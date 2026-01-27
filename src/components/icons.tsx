@@ -1,47 +1,30 @@
 import type { SVGProps } from 'react';
+import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
-export const SmartSappLogo = ({ variant = 'primary', ...props }: SVGProps<SVGSVGElement> & { variant?: 'primary' | 'white' }) => {
-  const color = variant === 'white' ? '#FFFFFF' : 'hsl(var(--primary))';
-  
+const logoUrl = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/SmartSapp%20Logo%20short.png?alt=media&token=046f95a8-b331-4129-a4ef-43ae7837eadd";
+
+export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { variant?: 'primary' | 'white', className?: string } & React.HTMLAttributes<HTMLDivElement>) => {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 40" width="144" height="32" {...props}>
-      <g>
-        <path
-          fillRule="evenodd"
-          d="M20 2a18 18 0 1 0 0 36a18 18 0 1 0 0-36zm-7.5 11.5L23 13.5l-2 6-10.5.5zM17 20.5l10.5.5-2 6-10.5-.5zM27 16a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM13 24a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"
-          clipRule="evenodd"
-          fill={color}
-        />
-      </g>
-      <text 
-        x="45" 
-        y="29" 
-        style={{
-            fontFamily: "'Poppins', sans-serif",
-            fontWeight: 700,
-            fontSize: '28px',
-            fill: color
-        }}
-      >
+    <div className={cn("flex items-center gap-2", className)} {...props}>
+      <div className="relative h-full aspect-square">
+        <Image src={logoUrl} alt="SmartSapp Logo" fill sizes="(max-height: 32px) 32px, 10vw" />
+      </div>
+      <span className={cn(
+          "font-headline text-2xl font-bold",
+          variant === 'primary' ? 'text-primary' : 'text-white'
+        )}>
         SmartSapp
-      </text>
-    </svg>
+      </span>
+    </div>
   );
 };
 
-export const SmartSappIcon = (props: SVGProps<SVGSVGElement>) => {
-    const color = 'hsl(var(--primary))';
+export const SmartSappIcon = ({ className, ...props }: { className?: string } & React.HTMLAttributes<HTMLDivElement>) => {
     return (
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="32" height="32" {...props}>
-            <g>
-                <path
-                fillRule="evenodd"
-                d="M20 2a18 18 0 1 0 0 36a18 18 0 1 0 0-36zm-7.5 11.5L23 13.5l-2 6-10.5.5zM17 20.5l10.5.5-2 6-10.5-.5zM27 16a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3zM13 24a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z"
-                clipRule="evenodd"
-                fill={color}
-                />
-            </g>
-        </svg>
+        <div className={cn("relative", className)} {...props}>
+            <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" />
+        </div>
     )
 };
 
