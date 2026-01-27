@@ -46,7 +46,7 @@ export default function Home() {
       <main className="flex-grow">
         <div className="space-y-20 py-20 md:space-y-28 md:py-28">
         <section className="container mx-auto px-6 text-center">
-          <h1 className="mb-6 font-headline text-4xl font-black tracking-tighter text-primary sm:text-5xl md:text-6xl lg:text-7xl">
+          <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
             Welcome to the SmartSapp Family
           </h1>
           <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
