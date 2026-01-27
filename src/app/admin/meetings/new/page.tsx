@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc } from 'firebase/firestore';
 
 import type { School } from '@/lib/types';
@@ -26,7 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 
 const formSchema = z.object({
-  school: z.custom<School>().refine(value => value, { message: "School is required." }),
+  school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
@@ -39,6 +39,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function NewMeetingPage() {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const firestore = useFirestore();
 
   const schoolsCol = useMemoFirebase(() => {
@@ -55,6 +56,17 @@ export default function NewMeetingPage() {
       recordingUrl: ''
     },
   });
+
+  React.useEffect(() => {
+    const schoolId = searchParams.get('schoolId');
+    if (schoolId && schools) {
+      const selectedSchool = schools.find(s => s.id === schoolId);
+      if (selectedSchool) {
+        form.setValue('school', selectedSchool);
+      }
+    }
+  }, [searchParams, schools, form]);
+
 
   const onSubmit = (data: FormData) => {
     if (!firestore) {

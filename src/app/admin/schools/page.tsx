@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, ExternalLink } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,12 +29,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import SchoolDetailsModal from './components/school-details-modal';
 
 export default function SchoolsPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
+  const [viewingSchool, setViewingSchool] = useState<School | null>(null);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -107,7 +109,11 @@ export default function SchoolsPage() {
               ) : schools && schools.length > 0 ? (
                 schools.map((school) => (
                   <TableRow key={school.id}>
-                    <TableCell className="font-medium">{school.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
+                        {school.name}
+                      </button>
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{school.location}</TableCell>
                     <TableCell>
                       {school.contactPerson}
@@ -122,13 +128,22 @@ export default function SchoolsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(school.id)}>Copy ID</DropdownMenuItem>
-                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>Edit School</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
+                            <CalendarPlus className="mr-2 h-4 w-4" />
+                            Schedule Meeting
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <a href={`/meetings/${school.slug}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                View Meeting Page
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                            <AlertDialogTrigger asChild>
                              <DropdownMenuItem 
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onSelect={(e) => e.preventDefault()} // prevent menu from closing
+                              onSelect={(e) => e.preventDefault()}
                               onClick={() => setSchoolToDelete(school)}
                             >
                               Delete School
@@ -162,6 +177,7 @@ export default function SchoolsPage() {
           <AlertDialogAction onClick={handleDeleteSchool}>Continue</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
+      <SchoolDetailsModal school={viewingSchool} open={!!viewingSchool} onOpenChange={(open) => !open && setViewingSchool(null)} />
     </AlertDialog>
   );
 }
