@@ -44,6 +44,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
+  const [openSchoolPopover, setOpenSchoolPopover] = React.useState(false);
 
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -148,7 +149,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>School</FormLabel>
-                      <Popover>
+                      <Popover open={openSchoolPopover} onOpenChange={setOpenSchoolPopover}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -179,6 +180,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                                   key={school.id}
                                   onSelect={() => {
                                     form.setValue("school", school)
+                                    setOpenSchoolPopover(false);
                                   }}
                                 >
                                   <Check

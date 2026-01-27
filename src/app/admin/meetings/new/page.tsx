@@ -44,6 +44,7 @@ export default function NewMeetingPage() {
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
+  const [openSchoolPopover, setOpenSchoolPopover] = React.useState(false);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -124,7 +125,7 @@ export default function NewMeetingPage() {
                     <FormItem className="flex flex-col">
                       <FormLabel>School</FormLabel>
                        {isLoadingSchools ? <Skeleton className="h-10 w-full" /> : (
-                        <Popover>
+                        <Popover open={openSchoolPopover} onOpenChange={setOpenSchoolPopover}>
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
@@ -155,6 +156,7 @@ export default function NewMeetingPage() {
                                     key={school.id}
                                     onSelect={() => {
                                       form.setValue("school", school)
+                                      setOpenSchoolPopover(false);
                                     }}
                                   >
                                     <Check
