@@ -1,6 +1,5 @@
 import VideoEmbed from '@/components/video-embed';
 import AppStoreButtons from '@/components/app-store-buttons';
-import FindSchoolForm from '@/components/find-school-form';
 import { Card, CardContent } from '@/components/ui/card';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
@@ -48,13 +47,16 @@ export default function Home() {
         <div className="space-y-20 py-20 md:space-y-28 md:py-28">
         <section className="container mx-auto px-6 text-center">
           <h1 className="mb-6 font-headline text-4xl font-black tracking-tighter text-primary sm:text-5xl md:text-6xl lg:text-7xl">
-            Onboarding Portal
+            Welcome to the SmartSapp Family
           </h1>
-          <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
-            Welcome to SmartSapp. Find your school to get started with the
-            onboarding process.
+          <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+            Your child's school has signed up on SmartSapp.
+            <br />
+            Here is a quick video to help you understand what it means for you as a parent.
           </p>
-          <FindSchoolForm />
+           <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-foreground">
+            Please watch the full video. It's super important!
+          </p>
           <div className="mt-16">
             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
           </div>
