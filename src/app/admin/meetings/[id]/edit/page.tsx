@@ -4,8 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import { collection, doc, updateDoc } from 'firebase/firestore';
 
@@ -23,19 +22,19 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 
 const formSchema = z.object({
-  school: z.custom<School>(),
+  school: z.custom<School>().refine(value => value, { message: "School is required." }),
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
-  recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional(),
+  recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -69,7 +68,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
         school: selectedSchool,
         meetingTime: new Date(meeting.meetingTime),
         meetingLink: meeting.meetingLink,
-        recordingUrl: meeting.recordingUrl,
+        recordingUrl: meeting.recordingUrl || '',
       });
     }
   }, [meeting, schools, form]);
@@ -174,26 +173,28 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                             <CommandInput placeholder="Search school..." />
                             <CommandEmpty>No school found.</CommandEmpty>
                             <CommandGroup>
-                              {schools?.map((school) => (
-                                <CommandItem
-                                  value={school.name}
-                                  key={school.id}
-                                  onSelect={() => {
-                                    form.setValue("school", school)
-                                    setOpenSchoolPopover(false);
-                                  }}
-                                >
-                                  <Check
-                                    className={cn(
-                                      "mr-2 h-4 w-4",
-                                      field.value?.id === school.id
-                                        ? "opacity-100"
-                                        : "opacity-0"
-                                    )}
-                                  />
-                                  {school.name}
-                                </CommandItem>
-                              ))}
+                              <CommandList>
+                                {schools?.map((school) => (
+                                  <CommandItem
+                                    value={school.name}
+                                    key={school.id}
+                                    onSelect={() => {
+                                      form.setValue("school", school)
+                                      setOpenSchoolPopover(false);
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value?.id === school.id
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {school.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandList>
                             </CommandGroup>
                           </Command>
                         </PopoverContent>
@@ -209,30 +210,13 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
                     <FormLabel>Meeting Time</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn(
-                              "w-full justify-start pl-3 text-left font-normal",
-                              !field.value && "text-muted-foreground"
-                            )}
-                          >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {field.value ? format(field.value, "PPP p") : <span>Pick a date and time</span>}
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                         <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
+                    <FormControl>
+                        <DateTimePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={form.formState.isSubmitting}
                         />
-                      </PopoverContent>
-                    </Popover>
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

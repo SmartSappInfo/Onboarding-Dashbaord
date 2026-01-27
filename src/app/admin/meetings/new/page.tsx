@@ -4,8 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Check, ChevronsUpDown } from 'lucide-react';
+import { Check, ChevronsUpDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc } from 'firebase/firestore';
 
@@ -23,11 +22,11 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
 import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => value, { message: "School is required." }),
@@ -150,26 +149,28 @@ export default function NewMeetingPage() {
                               <CommandInput placeholder="Search school..." />
                               <CommandEmpty>No school found.</CommandEmpty>
                               <CommandGroup>
-                                {schools?.map((school) => (
-                                  <CommandItem
-                                    value={school.name}
-                                    key={school.id}
-                                    onSelect={() => {
-                                      form.setValue("school", school)
-                                      setOpenSchoolPopover(false);
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value?.id === school.id
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    {school.name}
-                                  </CommandItem>
-                                ))}
+                                <CommandList>
+                                  {schools?.map((school) => (
+                                    <CommandItem
+                                      value={school.name}
+                                      key={school.id}
+                                      onSelect={() => {
+                                        form.setValue("school", school)
+                                        setOpenSchoolPopover(false);
+                                      }}
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          field.value?.id === school.id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {school.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandList>
                               </CommandGroup>
                             </Command>
                           </PopoverContent>
@@ -186,30 +187,13 @@ export default function NewMeetingPage() {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Meeting Time</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-full justify-start pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              <CalendarIcon className="mr-2 h-4 w-4" />
-                              {field.value ? format(field.value, "PPP p") : <span>Pick a date and time</span>}
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                           <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <DateTimePicker
+                            value={field.value}
+                            onChange={field.onChange}
+                            disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
