@@ -104,19 +104,22 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
           onSelect={handleDateSelect}
           initialFocus
           disabled={disabled}
+          captionLayout="dropdown-nav"
+          fromYear={new Date().getFullYear() - 10}
+          toYear={new Date().getFullYear() + 10}
         />
         <div className="p-3 border-t border-border space-y-2">
           <Label className="flex items-center gap-2 text-sm font-medium">
             <Clock className="w-4 h-4 text-muted-foreground" />
             Time
           </Label>
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <Select
               value={selectedHour}
               onValueChange={(value) => handleTimeChange('hour', value)}
               disabled={!date || disabled}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue placeholder="Hour" />
               </SelectTrigger>
               <SelectContent>
@@ -125,13 +128,12 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
                 ))}
               </SelectContent>
             </Select>
-            <span className="font-bold text-muted-foreground">:</span>
             <Select
               value={selectedMinute}
               onValueChange={(value) => handleTimeChange('minute', value)}
               disabled={!date || disabled}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger>
                 <SelectValue placeholder="Min" />
               </SelectTrigger>
               <SelectContent>
