@@ -158,7 +158,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>School Name</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., Ghana International School" {...field} />
+                            <Input placeholder="e.g., Ghana International School" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -171,7 +171,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Slogan</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., Understanding of each other" {...field} />
+                            <Input placeholder="e.g., Understanding of each other" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -216,7 +216,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Contact Person</FormLabel>
                         <FormControl>
-                            <Input placeholder="Yaw Mensah" {...field} />
+                            <Input placeholder="Yaw Mensah" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -229,7 +229,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Contact Email</FormLabel>
                         <FormControl>
-                            <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} />
+                            <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -242,7 +242,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Contact Phone</FormLabel>
                         <FormControl>
-                            <Input type="tel" placeholder="+233 24 123 4567" {...field} />
+                            <Input type="tel" placeholder="+233 24 123 4567" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -255,7 +255,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Location</FormLabel>
                         <FormControl>
-                            <Input placeholder="Accra, Ghana" {...field} />
+                            <Input placeholder="Accra, Ghana" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -268,7 +268,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Nominal Roll (Number of Students)</FormLabel>
                         <FormControl>
-                            <Input type="number" {...field} />
+                            <Input type="number" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -281,7 +281,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Referee</FormLabel>
                         <FormControl>
-                            <Input placeholder="Ama Serwaa" {...field} />
+                            <Input placeholder="Ama Serwaa" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -344,7 +344,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                         <FormItem>
                         <FormLabel>Modules (Needs Discovery)</FormLabel>
                         <FormControl>
-                            <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} />
+                            <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
