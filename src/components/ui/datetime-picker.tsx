@@ -110,13 +110,13 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
             <Clock className="w-4 h-4 text-muted-foreground" />
             Time
           </Label>
-          <div className="flex items-center gap-1">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
             <Select
               value={selectedHour}
               onValueChange={(value) => handleTimeChange('hour', value)}
               disabled={!date || disabled}
             >
-              <SelectTrigger className="w-[80px] focus:ring-primary focus:ring-offset-0">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Hour" />
               </SelectTrigger>
               <SelectContent>
@@ -131,7 +131,7 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
               onValueChange={(value) => handleTimeChange('minute', value)}
               disabled={!date || disabled}
             >
-              <SelectTrigger className="w-[80px] focus:ring-primary focus:ring-offset-0">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Min" />
               </SelectTrigger>
               <SelectContent>
