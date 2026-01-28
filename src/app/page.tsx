@@ -48,7 +48,7 @@ export default function Home() {
     <>
       <Header />
       <main className="flex-grow">
-        <section className="relative flex w-full items-center justify-center overflow-hidden bg-background px-4 pt-32 pb-20 text-foreground md:pt-40 md:pb-24">
+        <section className="relative flex w-full items-center justify-center overflow-hidden bg-[#0A1427] pt-32 pb-20 text-white md:pt-40 md:pb-24">
           <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
@@ -64,16 +64,16 @@ export default function Home() {
             saturation={1}
             className="!absolute inset-0"
           />
-          <div className="relative z-10 container px-6 text-center">
+          <div className="relative z-10 container text-center">
             <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
               Welcome to the SmartSapp Family
             </h1>
-            <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-muted-foreground md:text-xl">
+            <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-200 md:text-xl">
               Your child's school has signed up on SmartSapp.
               <br />
               Here is a quick video to help you understand what it means for you as a parent.
             </p>
-            <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-foreground">
+            <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold">
               Please watch the full video. It's super important!
             </p>
             <div className="mt-16">
@@ -87,7 +87,7 @@ export default function Home() {
           <AppDownloadSection />
 
           {/* Section 2: Setup */}
-          <section id="setup-profile" className="container px-6 text-center">
+          <section id="setup-profile" className="container text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
               2
             </div>
@@ -108,7 +108,7 @@ export default function Home() {
           </section>
 
           {/* Section 3: Support & Help Videos */}
-          <section id="support" className="container px-6 text-center">
+          <section id="support" className="container text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
               3
             </div>
@@ -148,7 +148,7 @@ export default function Home() {
           </section>
 
           {/* Section 4: Testimonials */}
-          <section id="testimonials" className="container px-6 text-center">
+          <section id="testimonials" className="container text-center">
             <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
               Why Parents and Schools are going
               <br />
