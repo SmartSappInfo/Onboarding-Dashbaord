@@ -194,11 +194,9 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
                         </div>
                     </section>
-
-                    {/* Section 1: Download */}
+                    
                     <AppDownloadSection />
 
-                    {/* Section 2: Setup */}
                     <section id="setup-profile" className="container px-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         2
@@ -219,7 +217,6 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
                     </section>
 
-                    {/* Section 3: Support & Help Videos */}
                     <section id="support" className="container px-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         3
@@ -259,7 +256,6 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </div>
                     </section>
 
-                    {/* Section 4: Testimonials */}
                     <section id="testimonials" className="container px-6 text-center">
                     <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl text-gray-900">
                         Why Parents and Schools are going
