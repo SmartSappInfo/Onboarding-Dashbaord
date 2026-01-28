@@ -66,15 +66,14 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
 
                 {/* Image */}
                 {school.heroImageUrl ? (
-                    <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full overflow-hidden shadow-2xl border-4 border-white/10">
-                        <Image
-                            src={school.heroImageUrl}
-                            alt={`Hero image for ${school.name}`}
-                            fill
-                            className="object-cover"
-                            priority
-                        />
-                    </div>
+                    <Image
+                        src={school.heroImageUrl}
+                        alt={`Hero image for ${school.name}`}
+                        width={320}
+                        height={320}
+                        className="relative object-contain"
+                        priority
+                    />
                 ) : (
                     <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full bg-white/10 flex items-center justify-center border-4 border-white/10">
                          <span className="text-white/50">No Image</span>
