@@ -23,7 +23,8 @@ export default function JoinMeetingButton({ meetingTime, meetingLink }: JoinMeet
     const checkMeetingTime = () => {
       const now = new Date();
       const meetingDate = new Date(meetingTime);
-      setIsMeetingTime(now >= meetingDate);
+      // Allow joining 5 minutes before
+      setIsMeetingTime(now.getTime() >= meetingDate.getTime() - 5 * 60 * 1000);
     };
 
     checkMeetingTime(); // Initial check
@@ -51,7 +52,7 @@ export default function JoinMeetingButton({ meetingTime, meetingLink }: JoinMeet
               </Button>
             </div>
           </TooltipTrigger>
-          <TooltipContent>
+          <TooltipContent className="bg-white text-slate-800">
             <p>Meeting has not started yet</p>
           </TooltipContent>
         </Tooltip>
@@ -62,7 +63,7 @@ export default function JoinMeetingButton({ meetingTime, meetingLink }: JoinMeet
   return (
     <Button
       size="lg"
-      className="animate-pulse bg-accent px-10 py-6 text-lg text-accent-foreground hover:bg-accent/90 w-full sm:w-auto"
+      className="bg-white text-blue-600 hover:bg-gray-200 px-10 py-6 text-lg w-full sm:w-auto shadow-lg"
       asChild
     >
       <a href={meetingLink} target="_blank" rel="noopener noreferrer">
