@@ -36,7 +36,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
         <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">
           
           {school.logoUrl && (
-            <div className="mb-6 flex items-center gap-4">
+            <div className="mb-[100px] flex items-center gap-4">
               <div className="relative w-16 h-16">
                 <Image
                   src={school.logoUrl}
@@ -82,7 +82,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
                         priority
                     />
                 ) : (
-                    <div className="relative w-[512px] h-[512px] md:w-[640px] md:h-[640px] rounded-full bg-white/10 flex items-center justify-center border-4 border-white/10">
+                    <div className="relative w-[640px] h-[640px] rounded-full bg-white/10 flex items-center justify-center border-4 border-white/10">
                          <span className="text-white/50">No Image</span>
                     </div>
                 )}
