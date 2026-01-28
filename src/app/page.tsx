@@ -65,8 +65,8 @@ export default function Home() {
             className="!absolute inset-0"
           />
           <div className="relative z-10 container text-center">
-            <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
-              Welcome to the SmartSapp Family
+            <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl lg:text-6xl">
+              Welcome to the <span className="text-primary">SmartSapp</span> Family
             </h1>
             <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-200 md:text-xl">
               Your child's school has signed up on SmartSapp.
