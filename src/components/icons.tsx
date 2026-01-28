@@ -8,7 +8,13 @@ export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { va
   return (
     <div className={cn("flex items-center gap-2", className)} {...props}>
       <div className="relative h-full aspect-square">
-        <Image src={logoUrl} alt="SmartSapp Logo" fill sizes="(max-height: 32px) 32px, 10vw" />
+        <Image 
+          src={logoUrl} 
+          alt="SmartSapp Logo" 
+          fill 
+          sizes="(max-height: 32px) 32px, 10vw" 
+          className={cn(variant === 'white' && 'brightness-0 invert')}
+        />
       </div>
       <span className={cn(
           "font-headline text-2xl font-bold",
