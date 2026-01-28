@@ -29,7 +29,7 @@ const AppStoreButtons = () => {
       </a>
       <a href={storeLinks.huawei} target="_blank" rel="noopener noreferrer" className="relative block h-14 w-44 transition-transform hover:scale-105">
         <Image 
-          src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Download-on-the-App-Gallery-badge.svg/1024px-Download-on-the-App-Gallery-badge.svg.png" 
+          src="https://smartsapp.com/img/download-buttons/huawei-app-gallery.png" 
           alt="Explore it on AppGallery" 
           fill
           sizes="176px"
