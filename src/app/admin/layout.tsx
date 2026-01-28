@@ -20,6 +20,7 @@ import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import * as React from 'react';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -137,6 +138,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="w-full flex-1">
               {/* Maybe breadcrumbs here */}
             </div>
+            <ThemeToggle />
           </header>
   
           <main className="flex-1 p-4 sm:p-6 md:p-8">
