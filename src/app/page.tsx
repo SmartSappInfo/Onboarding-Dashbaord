@@ -82,11 +82,9 @@ export default function Home() {
           </div>
         </section>
 
-        <div className="space-y-20 py-20 md:space-y-28 md:py-28">
-          {/* Section 1: Download */}
-          <AppDownloadSection />
+        <AppDownloadSection />
 
-          {/* Section 2: Setup */}
+        <div className="space-y-20 py-20 md:space-y-28 md:py-28">
           <section id="setup-profile" className="container text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
               2
@@ -107,7 +105,6 @@ export default function Home() {
             <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
           </section>
 
-          {/* Section 3: Support & Help Videos */}
           <section id="support" className="container text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
               3
@@ -147,7 +144,6 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Section 4: Testimonials */}
           <section id="testimonials" className="container text-center">
             <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
               Why Parents and Schools are going
