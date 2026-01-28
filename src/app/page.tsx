@@ -45,7 +45,7 @@ export default function Home() {
       <Header />
       <main className="flex-grow">
         <div className="space-y-20 py-20 md:space-y-28 md:py-28">
-        <section className="container mx-auto px-6 text-center">
+        <section className="container px-6 text-center">
           <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
             Welcome to the SmartSapp Family
           </h1>
@@ -63,7 +63,7 @@ export default function Home() {
         </section>
 
         {/* Section 1: Download */}
-        <section id="download" className="container mx-auto px-6 text-center">
+        <section id="download" className="container px-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
             1
           </div>
@@ -88,7 +88,7 @@ export default function Home() {
         </section>
 
         {/* Section 2: Setup */}
-        <section id="setup-profile" className="container mx-auto px-6 text-center">
+        <section id="setup-profile" className="container px-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
             2
           </div>
@@ -109,7 +109,7 @@ export default function Home() {
         </section>
 
         {/* Section 3: Support & Help Videos */}
-        <section id="support" className="container mx-auto px-6 text-center">
+        <section id="support" className="container px-6 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
             3
           </div>
@@ -149,7 +149,7 @@ export default function Home() {
         </section>
 
         {/* Section 4: Testimonials */}
-        <section id="testimonials" className="container mx-auto px-6 text-center">
+        <section id="testimonials" className="container px-6 text-center">
           <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
             Why Parents and Schools are going
             <br />

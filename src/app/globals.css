@@ -58,4 +58,7 @@ body {
   h6 {
     @apply font-headline;
   }
+  .container {
+    @apply max-w-[1200px] mx-auto;
+  }
 }

@@ -41,7 +41,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
           />
         )}
         <div className="absolute inset-0 bg-black/60"></div>
-        <div className="container relative z-10 mx-auto text-center">
+        <div className="container relative z-10 px-6 text-center">
           {schoolLogo && (
             <Image
               src={schoolLogo.imageUrl}
@@ -61,7 +61,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
         </div>
       </section>
 
-      <div className="container mx-auto space-y-24 py-16 md:space-y-32 md:py-24">
+      <div className="container px-6 space-y-24 py-16 md:space-y-32 md:py-24">
         {/* Intro Video Section */}
         <section className="text-center">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Welcome to SmartsApp!</h2>

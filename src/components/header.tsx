@@ -6,8 +6,8 @@ import { Phone } from 'lucide-react';
 const Header = () => {
   return (
     <header className="absolute top-0 z-50 w-full py-4">
-      <div className="container mx-auto">
-        <div className="flex items-center justify-between rounded-full bg-black/20 backdrop-blur-sm border border-white/10 px-4 py-2 sm:px-6">
+      <div className="container px-6">
+        <div className="flex items-center justify-between rounded-full bg-black/20 backdrop-blur-sm border border-white/10 px-6 py-2">
           <Link href="/" aria-label="Back to homepage">
             <Logo className="h-8" variant="white" />
           </Link>

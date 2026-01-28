@@ -30,7 +30,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             saturation={1}
             className="!absolute inset-0"
         />
-      <div className="relative z-10 container mx-auto grid grid-cols-1 items-center gap-12 md:grid-cols-2 lg:gap-20">
+      <div className="relative z-10 container px-6 grid grid-cols-1 items-center gap-12 md:grid-cols-2 lg:gap-20">
         
         {/* Left Column */}
         <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">

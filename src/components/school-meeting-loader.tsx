@@ -13,7 +13,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 function MeetingPageSkeleton() {
   return (
-    <div className="container mx-auto grid grid-cols-1 items-center gap-12 px-4 py-10 md:grid-cols-2 md:py-20 lg:gap-20">
+    <div className="container px-6 grid grid-cols-1 items-center gap-12 py-10 md:grid-cols-2 md:py-20 lg:gap-20">
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <div className="mb-6 flex items-center gap-4">
                 <Skeleton className="h-16 w-16 rounded-full" />
@@ -125,12 +125,12 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
     }
 
     if (error) {
-        return <div className="container mx-auto py-20 text-center text-destructive">{error}</div>;
+        return <div className="container px-6 py-20 text-center text-destructive">{error}</div>;
     }
 
     if (!school || !meeting) {
         return (
-            <div className="container mx-auto py-20 text-center">
+            <div className="container px-6 py-20 text-center">
                 <h1 className="text-4xl font-bold">Meeting Information Unavailable</h1>
                 <p className="text-muted-foreground mt-4">The meeting page for this school could not be fully loaded. Please check the name and try again, or contact support.</p>
             </div>
@@ -177,7 +177,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             <MeetingHero school={school} meeting={meeting} />
             <div className="bg-white text-gray-800">
                 <div className="space-y-20 py-20 md:space-y-28 md:py-28">
-                    <section className="container mx-auto px-6 text-center">
+                    <section className="container px-6 text-center">
                         <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
                             Welcome to the SmartSapp Family
                         </h1>
@@ -195,7 +195,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </section>
 
                     {/* Section 1: Download */}
-                    <section id="download" className="container mx-auto px-6 text-center">
+                    <section id="download" className="container px-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         1
                     </div>
@@ -220,7 +220,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </section>
 
                     {/* Section 2: Setup */}
-                    <section id="setup-profile" className="container mx-auto px-6 text-center">
+                    <section id="setup-profile" className="container px-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         2
                     </div>
@@ -241,7 +241,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </section>
 
                     {/* Section 3: Support & Help Videos */}
-                    <section id="support" className="container mx-auto px-6 text-center">
+                    <section id="support" className="container px-6 text-center">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         3
                     </div>
@@ -281,7 +281,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </section>
 
                     {/* Section 4: Testimonials */}
-                    <section id="testimonials" className="container mx-auto px-6 text-center">
+                    <section id="testimonials" className="container px-6 text-center">
                     <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl text-gray-900">
                         Why Parents and Schools are going
                         <br />
