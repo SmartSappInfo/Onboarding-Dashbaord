@@ -63,7 +63,7 @@ export default function JoinMeetingButton({ meetingTime, meetingLink }: JoinMeet
   return (
     <Button
       size="lg"
-      className="bg-white text-blue-600 hover:bg-gray-200 px-10 py-6 text-lg w-full sm:w-auto shadow-lg"
+      className="bg-white text-primary hover:bg-gray-200 px-10 py-6 text-lg w-full sm:w-auto shadow-lg"
       asChild
     >
       <a href={meetingLink} target="_blank" rel="noopener noreferrer">

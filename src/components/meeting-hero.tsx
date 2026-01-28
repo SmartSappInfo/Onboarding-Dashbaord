@@ -17,7 +17,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
     <section className="relative w-full bg-background text-foreground px-4 pt-32 pb-20 md:pt-40 md:pb-24 min-h-screen flex items-center justify-center overflow-hidden">
         <LightRays
             raysOrigin="top-center"
-            raysColor="#a280ff"
+            raysColor="#3B5FFF"
             raysSpeed={1}
             lightSpread={0.5}
             rayLength={3}
