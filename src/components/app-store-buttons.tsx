@@ -15,7 +15,7 @@ const AppStoreButtons = () => {
           alt="Get it on Google Play" 
           fill 
           sizes="176px"
-          style={{objectFit: "contain"}}
+          className="object-cover"
         />
       </a>
       <a href={storeLinks.ios} target="_blank" rel="noopener noreferrer" className="relative block h-14 w-44 transition-transform hover:scale-105">
@@ -24,7 +24,7 @@ const AppStoreButtons = () => {
           alt="Download on the App Store" 
           fill
           sizes="176px"
-          style={{objectFit: "contain"}}
+          className="object-cover"
         />
       </a>
       <a href={storeLinks.huawei} target="_blank" rel="noopener noreferrer" className="relative block h-14 w-44 transition-transform hover:scale-105">
@@ -33,7 +33,7 @@ const AppStoreButtons = () => {
           alt="Explore it on AppGallery" 
           fill
           sizes="176px"
-          style={{objectFit: "contain"}}
+          className="object-cover"
         />
       </a>
     </div>
