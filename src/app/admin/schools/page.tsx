@@ -136,12 +136,6 @@ export default function SchoolsPage() {
                             <CalendarPlus className="mr-2 h-4 w-4" />
                             <span>Schedule Meeting</span>
                           </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={`/meetings/${school.slug}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                <span>View Meeting Page</span>
-                            </a>
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                            <AlertDialogTrigger asChild>
                              <DropdownMenuItem 
