@@ -2,20 +2,17 @@
 
 import * as React from 'react';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { ScrollArea } from './scroll-area';
 
 interface DateTimePickerProps {
   value: Date | undefined;
@@ -24,63 +21,46 @@ interface DateTimePickerProps {
 }
 
 export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProps) {
-  const [date, setDate] = React.useState<Date | undefined>(value);
   const [open, setOpen] = React.useState(false);
-
-  // When the external value changes, update the internal date state.
-  React.useEffect(() => {
-    setDate(value);
-  }, [value]);
 
   const handleDateSelect = (selectedDate: Date | undefined) => {
     if (!selectedDate) {
-      setDate(undefined);
       onChange(undefined);
       return;
     }
-
-    // Preserve the time part if it exists, otherwise default to the current time.
-    const hours = date?.getHours() ?? new Date().getHours();
-    const minutes = date?.getMinutes() ?? new Date().getMinutes();
     
-    const newDate = new Date(
-      selectedDate.getFullYear(),
-      selectedDate.getMonth(),
-      selectedDate.getDate(),
-      hours,
-      minutes
-    );
-    
-    setDate(newDate);
-    onChange(newDate);
-    // Do not close popover, allow time selection.
+    // Keep the time from the original value if it exists, otherwise default to 9am
+    const hours = value?.getHours() ?? 9;
+    const minutes = value?.getMinutes() ?? 0;
+    selectedDate.setHours(hours, minutes);
+    onChange(selectedDate);
   };
   
-  const handleTimeChange = (part: 'hour' | 'minute', val: string) => {
-    if (!date) return;
-
-    const newDate = new Date(date);
-    const numericValue = parseInt(val, 10);
+  const handleTimeSelect = (time: string) => {
+    const datePart = value ? new Date(value) : new Date();
     
-    if (part === 'hour') {
-      newDate.setHours(numericValue);
-    } else {
-      newDate.setMinutes(numericValue);
+    const [timePart, meridiem] = time.split(' ');
+    let [hours, minutes] = timePart.split(':').map(Number);
+
+    if (meridiem.toLowerCase() === 'pm' && hours < 12) {
+        hours += 12;
     }
-    
-    setDate(newDate);
-    onChange(newDate);
-  }
-  
-  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  // Use 5-minute intervals for a better user experience
-  const minutes = Array.from({ length: 12 }, (_, i) => (i * 5).toString().padStart(2, '0'));
+    if (meridiem.toLowerCase() === 'am' && hours === 12) { // 12 AM is midnight
+        hours = 0;
+    }
 
-  const selectedHour = date ? format(date, 'HH') : undefined;
+    datePart.setHours(hours, minutes);
+    onChange(datePart);
+    setOpen(false); // Close popover after time selection
+  };
   
-  // Snap the minute to the nearest 5-minute interval for display in the select
-  const selectedMinute = date ? (Math.floor(date.getMinutes() / 5) * 5).toString().padStart(2, '0') : undefined;
-
+  const availableTimes = [
+    "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
+    "12:00 PM", "12:30 PM", "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM",
+    "03:00 PM", "03:30 PM", "04:00 PM", "04:30 PM",
+  ];
+  
+  const selectedTime = value ? format(value, 'hh:mm a') : null;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -97,52 +77,36 @@ export function DateTimePicker({ value, onChange, disabled }: DateTimePickerProp
           {value ? format(value, 'PPP p') : <span>Pick a date and time</span>}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={handleDateSelect}
-          initialFocus
-          disabled={disabled}
-          captionLayout="dropdown-nav"
-          fromYear={new Date().getFullYear() - 10}
-          toYear={new Date().getFullYear() + 10}
-        />
-        <div className="p-3 border-t border-border space-y-2">
-          <Label className="flex items-center gap-2 text-sm font-medium">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            Time
-          </Label>
-          <div className="grid grid-cols-2 gap-2">
-            <Select
-              value={selectedHour}
-              onValueChange={(value) => handleTimeChange('hour', value)}
-              disabled={!date || disabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Hour" />
-              </SelectTrigger>
-              <SelectContent>
-                {hours.map(hour => (
-                  <SelectItem key={hour} value={hour}>{hour}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={selectedMinute}
-              onValueChange={(value) => handleTimeChange('minute', value)}
-              disabled={!date || disabled}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Min" />
-              </SelectTrigger>
-              <SelectContent>
-                {minutes.map(minute => (
-                  <SelectItem key={minute} value={minute}>{minute}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+      <PopoverContent className="w-auto p-0" align="start">
+        <div className="flex divide-x overflow-hidden rounded-md border bg-background">
+            <Calendar 
+              mode="single" 
+              onSelect={handleDateSelect} 
+              selected={value} 
+              disabled={disabled}
+            />
+            <div className="relative w-[200px] overflow-hidden">
+                <div className="absolute inset-0 grid gap-4">
+                <div className="space-y-2 px-4 pt-4">
+                    <p className="text-center font-medium text-sm">Available Times</p>
+                </div>
+                <ScrollArea className="h-full overflow-y-auto">
+                    <div className="grid grid-cols-1 gap-2 px-4 pb-4">
+                    {availableTimes.map(time => (
+                        <Button
+                          key={time}
+                          onClick={() => handleTimeSelect(time)}
+                          size="sm"
+                          variant={selectedTime === time ? "default" : "outline"}
+                          disabled={!value || disabled}
+                        >
+                          {time}
+                        </Button>
+                    ))}
+                    </div>
+                </ScrollArea>
+                </div>
+            </div>
         </div>
       </PopoverContent>
     </Popover>
