@@ -178,77 +178,83 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
         <>
             <MeetingHero school={school} meeting={meeting} />
             
-            <section className="container px-6 py-20 text-center md:py-28 bg-white text-gray-800">
-                <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
-                    Welcome to the SmartSapp Family
-                </h1>
-                <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-600 md:text-xl">
-                    Your child's school has signed up on SmartSapp.
-                    <br />
-                    Here is a quick video to help you understand what it means for you as a parent.
-                </p>
-                <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-gray-800">
-                    Please watch the full video. It's super important!
-                </p>
-                <div className="mt-16">
-                    <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
+            <section className="bg-white py-20 text-center text-gray-800 md:py-28">
+                <div className="container px-6">
+                    <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
+                        Welcome to the SmartSapp Family
+                    </h1>
+                    <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-600 md:text-xl">
+                        Your child's school has signed up on SmartSapp.
+                        <br />
+                        Here is a quick video to help you understand what it means for you as a parent.
+                    </p>
+                    <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-gray-800">
+                        Please watch the full video. It's super important!
+                    </p>
+                    <div className="mt-16">
+                        <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
+                    </div>
                 </div>
             </section>
             
             <AppDownloadSection />
 
-            <section id="setup-profile" className="container px-6 py-20 text-center md:py-28 bg-white text-gray-800">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                    2
+            <section id="setup-profile" className="bg-white py-20 text-center text-gray-800 md:py-28">
+                <div className="container px-6">
+                    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+                        2
+                    </div>
+                    <h2 className="mb-4 font-headline text-3xl font-bold text-gray-900 md:text-4xl">
+                        How to setup your profile and Confirm your child&apos;s details
+                    </h2>
+                    <p className="mx-auto mb-8 max-w-2xl text-lg">
+                        <a
+                        href="https://youtu.be/WJRKrl5S5tM"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-primary hover:underline"
+                        >
+                        Here&apos;s a help video
+                        </a>
+                    </p>
+                    <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
                 </div>
-                <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl text-gray-900">
-                    How to setup your profile and Confirm your child&apos;s details
-                </h2>
-                <p className="mx-auto mb-8 max-w-2xl text-lg">
-                    <a
-                    href="https://youtu.be/WJRKrl5S5tM"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-semibold text-primary hover:underline"
-                    >
-                    Here&apos;s a help video
-                    </a>
-                </p>
-                <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
             </section>
 
             {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
 
             <HelpSection helpVideos={helpVideos} />
 
-            <section id="testimonials" className="container px-6 pb-20 text-center md:pb-28 bg-white text-gray-800">
-                <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl text-gray-900">
-                    Why Parents and Schools are going
-                    <br />
-                    Wild over SmartSapp
-                </h2>
-                <p className="mx-auto mb-6 max-w-2xl text-lg text-gray-600">
-                    Watch these testimonials to see how parents are ensuring their
-                    child's security with SmartSapp
-                </p>
-                <p className="mb-12 text-lg font-semibold text-gray-900">
-                    👇 Click To Watch These Videos. It's Super Important👇
-                </p>
+            <section id="testimonials" className="bg-white pb-20 text-center text-gray-800 md:pb-28">
+                <div className="container px-6">
+                    <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
+                        Why Parents and Schools are going
+                        <br />
+                        Wild over SmartSapp
+                    </h2>
+                    <p className="mx-auto mb-6 max-w-2xl text-lg text-gray-600">
+                        Watch these testimonials to see how parents are ensuring their
+                        child's security with SmartSapp
+                    </p>
+                    <p className="mb-12 text-lg font-semibold text-gray-900">
+                        👇 Click To Watch These Videos. It's Super Important👇
+                    </p>
 
-                <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">
-                    {testimonials.map((testimonial, index) => (
-                    <Card
-                        key={index}
-                        className="overflow-hidden shadow-lg"
-                    >
-                        <VideoEmbed url={testimonial.videoUrl} />
-                        <CardContent className="p-6">
-                        <p className="font-quote italic text-gray-600">
-                            &quot;{testimonial.quote}&quot;
-                        </p>
-                        </CardContent>
-                    </Card>
-                    ))}
+                    <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">
+                        {testimonials.map((testimonial, index) => (
+                        <Card
+                            key={index}
+                            className="overflow-hidden shadow-lg"
+                        >
+                            <VideoEmbed url={testimonial.videoUrl} />
+                            <CardContent className="p-6">
+                            <p className="font-quote italic text-gray-600">
+                                &quot;{testimonial.quote}&quot;
+                            </p>
+                            </CardContent>
+                        </Card>
+                        ))}
+                    </div>
                 </div>
             </section>
         </>
