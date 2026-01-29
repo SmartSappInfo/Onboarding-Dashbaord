@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { Meeting } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, Copy, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -147,13 +147,14 @@ export default function MeetingsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => navigator.clipboard.writeText(meeting.id)}>Copy ID</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>Edit Meeting</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit Meeting</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a href={`/meetings/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
                               <ExternalLink className="mr-2 h-4 w-4" />
-                              View Meeting Page
+                              <span>View Meeting Page</span>
                             </a>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -163,7 +164,8 @@ export default function MeetingsPage() {
                               onSelect={(e) => e.preventDefault()} // prevent menu from closing
                               onClick={() => setMeetingToDelete(meeting)}
                             >
-                              Delete Meeting
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete Meeting</span>
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                         </DropdownMenuContent>

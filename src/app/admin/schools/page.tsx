@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, ExternalLink } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, ExternalLink, Edit, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -128,15 +128,18 @@ export default function SchoolsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>Edit School</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            <span>Edit School</span>
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
                             <CalendarPlus className="mr-2 h-4 w-4" />
-                            Schedule Meeting
+                            <span>Schedule Meeting</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a href={`/meetings/${school.slug}`} target="_blank" rel="noopener noreferrer">
                                 <ExternalLink className="mr-2 h-4 w-4" />
-                                View Meeting Page
+                                <span>View Meeting Page</span>
                             </a>
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
@@ -146,7 +149,8 @@ export default function SchoolsPage() {
                               onSelect={(e) => e.preventDefault()}
                               onClick={() => setSchoolToDelete(school)}
                             >
-                              Delete School
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete School</span>
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
                         </DropdownMenuContent>
