@@ -11,6 +11,7 @@ import VideoEmbed from '@/components/video-embed';
 import { Card, CardContent } from '@/components/ui/card';
 import AppDownloadSection from '@/components/app-download-section';
 import HelpSection from './help-section';
+import BrochureDownloadSection from './brochure-download-section';
 
 function MeetingPageSkeleton() {
   return (
@@ -215,6 +216,8 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                 </p>
                 <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
             </section>
+
+            <BrochureDownloadSection />
 
             <HelpSection helpVideos={helpVideos} />
 
