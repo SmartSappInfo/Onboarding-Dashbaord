@@ -17,7 +17,7 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
   }
 
   return (
-    <div className={`aspect-video w-full max-w-4xl mx-auto rounded-xl overflow-hidden shadow-2xl ${className}`}>
+    <div className={`aspect-video w-full max-w-4xl mx-auto rounded-lg overflow-hidden shadow-2xl ${className}`}>
       <iframe
         width="100%"
         height="100%"
