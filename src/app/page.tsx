@@ -7,6 +7,7 @@ import Header from '@/components/header';
 import Footer from '@/components/footer';
 import AppDownloadSection from '@/components/app-download-section';
 import LightRays from '@/components/LightRays';
+import HelpSection from '@/components/help-section';
 
 export default function Home() {
   const helpVideos = [
@@ -83,8 +84,8 @@ export default function Home() {
         </section>
 
         <AppDownloadSection />
-
-        <div className="space-y-20 py-20 md:space-y-28 md:py-28">
+        
+        <div className="py-20 md:py-28">
           <section id="setup-profile" className="container text-center">
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
               2
@@ -104,46 +105,11 @@ export default function Home() {
             </p>
             <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
           </section>
+        </div>
 
-          <section id="support" className="container text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-              3
-            </div>
-            <div className="mx-auto max-w-3xl">
-              <p className="mb-6 text-lg text-muted-foreground">
-                We try to make everything as seamless and smooth as possible, but
-                sometimes things happen. So if you need support with anything or
-                want to ask a question about SmartSapp, Please WhatsApp us on{' '}
-                <a
-                  href="https://wa.me/233501626873"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-semibold text-primary hover:underline"
-                >
-                  +233 50 162 6873
-                </a>
-                .
-              </p>
-              <p className="mb-6 text-lg text-muted-foreground">
-                We look forward to making it easy for you to be involved with your
-                child&apos;s school life.
-              </p>
-              <p className="text-lg font-semibold text-foreground">
-                SmartSapp Team
-              </p>
-            </div>
+        <HelpSection helpVideos={helpVideos} />
 
-            <h2 className="mb-12 mt-16 font-headline text-3xl font-bold md:text-4xl">
-              Useful Help Videos
-            </h2>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {helpVideos.map((url, index) => (
-                <VideoEmbed key={index} url={url} />
-              ))}
-            </div>
-          </section>
-
+        <div className="py-20 md:py-28">
           <section id="testimonials" className="container text-center">
             <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl">
               Why Parents and Schools are going
