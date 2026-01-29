@@ -8,7 +8,6 @@ import type { School, Meeting } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
 import VideoEmbed from '@/components/video-embed';
-import AppStoreButtons from '@/components/app-store-buttons';
 import { Card, CardContent } from '@/components/ui/card';
 import AppDownloadSection from '@/components/app-download-section';
 import HelpSection from './help-section';
@@ -177,27 +176,27 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
     return (
         <>
             <MeetingHero school={school} meeting={meeting} />
-            <div className="bg-white text-gray-800">
-                <section className="container px-6 py-20 text-center md:py-28">
-                    <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
-                        Welcome to the SmartSapp Family
-                    </h1>
-                    <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-600 md:text-xl">
-                        Your child's school has signed up on SmartSapp.
-                        <br />
-                        Here is a quick video to help you understand what it means for you as a parent.
-                    </p>
-                    <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-gray-800">
-                        Please watch the full video. It's super important!
-                    </p>
-                    <div className="mt-16">
-                        <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
-                    </div>
-                </section>
-                
-                <AppDownloadSection />
+            
+            <section className="container px-6 py-20 text-center md:py-28 bg-white text-gray-800">
+                <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
+                    Welcome to the SmartSapp Family
+                </h1>
+                <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-600 md:text-xl">
+                    Your child's school has signed up on SmartSapp.
+                    <br />
+                    Here is a quick video to help you understand what it means for you as a parent.
+                </p>
+                <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-gray-800">
+                    Please watch the full video. It's super important!
+                </p>
+                <div className="mt-16">
+                    <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
+                </div>
+            </section>
+            
+            <AppDownloadSection />
 
-                <section id="setup-profile" className="container px-6 py-20 text-center md:py-28">
+            <section id="setup-profile" className="container px-6 py-20 text-center md:py-28 bg-white text-gray-800">
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                     2
                 </div>
@@ -215,11 +214,11 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </a>
                 </p>
                 <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
-                </section>
+            </section>
 
-                <HelpSection helpVideos={helpVideos} />
+            <HelpSection helpVideos={helpVideos} />
 
-                <section id="testimonials" className="container px-6 pb-20 text-center md:pb-28">
+            <section id="testimonials" className="container px-6 pb-20 text-center md:pb-28 bg-white text-gray-800">
                 <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight md:text-4xl text-gray-900">
                     Why Parents and Schools are going
                     <br />
@@ -248,8 +247,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     </Card>
                     ))}
                 </div>
-                </section>
-            </div>
+            </section>
         </>
     );
 }
