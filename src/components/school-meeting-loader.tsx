@@ -217,7 +217,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                 <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
             </section>
 
-            <BrochureDownloadSection />
+            {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
 
             <HelpSection helpVideos={helpVideos} />
 
@@ -232,7 +232,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     child's security with SmartSapp
                 </p>
                 <p className="mb-12 text-lg font-semibold text-gray-900">
-                    👇 Click To Watch These Videos. It&apos;s Super Important👇
+                    👇 Click To Watch These Videos. It's Super Important👇
                 </p>
 
                 <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">

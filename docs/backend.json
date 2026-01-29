@@ -104,6 +104,11 @@
           "type": "string",
           "description": "URL of the meeting recording (e.g., YouTube).",
           "format": "uri"
+        },
+        "brochureUrl": {
+          "type": "string",
+          "description": "URL of the school's brochure document.",
+          "format": "uri"
         }
       },
       "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink"]

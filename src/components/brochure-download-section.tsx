@@ -5,7 +5,7 @@ import LightRays from '@/components/LightRays';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';
 
-export default function BrochureDownloadSection() {
+export default function BrochureDownloadSection({ brochureUrl }: { brochureUrl?: string }) {
   return (
     <section className="relative w-full bg-[#0A1427] text-white py-20 md:py-28 overflow-hidden">
       <LightRays
@@ -46,8 +46,8 @@ export default function BrochureDownloadSection() {
             <p className="text-lg text-gray-200 leading-relaxed mb-8 max-w-lg mx-auto md:mx-0">
               Download our comprehensive brochure to learn more about our features, benefits, and how we are revolutionizing school management and parent engagement.
             </p>
-            <Button size="lg" asChild className="px-8 py-6 text-lg">
-              <a href="#" download>
+            <Button size="lg" asChild className="px-8 py-6 text-lg" disabled={!brochureUrl}>
+              <a href={brochureUrl || '#'} download target="_blank" rel="noopener noreferrer">
                 <Download className="mr-2 h-5 w-5" />
                 Download Brochure
               </a>

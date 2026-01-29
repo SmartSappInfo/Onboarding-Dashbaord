@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { BrochureSelect } from '../../components/brochure-select';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => value, { message: "School is required." }),
@@ -32,6 +33,7 @@ const formSchema = z.object({
   }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -65,6 +67,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
         meetingTime: new Date(meeting.meetingTime),
         meetingLink: meeting.meetingLink,
         recordingUrl: meeting.recordingUrl || '',
+        brochureUrl: meeting.brochureUrl || '',
       });
     }
   }, [meeting, schools, form]);
@@ -85,7 +88,8 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
         schoolSlug: data.school.slug,
         meetingTime: data.meetingTime.toISOString(),
         meetingLink: data.meetingLink,
-        recordingUrl: data.recordingUrl || ''
+        recordingUrl: data.recordingUrl || '',
+        brochureUrl: data.brochureUrl || '',
     };
 
     const docRef = doc(firestore, 'meetings', meetingId);
@@ -125,6 +129,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-24 w-full" />
         </CardContent>
       </Card>
     );
@@ -214,6 +219,22 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="brochureUrl"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Brochure URL</FormLabel>
+                    <FormControl>
+                        <BrochureSelect
+                            value={field.value}
+                            onValueChange={field.onChange}
+                        />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
             <div className="flex justify-end gap-4">
               <Button type="button" variant="outline" onClick={() => router.push('/admin/meetings')}>
                 Cancel

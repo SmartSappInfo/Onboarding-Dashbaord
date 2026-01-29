@@ -24,6 +24,7 @@ export interface Meeting {
   meetingTime: string; // ISO string
   meetingLink: string;
   recordingUrl?: string;
+  brochureUrl?: string;
 }
 
 export interface MediaAsset {

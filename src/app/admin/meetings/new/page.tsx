@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { BrochureSelect } from '../components/brochure-select';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -32,6 +33,7 @@ const formSchema = z.object({
   }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -53,7 +55,8 @@ export default function NewMeetingPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       meetingLink: '',
-      recordingUrl: ''
+      recordingUrl: '',
+      brochureUrl: '',
     },
   });
 
@@ -84,7 +87,8 @@ export default function NewMeetingPage() {
         schoolSlug: data.school.slug,
         meetingTime: data.meetingTime.toISOString(),
         meetingLink: data.meetingLink,
-        recordingUrl: data.recordingUrl || ''
+        recordingUrl: data.recordingUrl || '',
+        brochureUrl: data.brochureUrl || '',
     };
 
     const meetingsCollection = collection(firestore, 'meetings');
@@ -196,6 +200,19 @@ export default function NewMeetingPage() {
                       <FormLabel>Recording URL (YouTube)</FormLabel>
                       <FormControl>
                         <Input placeholder="https://youtu.be/..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="brochureUrl"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Brochure URL</FormLabel>
+                      <FormControl>
+                        <BrochureSelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
