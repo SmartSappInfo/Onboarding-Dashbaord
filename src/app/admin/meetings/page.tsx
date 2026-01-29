@@ -7,7 +7,7 @@ import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePe
 import type { Meeting } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Copy, ExternalLink } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,7 +96,7 @@ export default function MeetingsPage() {
               <TableRow>
                 <TableHead>School Name</TableHead>
                 <TableHead className="w-[250px]">Meeting Time</TableHead>
-                <TableHead>Meeting Link</TableHead>
+                <TableHead>Meeting Page</TableHead>
                 <TableHead className="w-[50px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -117,10 +117,25 @@ export default function MeetingsPage() {
                     <TableCell>
                       {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}
                     </TableCell>
-                    <TableCell className="text-muted-foreground truncate max-w-xs">
-                      <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                        {meeting.meetingLink}
-                      </a>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <a href={`/meetings/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer" className="hover:underline text-muted-foreground truncate">
+                            {`/meetings/${meeting.schoolSlug}`}
+                        </a>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7 shrink-0"
+                            onClick={() => {
+                                const url = `${window.location.origin}/meetings/${meeting.schoolSlug}`;
+                                navigator.clipboard.writeText(url);
+                                toast({ title: 'Link Copied!', description: 'Meeting page URL copied.' });
+                            }}
+                        >
+                            <span className="sr-only">Copy link</span>
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -135,6 +150,13 @@ export default function MeetingsPage() {
                           <DropdownMenuItem onClick={() => navigator.clipboard.writeText(meeting.id)}>Copy ID</DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>Edit Meeting</DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <a href={`/meetings/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              View Meeting Page
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <AlertDialogTrigger asChild>
                             <DropdownMenuItem 
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
