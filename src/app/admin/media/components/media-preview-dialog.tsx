@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import type { MediaAsset } from '@/lib/types';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ExternalLink } from 'lucide-react';
 
@@ -18,6 +18,9 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
       <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle className="truncate">{asset.name}</DialogTitle>
+           {asset.type === 'link' && asset.linkDescription && (
+              <DialogDescription>{asset.linkDescription}</DialogDescription>
+          )}
         </DialogHeader>
         <div className="mt-4 max-h-[70vh] overflow-y-auto">
           {asset.type === 'image' && (
@@ -43,15 +46,21 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
             </div>
           )}
            {asset.type === 'link' && (
-            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted rounded-lg">
-                <p className="mb-4">This is a link asset. You can open it in a new tab.</p>
-                 <p className="mb-4 text-sm text-muted-foreground break-all">{asset.url}</p>
-                <Button asChild>
-                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
-                        <ExternalLink className="mr-2 h-4 w-4" />
-                        Open Link
-                    </a>
-                </Button>
+            <div className="space-y-4">
+                {asset.previewImageUrl && (
+                    <div className="relative aspect-video bg-muted rounded-lg overflow-hidden">
+                        <Image src={asset.previewImageUrl} alt={`Preview for ${asset.name}`} fill className="object-cover" />
+                    </div>
+                )}
+                <div className="flex flex-col items-center justify-center p-8 text-center bg-muted rounded-lg">
+                    <p className="mb-4 text-sm text-muted-foreground break-all">{asset.url}</p>
+                    <Button asChild>
+                        <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Open Link in New Tab
+                        </a>
+                    </Button>
+                </div>
             </div>
           )}
         </div>

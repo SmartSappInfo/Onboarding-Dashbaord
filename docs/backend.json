@@ -153,6 +153,19 @@
           "type": "string",
           "description": "The ISO timestamp when the asset was uploaded.",
           "format": "date-time"
+        },
+        "linkTitle": {
+          "type": "string",
+          "description": "The title of the webpage for a link asset."
+        },
+        "linkDescription": {
+          "type": "string",
+          "description": "The description of the webpage for a link asset."
+        },
+        "previewImageUrl": {
+          "type": "string",
+          "description": "The URL of a preview image for a link asset.",
+          "format": "uri"
         }
       },
       "required": ["name", "url", "type", "uploadedBy", "createdAt"]

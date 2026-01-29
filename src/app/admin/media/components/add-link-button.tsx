@@ -6,7 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { addDoc, collection } from 'firebase/firestore';
 
-import { Link as LinkIcon } from 'lucide-react';
+import { getLinkMetadata } from '@/ai/flows/get-link-metadata-flow';
+import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -29,7 +30,7 @@ import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  name: z.string().min(1, { message: 'Link name is required.' }),
+  name: z.string().min(1, { message: 'A name is required for the link.' }),
   url: z.string().url({ message: 'Please enter a valid URL.' }),
 });
 
@@ -37,6 +38,7 @@ type FormData = z.infer<typeof formSchema>;
 
 export default function AddLinkButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -49,48 +51,58 @@ export default function AddLinkButton() {
     },
   });
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'You must be logged in to add a link.' });
       return;
     }
+    
+    setIsProcessing(true);
 
-    const linkData = {
-      name: data.name,
-      url: data.url,
-      type: 'link' as const,
-      uploadedBy: user.uid,
-      createdAt: new Date().toISOString(),
-    };
+    try {
+        // 1. Fetch metadata from the URL
+        const metadata = await getLinkMetadata({ url: data.url });
 
-    const mediaCollection = collection(firestore, 'media');
-    form.control.disabled = true;
+        // 2. Prepare the data for Firestore
+        const linkData = {
+          name: metadata?.title || data.name,
+          url: data.url,
+          type: 'link' as const,
+          uploadedBy: user.uid,
+          createdAt: new Date().toISOString(),
+          linkTitle: metadata?.title,
+          linkDescription: metadata?.description,
+          previewImageUrl: metadata?.imageUrl,
+        };
 
-    addDoc(mediaCollection, linkData)
-      .then(() => {
-        toast({ title: 'Link Added', description: `${data.name} has been added to your library.` });
+        // 3. Save to Firestore
+        const mediaCollection = collection(firestore, 'media');
+        await addDoc(mediaCollection, linkData);
+
+        toast({ title: 'Link Added', description: `${linkData.name} has been added to your library.` });
         setIsDialogOpen(false);
         form.reset();
-      })
-      .catch((error) => {
+
+    } catch (error: any) {
+        const mediaCollection = collection(firestore, 'media');
         const permissionError = new FirestorePermissionError({
             path: mediaCollection.path,
             operation: 'create',
-            requestResourceData: linkData,
+            requestResourceData: { name: data.name, url: data.url, type: 'link' }, // a simplified object for the error
         });
         errorEmitter.emit('permission-error', permissionError);
         toast({
           variant: 'destructive',
           title: 'Error Adding Link',
-          description: 'Could not save the link.',
+          description: error.message || 'Could not save the link.',
         });
-      })
-      .finally(() => {
-        form.control.disabled = false;
-      });
+    } finally {
+        setIsProcessing(false);
+    }
   };
   
   const handleOpenChange = (open: boolean) => {
+      if (isProcessing) return;
       if (!open) {
           form.reset();
       }
@@ -108,7 +120,7 @@ export default function AddLinkButton() {
           <DialogHeader>
             <DialogTitle>Add a New Link</DialogTitle>
             <DialogDescription>
-              Save a URL to your media library. It can be used later.
+              Save a URL to your media library. We'll try to fetch a preview.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -118,9 +130,9 @@ export default function AddLinkButton() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Link Name</FormLabel>
+                    <FormLabel>Fallback Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., SmartSapp Website" {...field} />
+                      <Input placeholder="e.g., SmartSapp Website" {...field} disabled={isProcessing} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -133,18 +145,19 @@ export default function AddLinkButton() {
                   <FormItem>
                     <FormLabel>URL</FormLabel>
                     <FormControl>
-                      <Input type="url" placeholder="https://www.smartsapp.com" {...field} />
+                      <Input type="url" placeholder="https://www.smartsapp.com" {...field} disabled={isProcessing}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <DialogFooter className="pt-4">
-                <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>
+                <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isProcessing}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Saving...' : 'Save Link'}
+                <Button type="submit" disabled={isProcessing}>
+                  {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isProcessing ? 'Saving...' : 'Save Link'}
                 </Button>
               </DialogFooter>
             </form>

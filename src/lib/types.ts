@@ -37,4 +37,7 @@ export interface MediaAsset {
   size?: number;
   uploadedBy: string;
   createdAt: string; // ISO string
+  linkTitle?: string;
+  linkDescription?: string;
+  previewImageUrl?: string;
 }

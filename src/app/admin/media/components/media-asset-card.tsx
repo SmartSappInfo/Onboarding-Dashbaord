@@ -113,6 +113,10 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
     }
   };
 
+  const hasPreviewImage = asset.type === 'image' || (asset.type === 'link' && asset.previewImageUrl);
+  const previewSrc = asset.type === 'image' ? asset.url : asset.previewImageUrl;
+
+
   return (
     <>
       <Card className="group relative overflow-hidden rounded-lg">
@@ -121,9 +125,9 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             className="aspect-square w-full bg-muted flex items-center justify-center cursor-pointer"
             onClick={handleMainClick}
           >
-            {asset.type === 'image' ? (
+            {hasPreviewImage && previewSrc ? (
               <Image
-                src={asset.url}
+                src={previewSrc}
                 alt={asset.name}
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
