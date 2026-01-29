@@ -10,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
+import AddLinkButton from './components/add-link-button';
 
-const TABS = ['images', 'videos', 'audio', 'documents'];
+const TABS = ['images', 'videos', 'audio', 'documents', 'links'];
 
 export default function MediaLibraryPage() {
   const firestore = useFirestore();
@@ -38,6 +39,7 @@ export default function MediaLibraryPage() {
         if (activeTab === 'videos') return asset.type === 'video';
         if (activeTab === 'audio') return asset.type === 'audio';
         if (activeTab === 'documents') return asset.type === 'document';
+        if (activeTab === 'links') return asset.type === 'link';
         return false;
     });
 
@@ -54,7 +56,10 @@ export default function MediaLibraryPage() {
     <div>
       <div className="flex items-center justify-between mb-8">
         <h1 className="text-4xl font-bold tracking-tight">Media Library</h1>
-        <UploadButton />
+        <div className="flex items-center gap-2">
+          <AddLinkButton />
+          <UploadButton />
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">

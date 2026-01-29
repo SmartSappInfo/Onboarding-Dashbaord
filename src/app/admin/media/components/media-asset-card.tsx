@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
@@ -63,19 +63,21 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
       return;
     }
     
-    // 1. Delete from Firebase Storage
-    const storage = getStorage();
-    const fileRef = ref(storage, asset.fullPath);
-    try {
-      await deleteObject(fileRef);
-    } catch (error: any) {
-        // We still try to delete the Firestore doc even if storage deletion fails
-        console.error("Error deleting from storage: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Storage Deletion Failed',
-            description: 'Could not delete the file from storage, but will attempt to delete the record.',
-        });
+    // 1. Delete from Firebase Storage if it's a file
+    if (asset.fullPath) {
+        const storage = getStorage();
+        const fileRef = ref(storage, asset.fullPath);
+        try {
+            await deleteObject(fileRef);
+        } catch (error: any) {
+            // We still try to delete the Firestore doc even if storage deletion fails
+            console.error("Error deleting from storage: ", error);
+            toast({
+                variant: 'destructive',
+                title: 'Storage Deletion Failed',
+                description: 'Could not delete the file from storage, but will attempt to delete the record.',
+            });
+        }
     }
 
     // 2. Delete from Firestore
@@ -106,6 +108,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
       case 'video': return <Video className="w-16 h-16 text-muted-foreground" />;
       case 'audio': return <AudioWaveform className="w-16 h-16 text-muted-foreground" />;
       case 'document': return <FileText className="w-16 h-16 text-muted-foreground" />;
+      case 'link': return <LinkIcon className="w-16 h-16 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -165,7 +168,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the asset <span className="font-bold">{asset.name}</span> from storage and the library.
+              This action cannot be undone. This will permanently delete the asset <span className="font-bold">{asset.name}</span> from the library.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -31,10 +31,10 @@ export interface MediaAsset {
   id: string;
   name: string;
   url: string;
-  fullPath: string;
-  type: 'image' | 'video' | 'audio' | 'document';
-  mimeType: string;
-  size: number;
+  fullPath?: string;
+  type: 'image' | 'video' | 'audio' | 'document' | 'link';
+  mimeType?: string;
+  size?: number;
   uploadedBy: string;
   createdAt: string; // ISO string
 }

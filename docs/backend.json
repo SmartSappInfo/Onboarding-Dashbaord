@@ -117,33 +117,33 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Media Asset",
       "type": "object",
-      "description": "Represents a media file (image, video, audio, document) in the library.",
+      "description": "Represents a media file (image, video, audio, document) or a link in the library.",
       "properties": {
         "name": {
           "type": "string",
-          "description": "The original filename of the media asset."
+          "description": "The name of the media asset or link."
         },
         "url": {
           "type": "string",
-          "description": "The public download URL from Firebase Storage.",
+          "description": "The public URL of the asset or link.",
           "format": "uri"
         },
         "fullPath": {
           "type": "string",
-          "description": "The full path to the file within Firebase Storage (e.g., 'media/image/file.png')."
+          "description": "The full path to the file within Firebase Storage (e.g., 'media/image/file.png'). Not applicable for links."
         },
         "type": {
           "type": "string",
           "description": "The type of media asset.",
-          "enum": ["image", "video", "audio", "document"]
+          "enum": ["image", "video", "audio", "document", "link"]
         },
         "mimeType": {
           "type": "string",
-          "description": "The MIME type of the file (e.g., 'image/png')."
+          "description": "The MIME type of the file (e.g., 'image/png'). Not applicable for links."
         },
         "size": {
           "type": "number",
-          "description": "The file size in bytes."
+          "description": "The file size in bytes. Not applicable for links."
         },
         "uploadedBy": {
           "type": "string",
@@ -155,7 +155,7 @@
           "format": "date-time"
         }
       },
-      "required": ["name", "url", "fullPath", "type", "mimeType", "size", "uploadedBy", "createdAt"]
+      "required": ["name", "url", "type", "uploadedBy", "createdAt"]
     }
   },
   "auth": {

@@ -42,6 +42,18 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                 </Button>
             </div>
           )}
+           {asset.type === 'link' && (
+            <div className="flex flex-col items-center justify-center p-8 text-center bg-muted rounded-lg">
+                <p className="mb-4">This is a link asset. You can open it in a new tab.</p>
+                 <p className="mb-4 text-sm text-muted-foreground break-all">{asset.url}</p>
+                <Button asChild>
+                    <a href={asset.url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        Open Link
+                    </a>
+                </Button>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

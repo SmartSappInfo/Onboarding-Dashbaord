@@ -12,13 +12,15 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
+import AddLinkButton from './add-link-button';
 
-const TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document'];
+const TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document', 'link'];
 const TAB_NAMES: Record<MediaAsset['type'], string> = {
   image: 'Images',
   video: 'Videos',
   audio: 'Audio',
   document: 'Documents',
+  link: 'Links',
 };
 
 
@@ -85,7 +87,10 @@ export default function MediaSelectorDialog({ open, onOpenChange, onSelectAsset,
                     onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                 <UploadButton />
+                 <div className="flex items-center gap-2">
+                    <AddLinkButton />
+                    <UploadButton />
+                </div>
             </div>
             <div className="flex-grow relative border rounded-lg">
                 <ScrollArea className="absolute inset-0">
