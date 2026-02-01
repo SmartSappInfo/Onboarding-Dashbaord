@@ -7,7 +7,7 @@ export default function RegisterNewSignupPage() {
     <>
       <Header />
       <main className="flex-grow">
-        <div className="container max-w-3xl px-6 py-20 text-center">
+        <div className="container max-w-3xl py-20 text-center">
           <h1 className="mb-4 font-headline text-4xl font-bold md:text-5xl">
             New School Signup Form
           </h1>

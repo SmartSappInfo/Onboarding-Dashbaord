@@ -96,6 +96,6 @@ body {
     @apply font-headline;
   }
   .container {
-    @apply max-w-[1200px] mx-auto;
+    @apply mx-auto w-full px-6 md:w-[70%];
   }
 }

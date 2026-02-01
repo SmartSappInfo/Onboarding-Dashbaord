@@ -15,7 +15,7 @@ import BrochureDownloadSection from './brochure-download-section';
 
 function MeetingPageSkeleton() {
   return (
-    <div className="container px-6 grid grid-cols-1 items-center gap-12 py-10 md:grid-cols-2 md:py-20 lg:gap-20">
+    <div className="container grid grid-cols-1 items-center gap-12 py-10 md:grid-cols-2 md:py-20 lg:gap-20">
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <div className="mb-6 flex items-center gap-4">
                 <Skeleton className="h-16 w-16 rounded-full" />
@@ -127,12 +127,12 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
     }
 
     if (error) {
-        return <div className="container px-6 py-20 text-center text-destructive">{error}</div>;
+        return <div className="container py-20 text-center text-destructive">{error}</div>;
     }
 
     if (!school || !meeting) {
         return (
-            <div className="container px-6 py-20 text-center">
+            <div className="container py-20 text-center">
                 <h1 className="text-4xl font-bold">Meeting Information Unavailable</h1>
                 <p className="text-muted-foreground mt-4">The meeting page for this school could not be fully loaded. Please check the name and try again, or contact support.</p>
             </div>
@@ -179,7 +179,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             <MeetingHero school={school} meeting={meeting} />
             
             <section className="bg-white py-20 text-center text-gray-800 md:py-28">
-                <div className="container px-6">
+                <div className="container">
                     <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
                         Welcome to the SmartSapp Family
                     </h1>
@@ -200,7 +200,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             <AppDownloadSection />
 
             <section id="setup-profile" className="bg-white py-20 text-center text-gray-800 md:py-28">
-                <div className="container px-6">
+                <div className="container">
                     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
                         2
                     </div>
@@ -226,7 +226,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             <HelpSection helpVideos={helpVideos} />
 
             <section id="testimonials" className="bg-white pb-20 text-center text-gray-800 md:pb-28">
-                <div className="container px-6">
+                <div className="container">
                     <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight text-gray-900 md:text-4xl">
                         Why Parents and Schools are going
                         <br />

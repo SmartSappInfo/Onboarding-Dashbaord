@@ -15,7 +15,7 @@ export default function AppDownloadSection() {
         }}
       />
       <div className="absolute inset-0 bg-[#0A1427]/80 z-[-1]"></div>
-      <div className="container relative px-6">
+      <div className="container relative">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
           1
         </div>

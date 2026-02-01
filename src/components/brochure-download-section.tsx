@@ -23,7 +23,7 @@ export default function BrochureDownloadSection({ brochureUrl }: { brochureUrl?:
         saturation={1}
         className="!absolute inset-0 opacity-70"
       />
-      <div className="relative z-10 container px-6">
+      <div className="relative z-10 container">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-16 items-center">
           {/* Left Column: Brochure Image */}
           <div className="flex justify-center md:justify-end">

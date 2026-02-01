@@ -6,7 +6,11 @@ interface HelpSectionProps {
 
 export default function HelpSection({ helpVideos }: HelpSectionProps) {
   return (
-    <section id="support" className="bg-muted py-20 text-center md:py-28">
+    <section
+      id="support"
+      className="py-20 text-center md:py-28"
+      style={{ backgroundColor: '#E5F0FF' }}
+    >
       <div className="container">
         <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
           Get Help Instantly
