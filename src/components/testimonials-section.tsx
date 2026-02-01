@@ -38,7 +38,7 @@ export default function TestimonialsSection() {
                 <br />
                 Wild over SmartSapp
                 </h2>
-                <p className="mx-auto mb-6 text-lg text-gray-600 dark:text-muted-foreground">
+                <p className="mb-6 text-lg text-gray-600 dark:text-muted-foreground">
                 Watch these testimonials to see how parents are ensuring their
                 child's security with SmartSapp
                 </p>

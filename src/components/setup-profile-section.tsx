@@ -15,7 +15,7 @@ export default function SetupProfileSection() {
         <h2 className="mb-4 font-headline text-3xl font-bold text-gray-900 md:text-4xl dark:text-foreground">
           How to setup your profile and Confirm your child&apos;s details
         </h2>
-        <p className="mx-auto mb-8 text-lg">
+        <p className="mb-8 text-lg">
           <a
             href="https://youtu.be/WJRKrl5S5tM"
             target="_blank"

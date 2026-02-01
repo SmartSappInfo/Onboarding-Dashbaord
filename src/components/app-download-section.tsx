@@ -22,7 +22,7 @@ export default function AppDownloadSection() {
         <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
           Want to get Started?
         </h2>
-        <p className="mx-auto mb-6 text-lg text-gray-200">
+        <p className="mb-6 text-lg text-gray-200">
           You can download SmartSapp below by clicking the icon that applies
           to your phone type
         </p>
