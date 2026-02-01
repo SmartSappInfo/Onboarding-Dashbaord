@@ -14,7 +14,7 @@ interface MeetingHeroProps {
 export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
 
   return (
-    <section className="relative w-full bg-background text-foreground px-4 pt-32 pb-20 md:pt-40 md:pb-24 min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative w-full bg-background text-foreground pt-32 pb-20 md:pt-40 md:pb-24 min-h-screen flex items-center overflow-hidden">
         <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
