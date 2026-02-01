@@ -55,7 +55,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
           <h1 className="font-headline text-3xl font-black tracking-tight sm:text-4xl md:text-5xl">
             {school.name} is digitalizing to serve you better
           </h1>
-          <p className="mt-4 max-w-xl text-lg leading-relaxed text-foreground/80">
+          <p className="mt-4 text-lg leading-relaxed text-foreground/80">
             Join us for a short onboarding session where we’ll show you how SmartSapp improves communication, payments, and school engagement for parents.
           </p>
 
