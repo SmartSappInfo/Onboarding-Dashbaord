@@ -30,19 +30,19 @@ export default function TestimonialsSection() {
     return (
         <section
             id="testimonials"
-            className="bg-white py-20 text-center text-gray-800 md:py-28 dark:bg-background dark:text-foreground"
+            className="bg-background py-20 text-center md:py-28"
         >
             <div className="container">
-                <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight text-gray-900 md:text-4xl dark:text-foreground">
+                <h2 className="mb-4 font-headline text-3xl font-bold tracking-tight text-foreground md:text-4xl">
                 Why Parents and Schools are going
                 <br />
                 Wild over SmartSapp
                 </h2>
-                <p className="mb-6 text-lg text-gray-600 dark:text-muted-foreground">
+                <p className="mb-6 text-lg text-muted-foreground">
                 Watch these testimonials to see how parents are ensuring their
                 child's security with SmartSapp
                 </p>
-                <p className="mb-12 text-lg font-semibold text-gray-900 dark:text-foreground">
+                <p className="mb-12 text-lg font-semibold text-foreground">
                 👇 Click To Watch These Videos. It's Super Important👇
                 </p>
 
@@ -54,7 +54,7 @@ export default function TestimonialsSection() {
                     >
                     <VideoEmbed url={testimonial.videoUrl} />
                     <CardContent className="p-6">
-                        <p className="font-quote italic text-gray-600 dark:text-muted-foreground">
+                        <p className="font-quote italic text-muted-foreground">
                         &quot;{testimonial.quote}&quot;
                         </p>
                     </CardContent>
