@@ -8,6 +8,7 @@ import Footer from '@/components/footer';
 import AppDownloadSection from '@/components/app-download-section';
 import LightRays from '@/components/LightRays';
 import HelpSection from '@/components/help-section';
+import SetupProfileSection from '@/components/setup-profile-section';
 
 export default function Home() {
   const helpVideos = [
@@ -85,27 +86,7 @@ export default function Home() {
 
         <AppDownloadSection />
         
-        <div className="py-20 md:py-28">
-          <section id="setup-profile" className="container text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-              2
-            </div>
-            <h2 className="mb-4 font-headline text-3xl font-bold md:text-4xl">
-              How to setup your profile and Confirm your child&apos;s details
-            </h2>
-            <p className="mx-auto mb-8 max-w-2xl text-lg">
-              <a
-                href="https://youtu.be/WJRKrl5S5tM"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-primary hover:underline"
-              >
-                Here&apos;s a help video
-              </a>
-            </p>
-            <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
-          </section>
-        </div>
+        <SetupProfileSection />
 
         <HelpSection helpVideos={helpVideos} />
 
@@ -121,7 +102,7 @@ export default function Home() {
               child's security with SmartSapp
             </p>
             <p className="mb-12 text-lg font-semibold">
-              👇 Click To Watch These Videos. It&apos;s Super Important👇
+              👇 Click To Watch These Videos. It's Super Important👇
             </p>
 
             <div className="grid grid-cols-1 gap-x-8 gap-y-12 text-left md:grid-cols-2">
