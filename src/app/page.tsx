@@ -48,12 +48,12 @@ export default function Home() {
             <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-white sm:text-4xl md:text-5xl lg:text-6xl">
               Welcome to the <span className="text-primary">SmartSapp</span> Family
             </h1>
-            <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-200 md:text-xl">
+            <p className="mx-auto mb-4 text-lg leading-relaxed text-gray-200 md:text-xl">
               Your child's school has signed up on SmartSapp.
               <br />
               Here is a quick video to help you understand what it means for you as a parent.
             </p>
-            <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold">
+            <p className="mx-auto mb-10 text-lg font-semibold">
               Please watch the full video. It's super important!
             </p>
             <div className="mt-16">

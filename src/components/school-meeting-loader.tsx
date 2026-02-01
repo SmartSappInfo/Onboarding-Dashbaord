@@ -162,12 +162,12 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
                     <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
                         Welcome to the SmartSapp Family
                     </h1>
-                    <p className="mx-auto mb-4 max-w-3xl text-lg leading-relaxed text-gray-600 md:text-xl dark:text-muted-foreground">
+                    <p className="mx-auto mb-4 text-lg leading-relaxed text-gray-600 md:text-xl dark:text-muted-foreground">
                         Your child's school has signed up on SmartSapp.
                         <br />
                         Here is a quick video to help you understand what it means for you as a parent.
                     </p>
-                    <p className="mx-auto mb-10 max-w-3xl text-lg font-semibold text-gray-800 dark:text-foreground">
+                    <p className="mx-auto mb-10 text-lg font-semibold text-gray-800 dark:text-foreground">
                         Please watch the full video. It's super important!
                     </p>
                     <div className="mt-16">

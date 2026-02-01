@@ -65,7 +65,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
       <section className="py-16 text-center md:py-24">
         <div className="container">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Welcome to SmartsApp!</h2>
-          <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
+          <p className="mx-auto mb-10 text-lg text-muted-foreground">
             Watch this short video to see how SmartsApp helps bridge the communication gap between school and home.
           </p>
           <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
@@ -76,7 +76,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
       <section className="bg-card py-16 md:py-24">
         <div className="container text-center">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Download the App</h2>
-          <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
+          <p className="mx-auto mb-10 text-lg text-muted-foreground">
             Get the SmartsApp mobile app to stay connected on the go. Available on all major platforms.
           </p>
           <AppStoreButtons />
@@ -87,7 +87,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
       <section className="py-16 text-center md:py-24">
         <div className="container">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">How to Install</h2>
-          <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
+          <p className="mx-auto mb-10 text-lg text-muted-foreground">
             Follow this step-by-step video guide to install and set up the SmartsApp on your device.
           </p>
           <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
@@ -99,7 +99,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
         <div className="container">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Useful Links & Help Videos</h2>
-            <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">
+            <p className="mx-auto mt-2 text-lg text-muted-foreground">
               Quick guides to help you get the most out of SmartsApp.
             </p>
           </div>
@@ -126,7 +126,7 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
         <div className="container">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">What Our Community Says</h2>
-            <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">
+            <p className="mx-auto mt-2 text-lg text-muted-foreground">
               Hear from parents and teachers who love using SmartsApp.
             </p>
           </div>
