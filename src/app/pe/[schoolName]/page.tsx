@@ -61,36 +61,42 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
         </div>
       </section>
 
-      <div className="container px-6 space-y-24 py-16 md:space-y-32 md:py-24">
-        {/* Intro Video Section */}
-        <section className="text-center">
+      {/* Intro Video Section */}
+      <section className="py-16 text-center md:py-24">
+        <div className="container">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Welcome to SmartsApp!</h2>
           <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
             Watch this short video to see how SmartsApp helps bridge the communication gap between school and home.
           </p>
           <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
-        </section>
+        </div>
+      </section>
 
-        {/* Download Section */}
-        <section className="rounded-lg bg-card p-8 shadow-lg md:p-12 text-center">
+      {/* Download Section */}
+      <section className="bg-card py-16 md:py-24">
+        <div className="container text-center">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">Download the App</h2>
           <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
             Get the SmartsApp mobile app to stay connected on the go. Available on all major platforms.
           </p>
           <AppStoreButtons />
-        </section>
+        </div>
+      </section>
 
-        {/* Installation Guide Section */}
-        <section className="text-center">
+      {/* Installation Guide Section */}
+      <section className="py-16 text-center md:py-24">
+        <div className="container">
           <h2 className="mb-3 text-3xl font-bold tracking-tight md:text-4xl">How to Install</h2>
           <p className="mx-auto mb-10 max-w-3xl text-lg text-muted-foreground">
             Follow this step-by-step video guide to install and set up the SmartsApp on your device.
           </p>
           <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
-        </section>
+        </div>
+      </section>
 
-        {/* Useful Links Section */}
-        <section>
+      {/* Useful Links Section */}
+      <section className="py-16 md:py-24">
+        <div className="container">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">Useful Links & Help Videos</h2>
             <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">
@@ -112,10 +118,12 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
               </a>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* Testimonials Section */}
-        <section>
+      {/* Testimonials Section */}
+      <section className="py-16 md:py-24">
+        <div className="container">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">What Our Community Says</h2>
             <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">
@@ -156,8 +164,8 @@ export default async function SchoolOnboardingPage({ params }: PageProps) {
               );
             })}
           </div>
-        </section>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
