@@ -43,7 +43,7 @@ export default function BrochureDownloadSection({ brochureUrl }: { brochureUrl?:
             <h2 className="font-headline text-3xl md:text-4xl font-bold tracking-tight mb-4">
               Discover More About SmartSapp
             </h2>
-            <p className="text-lg text-gray-200 leading-relaxed mb-8 max-w-lg mx-auto md:mx-0">
+            <p className="text-lg text-gray-200 leading-relaxed mb-8">
               Download our comprehensive brochure to learn more about our features, benefits, and how we are revolutionizing school management and parent engagement.
             </p>
             <Button size="lg" asChild className="px-8 py-6 text-lg" disabled={!brochureUrl}>
