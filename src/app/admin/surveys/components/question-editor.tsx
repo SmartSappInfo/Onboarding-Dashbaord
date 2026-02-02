@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch, CalendarIcon, Star } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch, CalendarIcon, Star, Settings } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -126,29 +126,69 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
 
 
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
-  const { control, watch } = useFormContext();
+  const { control, watch, setValue } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `elements.${questionIndex}.options`,
   });
   
   const questionType = watch(`elements.${questionIndex}.type`);
+  const defaultValue = watch(`elements.${questionIndex}.defaultValue`);
+
+  const handleDefaultChange = (newValue: string | string[]) => {
+      setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true });
+  }
 
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-background">
       <Label>Options</Label>
-      {fields.map((field, index) => (
-        <div key={field.id} className="flex items-center gap-2">
-          <Controller
-            name={`elements.${questionIndex}.options.${index}`}
-            control={control}
-            render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
-          />
-          <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
+       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
+            <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
+                {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                    <RadioGroupItem value={(field as any).value} id={field.id} />
+                    <Controller
+                        name={`elements.${questionIndex}.options.${index}`}
+                        control={control}
+                        render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                    />
+                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                        <Trash2 className="h-4 w-4" />
+                    </Button>
+                </div>
+            ))}
+            </RadioGroup>
+       )}
+       {questionType === 'checkboxes' && (
+            <div className="space-y-2">
+                 {fields.map((field, index) => (
+                    <div key={field.id} className="flex items-center gap-2">
+                        <Checkbox
+                            id={field.id}
+                            checked={defaultValue?.includes((field as any).value)}
+                            onCheckedChange={(checked) => {
+                                const currentDefaults = Array.isArray(defaultValue) ? defaultValue : [];
+                                const optionValue = (field as any).value;
+                                if (checked) {
+                                    handleDefaultChange([...currentDefaults, optionValue]);
+                                } else {
+                                    handleDefaultChange(currentDefaults.filter(val => val !== optionValue));
+                                }
+                            }}
+                        />
+                        <Controller
+                            name={`elements.${questionIndex}.options.${index}`}
+                            control={control}
+                            render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                        />
+                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ))}
+            </div>
+       )}
+
       <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
         Add Option
       </Button>
@@ -392,39 +432,41 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
     }
 }
 
-const SetDefaultValueDialog = ({ question, index, open, onOpenChange }: { question: SurveyQuestion; index: number; open: boolean; onOpenChange: (open: boolean) => void }) => {
+const QuestionSettingsDialog = ({ question, index, open, onOpenChange }: { question: SurveyQuestion; index: number; open: boolean; onOpenChange: (open: boolean) => void }) => {
     const { control, getValues, setValue } = useFormContext();
-    const [currentValue, setCurrentValue] = React.useState(getValues(`elements.${index}.defaultValue`));
+    const isTextQuestion = question.type === 'text' || question.type === 'long-text';
+    
+    // Local state to manage UI toggles
+    const [useDefault, setUseDefault] = React.useState(!!getValues(`elements.${index}.defaultValue`));
+    const [useMin, setUseMin] = React.useState(!!getValues(`elements.${index}.minLength`));
+    const [useMax, setUseMax] = React.useState(!!getValues(`elements.${index}.maxLength`));
 
     React.useEffect(() => {
-        setCurrentValue(getValues(`elements.${index}.defaultValue`));
+        // Reset local state when dialog opens
+        if (open) {
+            setUseDefault(getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
+            setUseMin(getValues(`elements.${index}.minLength`) !== undefined);
+            setUseMax(getValues(`elements.${index}.maxLength`) !== undefined);
+        }
     }, [open, getValues, index]);
 
-    const handleSave = () => {
-        setValue(`elements.${index}.defaultValue`, currentValue);
-        onOpenChange(false);
-    }
+    const handleToggle = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean, fieldName: string) => {
+        setter(value);
+        if (!value) {
+            setValue(`elements.${index}.${fieldName}`, undefined);
+        }
+    };
     
-    const renderInput = () => {
-        switch(question.type) {
-            case 'text':
-            case 'long-text':
-                return <Input value={currentValue || ''} onChange={(e) => setCurrentValue(e.target.value)} />
-            case 'yes-no':
-                return <RadioGroup onValueChange={setCurrentValue} value={currentValue} className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div></RadioGroup>;
-            case 'multiple-choice':
-            case 'dropdown':
-                 return <RadioGroup onValueChange={setCurrentValue} value={currentValue}>{question.options?.map(opt => <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}</RadioGroup>;
-            case 'checkboxes':
-                return <p className="text-sm text-muted-foreground">Default values for checkboxes are not supported yet.</p>; // To be implemented
+    const renderSimpleDefaultInput = () => {
+         switch(question.type) {
             case 'rating':
-                return <StarRatingInput value={currentValue || 0} onChange={setCurrentValue} />;
+                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <StarRating value={field.value || 0} onChange={field.onChange} />} />;
             case 'date':
-                return <Input type="date" value={currentValue ? format(new Date(currentValue), 'yyyy-MM-dd') : ''} onChange={(e) => setCurrentValue(e.target.value ? new Date(e.target.value).toISOString() : undefined)} />;
+                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="date" value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''} onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value).toISOString() : undefined)} />} />;
             case 'time':
-                return <Input type="time" value={currentValue || ''} onChange={(e) => setCurrentValue(e.target.value)} />;
+                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="time" {...field} />} />;
             default:
-                return <p>This question type does not support default values.</p>
+                return <p>This question type does not support default values via this dialog.</p>
         }
     }
 
@@ -432,15 +474,41 @@ const SetDefaultValueDialog = ({ question, index, open, onOpenChange }: { questi
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent>
                 <DialogHeader>
-                    <DialogTitle>Set Default Answer for "{question.title}"</DialogTitle>
-                    <DialogDescription>This value will be pre-filled for users taking the survey.</DialogDescription>
+                    <DialogTitle>Settings for "{question.title || 'Untitled Question'}"</DialogTitle>
+                    <DialogDescription>Manage validation and default values for this question.</DialogDescription>
                 </DialogHeader>
-                <div className="py-4">
-                    {renderInput()}
+                <div className="space-y-4 py-4">
+                     <div className="flex items-center justify-between rounded-lg border p-4">
+                        <Label htmlFor={`required-${index}`}>Required</Label>
+                        <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
+                    </div>
+
+                    {isTextQuestion ? (
+                        <>
+                            <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
+                                <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
+                            </div>
+                            {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
+
+                            <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
+                                <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
+                            </div>
+                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
+
+                            <div className="flex items-center justify-between rounded-lg border p-4">
+                                <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
+                                <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
+                            </div>
+                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+                        </>
+                    ) : (
+                        renderSimpleDefaultInput()
+                    )}
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSave}>Save Default</Button>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -455,7 +523,7 @@ export default function QuestionEditor() {
   });
   
   const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
-  const [defaultingElement, setDefaultingElement] = React.useState<number | null>(null);
+  const [settingsElement, setSettingsElement] = React.useState<number | null>(null);
 
   const elements = watch('elements');
 
@@ -560,16 +628,6 @@ export default function QuestionEditor() {
                     <DropdownMenuContent align="end">
                        {isElementQuestion && (
                         <>
-                            <DropdownMenuCheckboxItem
-                                checked={element.isRequired}
-                                onCheckedChange={(checked) => setValue(`elements.${index}.isRequired`, checked)}
-                            >
-                                <CheckSquare className="mr-2 h-4 w-4" />
-                                <span>Required</span>
-                            </DropdownMenuCheckboxItem>
-                             <DropdownMenuItem onSelect={() => setDefaultingElement(index)}>
-                                Set Default Answer...
-                             </DropdownMenuItem>
                             <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
                                     <Type className="mr-2 h-4 w-4" />
@@ -603,6 +661,13 @@ export default function QuestionEditor() {
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
+
+                {isElementQuestion && (
+                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsElement(index)}>
+                        <Settings className="h-4 w-4" />
+                    </Button>
+                )}
+
                  <Button
                     type="button"
                     variant="ghost"
@@ -675,16 +740,18 @@ export default function QuestionEditor() {
         onSelect={addElement}
       />
       
-      {defaultingElement !== null && elements[defaultingElement] && isQuestion(elements[defaultingElement]) && (
-        <SetDefaultValueDialog
-            open={defaultingElement !== null}
-            onOpenChange={(open) => !open && setDefaultingElement(null)}
-            question={elements[defaultingElement]}
-            index={defaultingElement}
+      {settingsElement !== null && elements[settingsElement] && isQuestion(elements[settingsElement]) && (
+        <QuestionSettingsDialog
+            open={settingsElement !== null}
+            onOpenChange={(open) => !open && setSettingsElement(null)}
+            question={elements[settingsElement]}
+            index={settingsElement}
         />
       )}
     </div>
   );
 }
+
+    
 
     

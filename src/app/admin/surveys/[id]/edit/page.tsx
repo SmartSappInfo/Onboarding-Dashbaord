@@ -38,6 +38,8 @@ const questionSchema = z.object({
   hidden: z.boolean().optional(),
   placeholder: z.string().optional(),
   defaultValue: z.any().optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -290,3 +292,5 @@ export default function EditSurveyPage() {
         </div>
     );
 }
+
+    

@@ -37,7 +37,20 @@ const isLogic = (element: SurveyElement): element is SurveyLogicBlock => element
 const generateSchema = (elements: SurveyElement[]) => {
     const questions = elements.filter(isQuestion);
     const baseSchemaObject = questions.reduce((acc, q) => {
-        acc[q.id] = z.any().optional();
+        let schema: z.ZodTypeAny = z.any();
+        
+        if (q.type === 'text' || q.type === 'long-text') {
+            let textSchema = z.string();
+            if (q.minLength !== undefined) {
+                textSchema = textSchema.min(q.minLength, { message: `Must be at least ${q.minLength} characters.` });
+            }
+            if (q.maxLength !== undefined) {
+                textSchema = textSchema.max(q.maxLength, { message: `Cannot exceed ${q.maxLength} characters.` });
+            }
+            schema = textSchema;
+        }
+
+        acc[q.id] = schema.optional();
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
 
@@ -440,3 +453,5 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
         </form>
     );
 }
+
+    

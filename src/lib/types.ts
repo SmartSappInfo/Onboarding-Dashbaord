@@ -3,6 +3,7 @@
 
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -57,6 +58,8 @@ export interface SurveyQuestion {
   hidden?: boolean;
   placeholder?: string;
   defaultValue?: any;
+  minLength?: number;
+  maxLength?: number;
 }
 
 export interface SurveyLayoutBlock {
@@ -109,5 +112,7 @@ export interface SurveyResponse {
     value: any; // Can be string, string[], number, or object for checkboxes with 'other'
   }[];
 }
+
+    
 
     

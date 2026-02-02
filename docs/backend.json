@@ -183,7 +183,9 @@
           "isRequired": { "type": "boolean", "description": "Whether the question must be answered. Can be overridden by logic blocks." },
           "hidden": { "type": "boolean", "description": "Whether the question is hidden by default. Can be overridden by logic blocks." },
           "placeholder": { "type": "string", "description": "Placeholder text for text-based inputs." },
-          "defaultValue": { "description": "The default value for the question." }
+          "defaultValue": { "description": "The default value for the question." },
+          "minLength": { "type": "number", "description": "Minimum character length for text-based answers." },
+          "maxLength": { "type": "number", "description": "Maximum character length for text-based answers." }
         },
         "required": ["id", "title", "type", "isRequired"]
     },
@@ -344,3 +346,5 @@
     ]
   }
 }
+
+    
