@@ -10,8 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import AddElementModal from './add-element-modal';
@@ -24,6 +24,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format, isValid, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
+import Image from 'next/image';
+import VideoEmbed from '@/components/video-embed';
+import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -47,10 +50,10 @@ const getElementIcon = (type: SurveyElement['type']) => {
         'time': Clock,
         'file-upload': Upload,
         'heading': Heading1,
-        'description': Text,
+        'description': TextIcon,
         'divider': Minus,
         'image': ImageIcon,
-        'video': Video,
+        'video': VideoIcon,
         'audio': AudioWaveform,
         'document': FileText,
         'embed': Code,
@@ -58,6 +61,65 @@ const getElementIcon = (type: SurveyElement['type']) => {
     };
     return iconMap[type] || Type;
 }
+
+const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'audio' | 'document' | undefined => {
+      if (type === 'image') return 'image';
+      if (type === 'video') return 'video';
+      if (type === 'audio') return 'audio';
+      if (type === 'document') return 'document';
+      return undefined;
+}
+
+
+const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; field: any }) => {
+    const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+    
+    const handleSelect = (asset: MediaAsset) => {
+        field.onChange(asset.url);
+        setIsDialogOpen(false);
+    };
+
+    const filterType = getMediaFilterType(element.type);
+    const Icon = getElementIcon(element.type);
+
+    return (
+        <>
+            {field.value ? (
+                <div className="relative group/media-preview rounded-lg border overflow-hidden">
+                    {element.type === 'image' && <Image src={field.value} alt={element.title || 'image preview'} width={800} height={450} className="w-full h-auto object-cover" />}
+                    {element.type === 'video' && <VideoEmbed url={field.value} />}
+                    {element.type === 'audio' && <div className="p-4"><audio controls src={field.value} className="w-full" /></div>}
+                    {element.type === 'document' && (
+                        <a href={field.value} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-4 hover:bg-muted">
+                            <FileText className="h-8 w-8 text-muted-foreground" />
+                            <div>
+                                <p className="font-semibold">Document</p>
+                                <p className="text-sm text-muted-foreground truncate">{field.value}</p>
+                            </div>
+                        </a>
+                    )}
+                    <div className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/media-preview:opacity-100 transition-opacity">
+                         <Button type="button" variant="secondary" onClick={() => setIsDialogOpen(true)}>Change {element.type}</Button>
+                    </div>
+                </div>
+            ) : (
+                <div 
+                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => setIsDialogOpen(true)}
+                >
+                    <Icon className="h-12 w-12 text-muted-foreground" />
+                    <span className="mt-4 text-sm font-semibold text-muted-foreground">Select an {element.type}</span>
+                </div>
+            )}
+            <MediaSelectorDialog
+                open={isDialogOpen}
+                onOpenChange={setIsDialogOpen}
+                onSelectAsset={handleSelect}
+                filterType={filterType}
+            />
+        </>
+    );
+};
 
 interface MultiSelectProps {
   options: { label: string; value: string; }[];
@@ -628,14 +690,6 @@ export default function QuestionEditor() {
 
   const formErrors = errors.elements as any[] | undefined;
 
-  const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'audio' | 'document' | undefined => {
-      if (type === 'image') return 'image';
-      if (type === 'video') return 'video';
-      if (type === 'audio') return 'audio';
-      if (type === 'document') return 'document';
-      return undefined;
-  }
-
   const toggleHidden = (index: number) => {
     const currentHiddenState = getValues(`elements.${index}.hidden`);
     setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
@@ -649,6 +703,7 @@ export default function QuestionEditor() {
         const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
         
         const isElementQuestion = isQuestion(element);
+        const isElementLayout = isLayoutBlock(element);
         const ElementIcon = getElementIcon(element.type);
 
         return (
@@ -658,14 +713,18 @@ export default function QuestionEditor() {
                 </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : "bg-card"
+                    element.hidden ? "bg-disabled" : (isElementLayout ? "bg-transparent shadow-none border-none" : "bg-card")
                 )}>
-                     <CardHeader>
+                     <CardHeader className={cn(isElementLayout && 'p-0 mb-4')}>
                         <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
-                                <ElementIcon className="w-5 h-5 text-muted-foreground" />
-                                {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                                <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                {!isElementLayout && (
+                                    <>
+                                        <ElementIcon className="w-5 h-5" />
+                                        {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
+                                        <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : 'Logic Block'}</span>
+                                    </>
+                                )}
                                 {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                             </div>
                             <div className="flex items-center gap-1 z-10">
@@ -701,7 +760,7 @@ export default function QuestionEditor() {
                             </div>
                         </div>
                     </CardHeader>
-                    <CardContent className="pt-0">
+                    <CardContent className={cn(isElementLayout && "p-0")}>
                          {isElementQuestion ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
                                 <div className="space-y-2">
@@ -751,22 +810,29 @@ export default function QuestionEditor() {
                                      {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                                 </div>
                             </div>
-                        ) : (
-                             <div className="p-6">
-                                {element.type === 'logic' ? (
-                                    <LogicBlockEditor elementIndex={index} />
-                                ) : (
-                                    <div className="space-y-6">
-                                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
-                                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
-                                        {element.type === 'divider' && <hr className="border-border" />}
-                                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                                            <Controller name={`elements.${index}.url`} control={control} render={({ field }) => <FormItem><FormLabel>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} URL</FormLabel><MediaSelect {...field} filterType={getMediaFilterType(element.type)}/></FormItem>} />
-                                        )}
-                                        {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
-                                    </div>
+                        ) : isElementLayout ? (
+                             <div>
+                                {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
+                                {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
+                                {element.type === 'divider' && <hr className="my-4 border-border" />}
+                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                                    <Controller
+                                        name={`elements.${index}.url`}
+                                        control={control}
+                                        render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
+                                    />
+                                )}
+                                {element.type === 'embed' && (
+                                    <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Embed HTML</FormLabel>
+                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
+                                        </FormItem>
+                                    )} />
                                 )}
                             </div>
+                        ) : (
+                            <LogicBlockEditor elementIndex={index} />
                         )}
                     </CardContent>
                 </Card>
@@ -790,6 +856,4 @@ export default function QuestionEditor() {
       />
     </div>
   );
-
-    
 }
