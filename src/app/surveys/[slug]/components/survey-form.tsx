@@ -420,6 +420,18 @@ const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['
 
 type ElementState = { isVisible: boolean; isRequired: boolean };
 
+const getInitialElementStates = (elements: SurveyElement[]): Record<string, ElementState> => {
+    const initialStates: Record<string, ElementState> = {};
+    elements.forEach(el => {
+        if (isLogic(el)) return;
+        initialStates[el.id] = {
+            isVisible: !el.hidden,
+            isRequired: isQuestion(el) ? el.isRequired : false,
+        };
+    });
+    return initialStates;
+};
+
 export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -453,8 +465,10 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     });
     
     const watchedValues = useWatch({ control: form.control });
-
-    const [elementStates, setElementStates] = React.useState<Record<string, ElementState>>({});
+    
+    const [elementStates, setElementStates] = React.useState<Record<string, ElementState>>(
+      () => getInitialElementStates(survey.elements)
+    );
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
 
@@ -480,60 +494,41 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const isMultiPage = pages.length > 1;
 
     React.useEffect(() => {
-        const initialStates: Record<string, ElementState> = {};
-        survey.elements.forEach(el => {
-            if (isLogic(el)) return;
-            initialStates[el.id] = {
-                isVisible: !el.hidden,
-                isRequired: isQuestion(el) ? el.isRequired : false
-            };
-        });
-        setElementStates(initialStates);
-    }, [survey.elements]);
-
-    React.useEffect(() => {
-        const newStates = JSON.parse(JSON.stringify(elementStates)) as Record<string, ElementState>;
+        // Reset states based on default properties before applying logic
+        const initialStates: Record<string, ElementState> = getInitialElementStates(survey.elements);
+    
         let newSubmitDisabled = false;
-        let jumpTargetId: string | null = null;
-
         const logicBlocks = survey.elements.filter(isLogic);
-
-        logicBlocks.forEach(block => {
-            block.rules.forEach(rule => {
-                const answer = watchedValues[rule.sourceQuestionId];
-                if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
-                    const { type, targetElementId, targetElementIds } = rule.action;
-                    switch(type) {
-                        case 'jump':
-                            if (targetElementId) jumpTargetId = targetElementId;
-                            break;
-                        case 'show':
-                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isVisible = true; });
-                            break;
-                        case 'hide':
-                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isVisible = false; });
-                            break;
-                        case 'require':
-                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isRequired = true; });
-                            break;
-                        case 'disableSubmit':
-                            newSubmitDisabled = true;
-                            break;
-                    }
-                }
-            });
-        });
-
-        setElementStates(newStates);
-        setIsSubmitDisabled(newSubmitDisabled);
         
-        if (jumpTargetId) {
-            const target = document.getElementById(jumpTargetId);
-            if (target) {
-                setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        logicBlocks.forEach(block => {
+          block.rules.forEach(rule => {
+            const answer = watchedValues[rule.sourceQuestionId];
+            
+            if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
+              const { type, targetElementIds } = rule.action;
+              switch (type) {
+                case 'show':
+                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = true; });
+                  break;
+                case 'hide':
+                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = false; });
+                  break;
+                case 'require':
+                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isRequired = true; });
+                  break;
+                case 'disableSubmit':
+                  newSubmitDisabled = true;
+                  break;
+                // The 'jump' action is handled in `handleNext`
+              }
             }
-        }
-    }, [watchedValues, survey.elements, elementStates]);
+          });
+        });
+    
+        setElementStates(initialStates);
+        setIsSubmitDisabled(newSubmitDisabled);
+    
+      }, [watchedValues, survey.elements]);
 
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
@@ -603,11 +598,40 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
             });
     };
 
-     const handleNext = async () => {
+    const handleNext = async () => {
         const questionIdsOnPage = pages[currentPageIndex].filter(isQuestion).map(q => q.id);
         const isValid = await form.trigger(questionIdsOnPage);
+
         if (isValid) {
-            setCurrentPageIndex(prev => prev + 1);
+            let nextPageIndex = currentPageIndex + 1; // Default to next page
+
+            // Check for jump logic
+            const logicBlocks = survey.elements.filter(isLogic);
+            let jumpAction = false;
+            
+            for (const block of logicBlocks) {
+                // Logic must be on the current page or a previous one to be evaluated
+                const blockPageIndex = pages.findIndex(p => p.some(el => el.id === block.id));
+                if (blockPageIndex > currentPageIndex) continue;
+
+                for (const rule of block.rules) {
+                    const answer = form.getValues(rule.sourceQuestionId);
+                    if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
+                        if (rule.action.type === 'jump' && rule.action.targetElementId) {
+                            const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
+                            // Only jump forward
+                            if (targetPageIndex > -1 && targetPageIndex > currentPageIndex) {
+                                nextPageIndex = targetPageIndex;
+                                jumpAction = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (jumpAction) break;
+            }
+
+            setCurrentPageIndex(nextPageIndex);
             window.scrollTo(0, 0);
         } else {
             toast({ variant: 'destructive', title: 'Please fill out all required fields on this page.' });
