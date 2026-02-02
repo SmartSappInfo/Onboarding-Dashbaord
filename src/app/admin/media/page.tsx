@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { collection, query, orderBy, getFirestore } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
 
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
@@ -53,8 +53,8 @@ export default function MediaLibraryPage() {
   }, [assets, activeTab, searchTerm]);
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between gap-4">
         <div className="w-full max-w-sm">
             <Input
               placeholder="Search by name..."
@@ -69,33 +69,36 @@ export default function MediaLibraryPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="relative grid w-full grid-cols-5 border-b-2 border-primary bg-transparent p-0">
             {TABS.map(tab => (
-              <TabsTrigger key={tab} value={tab} className="capitalize">{tab}</TabsTrigger>
+              <TabsTrigger 
+                key={tab} 
+                value={tab} 
+                className="capitalize rounded-none rounded-t-md bg-transparent text-muted-foreground shadow-none data-[state=active]:bg-card data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none data-[state=active]:-mb-[2px] data-[state=active]:border-t data-[state=active]:border-x"
+              >
+                {tab}
+              </TabsTrigger>
             ))}
         </TabsList>
-
-        {TABS.map(tab => (
-          <TabsContent key={tab} value={tab} className="mt-0 rounded-lg border bg-card p-4 shadow-sm">
-            {error && <div className="text-destructive">Error loading media: {error.message}</div>}
-            
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {isLoading ? (
-                Array.from({ length: 10 }).map((_, i) => (
-                  <Skeleton key={i} className="aspect-square rounded-lg" />
-                ))
-              ) : filteredAssets.length > 0 ? (
-                filteredAssets.map(asset => (
-                  <MediaAssetCard key={asset.id} asset={asset} />
-                ))
-              ) : (
-                <div className="col-span-full py-20 text-center text-muted-foreground">
-                  No {tab} found.
-                </div>
-              )}
-            </div>
-          </TabsContent>
-        ))}
+        <div className="mt-0 rounded-b-lg border-x border-b bg-card p-4 shadow-sm">
+          {error && <div className="text-destructive">Error loading media: {error.message}</div>}
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {isLoading ? (
+              Array.from({ length: 10 }).map((_, i) => (
+                <Skeleton key={i} className="aspect-square rounded-lg" />
+              ))
+            ) : filteredAssets.length > 0 ? (
+              filteredAssets.map(asset => (
+                <MediaAssetCard key={asset.id} asset={asset} />
+              ))
+            ) : (
+              <div className="col-span-full py-20 text-center text-muted-foreground">
+                No {activeTab} found.
+              </div>
+            )}
+          </div>
+        </div>
       </Tabs>
     </div>
   );
