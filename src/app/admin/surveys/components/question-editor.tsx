@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical, Bot, Check, ChevronsUpDown, X } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -19,6 +19,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuPortal,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuLabel,
+  DropdownMenuCheckboxItem
+} from '@/components/ui/dropdown-menu';
 
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
@@ -332,8 +347,8 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
 
 
 export default function QuestionEditor() {
-  const { control, watch, formState: { errors } } = useFormContext();
-  const { fields, append, remove, swap } = useFieldArray({
+  const { control, watch, setValue, formState: { errors } } = useFormContext();
+  const { fields, append, remove, swap, insert } = useFieldArray({
     control,
     name: 'elements',
   });
@@ -350,7 +365,8 @@ export default function QuestionEditor() {
 
     if (isQuestion(newElement)) {
         (newElement as SurveyQuestion).title = '';
-        (newElement as SurveyQuestion).isRequired = true;
+        (newElement as SurveyQuestion).isRequired = false;
+        (newElement as SurveyQuestion).hidden = false;
         if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
             (newElement as SurveyQuestion).options = ['Option 1', 'Option 2'];
         }
@@ -369,6 +385,15 @@ export default function QuestionEditor() {
     append(newElement);
   };
   
+  const duplicateElement = (index: number) => {
+    const elementToDuplicate = fields[index];
+    const newElement = {
+        ...JSON.parse(JSON.stringify(elementToDuplicate)),
+        id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    };
+    insert(index + 1, newElement);
+  };
+
   const formErrors = errors.elements as any[] | undefined;
 
   const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'audio' | 'document' | undefined => {
@@ -378,6 +403,19 @@ export default function QuestionEditor() {
       if (type === 'document') return 'document';
       return undefined;
   }
+  
+  const questionTypes: { type: SurveyQuestion['type'], label: string }[] = [
+    { type: 'text', label: 'Short Text'},
+    { type: 'long-text', label: 'Long Text'},
+    { type: 'yes-no', label: 'Yes/No'},
+    { type: 'multiple-choice', label: 'Multiple Choice'},
+    { type: 'checkboxes', label: 'Checkboxes'},
+    { type: 'dropdown', label: 'Dropdown'},
+    { type: 'rating', label: 'Rating'},
+    { type: 'date', label: 'Date'},
+    { type: 'time', label: 'Time'},
+    { type: 'file-upload', label: 'File Upload'},
+  ];
 
   return (
     <div className="space-y-6">
@@ -410,15 +448,62 @@ export default function QuestionEditor() {
                 >
                     <ArrowDown className="h-4 w-4" />
                 </Button>
-                <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                onClick={() => remove(index)}
-                >
-                <Trash2 className="h-4 w-4" />
-                </Button>
+                
+                 <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                       {isElementQuestion && (
+                        <>
+                            <DropdownMenuCheckboxItem
+                                checked={element.isRequired}
+                                onCheckedChange={(checked) => setValue(`elements.${index}.isRequired`, checked)}
+                            >
+                                <CheckSquare className="mr-2 h-4 w-4" />
+                                <span>Required</span>
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>
+                                    <Type className="mr-2 h-4 w-4" />
+                                    <span>Turn into</span>
+                                </DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuRadioGroup value={element.type} onValueChange={(type) => setValue(`elements.${index}.type`, type)}>
+                                            {questionTypes.map(qType => (
+                                                <DropdownMenuRadioItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>
+                                                    {qType.label} {qType.type === 'file-upload' && '(soon)'}
+                                                </DropdownMenuRadioItem>
+                                            ))}
+                                        </DropdownMenuRadioGroup>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                        </>
+                       )}
+                        <DropdownMenuCheckboxItem
+                            checked={element.hidden}
+                            onCheckedChange={(checked) => setValue(`elements.${index}.hidden`, checked)}
+                        >
+                            <EyeOff className="mr-2 h-4 w-4" />
+                            <span>Hide by default</span>
+                        </DropdownMenuCheckboxItem>
+                        <DropdownMenuItem onClick={() => duplicateElement(index)}>
+                            <Copy className="mr-2 h-4 w-4" />
+                            <span>Duplicate</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
             </div>
             <CardHeader>
                 <CardTitle className="text-lg">
@@ -434,43 +519,7 @@ export default function QuestionEditor() {
                              <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="e.g., What is your favorite color?" />} />
                              {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div>
-                                <Label>Question Type</Label>
-                                <Controller
-                                    name={`elements.${index}.type`}
-                                    control={control}
-                                    render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger><SelectValue placeholder="Select a type" /></SelectTrigger>
-                                        <SelectContent>
-                                        <SelectItem value="text">Short Text</SelectItem>
-                                        <SelectItem value="long-text">Long Text (Paragraph)</SelectItem>
-                                        <SelectItem value="yes-no">Yes/No</SelectItem>
-                                        <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                                        <SelectItem value="checkboxes">Checkboxes</SelectItem>
-                                        <SelectItem value="dropdown">Dropdown</SelectItem>
-                                        <SelectItem value="rating">Rating (1-5)</SelectItem>
-                                        <SelectItem value="date">Date</SelectItem>
-                                        <SelectItem value="time">Time</SelectItem>
-                                        <SelectItem value="file-upload" disabled>File Upload (Soon)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    )}
-                                />
-                            </div>
-                            <div className="flex flex-col gap-3 rounded-lg border p-3 bg-background">
-                                <div className="flex items-center justify-between">
-                                    <Label>Required</Label>
-                                    <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => ( <Switch checked={field.value} onCheckedChange={field.onChange} /> )} />
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <Label>Hidden by default</Label>
-                                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => ( <Switch checked={!!field.value} onCheckedChange={field.onChange} /> )} />
-                                </div>
-                            </div>
-                        </div>
-
+                        
                          {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
                             <div>
                                 <OptionsEditor questionIndex={index} />
@@ -482,10 +531,6 @@ export default function QuestionEditor() {
                      <LogicBlockEditor elementIndex={index} />
                 ) : (
                     <>
-                        <div className="flex items-center justify-end rounded-lg border p-3 bg-background -mt-4 -mb-2">
-                             <Label className="mr-3">Hidden by default</Label>
-                             <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => ( <Switch checked={!!field.value} onCheckedChange={field.onChange} /> )} />
-                        </div>
                         {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
                         {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
                         {element.type === 'divider' && <hr className="border-border" />}
