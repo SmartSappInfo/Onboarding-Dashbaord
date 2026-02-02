@@ -35,7 +35,7 @@ const navItems = [
 
 function AdminDashboardSkeleton() {
   return (
-    <div className="flex min-h-screen w-full bg-muted/30">
+    <div className="flex min-h-screen w-full bg-background">
         <div className="hidden md:flex flex-col gap-4 border-r bg-background p-2 w-72">
             <div className="p-2 h-14 flex items-center justify-center">
                 <Skeleton className="h-8 w-32" />
@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/30">
+      <div className="flex min-h-screen w-full bg-background">
         <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg">
           <SidebarHeader className="p-2">
              <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">

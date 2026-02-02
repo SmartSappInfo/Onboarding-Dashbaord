@@ -84,7 +84,7 @@ export default function PublicSurveyPage() {
     
     if (isLoading) {
         return (
-            <div className="bg-muted min-h-screen">
+            <div className="bg-background min-h-screen">
                 <SurveyPageSkeleton />
             </div>
         );
@@ -92,7 +92,7 @@ export default function PublicSurveyPage() {
 
     if (error) {
         return (
-            <div className="bg-muted min-h-screen flex items-center justify-center">
+            <div className="bg-background min-h-screen flex items-center justify-center">
                 <div className="text-center p-8">
                     <h1 className="text-2xl font-bold mb-4">An Error Occurred</h1>
                     <p className="text-destructive">{error}</p>
@@ -103,7 +103,7 @@ export default function PublicSurveyPage() {
 
     if (!survey) {
         return (
-             <div className="bg-muted min-h-screen flex items-center justify-center">
+             <div className="bg-background min-h-screen flex items-center justify-center">
                 <div className="text-center p-8">
                     <h1 className="text-2xl font-bold mb-4">Survey Not Found</h1>
                     <p className="text-muted-foreground">The survey you are looking for could not be found.</p>
@@ -114,7 +114,7 @@ export default function PublicSurveyPage() {
     
     if (isSubmitted) {
         return (
-            <div className="bg-muted min-h-screen flex items-center justify-center">
+            <div className="bg-background min-h-screen flex items-center justify-center">
                  <div className="max-w-2xl mx-auto text-center p-8">
                      <SmartSappLogo className="h-12 mx-auto mb-8" />
                     <h1 className="text-3xl font-bold mb-4">Thank You!</h1>
@@ -125,7 +125,7 @@ export default function PublicSurveyPage() {
     }
 
     return (
-        <div className="bg-muted min-h-screen">
+        <div className="bg-background min-h-screen">
             <div className="max-w-2xl mx-auto py-12 px-4">
                 {survey.bannerImageUrl && (
                     <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
