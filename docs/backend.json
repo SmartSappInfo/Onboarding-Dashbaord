@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "School": {
@@ -134,7 +135,6 @@
         },
         "type": {
           "type": "string",
-          "description": "The type of media asset.",
           "enum": ["image", "video", "audio", "document", "link"]
         },
         "mimeType": {
@@ -170,50 +170,81 @@
       },
       "required": ["name", "url", "type", "uploadedBy", "createdAt"]
     },
+    "SurveyQuestion": {
+        "title": "Survey Question",
+        "type": "object",
+        "description": "Represents a single question within a survey.",
+        "properties": {
+          "id": { "type": "string", "description": "Unique identifier for the question within the survey." },
+          "title": { "type": "string", "description": "The question text." },
+          "type": { "type": "string", "enum": ["text", "long-text", "yes-no", "multiple-choice", "checkboxes", "dropdown", "rating", "date", "time", "file-upload"], "description": "The type of question." },
+          "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice, checkbox, or dropdown questions." },
+          "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option for checkboxes." },
+          "isRequired": { "type": "boolean", "description": "Whether the question must be answered." },
+          "displayCondition": {
+            "type": "object",
+            "description": "Specifies a condition for this question to be displayed, based on the answer to another question.",
+            "properties": {
+              "questionId": {
+                "type": "string",
+                "description": "The ID of the question that this question depends on."
+              },
+              "expectedValue": {
+                "description": "The answer value that the dependent question must have for this question to be displayed. For checkboxes, use an array of strings."
+              }
+            },
+            "required": ["questionId", "expectedValue"]
+          }
+        },
+        "required": ["id", "title", "type", "isRequired"]
+    },
+    "SurveyLayoutBlock": {
+        "title": "Survey Layout Block",
+        "type": "object",
+        "description": "Represents a non-interactive layout element within a survey form.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique identifier for the layout block." },
+            "type": { "type": "string", "enum": ["heading", "description", "divider", "image", "video", "audio", "document", "embed"], "description": "The type of layout block." },
+            "title": { "type": "string", "description": "Content for a heading block." },
+            "text": { "type": "string", "description": "Content for a description block." },
+            "url": { "type": "string", "format": "uri", "description": "URL for image, video, audio, or document blocks." },
+            "html": { "type": "string", "description": "HTML content for an embed block." },
+            "displayCondition": {
+              "type": "object",
+              "description": "Specifies a condition for this block to be displayed.",
+              "properties": {
+                "questionId": { "type": "string", "description": "The ID of the question this block depends on." },
+                "expectedValue": { "description": "The answer value required for this block to be displayed." }
+              },
+              "required": ["questionId", "expectedValue"]
+            }
+        },
+        "required": ["id", "type"]
+    },
     "Survey": {
       "title": "Survey",
       "type": "object",
-      "description": "Represents a survey with questions.",
+      "description": "Represents a survey with questions and layout blocks.",
       "properties": {
         "title": { "type": "string", "description": "The title of the survey." },
         "description": { "type": "string", "description": "Instructions or description for the survey." },
         "slug": { "type": "string", "description": "URL-friendly slug for the survey page." },
         "bannerImageUrl": { "type": "string", "format": "uri", "description": "URL for the survey's banner image." },
         "status": { "type": "string", "enum": ["draft", "published", "archived"], "description": "The current status of the survey." },
-        "questions": {
+        "elements": {
           "type": "array",
-          "description": "An ordered list of questions in the survey.",
+          "description": "An ordered list of questions and layout blocks in the survey.",
           "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string", "description": "Unique identifier for the question within the survey." },
-              "title": { "type": "string", "description": "The question text." },
-              "type": { "type": "string", "enum": ["text", "long-text", "yes-no", "multiple-choice", "checkboxes", "dropdown", "rating", "date", "time", "file-upload"], "description": "The type of question." },
-              "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice, checkbox, or dropdown questions." },
-              "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option for checkboxes." },
-              "isRequired": { "type": "boolean", "description": "Whether the question must be answered." },
-              "displayCondition": {
-                "type": "object",
-                "description": "Specifies a condition for this question to be displayed, based on the answer to another question.",
-                "properties": {
-                  "questionId": {
-                    "type": "string",
-                    "description": "The ID of the question that this question depends on."
-                  },
-                  "expectedValue": {
-                    "description": "The answer value that the dependent question must have for this question to be displayed. For checkboxes, use an array of strings."
-                  }
-                },
-                "required": ["questionId", "expectedValue"]
-              }
-            },
-            "required": ["id", "title", "type", "isRequired"]
+             "anyOf": [
+              { "$ref": "#/entities/SurveyQuestion" },
+              { "$ref": "#/entities/SurveyLayoutBlock" }
+            ]
           }
         },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["title", "slug", "status", "questions", "createdAt", "updatedAt"]
+      "required": ["title", "slug", "status", "elements", "createdAt", "updatedAt"]
     },
     "SurveyResponse": {
       "title": "Survey Response",

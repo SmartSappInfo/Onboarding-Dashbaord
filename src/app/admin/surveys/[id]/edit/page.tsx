@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -48,12 +49,34 @@ const questionSchema = z.object({
     path: ['options'],
 });
 
+const layoutBlockSchema = z.object({
+  id: z.string(),
+  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed']),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  url: z.string().url().optional().or(z.literal('')),
+  html: z.string().optional(),
+  displayCondition: z.object({
+    questionId: z.string(),
+    expectedValue: z.string().min(1, "Expected value is required for condition."),
+  }).optional(),
+}).refine(data => {
+    if (data.type === 'heading' && !data.title) return false;
+    if (data.type === 'description' && !data.text) return false;
+    return true;
+}, {
+    message: 'This block requires content.',
+    path: ['title'] // Or path that makes sense
+});
+
+const elementSchema = z.union([questionSchema, layoutBlockSchema]);
+
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
-  questions: z.array(questionSchema).min(1, 'Survey must have at least one question.'),
+  elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -82,7 +105,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 description: survey.description,
                 bannerImageUrl: survey.bannerImageUrl || '',
                 status: survey.status,
-                questions: survey.questions || [],
+                elements: survey.elements || [],
             });
         }
     }, [survey, form]);
@@ -221,8 +244,8 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Questions</CardTitle>
-                        <CardDescription>Build your survey using the question editor below.</CardDescription>
+                        <CardTitle>Form Builder</CardTitle>
+                        <CardDescription>Build your survey using the editor below.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <QuestionEditor />

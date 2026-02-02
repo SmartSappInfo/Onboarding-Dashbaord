@@ -1,3 +1,4 @@
+
 export interface School {
   id: string;
   name: string;
@@ -55,6 +56,21 @@ export interface SurveyQuestion {
   };
 }
 
+export interface SurveyLayoutBlock {
+  id: string;
+  type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed';
+  title?: string; // For heading
+  text?: string; // For description
+  url?: string; // For media types
+  html?: string; // For embed
+  displayCondition?: {
+    questionId: string;
+    expectedValue: string | string[];
+  };
+}
+
+export type SurveyElement = SurveyQuestion | SurveyLayoutBlock;
+
 export interface Survey {
   id: string;
   title: string;
@@ -62,7 +78,7 @@ export interface Survey {
   slug: string;
   bannerImageUrl?: string;
   status: 'draft' | 'published' | 'archived';
-  questions: SurveyQuestion[];
+  elements: SurveyElement[];
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
 }

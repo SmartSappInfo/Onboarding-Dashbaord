@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useParams, useRouter } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion } from "@/lib/types";
+import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
 import { doc, collection, query } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,7 @@ function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text'
     );
 }
 
+const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
 export default function SurveyResultsPage() {
     const params = useParams();
@@ -165,7 +167,9 @@ export default function SurveyResultsPage() {
     const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
         if (!survey || !responses) return [];
 
-        return survey.questions.map(question => {
+        const questions = survey.elements.filter(isQuestion);
+
+        return questions.map(question => {
             const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
 
             if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
@@ -296,7 +300,7 @@ export default function SurveyResultsPage() {
                 {analyzedResults.map((result, index) => (
                     <Card key={result.question.id}>
                         <CardHeader>
-                            <CardTitle>{index + 1}. {result.question.title}</CardTitle>
+                            <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
                              <CardDescription>
                                 {result.total} {result.total === 1 ? 'response' : 'responses'}
                              </CardDescription>
