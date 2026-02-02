@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
@@ -10,7 +10,6 @@ import { doc, updateDoc } from 'firebase/firestore';
 import type { Survey } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -25,12 +24,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
+import QuestionEditor from '../../components/question-editor';
+
+
+const questionSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, 'Question title is required.'),
+  type: z.enum(['text', 'yes-no', 'multiple-choice', 'checkboxes']),
+  options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
+  allowOther: z.boolean().optional(),
+  isRequired: z.boolean(),
+  displayCondition: z.object({
+    questionId: z.string(),
+    expectedValue: z.string().min(1, "Expected value is required for condition."),
+  }).optional(),
+}).refine(data => {
+    if ((data.type === 'multiple-choice' || data.type === 'checkboxes') && (!data.options || data.options.length < 2)) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Must have at least two options.',
+    path: ['options'],
+});
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
+  questions: z.array(questionSchema).min(1, 'Survey must have at least one question.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -59,6 +82,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 description: survey.description,
                 bannerImageUrl: survey.bannerImageUrl || '',
                 status: survey.status,
+                questions: survey.questions || [],
             });
         }
     }, [survey, form]);
@@ -104,30 +128,33 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     if (isLoading) {
         return (
-            <Card className="max-w-4xl mx-auto">
+            <Card>
                 <CardHeader>
                     <Skeleton className="h-8 w-3/4" />
                     <Skeleton className="h-4 w-1/2" />
                 </CardHeader>
-                <CardContent className="space-y-8">
+                <CardContent className="space-y-8 mt-6">
                    <Skeleton className="h-10 w-full" />
                    <Skeleton className="h-24 w-full" />
                    <Skeleton className="h-24 w-full" />
                    <Skeleton className="h-10 w-full" />
+                   <div className="mt-8">
+                        <Skeleton className="h-40 w-full" />
+                   </div>
                 </CardContent>
             </Card>
         )
     }
 
     return (
-        <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle>Edit Survey</CardTitle>
-                <CardDescription>Update the details for your survey. The question editor will be enabled in a future update.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+        <FormProvider {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Edit Survey</CardTitle>
+                        <CardDescription>Update the details and questions for your survey.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
                         <FormField
                             control={form.control}
                             name="title"
@@ -189,39 +216,29 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                             </FormItem>
                             )}
                         />
+                    </CardContent>
+                </Card>
+                
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Questions</CardTitle>
+                        <CardDescription>Build your survey using the question editor below.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <QuestionEditor />
+                    </CardContent>
+                </Card>
 
-                        <div className="rounded-lg border bg-muted/50 p-6">
-                            <h3 className="text-lg font-semibold mb-2">Questions</h3>
-                            <p className="text-sm text-muted-foreground mb-4">The dynamic question editor will be implemented in the next phase and existing questions cannot be modified at this time.</p>
-                            {survey?.questions && (
-                                <div className="space-y-4">
-                                {survey.questions.map((q, i) => (
-                                    <div key={q.id} className="p-4 border rounded-md bg-background/50">
-                                        <p className="font-medium">
-                                            {i + 1}. {q.title}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground capitalize mt-1">
-                                            Type: {q.type.replace('-', ' ')}
-                                            {q.isRequired && ' (Required)'}
-                                        </p>
-                                    </div>
-                                ))}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="flex justify-end gap-4">
-                            <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
-                            Cancel
-                            </Button>
-                            <Button type="submit" disabled={form.formState.isSubmitting}>
-                            {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                <div className="flex justify-end gap-4">
+                    <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
+                    Cancel
+                    </Button>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+            </form>
+        </FormProvider>
     );
 }
 

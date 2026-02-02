@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -9,7 +9,6 @@ import { collection, addDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
-  Form,
   FormControl,
   FormField,
   FormItem,
@@ -23,60 +22,38 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
-import type { SurveyQuestion } from '@/lib/types';
+import QuestionEditor from '../components/question-editor';
 
+const questionSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, 'Question title is required.'),
+  type: z.enum(['text', 'yes-no', 'multiple-choice', 'checkboxes']),
+  options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
+  allowOther: z.boolean().optional(),
+  isRequired: z.boolean(),
+  displayCondition: z.object({
+    questionId: z.string(),
+    expectedValue: z.string().min(1, "Expected value is required for condition."),
+  }).optional(),
+}).refine(data => {
+    if ((data.type === 'multiple-choice' || data.type === 'checkboxes') && (!data.options || data.options.length < 2)) {
+        return false;
+    }
+    return true;
+}, {
+    message: 'Must have at least two options.',
+    path: ['options'],
+});
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
+  questions: z.array(questionSchema).min(1, 'Survey must have at least one question.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
-
-// This is the hardcoded question set based on the seed survey.
-const seedQuestions: SurveyQuestion[] = [
-    {
-      id: 'q1-pickup-duty',
-      title: 'Do you personally pick up your ward at school closing time?',
-      type: 'yes-no',
-      isRequired: true,
-    },
-    {
-      id: 'q2-process-effective',
-      title: 'If yes, is the current pickup process at your ward’s school effective and convenient for you?',
-      type: 'yes-no',
-      isRequired: true,
-      displayCondition: {
-        questionId: 'q1-pickup-duty',
-        expectedValue: 'Yes',
-      },
-    },
-    {
-      id: 'q3-challenges',
-      title: 'If no, what challenges do you experience? (Select all that apply)',
-      type: 'checkboxes',
-      options: [
-        'My child takes a long time to come out',
-        'My child is still doing classwork at closing time',
-        'Long queues or delays',
-        'Poor communication from the school',
-      ],
-      allowOther: true,
-      isRequired: true,
-      displayCondition: {
-        questionId: 'q2-process-effective',
-        expectedValue: 'No',
-      },
-    },
-    {
-      id: 'q4-express-pickup',
-      title: 'If an express pickup service were available—guaranteeing that your child is brought out with 3mins of arriving at the school without you getting of your car—would you use it?',
-      type: 'yes-no',
-      isRequired: true,
-    },
-];
 
 export default function NewSurveyPage() {
     const { toast } = useToast();
@@ -90,6 +67,7 @@ export default function NewSurveyPage() {
             description: '',
             bannerImageUrl: '',
             status: 'draft',
+            questions: [],
         },
     });
 
@@ -107,7 +85,6 @@ export default function NewSurveyPage() {
         const surveyData = {
             ...data,
             slug,
-            questions: seedQuestions, // Using the hardcoded questions for now
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -143,14 +120,14 @@ export default function NewSurveyPage() {
     return (
         <div>
             <h1 className="text-4xl font-bold tracking-tight mb-8">Create New Survey</h1>
-            <Card className="max-w-4xl mx-auto">
-                <CardHeader>
-                    <CardTitle>Survey Details</CardTitle>
-                    <CardDescription>Fill in the details for your new survey. The question builder will be enabled in a future update.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormProvider {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Survey Details</CardTitle>
+                            <CardDescription>Fill in the details for your new survey.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-8">
                              <FormField
                                 control={form.control}
                                 name="title"
@@ -212,37 +189,30 @@ export default function NewSurveyPage() {
                                 </FormItem>
                                 )}
                             />
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Questions</CardTitle>
+                            <CardDescription>Build your survey using the question editor below.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <QuestionEditor />
+                        </CardContent>
+                    </Card>
 
-                             <div className="rounded-lg border bg-muted/50 p-6">
-                                <h3 className="text-lg font-semibold mb-2">Questions</h3>
-                                <p className="text-sm text-muted-foreground mb-4">The dynamic question editor will be implemented in the next phase. For now, creating a survey will use a default set of questions.</p>
-                                <div className="space-y-4">
-                                {seedQuestions.map((q, i) => (
-                                    <div key={q.id} className="p-4 border rounded-md bg-background/50">
-                                        <p className="font-medium">
-                                            {i + 1}. {q.title}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground capitalize mt-1">
-                                            Type: {q.type.replace('-', ' ')}
-                                            {q.isRequired && ' (Required)'}
-                                        </p>
-                                    </div>
-                                ))}
-                                </div>
-                            </div>
 
-                            <div className="flex justify-end gap-4">
-                                <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
-                                Cancel
-                                </Button>
-                                <Button type="submit" disabled={form.formState.isSubmitting}>
-                                {form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}
-                                </Button>
-                            </div>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
+                    <div className="flex justify-end gap-4">
+                        <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
+                        Cancel
+                        </Button>
+                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}
+                        </Button>
+                    </div>
+                </form>
+            </FormProvider>
         </div>
     );
 }
