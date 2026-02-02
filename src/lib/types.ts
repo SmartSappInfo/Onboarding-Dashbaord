@@ -1,6 +1,7 @@
 
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -52,6 +53,7 @@ export interface SurveyQuestion {
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
+  hidden?: boolean;
 }
 
 export interface SurveyLayoutBlock {
@@ -61,6 +63,13 @@ export interface SurveyLayoutBlock {
   text?: string; // For description
   url?: string; // For media types
   html?: string; // For embed
+  hidden?: boolean;
+}
+
+export interface SurveyLogicAction {
+  type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
+  targetElementId?: string; // For 'jump'
+  targetElementIds?: string[]; // For 'require', 'show', 'hide'
 }
 
 export interface SurveyLogicBlock {
@@ -69,9 +78,8 @@ export interface SurveyLogicBlock {
   rules: {
     sourceQuestionId: string;
     operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
-    targetValue: any;
-    action: 'jump';
-    targetElementId: string;
+    targetValue?: any;
+    action: SurveyLogicAction;
   }[];
 }
 

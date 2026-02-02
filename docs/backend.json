@@ -180,7 +180,8 @@
           "type": { "type": "string", "enum": ["text", "long-text", "yes-no", "multiple-choice", "checkboxes", "dropdown", "rating", "date", "time", "file-upload"], "description": "The type of question." },
           "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice, checkbox, or dropdown questions." },
           "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option for checkboxes." },
-          "isRequired": { "type": "boolean", "description": "Whether the question must be answered." }
+          "isRequired": { "type": "boolean", "description": "Whether the question must be answered. Can be overridden by logic blocks." },
+          "hidden": { "type": "boolean", "description": "Whether the question is hidden by default. Can be overridden by logic blocks." }
         },
         "required": ["id", "title", "type", "isRequired"]
     },
@@ -194,7 +195,8 @@
             "title": { "type": "string", "description": "Content for a heading block." },
             "text": { "type": "string", "description": "Content for a description block." },
             "url": { "type": "string", "format": "uri", "description": "URL for image, video, audio, or document blocks." },
-            "html": { "type": "string", "description": "HTML content for an embed block." }
+            "html": { "type": "string", "description": "HTML content for an embed block." },
+            "hidden": { "type": "boolean", "description": "Whether the block is hidden by default. Can be overridden by logic blocks." }
         },
         "required": ["id", "type"]
     },
@@ -214,10 +216,17 @@
                 "sourceQuestionId": { "type": "string" },
                 "operator": { "type": "string", "enum": ["isEqualTo", "isNotEqualTo", "contains", "doesNotContain", "startsWith", "doesNotStartWith", "endsWith", "doesNotEndWith", "isEmpty", "isNotEmpty", "isGreaterThan", "isLessThan"] },
                 "targetValue": { "description": "The value to compare against." },
-                "action": { "type": "string", "enum": ["jump"] },
-                "targetElementId": { "type": "string" }
+                "action": {
+                  "type": "object",
+                  "properties": {
+                    "type": { "type": "string", "enum": ["jump", "require", "show", "hide", "disableSubmit"] },
+                    "targetElementId": { "type": "string", "description": "The ID of the target element for 'jump' actions." },
+                    "targetElementIds": { "type": "array", "items": { "type": "string" }, "description": "A list of target element IDs for 'require', 'show', or 'hide' actions." }
+                  },
+                  "required": ["type"]
+                }
               },
-              "required": ["sourceQuestionId", "operator", "targetValue", "action", "targetElementId"]
+              "required": ["sourceQuestionId", "operator", "action"]
             }
           }
         },

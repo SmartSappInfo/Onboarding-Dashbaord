@@ -32,6 +32,7 @@ const questionSchema = z.object({
   options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
+  hidden: z.boolean().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -49,6 +50,7 @@ const layoutBlockSchema = z.object({
   text: z.string().optional(),
   url: z.string().url().optional().or(z.literal('')),
   html: z.string().optional(),
+  hidden: z.boolean().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
@@ -58,16 +60,21 @@ const layoutBlockSchema = z.object({
     path: ['title']
 });
 
+const logicActionSchema = z.object({
+  type: z.enum(['jump', 'require', 'show', 'hide', 'disableSubmit']),
+  targetElementId: z.string().optional(),
+  targetElementIds: z.array(z.string()).optional(),
+});
+
 const logicBlockSchema = z.object({
-    id: z.string(),
-    type: z.literal('logic'),
-    rules: z.array(z.object({
-        sourceQuestionId: z.string().min(1),
-        operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'isGreaterThan', 'isLessThan']),
-        targetValue: z.any(),
-        action: z.literal('jump'),
-        targetElementId: z.string().min(1),
-    })).min(1, 'Logic block must have at least one rule.'),
+  id: z.string(),
+  type: z.literal('logic'),
+  rules: z.array(z.object({
+    sourceQuestionId: z.string().min(1, 'A source question must be selected.'),
+    operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
+    targetValue: z.any().optional(),
+    action: logicActionSchema,
+  })).min(1, 'Logic block must have at least one rule.'),
 });
 
 

@@ -41,10 +41,7 @@ const generateSchema = (elements: SurveyElement[]) => {
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
 
-    return z.object(baseSchemaObject).superRefine((data, ctx) => {
-        // This is complex with jump logic, for now, we rely on showing fields as required.
-        // A full validation would need to trace the user's path.
-    });
+    return z.object(baseSchemaObject);
 };
 
 const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
@@ -81,12 +78,9 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     );
 }
 
-const ElementRenderer = ({ element, index, control, errors }: { element: SurveyElement; index: number; control: any, errors: any }) => {
-    const [isVisible, setIsVisible] = React.useState(true);
+const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { element: SurveyElement; control: any, errors: any; isVisible: boolean; isRequired: boolean; }) => {
 
-    if (!isVisible) return null;
-
-    if (isLogic(element)) {
+    if (isLogic(element) || !isVisible) {
         return null;
     }
     
@@ -97,7 +91,7 @@ const ElementRenderer = ({ element, index, control, errors }: { element: SurveyE
                 <CardContent className="pt-6">
                     <Label className="text-base font-semibold">
                         {question.title}
-                        {question.isRequired && <span className="text-destructive ml-1">*</span>}
+                        {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     <div className="mt-4">
                         {question.type === 'text' && (
@@ -246,37 +240,26 @@ const ElementRenderer = ({ element, index, control, errors }: { element: SurveyE
 }
 
 const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: any): boolean => {
-    const strAnswer = String(answer ?? ''); // Treat null/undefined as empty string
+    const strAnswer = String(answer ?? '');
 
     switch (operator) {
-        case 'isEqualTo': 
-            return strAnswer === String(targetValue);
-        case 'isNotEqualTo': 
-            return strAnswer !== String(targetValue);
-        case 'contains': 
-            return strAnswer.includes(String(targetValue));
-        case 'doesNotContain':
-            return !strAnswer.includes(String(targetValue));
-        case 'startsWith':
-            return strAnswer.startsWith(String(targetValue));
-        case 'doesNotStartWith':
-            return !strAnswer.startsWith(String(targetValue));
-        case 'endsWith':
-            return strAnswer.endsWith(String(targetValue));
-        case 'doesNotEndWith':
-            return !strAnswer.endsWith(String(targetValue));
-        case 'isEmpty':
-            return strAnswer.trim() === '';
-        case 'isNotEmpty':
-            return strAnswer.trim() !== '';
-        case 'isGreaterThan': 
-            return Number(answer) > Number(targetValue);
-        case 'isLessThan': 
-            return Number(answer) < Number(targetValue);
+        case 'isEqualTo': return strAnswer === String(targetValue);
+        case 'isNotEqualTo': return strAnswer !== String(targetValue);
+        case 'contains': return strAnswer.includes(String(targetValue));
+        case 'doesNotContain': return !strAnswer.includes(String(targetValue));
+        case 'startsWith': return strAnswer.startsWith(String(targetValue));
+        case 'doesNotStartWith': return !strAnswer.startsWith(String(targetValue));
+        case 'endsWith': return strAnswer.endsWith(String(targetValue));
+        case 'doesNotEndWith': return !strAnswer.endsWith(String(targetValue));
+        case 'isEmpty': return strAnswer.trim() === '';
+        case 'isNotEmpty': return strAnswer.trim() !== '';
+        case 'isGreaterThan': return Number(answer) > Number(targetValue);
+        case 'isLessThan': return Number(answer) < Number(targetValue);
         default: return false;
     }
 }
 
+type ElementState = { isVisible: boolean; isRequired: boolean };
 
 export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const firestore = useFirestore();
@@ -296,49 +279,89 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     });
     
     const watchedValues = useWatch({ control: form.control });
-    const previousValues = React.useRef(form.getValues());
+
+    const [elementStates, setElementStates] = React.useState<Record<string, ElementState>>({});
+    const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
 
     React.useEffect(() => {
-        const changedQuestionId = Object.keys(watchedValues).find(key => watchedValues[key] !== previousValues.current[key]);
+        const initialStates: Record<string, ElementState> = {};
+        survey.elements.forEach(el => {
+            if (isLogic(el)) return;
+            initialStates[el.id] = {
+                isVisible: !el.hidden,
+                isRequired: isQuestion(el) ? el.isRequired : false
+            };
+        });
+        setElementStates(initialStates);
+    }, [survey.elements]);
 
-        if (changedQuestionId) {
-            const changedQuestionIndex = survey.elements.findIndex(el => el.id === changedQuestionId);
+    React.useEffect(() => {
+        const newStates = JSON.parse(JSON.stringify(elementStates)) as Record<string, ElementState>;
+        let newSubmitDisabled = false;
+        let jumpTargetId: string | null = null;
 
-            if (changedQuestionIndex !== -1) {
-                for (let i = changedQuestionIndex + 1; i < survey.elements.length; i++) {
-                    const nextElement = survey.elements[i];
-                    if (isLogic(nextElement)) {
-                        for (const rule of nextElement.rules) {
-                            if (rule.sourceQuestionId === changedQuestionId) {
-                                const isConditionMet = evaluateCondition(watchedValues[changedQuestionId], rule.operator, rule.targetValue);
-                                if (isConditionMet) {
-                                    if (rule.action === 'jump') {
-                                        const target = document.getElementById(rule.targetElementId);
-                                        if (target) {
-                                            setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-                                        }
-                                    }
-                                    // Stop after first met condition for this change
-                                    previousValues.current = watchedValues;
-                                    return; 
-                                }
-                            }
-                        }
-                    }
-                    if(isQuestion(nextElement)) {
-                        // Stop looking for logic blocks once we hit the next question
-                        break;
+        const logicBlocks = survey.elements.filter(isLogic);
+
+        logicBlocks.forEach(block => {
+            block.rules.forEach(rule => {
+                const answer = watchedValues[rule.sourceQuestionId];
+                if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
+                    const { type, targetElementId, targetElementIds } = rule.action;
+                    switch(type) {
+                        case 'jump':
+                            if (targetElementId) jumpTargetId = targetElementId;
+                            break;
+                        case 'show':
+                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isVisible = true; });
+                            break;
+                        case 'hide':
+                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isVisible = false; });
+                            break;
+                        case 'require':
+                            targetElementIds?.forEach(id => { if(newStates[id]) newStates[id].isRequired = true; });
+                            break;
+                        case 'disableSubmit':
+                            newSubmitDisabled = true;
+                            break;
                     }
                 }
+            });
+        });
+
+        setElementStates(newStates);
+        setIsSubmitDisabled(newSubmitDisabled);
+        
+        if (jumpTargetId) {
+            const target = document.getElementById(jumpTargetId);
+            if (target) {
+                setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
             }
         }
-        previousValues.current = watchedValues;
-    }, [watchedValues, survey.elements]);
+    }, [watchedValues, survey.elements, elementStates]);
 
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (!firestore) return;
         
+        // Manual validation for conditional required fields
+        let isValid = true;
+        survey.elements.filter(isQuestion).forEach(q => {
+            const state = elementStates[q.id];
+            if (state?.isVisible && state?.isRequired) {
+                const value = data[q.id];
+                const isEmpty = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
+                if (isEmpty) {
+                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
+                    isValid = false;
+                }
+            }
+        });
+
+        if (!isValid) {
+            toast({ variant: 'destructive', title: 'Please fill out all required fields.'});
+            return;
+        }
+
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => {
             if (serializedData[key] instanceof Date) {
@@ -387,17 +410,18 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {survey.elements.map((el, index) => (
+            {survey.elements.map((el) => (
                 <ElementRenderer 
                     key={el.id}
                     element={el}
-                    index={index}
                     control={form.control}
                     errors={form.formState.errors}
+                    isVisible={elementStates[el.id]?.isVisible ?? false}
+                    isRequired={elementStates[el.id]?.isRequired ?? false}
                 />
             ))}
-            <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Submitting...' : 'Submit Survey'}
+            <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || isSubmitDisabled}>
+                {form.formState.isSubmitting ? 'Submitting...' : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
             </Button>
         </form>
     );
