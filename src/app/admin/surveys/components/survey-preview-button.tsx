@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -28,7 +29,7 @@ export default function SurveyPreviewButton() {
             </Button>
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
-                <DialogContent className="max-w-3xl h-[90vh] flex flex-col p-0">
+                <DialogContent className="max-w-6xl h-[90vh] flex flex-col p-0">
                     <DialogHeader className="p-6 pb-4 border-b">
                         <DialogTitle>Survey Preview</DialogTitle>
                         <DialogDescription>This is a non-interactive preview of how your survey will appear to users.</DialogDescription>
