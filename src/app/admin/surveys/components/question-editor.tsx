@@ -13,7 +13,7 @@ import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical, Bot } from 'lucid
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
-import AddElementModal from './add-question-modal';
+import AddElementModal from './add-element-modal';
 import { MediaSelect } from '../../schools/components/media-select';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
@@ -67,168 +67,124 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   );
 }
 
-function VisibilityLogicEditor({ elementIndex }: { elementIndex: number }) {
-  const { control, watch, setValue } = useFormContext();
-  const allElements: SurveyElement[] = watch('elements') || [];
-  const condition = watch(`elements.${elementIndex}.visibilityLogic`);
-  const parentQuestionId = condition?.questionId;
-
-  const potentialParents = allElements
-      .slice(0, elementIndex)
-      .filter((el): el is SurveyQuestion => isQuestion(el) && (el.type === 'yes-no' || el.type === 'multiple-choice' || el.type === 'dropdown'));
-
-  const parentQuestion = potentialParents.find(q => q.id === parentQuestionId);
-
-  const handleParentChange = (id: string) => {
-    if (id === 'none') {
-        setValue(`elements.${elementIndex}.visibilityLogic`, undefined);
-    } else {
-        setValue(`elements.${elementIndex}.visibilityLogic`, { questionId: id, expectedValue: '' });
-    }
-  }
-
-  if (elementIndex === 0) return null;
-
-  return (
-    <div className="space-y-3 p-4 border rounded-lg bg-background">
-        <div className="flex justify-between items-center">
-             <Label>Visibility Logic</Label>
-             <Controller
-                name={`elements.${elementIndex}.visibilityLogic`}
-                control={control}
-                render={({ field }) => (
-                    <Switch
-                        checked={!!field.value}
-                        onCheckedChange={(checked) => {
-                            if (checked) {
-                                setValue(`elements.${elementIndex}.visibilityLogic`, { questionId: '', expectedValue: '' });
-                            } else {
-                                setValue(`elements.${elementIndex}.visibilityLogic`, undefined);
-                            }
-                        }}
-                    />
-                )}
-             />
-        </div>
-       {condition && (
-            <>
-                <p className="text-sm text-muted-foreground">Show this element only when...</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <Label className="text-xs font-normal">...this question...</Label>
-                        <Select onValueChange={handleParentChange} value={parentQuestionId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select a question..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {potentialParents.map((q, i) => (
-                                    <SelectItem key={q.id} value={q.id}>
-                                        Question #{allElements.findIndex(el => el.id === q.id) + 1}: {q.title.substring(0,20)}...
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {parentQuestion && (
-                        <div>
-                            <Label className="text-xs font-normal">...has this answer:</Label>
-                            <Controller
-                                name={`elements.${elementIndex}.visibilityLogic.expectedValue`}
-                                control={control}
-                                render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger>
-                                            <SelectValue placeholder="Select an answer..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {(parentQuestion.type === 'yes-no' ? ['Yes', 'No'] : parentQuestion.options || []).map(opt => (
-                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                )}
-                            />
-                        </div>
-                    )}
-                </div>
-            </>
-       )}
-    </div>
-  );
-}
-
-function BranchingLogicEditor({ elementIndex }: { elementIndex: number }) {
+function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
   const { control, watch } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
-    name: `elements.${elementIndex}.branchingLogic`,
+    name: `elements.${elementIndex}.rules`,
   });
 
   const allElements: SurveyElement[] = watch('elements') || [];
-  const currentElement = allElements[elementIndex];
 
-  if (!isQuestion(currentElement) || !['yes-no', 'multiple-choice', 'dropdown'].includes(currentElement.type)) {
-    return null;
-  }
+  const potentialSourceQuestions = allElements
+    .slice(0, elementIndex)
+    .filter((el): el is SurveyQuestion => isQuestion(el));
 
-  const availableOptions = currentElement.type === 'yes-no' ? ['Yes', 'No'] : currentElement.options || [];
-  const availableJumpTargets = allElements
-    .map((el, idx) => ({ ...el, originalIndex: idx }))
-    .filter(el => el.type === 'heading' && el.originalIndex > elementIndex);
+  const potentialTargetElements = allElements.filter(
+    (el, idx) => (isQuestion(el) || el.type === 'heading') && idx > elementIndex
+  );
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-background">
-      <Label>Branching / Skip Logic</Label>
-      <div className="space-y-3">
-        {fields.map((field, index) => (
-          <div key={field.id} className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end p-3 border rounded-md">
-            <div>
-              <Label className="text-xs font-normal">When the answer is...</Label>
+    <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+      {fields.map((field, index) => (
+        <div key={field.id} className="p-4 border rounded-md bg-background relative">
+           <div className="absolute top-2 right-2">
+             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
+                <Trash2 className="h-4 w-4" />
+            </Button>
+           </div>
+          <div className="flex items-start gap-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+                <Bot className="h-5 w-5" />
+                <span>When</span>
+            </div>
+            <div className="flex-grow space-y-2">
               <Controller
-                name={`elements.${elementIndex}.branchingLogic.${index}.onValue`}
+                name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
                 control={control}
                 render={({ field }) => (
                   <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select an answer..." /></SelectTrigger>
+                    <SelectTrigger><SelectValue placeholder="Select a question..." /></SelectTrigger>
                     <SelectContent>
-                      {availableOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                      {potentialSourceQuestions.map((q) => (
+                        <SelectItem key={q.id} value={q.id}>
+                          Q{allElements.findIndex(el => el.id === q.id) + 1}: {q.title}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
               />
-            </div>
-            <div className="flex items-end gap-2">
-                <div className="flex-grow">
-                    <Label className="text-xs font-normal">Then jump to...</Label>
-                    <Controller
-                        name={`elements.${elementIndex}.branchingLogic.${index}.targetElementId`}
-                        control={control}
-                        render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger><SelectValue placeholder="Select a section..." /></SelectTrigger>
-                            <SelectContent>
-                            {availableJumpTargets.map(target => (
-                                <SelectItem key={target.id} value={target.id}>{target.title}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        )}
-                    />
-                </div>
-                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
-                    <Trash2 className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center gap-2">
+                <Controller
+                  name={`elements.${elementIndex}.rules.${index}.operator`}
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <SelectTrigger className="w-1/2"><SelectValue placeholder="Operator..." /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="isEqualTo">Is equal to</SelectItem>
+                        <SelectItem value="isNotEqualTo">Is not equal to</SelectItem>
+                        <SelectItem value="contains">Contains</SelectItem>
+                        <SelectItem value="isGreaterThan">Is greater than</SelectItem>
+                        <SelectItem value="isLessThan">Is less than</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <Controller
+                  name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                  control={control}
+                  render={({ field }) => <Input {...field} placeholder="Value..." />}
+                />
+              </div>
             </div>
           </div>
-        ))}
-      </div>
-      <Button
+          <div className="flex items-start gap-4 mt-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+                <span className="text-lg">↳</span>
+                <span>Then</span>
+            </div>
+             <div className="flex-grow flex items-center gap-2">
+                <Controller
+                    name={`elements.${elementIndex}.rules.${index}.action`}
+                    control={control}
+                    render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger className="w-1/2"><SelectValue placeholder="Action..." /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="jump">Jump To</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    )}
+                />
+                <Controller
+                    name={`elements.${elementIndex}.rules.${index}.targetElementId`}
+                    control={control}
+                    render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Target element..." /></SelectTrigger>
+                            <SelectContent>
+                               {potentialTargetElements.map((el) => (
+                                    <SelectItem key={el.id} value={el.id}>
+                                        {isQuestion(el) ? `Q${allElements.findIndex(e => e.id === el.id) + 1}: ${el.title}` : `Section: ${el.title}`}
+                                    </SelectItem>
+                               ))}
+                            </SelectContent>
+                        </Select>
+                    )}
+                />
+            </div>
+          </div>
+        </div>
+      ))}
+       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => append({ onValue: '', action: 'jump', targetElementId: '' })}
+        onClick={() => append({ sourceQuestionId: '', operator: 'isEqualTo', targetValue: '', action: 'jump', targetElementId: '' })}
       >
-        <PlusCircle className="mr-2 h-4 w-4" /> Add Rule
+        Add Rule
       </Button>
     </div>
   );
@@ -261,6 +217,8 @@ export default function QuestionEditor() {
         if (type === 'checkboxes') {
             (newElement as SurveyQuestion).allowOther = false;
         }
+    } else if (type === 'logic') {
+        (newElement as any).rules = [];
     } else {
         if(type === 'heading') (newElement as any).title = 'New Section';
         if(type === 'description') (newElement as any).text = 'Descriptive text goes here.';
@@ -333,7 +291,7 @@ export default function QuestionEditor() {
             </div>
             <CardHeader>
                 <CardTitle className="text-lg">
-                    {isElementQuestion ? `Question #${index + 1}` : `Layout Block`}
+                    {isElementQuestion ? `Question #${index + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout Block`}
                 </CardTitle>
                 <CardDescription className="capitalize">{element.type.replace('-', ' ')}</CardDescription>
             </CardHeader>
@@ -383,6 +341,8 @@ export default function QuestionEditor() {
                             </div>
                          )}
                     </>
+                ) : element.type === 'logic' ? (
+                     <LogicBlockEditor elementIndex={index} />
                 ) : (
                     <>
                         {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
@@ -394,8 +354,6 @@ export default function QuestionEditor() {
                         {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
                     </>
                 )}
-                 <VisibilityLogicEditor elementIndex={index} />
-                 <BranchingLogicEditor elementIndex={index} />
             </CardContent>
             </Card>
         )

@@ -1,4 +1,5 @@
 
+
 export interface School {
   id: string;
   name: string;
@@ -50,15 +51,6 @@ export interface SurveyQuestion {
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
-  visibilityLogic?: {
-    questionId: string;
-    expectedValue: string | string[];
-  };
-  branchingLogic?: {
-    onValue: string;
-    action: 'jump';
-    targetElementId: string;
-  }[];
 }
 
 export interface SurveyLayoutBlock {
@@ -68,13 +60,21 @@ export interface SurveyLayoutBlock {
   text?: string; // For description
   url?: string; // For media types
   html?: string; // For embed
-  visibilityLogic?: {
-    questionId: string;
-    expectedValue: string | string[];
-  };
 }
 
-export type SurveyElement = SurveyQuestion | SurveyLayoutBlock;
+export interface SurveyLogicBlock {
+  id: string;
+  type: 'logic';
+  rules: {
+    sourceQuestionId: string;
+    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'isGreaterThan' | 'isLessThan';
+    targetValue: any;
+    action: 'jump';
+    targetElementId: string;
+  }[];
+}
+
+export type SurveyElement = SurveyQuestion | SurveyLayoutBlock | SurveyLogicBlock;
 
 export interface Survey {
   id: string;

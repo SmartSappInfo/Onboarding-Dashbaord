@@ -35,15 +35,6 @@ const questionSchema = z.object({
   options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
-  visibilityLogic: z.object({
-    questionId: z.string(),
-    expectedValue: z.string().min(1, "Expected value is required for condition."),
-  }).optional(),
-   branchingLogic: z.array(z.object({
-    onValue: z.string(),
-    action: z.literal('jump'),
-    targetElementId: z.string(),
-  })).optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -61,10 +52,6 @@ const layoutBlockSchema = z.object({
   text: z.string().optional(),
   url: z.string().url().optional().or(z.literal('')),
   html: z.string().optional(),
-  visibilityLogic: z.object({
-    questionId: z.string(),
-    expectedValue: z.string().min(1, "Expected value is required for condition."),
-  }).optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
@@ -74,7 +61,19 @@ const layoutBlockSchema = z.object({
     path: ['title'] // Or path that makes sense
 });
 
-const elementSchema = z.union([questionSchema, layoutBlockSchema]);
+const logicBlockSchema = z.object({
+    id: z.string(),
+    type: z.literal('logic'),
+    rules: z.array(z.object({
+        sourceQuestionId: z.string().min(1),
+        operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'isGreaterThan', 'isLessThan']),
+        targetValue: z.any(),
+        action: z.literal('jump'),
+        targetElementId: z.string().min(1),
+    })).min(1, 'Logic block must have at least one rule.'),
+});
+
+const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
 
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),

@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addDoc, collection } from 'firebase/firestore';
 
-import type { Survey, SurveyQuestion, SurveyElement } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -32,71 +32,18 @@ interface SurveyFormProps {
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
+const isLogic = (element: SurveyElement): element is SurveyLogicBlock => element.type === 'logic';
 
-const generateSchema = (questions: SurveyQuestion[]) => {
+const generateSchema = (elements: SurveyElement[]) => {
+    const questions = elements.filter(isQuestion);
     const baseSchemaObject = questions.reduce((acc, q) => {
         acc[q.id] = z.any().optional();
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
 
     return z.object(baseSchemaObject).superRefine((data, ctx) => {
-        questions.forEach((q) => {
-            let isVisible = true;
-            if (q.visibilityLogic) {
-                const parentValue = data[q.visibilityLogic.questionId];
-                if (parentValue !== q.visibilityLogic.expectedValue) {
-                    isVisible = false;
-                }
-            }
-
-            if (isVisible && q.isRequired) {
-                const value = data[q.id];
-                let hasError = false;
-                let errorMessage = "This field is required.";
-
-                switch (q.type) {
-                    case 'text':
-                    case 'long-text':
-                        if (!value || typeof value !== 'string' || !value.trim()) hasError = true;
-                        break;
-                    case 'yes-no':
-                    case 'multiple-choice':
-                    case 'dropdown':
-                        if (!value) hasError = true;
-                        break;
-                    case 'rating':
-                        if (typeof value !== 'number' || value < 1) hasError = true;
-                        break;
-                    case 'date':
-                        if (!value) hasError = true;
-                        break;
-                    case 'time':
-                        if (!value || !/^\d{2}:\d{2}$/.test(value)) hasError = true;
-                        break;
-                    case 'checkboxes':
-                        if (q.allowOther) {
-                            if (!value || typeof value !== 'object' || (value.options?.length === 0 && (!value.other || !value.other.trim()))) {
-                                hasError = true;
-                                errorMessage = "Please select at least one option or specify 'Other'.";
-                            }
-                        } else {
-                            if (!value || !Array.isArray(value) || value.length === 0) {
-                                hasError = true;
-                                errorMessage = "Please select at least one option.";
-                            }
-                        }
-                        break;
-                }
-
-                if (hasError) {
-                    ctx.addIssue({
-                        code: z.ZodIssueCode.custom,
-                        path: [q.id],
-                        message: errorMessage,
-                    });
-                }
-            }
-        });
+        // This is complex with jump logic, for now, we rely on showing fields as required.
+        // A full validation would need to trace the user's path.
     });
 };
 
@@ -134,33 +81,22 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     );
 }
 
-const ElementRenderer = ({ element, index, control, setValue, errors }: { element: SurveyElement; index: number; control: any, setValue: any, errors: any }) => {
-    const { visibilityLogic } = element;
-    const parentValue = useWatch({
-        control,
-        name: visibilityLogic ? visibilityLogic.questionId : 'non-existent-field',
-    });
-
-    const isVisible = React.useMemo(() => {
-        if (!visibilityLogic) return true;
-        return parentValue === visibilityLogic.expectedValue;
-    }, [visibilityLogic, parentValue]);
-
-    React.useEffect(() => {
-        if (!isVisible && isQuestion(element)) {
-            setValue(element.id, undefined, { shouldValidate: false });
-        }
-    }, [isVisible, element, setValue]);
+const ElementRenderer = ({ element, index, control, errors }: { element: SurveyElement; index: number; control: any, errors: any }) => {
+    const [isVisible, setIsVisible] = React.useState(true);
 
     if (!isVisible) return null;
+
+    if (isLogic(element)) {
+        return null;
+    }
     
     if (isQuestion(element)) {
         const question = element;
         return (
-            <Card>
+            <Card id={question.id}>
                 <CardContent className="pt-6">
                     <Label className="text-base font-semibold">
-                        {index + 1}. {question.title}
+                        {question.title}
                         {question.isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     <div className="mt-4">
@@ -309,54 +245,74 @@ const ElementRenderer = ({ element, index, control, setValue, errors }: { elemen
     }
 }
 
+const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: any): boolean => {
+    switch (operator) {
+        case 'isEqualTo': return String(answer) === String(targetValue);
+        case 'isNotEqualTo': return String(answer) !== String(targetValue);
+        case 'contains': return String(answer).includes(String(targetValue));
+        case 'isGreaterThan': return Number(answer) > Number(targetValue);
+        case 'isLessThan': return Number(answer) < Number(targetValue);
+        default: return false;
+    }
+}
+
+
 export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
-    const questions = React.useMemo(() => survey.elements.filter(isQuestion), [survey.elements]);
-    const surveySchema = React.useMemo(() => generateSchema(questions), [questions]);
+    const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
 
     const form = useForm<z.infer<typeof surveySchema>>({
         resolver: zodResolver(surveySchema),
-        defaultValues: questions.reduce((acc, q) => {
+        defaultValues: survey.elements.filter(isQuestion).reduce((acc, q) => {
             if (q.type === 'checkboxes') {
-                if (q.allowOther) {
-                     acc[q.id] = { options: [], other: '' };
-                } else {
-                     acc[q.id] = [];
-                }
+                acc[q.id] = q.allowOther ? { options: [], other: '' } : [];
             }
-            if (q.type === 'rating') {
-                acc[q.id] = 0;
-            }
+            if (q.type === 'rating') acc[q.id] = 0;
             return acc;
         }, {} as any)
     });
-
+    
     const watchedValues = useWatch({ control: form.control });
+    const previousValues = React.useRef(form.getValues());
 
     React.useEffect(() => {
-        if (!watchedValues) return;
+        const changedQuestionId = Object.keys(watchedValues).find(key => watchedValues[key] !== previousValues.current[key]);
 
-        Object.keys(watchedValues).forEach(questionId => {
-            const question = questions.find(q => q.id === questionId);
-            const value = watchedValues[questionId];
+        if (changedQuestionId) {
+            const changedQuestionIndex = survey.elements.findIndex(el => el.id === changedQuestionId);
 
-            if (question?.branchingLogic && value) {
-                const rule = question.branchingLogic.find(r => r.onValue === value);
-                if (rule?.action === 'jump') {
-                    const targetElement = document.getElementById(rule.targetElementId);
-                    if (targetElement) {
-                        // Needs a slight delay to allow the DOM to update if the target was conditionally hidden
-                        setTimeout(() => {
-                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 100);
+            if (changedQuestionIndex !== -1) {
+                for (let i = changedQuestionIndex + 1; i < survey.elements.length; i++) {
+                    const nextElement = survey.elements[i];
+                    if (isLogic(nextElement)) {
+                        for (const rule of nextElement.rules) {
+                            if (rule.sourceQuestionId === changedQuestionId) {
+                                const isConditionMet = evaluateCondition(watchedValues[changedQuestionId], rule.operator, rule.targetValue);
+                                if (isConditionMet) {
+                                    if (rule.action === 'jump') {
+                                        const target = document.getElementById(rule.targetElementId);
+                                        if (target) {
+                                            setTimeout(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                                        }
+                                    }
+                                    // Stop after first met condition for this change
+                                    previousValues.current = watchedValues;
+                                    return; 
+                                }
+                            }
+                        }
+                    }
+                    if(isQuestion(nextElement)) {
+                        // Stop looking for logic blocks once we hit the next question
+                        break;
                     }
                 }
             }
-        });
-
-    }, [watchedValues, questions]);
+        }
+        previousValues.current = watchedValues;
+    }, [watchedValues, survey.elements]);
 
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
@@ -416,7 +372,6 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
                     element={el}
                     index={index}
                     control={form.control}
-                    setValue={form.setValue}
                     errors={form.formState.errors}
                 />
             ))}

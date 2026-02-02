@@ -180,34 +180,7 @@
           "type": { "type": "string", "enum": ["text", "long-text", "yes-no", "multiple-choice", "checkboxes", "dropdown", "rating", "date", "time", "file-upload"], "description": "The type of question." },
           "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice, checkbox, or dropdown questions." },
           "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option for checkboxes." },
-          "isRequired": { "type": "boolean", "description": "Whether the question must be answered." },
-          "visibilityLogic": {
-            "type": "object",
-            "description": "Specifies a condition for this question to be displayed, based on the answer to another question.",
-            "properties": {
-              "questionId": {
-                "type": "string",
-                "description": "The ID of the question that this question depends on."
-              },
-              "expectedValue": {
-                "description": "The answer value that the dependent question must have for this question to be displayed. For checkboxes, use an array of strings."
-              }
-            },
-            "required": ["questionId", "expectedValue"]
-          },
-          "branchingLogic": {
-            "type": "array",
-            "description": "Rules for jumping to other sections based on the answer.",
-            "items": {
-              "type": "object",
-              "properties": {
-                "onValue": { "description": "The answer value that triggers this rule." },
-                "action": { "type": "string", "enum": ["jump"] },
-                "targetElementId": { "type": "string", "description": "The ID of the heading element to jump to." }
-              },
-              "required": ["onValue", "action", "targetElementId"]
-            }
-          }
+          "isRequired": { "type": "boolean", "description": "Whether the question must be answered." }
         },
         "required": ["id", "title", "type", "isRequired"]
     },
@@ -221,18 +194,34 @@
             "title": { "type": "string", "description": "Content for a heading block." },
             "text": { "type": "string", "description": "Content for a description block." },
             "url": { "type": "string", "format": "uri", "description": "URL for image, video, audio, or document blocks." },
-            "html": { "type": "string", "description": "HTML content for an embed block." },
-            "visibilityLogic": {
-              "type": "object",
-              "description": "Specifies a condition for this block to be displayed.",
-              "properties": {
-                "questionId": { "type": "string", "description": "The ID of the question this block depends on." },
-                "expectedValue": { "description": "The answer value required for this block to be displayed." }
-              },
-              "required": ["questionId", "expectedValue"]
-            }
+            "html": { "type": "string", "description": "HTML content for an embed block." }
         },
         "required": ["id", "type"]
+    },
+    "SurveyLogicBlock": {
+        "title": "Survey Logic Block",
+        "type": "object",
+        "description": "Represents a conditional logic block in a survey.",
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["logic"] },
+          "rules": {
+            "type": "array",
+            "description": "A list of conditional rules to evaluate.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sourceQuestionId": { "type": "string" },
+                "operator": { "type": "string", "enum": ["isEqualTo", "isNotEqualTo", "contains", "isGreaterThan", "isLessThan"] },
+                "targetValue": { "description": "The value to compare against." },
+                "action": { "type": "string", "enum": ["jump"] },
+                "targetElementId": { "type": "string" }
+              },
+              "required": ["sourceQuestionId", "operator", "targetValue", "action", "targetElementId"]
+            }
+          }
+        },
+        "required": ["id", "type", "rules"]
     },
     "Survey": {
       "title": "Survey",
@@ -250,7 +239,8 @@
           "items": {
              "anyOf": [
               { "$ref": "#/entities/SurveyQuestion" },
-              { "$ref": "#/entities/SurveyLayoutBlock" }
+              { "$ref": "#/entities/SurveyLayoutBlock" },
+              { "$ref": "#/entities/SurveyLogicBlock" }
             ]
           }
         },
