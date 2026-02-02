@@ -113,44 +113,49 @@ export default function NewSurveyPage() {
     React.useEffect(() => {
         // Seed with a default survey for demonstration
         form.reset({
-            title: 'Parents perspective on Express Pickup',
-            description: 'We are redesigning the SmartsAPP pickup feature in the app and would love to learn more about your preferences.',
+            title: 'Parent Feedback Survey',
+            description: 'We are redesigning the SmartsAPP experience and would love to learn more about your preferences. Please take a few moments to answer the following questions.',
             status: 'draft',
             elements: [
-                { id: 'q1', title: 'Do you personally pick up your ward at school closing time?', type: 'yes-no', isRequired: true, defaultValue: 'Yes' },
-                {
-                    id: 'q2',
-                    title: 'Is the current pickup process at your ward’s school effective and convenient for you?',
-                    type: 'yes-no',
-                    isRequired: true,
+                { id: 'q_text', title: 'What is your full name?', type: 'text', isRequired: true, placeholder: 'e.g., Jane Doe' },
+                { id: 'q_yesno', title: 'Do you personally pick up your child from school?', type: 'yes-no', isRequired: true },
+                { 
+                    id: 'q_multiplechoice', 
+                    title: 'How often do you use the SmartSapp app?', 
+                    type: 'multiple-choice', 
+                    isRequired: true, 
+                    options: ['Daily', 'Weekly', 'Monthly', 'Rarely'] 
                 },
-                {
-                    id: 'q3',
-                    title: 'What challenges do you experience? (Select all that apply)',
-                    type: 'checkboxes',
-                    isRequired: true,
-                    options: ['My child takes a long time to come out', 'My child is still doing classwork at closing time', 'Long queues or delays', 'Poor communication from the school'],
+                { 
+                    id: 'q_checkboxes', 
+                    title: 'What features do you find most useful? (Select all that apply)', 
+                    type: 'checkboxes', 
+                    isRequired: true, 
+                    options: ['Express Pickup', 'Billing & Payments', 'School Announcements', 'Academic Reports'],
                     allowOther: true,
                 },
-                {
-                    id: 'q4',
-                    title: 'If an express pickup service were available—guaranteeing that your child is brought out with 3mins of arriving at the school without you getting of your car—would you use it?',
-                    type: 'yes-no',
-                    isRequired: true,
+                { 
+                    id: 'q_dropdown', 
+                    title: 'What is your primary relationship to the student?', 
+                    type: 'dropdown', 
+                    isRequired: true, 
+                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other']
                 },
-                 {
-                    id: 'q5',
-                    title: 'How would you rate the school\'s communication?',
-                    type: 'rating',
+                { 
+                    id: 'q_rating', 
+                    title: 'On a scale of 1-5, how would you rate the school\'s communication?', 
+                    type: 'rating', 
                     isRequired: true,
                     defaultValue: 4,
                 },
+                { id: 'q_date', title: 'What date would be best for a parent-teacher conference this term?', type: 'date', isRequired: false },
+                { id: 'q_time', title: 'What time do you usually arrive for pickup?', type: 'time', isRequired: false },
                 {
-                    id: 'q6',
-                    title: 'Any additional comments?',
+                    id: 'q_longtext',
+                    title: 'Do you have any additional comments or suggestions for us?',
                     type: 'long-text',
                     isRequired: false,
-                    placeholder: 'Share your thoughts...'
+                    placeholder: 'Share your thoughts on how we can improve...'
                 }
             ]
         })
@@ -301,5 +306,3 @@ export default function NewSurveyPage() {
         </div>
     );
 }
-
-    
