@@ -523,7 +523,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                 )}
             </div>
             <div className="space-y-4">
-                <h4 className="font-semibold text-muted-foreground text-sm px-1">Actions</h4>
+                <h4 className="font-semibold text-muted-foreground text-sm px-1">Change To</h4>
                 <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
                     <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
                     <SelectContent>
@@ -712,3 +712,4 @@ export default function QuestionEditor() {
     </div>
   );
 }
+
