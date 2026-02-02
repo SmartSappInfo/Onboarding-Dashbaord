@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
@@ -463,7 +464,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-fit justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
