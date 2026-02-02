@@ -11,6 +11,9 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInset,
+  SidebarGroup,
+  SidebarGroupLabel,
+  SidebarGroupAction,
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -90,53 +93,61 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </Link>
              </div>
           </SidebarHeader>
-          <SidebarContent className="p-2">
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                   <SidebarMenuButton
-                      asChild
-                      isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))}
-                      tooltip={item.label}
-                    >
-                      <Link href={item.href}>
-                         <item.icon />
-                         <span>{item.label}</span>
-                      </Link>
-                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-          <SidebarFooter className="p-2">
-             <SidebarMenu>
-                <SidebarMenuItem>
-                    <SidebarMenuButton 
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <SidebarGroupAction asChild>
+                <SidebarTrigger />
+              </SidebarGroupAction>
+              <SidebarMenu>
+                {navItems.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
                         asChild
-                        isActive={pathname.startsWith('/admin/settings')}
-                        tooltip="Settings"
-                    >
-                        <Link href="/admin/settings">
-                            <Settings/>
-                            <span>Settings</span>
+                        isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))}
+                        tooltip={item.label}
+                      >
+                        <Link href={item.href}>
+                          <item.icon />
+                          <span>{item.label}</span>
                         </Link>
                     </SidebarMenuButton>
-                </SidebarMenuItem>
-                 <SidebarMenuItem>
-                    <SidebarMenuButton asChild tooltip="Go to public site">
-                        <Link href="/" target="_blank">
-                            <ExternalLink/>
-                            <span>Go to site</span>
-                        </Link>
-                    </SidebarMenuButton>
-                </SidebarMenuItem>
-             </SidebarMenu>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+             <SidebarGroup>
+              <SidebarGroupLabel>Settings</SidebarGroupLabel>
+              <SidebarMenu>
+                  <SidebarMenuItem>
+                      <SidebarMenuButton 
+                          asChild
+                          isActive={pathname.startsWith('/admin/settings')}
+                          tooltip="Settings"
+                      >
+                          <Link href="/admin/settings">
+                              <Settings/>
+                              <span>Settings</span>
+                          </Link>
+                      </SidebarMenuButton>
+                  </SidebarMenuItem>
+                  <SidebarMenuItem>
+                      <SidebarMenuButton asChild tooltip="Go to public site">
+                          <Link href="/" target="_blank">
+                              <ExternalLink/>
+                              <span>Go to site</span>
+                          </Link>
+                      </SidebarMenuButton>
+                  </SidebarMenuItem>
+              </SidebarMenu>
+             </SidebarGroup>
           </SidebarFooter>
         </Sidebar>
         
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
-            <SidebarTrigger />
             <div className="w-full flex-1">
               <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
             </div>
