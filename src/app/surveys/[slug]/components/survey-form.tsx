@@ -16,6 +16,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import * as React from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { CalendarIcon, Star } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -24,8 +30,6 @@ interface SurveyFormProps {
 
 // Generates a Zod schema with conditional validation
 const generateSchema = (questions: SurveyQuestion[]) => {
-    // Create a base schema object where every field is optional initially.
-    // Validation will be handled by superRefine.
     const baseSchemaObject = questions.reduce((acc, q) => {
         acc[q.id] = z.any().optional();
         return acc;
@@ -33,7 +37,6 @@ const generateSchema = (questions: SurveyQuestion[]) => {
 
     return z.object(baseSchemaObject).superRefine((data, ctx) => {
         questions.forEach((q) => {
-            // Determine if the current question should be visible based on its displayCondition
             let isVisible = true;
             if (q.displayCondition) {
                 const parentValue = data[q.displayCondition.questionId];
@@ -42,19 +45,29 @@ const generateSchema = (questions: SurveyQuestion[]) => {
                 }
             }
 
-            // If the question is visible and marked as required, perform validation.
             if (isVisible && q.isRequired) {
                 const value = data[q.id];
                 let hasError = false;
                 let errorMessage = "This field is required.";
 
                 switch (q.type) {
+                    case 'text':
+                    case 'long-text':
+                        if (!value || typeof value !== 'string' || !value.trim()) hasError = true;
+                        break;
                     case 'yes-no':
                     case 'multiple-choice':
+                    case 'dropdown':
                         if (!value) hasError = true;
                         break;
-                    case 'text':
-                        if (!value || typeof value !== 'string' || !value.trim()) hasError = true;
+                    case 'rating':
+                        if (typeof value !== 'number' || value < 1) hasError = true;
+                        break;
+                    case 'date':
+                        if (!value) hasError = true;
+                        break;
+                    case 'time':
+                        if (!value || !/^\d{2}:\d{2}$/.test(value)) hasError = true;
                         break;
                     case 'checkboxes':
                         if (q.allowOther) {
@@ -83,11 +96,42 @@ const generateSchema = (questions: SurveyQuestion[]) => {
     });
 };
 
+const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
+    return (
+        <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map(star => (
+                <Star
+                    key={star}
+                    className={cn(
+                        'w-8 h-8 cursor-pointer',
+                        star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
+                        disabled ? 'cursor-not-allowed' : ''
+                    )}
+                    onClick={() => !disabled && onChange(star)}
+                />
+            ))}
+        </div>
+    );
+};
 
-// A component to render a single question, handling its own visibility.
+const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (date?: Date) => void, disabled?: boolean }) => {
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !value && "text-muted-foreground")} disabled={disabled}>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {value ? format(value, "PPP") : <span>Pick a date</span>}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={value} onSelect={onChange} initialFocus />
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 const QuestionRenderer = ({ question, index, control, getValues, setValue, errors }: { question: SurveyQuestion; index: number; control: any, getValues: any, setValue: any, errors: any }) => {
     const { displayCondition } = question;
-    // Watch the value of the parent question, if one exists
     const parentValue = useWatch({
         control,
         name: displayCondition ? displayCondition.questionId : 'non-existent-field',
@@ -99,7 +143,6 @@ const QuestionRenderer = ({ question, index, control, getValues, setValue, error
     }, [displayCondition, parentValue]);
 
     React.useEffect(() => {
-        // If a question becomes hidden, reset its value to avoid submitting stale data
         if (!isVisible) {
             setValue(question.id, undefined, { shouldValidate: false });
         }
@@ -115,6 +158,12 @@ const QuestionRenderer = ({ question, index, control, getValues, setValue, error
                     {question.isRequired && <span className="text-destructive ml-1">*</span>}
                 </Label>
                 <div className="mt-4">
+                    {question.type === 'text' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Input {...field} />} />
+                    )}
+                    {question.type === 'long-text' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} />} />
+                    )}
                     {question.type === 'yes-no' && (
                         <Controller
                             control={control}
@@ -193,8 +242,32 @@ const QuestionRenderer = ({ question, index, control, getValues, setValue, error
                             )}
                         />
                     )}
-                    {question.type === 'text' && (
-                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} />} />
+                    {question.type === 'dropdown' && (
+                        <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger className="w-full sm:w-1/2">
+                                        <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {question.options?.map(opt => (
+                                            <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                    )}
+                    {question.type === 'rating' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <StarRating {...field} />} />
+                    )}
+                    {question.type === 'date' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
+                    )}
+                     {question.type === 'time' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Input type="time" className="w-fit" {...field} />} />
                     )}
                      {errors[question.id] && (
                          <p className="text-sm font-medium text-destructive mt-2">
@@ -223,6 +296,9 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
                      acc[q.id] = [];
                 }
             }
+            if (q.type === 'rating') {
+                acc[q.id] = 0;
+            }
             return acc;
         }, {} as any)
     });
@@ -230,7 +306,15 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (!firestore) return;
         
-        const cleanedData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
+        // Handle date objects
+        const serializedData = { ...data };
+        Object.keys(serializedData).forEach(key => {
+            if (serializedData[key] instanceof Date) {
+                serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd');
+            }
+        });
+
+        const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined));
 
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({
             questionId,

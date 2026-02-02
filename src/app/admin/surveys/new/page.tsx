@@ -27,7 +27,7 @@ import QuestionEditor from '../components/question-editor';
 const questionSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Question title is required.'),
-  type: z.enum(['text', 'yes-no', 'multiple-choice', 'checkboxes']),
+  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload']),
   options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
@@ -36,7 +36,7 @@ const questionSchema = z.object({
     expectedValue: z.string().min(1, "Expected value is required for condition."),
   }).optional(),
 }).refine(data => {
-    if ((data.type === 'multiple-choice' || data.type === 'checkboxes') && (!data.options || data.options.length < 2)) {
+    if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
     }
     return true;

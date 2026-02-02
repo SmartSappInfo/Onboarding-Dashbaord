@@ -45,7 +45,7 @@ export interface MediaAsset {
 export interface SurveyQuestion {
   id: string;
   title: string;
-  type: 'yes-no' | 'multiple-choice' | 'checkboxes' | 'text';
+  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload';
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
@@ -73,6 +73,6 @@ export interface SurveyResponse {
   submittedAt: string; // ISO string
   answers: {
     questionId: string;
-    value: any; // Can be string, string[], or object for checkboxes with 'other'
+    value: any; // Can be string, string[], number, or object for checkboxes with 'other'
   }[];
 }

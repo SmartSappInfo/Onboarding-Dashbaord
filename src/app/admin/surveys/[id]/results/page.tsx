@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const CHART_COLORS = [
@@ -25,6 +25,7 @@ type AnalyzedResult = {
     question: SurveyQuestion;
 } & (
     | { type: 'chart'; data: { name: string; value: number; percentage: number }[]; total: number }
+    | { type: 'rating'; data: { name: string; value: number; percentage: number }[]; total: number, average: number }
     | { type: 'checkbox'; data: { name: string; value: number; percentage: number }[]; otherText: string[]; total: number }
     | { type: 'text'; data: string[]; total: number }
     | { type: 'unknown'; data: any[] }
@@ -65,6 +66,37 @@ function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'char
         </div>
     );
 }
+
+function RatingResult({ result }: { result: Extract<AnalyzedResult, { type: 'rating' }> }) {
+    if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
+    
+    return (
+        <div>
+            <div className="flex items-center gap-2 mb-4">
+                <span className="font-semibold">Average Rating:</span>
+                <div className="flex items-center gap-1">
+                    <span className="font-bold text-lg">{result.average.toFixed(2)}</span>
+                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                </div>
+            </div>
+            <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={result.data} layout="vertical" margin={{ left: 20, right: 30 }}>
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 12 }} />
+                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent))' }}/>
+                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                            {result.data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                            ))}
+                        </Bar>
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+}
+
 
 function CheckboxResult({ result }: { result: Extract<AnalyzedResult, { type: 'checkbox' }> }) {
     if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
@@ -134,9 +166,9 @@ export default function SurveyResultsPage() {
         if (!survey || !responses) return [];
 
         return survey.questions.map(question => {
-            const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined);
+            const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
 
-            if (question.type === 'yes-no' || question.type === 'multiple-choice') {
+            if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
                 const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
                 const counts = Object.fromEntries(options.map(opt => [opt, 0]));
 
@@ -183,9 +215,32 @@ export default function SurveyResultsPage() {
                 return { question, type: 'checkbox', data, otherText, total: totalRespondents };
             }
             
-            if (question.type === 'text') {
+            if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
                 const textResponses = questionResponses.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
                 return { question, type: 'text', data: textResponses, total: textResponses.length };
+            }
+
+            if (question.type === 'rating') {
+                const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
+                const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+                let totalScore = 0;
+
+                ratingResponses.forEach(rating => {
+                    if (rating >= 1 && rating <= 5) {
+                        counts[rating as keyof typeof counts]++;
+                        totalScore += rating;
+                    }
+                });
+                
+                const total = ratingResponses.length;
+                const average = total > 0 ? totalScore / total : 0;
+                const data = Object.entries(counts).map(([name, value]) => ({
+                    name: `${name} Star`,
+                    value,
+                    percentage: total > 0 ? (value / total) * 100 : 0
+                }));
+
+                return { question, type: 'rating', data, total, average };
             }
 
             return { question, type: 'unknown', data: [] };
@@ -248,6 +303,7 @@ export default function SurveyResultsPage() {
                         </CardHeader>
                         <CardContent>
                             {result.type === 'chart' && <ChartResult result={result} />}
+                            {result.type === 'rating' && <RatingResult result={result} />}
                             {result.type === 'checkbox' && <CheckboxResult result={result} />}
                             {result.type === 'text' && <TextResult result={result} />}
                             {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}

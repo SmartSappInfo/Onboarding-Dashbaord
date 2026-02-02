@@ -7,10 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import type { SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
-import { FormMessage, useFormField } from '@/components/ui/form';
+import { FormMessage } from '@/components/ui/form';
 
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const { control, watch } = useFormContext();
@@ -67,7 +67,7 @@ function ConditionalLogicEditor({ questionIndex }: { questionIndex: number }) {
 
   const potentialParents = allQuestions
       .slice(0, questionIndex)
-      .filter(q => q.type === 'yes-no' || q.type === 'multiple-choice');
+      .filter(q => q.type === 'yes-no' || q.type === 'multiple-choice' || q.type === 'dropdown');
 
   const parentQuestion = potentialParents.find(q => q.id === parentQuestionId);
 
@@ -176,6 +176,8 @@ export default function QuestionEditor() {
     <div className="space-y-6">
       {fields.map((field, index) => {
         const questionErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
+        const questionType = questions[index]?.type;
+
         return (
             <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[input:focus]:border-primary has-[textarea:focus]:border-primary transition-colors">
             <div className="absolute top-3 right-3 flex items-center gap-1">
@@ -236,10 +238,15 @@ export default function QuestionEditor() {
                         <SelectValue placeholder="Select a type" />
                         </SelectTrigger>
                         <SelectContent>
-                        <SelectItem value="text">Text</SelectItem>
-                        <SelectItem value="yes-no">Yes/No</SelectItem>
-                        <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                        <SelectItem value="checkboxes">Checkboxes</SelectItem>
+                          <SelectItem value="text">Short Text</SelectItem>
+                          <SelectItem value="long-text">Long Text (Paragraph)</SelectItem>
+                          <SelectItem value="yes-no">Yes/No</SelectItem>
+                          <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                          <SelectItem value="checkboxes">Checkboxes</SelectItem>
+                          <SelectItem value="dropdown">Dropdown</SelectItem>
+                          <SelectItem value="rating">Rating (1-5)</SelectItem>
+                          <SelectItem value="date">Date</SelectItem>
+                          <SelectItem value="time">Time</SelectItem>
                         </SelectContent>
                     </Select>
                     )}
@@ -257,11 +264,11 @@ export default function QuestionEditor() {
                 />
                 </div>
                 
-                {(questions[index]?.type === 'multiple-choice' || questions[index]?.type === 'checkboxes') && (
-                <div className="md:col-span-2">
-                    <OptionsEditor questionIndex={index} />
-                    {questionErrors?.options && <FormMessage className="mt-2">{questionErrors.options.message}</FormMessage>}
-                </div>
+                {(questionType === 'multiple-choice' || questionType === 'checkboxes' || questionType === 'dropdown') && (
+                  <div className="md:col-span-2">
+                      <OptionsEditor questionIndex={index} />
+                      {questionErrors?.options && <FormMessage className="mt-2">{questionErrors.options.message}</FormMessage>}
+                  </div>
                 )}
 
                 <div className="md:col-span-2">
