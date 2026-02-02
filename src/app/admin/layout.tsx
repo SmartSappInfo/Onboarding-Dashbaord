@@ -94,7 +94,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Workspace</SidebarGroupLabel>
+              <div className="flex items-center justify-between">
+                <SidebarGroupLabel>Onboarding Workspace</SidebarGroupLabel>
+                <SidebarTrigger className="hidden md:flex group-data-[collapsible=icon]:hidden mr-2"/>
+              </div>
               <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
@@ -144,7 +147,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
-            <SidebarTrigger />
+            <SidebarTrigger className="md:hidden" />
             <div className="w-full flex-1">
               <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
             </div>

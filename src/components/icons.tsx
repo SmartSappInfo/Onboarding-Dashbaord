@@ -17,7 +17,7 @@ export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { va
         />
       </div>
       <span className={cn(
-          "font-headline text-2xl font-bold",
+          "font-headline text-xl font-bold",
           variant === 'primary' ? 'text-primary' : 'text-white'
         )}>
         SmartSapp
