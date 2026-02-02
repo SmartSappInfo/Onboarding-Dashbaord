@@ -143,7 +143,16 @@ export default function NewSurveyPage() {
             title: '',
             description: '',
             status: 'draft',
-            elements: [],
+            elements: [
+                {
+                    id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    type: 'section',
+                    title: 'Section 1',
+                    description: '',
+                    renderAsPage: false,
+                    hidden: false,
+                },
+            ],
             thankYouTitle: 'Thank You!',
             thankYouDescription: 'Your response has been recorded.',
             bannerImageUrl: '',
@@ -202,8 +211,8 @@ export default function NewSurveyPage() {
             isValid = await form.trigger(['title', 'description']);
         } else if (step === 2) {
             isValid = await form.trigger(['elements']);
-        } else {
-            isValid = true; // No validation needed for step 3 to 4
+        } else { // No validation needed for step 3 to 4
+            isValid = true;
         }
         
         if (isValid) {

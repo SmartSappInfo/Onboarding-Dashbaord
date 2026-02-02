@@ -2,7 +2,7 @@
 
 'use client';
 
-import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
+import { useFieldArray, useFormContext, Controller, get } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,7 +32,8 @@ import { CSS } from '@dnd-kit/utilities';
 import { MediaSelect } from '../../schools/components/media-select';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
-    return 'isRequired' in element;
+    const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
+    return questionTypes.includes(element.type as any);
 }
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -846,7 +847,7 @@ function SortableSurveyElement({ id, index }: { id: string; index: number }) {
 
 
 export default function QuestionEditor() {
-  const { control, formState: { errors } } = useFormContext();
+  const { control, formState: { errors }, getValues } = useFormContext();
   const { fields, append, remove, move } = useFieldArray({
     control,
     name: 'elements',
@@ -861,7 +862,9 @@ export default function QuestionEditor() {
       hidden: false,
     };
 
-    if (isQuestion(newElement as SurveyElement)) {
+    const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
+
+    if (questionTypes.includes(type as SurveyQuestion['type'])) {
         (newElement as SurveyQuestion).title = '';
         (newElement as SurveyQuestion).isRequired = false;
         if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
@@ -883,11 +886,12 @@ export default function QuestionEditor() {
     } else if (type === 'logic') {
         (newElement as any).rules = [];
     } else if (type === 'section') {
-        (newElement as SurveyLayoutBlock).title = 'New Section';
+        const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
+        (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
         (newElement as SurveyLayoutBlock).description = '';
         (newElement as SurveyLayoutBlock).renderAsPage = false;
     } else if (isLayoutBlock(newElement as SurveyElement)) {
-        if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Section';
+        if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Heading';
         if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
         if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
         if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
