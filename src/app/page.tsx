@@ -56,7 +56,7 @@ export default function Home() {
             <p className="mb-10 text-lg font-semibold">
               Please watch the full video. It's super important!
             </p>
-            <div className="mt-16">
+            <div className="mt-16 mx-auto md:max-w-[60%]">
               <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
             </div>
           </div>

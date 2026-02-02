@@ -25,7 +25,9 @@ export default function SetupProfileSection() {
             Here&apos;s a help video
           </a>
         </p>
-        <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
+        <div className="mx-auto md:max-w-[60%]">
+          <VideoEmbed url="https://youtu.be/WJRKrl5S5tM" />
+        </div>
       </div>
     </section>
   );
