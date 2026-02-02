@@ -282,7 +282,7 @@ export default function NewSurveyPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card>
+                    <Card className="bg-muted">
                         <CardHeader>
                             <CardTitle>Form Builder</CardTitle>
                             <CardDescription>Build your survey using the editor below.</CardDescription>

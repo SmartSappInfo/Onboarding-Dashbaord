@@ -258,7 +258,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     </CardContent>
                 </Card>
                 
-                <Card>
+                <Card className="bg-muted">
                     <CardHeader>
                         <CardTitle>Form Builder</CardTitle>
                         <CardDescription>Build your survey using the editor below.</CardDescription>
@@ -293,5 +293,3 @@ export default function EditSurveyPage() {
         </div>
     );
 }
-
-    

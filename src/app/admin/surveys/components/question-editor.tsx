@@ -647,7 +647,7 @@ export default function QuestionEditor() {
                 </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : "bg-muted/30"
+                    element.hidden ? "bg-disabled" : "bg-card"
                 )}>
                     <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
@@ -706,9 +706,9 @@ export default function QuestionEditor() {
                                             render={({ field }) => {
                                                 switch(element.type) {
                                                     case 'text':
-                                                        return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="italic text-[#969696]" />;
+                                                        return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="placeholder:italic placeholder:text-[#969696]" />;
                                                     case 'long-text':
-                                                        return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="italic text-[#969696]" />;
+                                                        return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
                                                     case 'yes-no':
                                                         return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
                                                             <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
