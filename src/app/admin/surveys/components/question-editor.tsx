@@ -154,7 +154,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   }
 
   return (
-    <div className="space-y-3 p-4 border rounded-lg bg-background">
+    <div className="space-y-3">
       <Label>Options</Label>
       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
         <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
@@ -580,6 +580,16 @@ export default function QuestionEditor() {
         if (type === 'checkboxes') {
             (newElement as SurveyQuestion).allowOther = false;
         }
+        if (type === 'date') {
+            (newElement as SurveyQuestion).defaultValue = new Date();
+        }
+        if (type === 'time') {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            (newElement as SurveyQuestion).defaultValue = `${hours}:${minutes}:${seconds}`;
+        }
     } else if (type === 'logic') {
         (newElement as any).rules = [];
     } else if (isLayoutBlock(newElement as SurveyElement)) {
@@ -647,50 +657,52 @@ export default function QuestionEditor() {
                 </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : "bg-card"
+                    element.hidden ? "bg-disabled" : ""
                 )}>
-                    <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
-                            <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
-                            <ArrowDown className="h-4 w-4" />
-                        </Button>
-                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
-                            {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
+                     <CardHeader>
+                        <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-2">
+                                <ElementIcon className="w-5 h-5 text-muted-foreground" />
+                                {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
+                                <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
+                                {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
+                            </div>
+                            <div className="flex items-center gap-1 z-10">
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+                                    <ArrowUp className="h-4 w-4" />
                                 </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-2">
-                                <QuestionSettingsPopover
-                                    element={element}
-                                    index={index}
-                                    changeType={changeElementType}
-                                />
-                            </PopoverContent>
-                        </Popover>
-                    </div>
-                    <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2">
-                        <ElementIcon className="w-5 h-5 text-muted-foreground" />
-                        {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                        <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
-                        {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
-                        </CardTitle>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
+                                    <ArrowDown className="h-4 w-4" />
+                                </Button>
+                                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
+                                    {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-80 p-2">
+                                        <QuestionSettingsPopover
+                                            element={element}
+                                            index={index}
+                                            changeType={changeElementType}
+                                        />
+                                    </PopoverContent>
+                                </Popover>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent className="pt-0">
                          {isElementQuestion ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start p-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
                                 <div className="space-y-2">
                                     <Label>Question Text</Label>
                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} placeholder="e.g., What is your favorite color?" />} />
@@ -726,11 +738,9 @@ export default function QuestionEditor() {
                                             }}
                                         />
                                      ): (
-                                        <div>
-                                            <OptionsEditor questionIndex={index} />
-                                            {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
-                                        </div>
+                                        <OptionsEditor questionIndex={index} />
                                     )}
+                                     {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                                 </div>
                             </div>
                         ) : (

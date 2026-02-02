@@ -112,6 +112,12 @@ export default function NewSurveyPage() {
     });
     
     React.useEffect(() => {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timeString = `${hours}:${minutes}:${seconds}`;
+
         // Seed with a default survey for demonstration
         form.reset({
             title: 'Parent Feedback Survey',
@@ -149,8 +155,8 @@ export default function NewSurveyPage() {
                     isRequired: true,
                     defaultValue: 4,
                 },
-                { id: 'q_date', title: 'What date would be best for a parent-teacher conference this term?', type: 'date', isRequired: false },
-                { id: 'q_time', title: 'What time do you usually arrive for pickup?', type: 'time', isRequired: false },
+                { id: 'q_date', title: 'What date would be best for a parent-teacher conference this term?', type: 'date', isRequired: false, defaultValue: now },
+                { id: 'q_time', title: 'What time do you usually arrive for pickup?', type: 'time', isRequired: false, defaultValue: timeString },
                 {
                     id: 'q_longtext',
                     title: 'Do you have any additional comments or suggestions for us?',
@@ -282,7 +288,7 @@ export default function NewSurveyPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-muted">
+                    <Card className="bg-muted/30">
                         <CardHeader>
                             <CardTitle>Form Builder</CardTitle>
                             <CardDescription>Build your survey using the editor below.</CardDescription>
