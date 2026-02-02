@@ -99,7 +99,7 @@ export default function SurveysPage() {
           <h1 className="text-4xl font-bold tracking-tight">Surveys</h1>
           <Button asChild>
             <Link href="/admin/surveys/new">
-              <PlusCircle />
+              <PlusCircle className="mr-2 h-4 w-4" />
               Create New Survey
             </Link>
           </Button>
@@ -147,16 +147,16 @@ export default function SurveysPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
-                            <Edit />
+                            <Edit className="mr-2 h-4 w-4" />
                             <span>Edit Survey</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
-                            <BarChart2 />
+                            <BarChart2 className="mr-2 h-4 w-4" />
                             <span>View Results</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem asChild>
                             <a href={`/surveys/${survey.slug}`} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink />
+                              <ExternalLink className="mr-2 h-4 w-4" />
                               <span>View Public Page</span>
                             </a>
                           </DropdownMenuItem>
@@ -167,7 +167,7 @@ export default function SurveysPage() {
                               onSelect={(e) => e.preventDefault()}
                               onClick={() => setSurveyToDelete(survey)}
                             >
-                              <Trash2 />
+                              <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete Survey</span>
                             </DropdownMenuItem>
                           </AlertDialogTrigger>
