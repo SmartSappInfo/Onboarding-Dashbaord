@@ -94,7 +94,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center">
+              <div className="flex h-8 items-center justify-between group-data-[collapsible=icon]:justify-center">
                 <SidebarGroupLabel>Onboarding Workspace</SidebarGroupLabel>
                 <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0"/>
               </div>
