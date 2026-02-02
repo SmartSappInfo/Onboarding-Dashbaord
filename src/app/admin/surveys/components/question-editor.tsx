@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar as CalendarIcon, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -643,6 +643,9 @@ export default function QuestionEditor() {
 
         return (
             <div key={field.id} className="relative group">
+                <div className="absolute top-1/2 -translate-y-1/2 -right-12 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <GripVertical className="h-6 w-6 text-muted-foreground cursor-grab" />
+                </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
                     element.hidden ? "bg-disabled" : "bg-muted/30"
@@ -686,63 +689,70 @@ export default function QuestionEditor() {
                         {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-6">
-                        {isElementQuestion ? (
-                            <>
+                    <CardContent className="pt-0">
+                         {isElementQuestion ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start p-6">
                                 <div className="space-y-2">
                                     <Label>Question Text</Label>
                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="e.g., What is your favorite color?" />} />
                                     {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                                 </div>
-                                
                                 <div className="space-y-2">
-                                    <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
-                                    <Controller
-                                        name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
-                                        control={control}
-                                        render={({ field }) => {
-                                            switch(element.type) {
-                                                case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="italic text-[#969696]" />;
-                                                case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="italic text-[#969696]" />;
-                                                case 'yes-no':
-                                                    return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
-                                                        <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
-                                                    </RadioGroup>;
-                                                case 'rating':
-                                                    return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
-                                                case 'date':
-                                                    return <DatePicker value={field.value} onChange={field.onChange} />;
-                                                case 'time':
-                                                    return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
-                                                default:
-                                                    return null;
-                                            }
-                                        }}
-                                    />
-                                </div>
+                                     <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
+                                     
+                                     {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') && (
+                                         <Controller
+                                            name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
+                                            control={control}
+                                            render={({ field }) => {
+                                                switch(element.type) {
+                                                    case 'text':
+                                                        return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="italic text-[#969696]" />;
+                                                    case 'long-text':
+                                                        return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="italic text-[#969696]" />;
+                                                    case 'yes-no':
+                                                        return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                                                        </RadioGroup>;
+                                                    case 'rating':
+                                                        return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
+                                                    case 'date':
+                                                        return <DatePicker value={field.value} onChange={field.onChange} />;
+                                                    case 'time':
+                                                        return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
+                                                    default:
+                                                        return null;
+                                                }
+                                            }}
+                                        />
+                                     )}
+                                    
 
-                                {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
-                                    <div>
-                                        <OptionsEditor questionIndex={index} />
-                                        {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
+                                    {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
+                                        <div>
+                                            <OptionsEditor questionIndex={index} />
+                                            {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                             <div className="p-6">
+                                {element.type === 'logic' ? (
+                                    <LogicBlockEditor elementIndex={index} />
+                                ) : (
+                                    <div className="space-y-6">
+                                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
+                                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
+                                        {element.type === 'divider' && <hr className="border-border" />}
+                                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                                            <Controller name={`elements.${index}.url`} control={control} render={({ field }) => <FormItem><FormLabel>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} URL</FormLabel><MediaSelect {...field} filterType={getMediaFilterType(element.type)}/></FormItem>} />
+                                        )}
+                                        {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
                                     </div>
                                 )}
-                            </>
-                        ) : element.type === 'logic' ? (
-                            <LogicBlockEditor elementIndex={index} />
-                        ) : (
-                            <>
-                                {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
-                                {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
-                                {element.type === 'divider' && <hr className="border-border" />}
-                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                                    <Controller name={`elements.${index}.url`} control={control} render={({ field }) => <FormItem><FormLabel>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} URL</FormLabel><MediaSelect {...field} filterType={getMediaFilterType(element.type)}/></FormItem>} />
-                                )}
-                                {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
-                            </>
+                            </div>
                         )}
                     </CardContent>
                 </Card>
