@@ -49,7 +49,7 @@ function AdminDashboardSkeleton() {
             </div>
         </div>
         <div className="flex-1">
-             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
+             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-card px-4">
                 <Skeleton className="h-8 w-8" />
             </header>
             <main className="flex-1 p-4 sm:p-6 md:p-8">
@@ -157,7 +157,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </Sidebar>
         
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-card px-4">
             <SidebarTrigger className="md:hidden" />
             <div className="w-full flex-1">
               <h1 className="text-lg font-semibold">{pageTitle}</h1>
