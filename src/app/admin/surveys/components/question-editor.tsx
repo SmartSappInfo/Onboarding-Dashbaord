@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
@@ -14,7 +15,6 @@ import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } fro
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import AddElementModal from './add-element-modal';
-import { MediaSelect } from '../../schools/components/media-select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { MediaSelect } from '../../schools/components/media-select';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -711,7 +712,7 @@ function SortableSurveyElement({ id, index }: { id: string; index: number }) {
                         )}
                         {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                     </div>
-                    <div className="flex items-center gap-1 z-10">
+                    <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
                         {useInlineDragHandle && (
                             <Button type="button" variant="ghost" size="icon" className="h-8 w-8 cursor-grab" {...attributes} {...listeners}>
                                 <GripVertical className="h-4 w-4" />
