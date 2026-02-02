@@ -10,17 +10,30 @@ import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
-export interface MediaSelectProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface MediaSelectProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
     value?: string;
     onValueChange?: (value: string) => void;
+    onChange?: (...event: any[]) => void; // From react-hook-form
+    filterType?: MediaAsset['type'];
 }
 
 const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
-  ({ className, value, onValueChange, ...props }, ref) => {
+  ({ className, value, onValueChange, onChange, filterType, ...props }, ref) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
+  // This function calls the correct callback, whether it's the standard
+  // onValueChange or react-hook-form's onChange.
+  const triggerChange = (newValue: string) => {
+    if (onValueChange) {
+        onValueChange(newValue);
+    }
+    if (onChange) {
+        onChange(newValue);
+    }
+  }
+
   const handleSelect = (asset: MediaAsset) => {
-    onValueChange?.(asset.url);
+    triggerChange(asset.url);
     setIsDialogOpen(false);
   };
 
@@ -37,7 +50,7 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
         <div className="flex-grow space-y-2">
           <Input 
             value={value || ''}
-            onChange={(e) => onValueChange?.(e.target.value)}
+            onChange={(e) => triggerChange(e.target.value)}
             placeholder="https://... or select from library"
             ref={ref}
             {...props}
@@ -51,7 +64,7 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onSelectAsset={handleSelect}
-        filterType="image"
+        filterType={filterType}
       />
     </>
   );
