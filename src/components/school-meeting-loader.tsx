@@ -7,13 +7,12 @@ import { useFirestore } from '@/firebase';
 import type { School, Meeting } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
-import VideoEmbed from '@/components/video-embed';
-import { Card, CardContent } from '@/components/ui/card';
 import AppDownloadSection from '@/components/app-download-section';
 import HelpSection from './help-section';
 import BrochureDownloadSection from './brochure-download-section';
 import SetupProfileSection from './setup-profile-section';
 import TestimonialsSection from './testimonials-section';
+import WelcomeSection from './welcome-section';
 
 function MeetingPageSkeleton() {
   return (
@@ -157,24 +156,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
         <>
             <MeetingHero school={school} meeting={meeting} />
             
-            <section className="bg-white py-20 text-center text-gray-800 md:py-28 dark:bg-background dark:text-foreground">
-                <div className="container">
-                    <h1 className="mb-6 font-headline text-3xl font-bold tracking-tighter text-primary sm:text-4xl md:text-5xl lg:text-6xl">
-                        Welcome to the SmartSapp Family
-                    </h1>
-                    <p className="mb-4 text-lg leading-relaxed text-gray-600 dark:text-muted-foreground">
-                        Your child's school has signed up on SmartSapp.
-                        <br />
-                        Here is a quick video to help you understand what it means for you as a parent.
-                    </p>
-                    <p className="mb-10 text-lg font-semibold text-gray-800 dark:text-foreground">
-                        Please watch the full video. It's super important!
-                    </p>
-                    <div className="mt-16 mx-auto md:max-w-[60%]">
-                        <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
-                    </div>
-                </div>
-            </section>
+            <WelcomeSection />
             
             <AppDownloadSection />
 
