@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import QuestionEditor from '../components/question-editor';
+import SurveyPreviewButton from '../components/survey-preview-button';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -209,7 +210,6 @@ export default function NewSurveyPage() {
 
     return (
         <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-8">Create New Survey</h1>
             <FormProvider {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                      <Card>
@@ -293,10 +293,11 @@ export default function NewSurveyPage() {
                     </Card>
 
 
-                    <div className="flex justify-end gap-4">
+                    <div className="flex justify-end items-center gap-4">
                         <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
                         Cancel
                         </Button>
+                        <SurveyPreviewButton />
                         <Button type="submit" disabled={form.formState.isSubmitting}>
                         {form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}
                         </Button>

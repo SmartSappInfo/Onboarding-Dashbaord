@@ -26,6 +26,7 @@ import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissio
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
 import QuestionEditor from '../../components/question-editor';
+import SurveyPreviewButton from '../../components/survey-preview-button';
 
 
 const questionSchema = z.object({
@@ -267,10 +268,11 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     </CardContent>
                 </Card>
 
-                <div className="flex justify-end gap-4">
+                <div className="flex justify-end items-center gap-4">
                     <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
                     Cancel
                     </Button>
+                    <SurveyPreviewButton />
                     <Button type="submit" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
                     </Button>
@@ -287,7 +289,6 @@ export default function EditSurveyPage() {
 
     return (
         <div>
-            <h1 className="text-4xl font-bold tracking-tight mb-8">Edit Survey</h1>
             {surveyId ? <EditSurveyForm surveyId={surveyId} /> : <p>Survey ID not found.</p>}
         </div>
     );
