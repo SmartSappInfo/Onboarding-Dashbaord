@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
@@ -694,13 +693,13 @@ export default function QuestionEditor() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start p-6">
                                 <div className="space-y-2">
                                     <Label>Question Text</Label>
-                                    <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="e.g., What is your favorite color?" />} />
+                                    <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} placeholder="e.g., What is your favorite color?" />} />
                                     {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                                 </div>
                                 <div className="space-y-2">
                                      <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
                                      
-                                     {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') && (
+                                     {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
                                          <Controller
                                             name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
                                             control={control}
@@ -726,10 +725,7 @@ export default function QuestionEditor() {
                                                 }
                                             }}
                                         />
-                                     )}
-                                    
-
-                                    {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
+                                     ): (
                                         <div>
                                             <OptionsEditor questionIndex={index} />
                                             {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
@@ -779,5 +775,3 @@ export default function QuestionEditor() {
 
     
 }
-
-    
