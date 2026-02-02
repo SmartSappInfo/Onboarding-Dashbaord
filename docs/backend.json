@@ -169,6 +169,59 @@
         }
       },
       "required": ["name", "url", "type", "uploadedBy", "createdAt"]
+    },
+    "Survey": {
+      "title": "Survey",
+      "type": "object",
+      "description": "Represents a survey with questions.",
+      "properties": {
+        "title": { "type": "string", "description": "The title of the survey." },
+        "description": { "type": "string", "description": "Instructions or description for the survey." },
+        "slug": { "type": "string", "description": "URL-friendly slug for the survey page." },
+        "bannerImageUrl": { "type": "string", "format": "uri", "description": "URL for the survey's banner image." },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"], "description": "The current status of the survey." },
+        "questions": {
+          "type": "array",
+          "description": "An ordered list of questions in the survey.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "description": "Unique identifier for the question within the survey." },
+              "title": { "type": "string", "description": "The question text." },
+              "type": { "type": "string", "enum": ["yes-no", "multiple-choice", "checkboxes", "text"], "description": "The type of question." },
+              "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice or checkbox questions." },
+              "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option." },
+              "isRequired": { "type": "boolean", "description": "Whether the question must be answered." }
+            },
+            "required": ["id", "title", "type", "isRequired"]
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "slug", "status", "questions", "createdAt", "updatedAt"]
+    },
+    "SurveyResponse": {
+      "title": "Survey Response",
+      "type": "object",
+      "description": "Represents a single submission for a survey.",
+      "properties": {
+        "surveyId": { "type": "string", "description": "The ID of the survey being responded to." },
+        "submittedAt": { "type": "string", "format": "date-time" },
+        "answers": {
+          "type": "array",
+          "description": "The respondent's answers.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionId": { "type": "string" },
+              "value": { "description": "The answer value. Can be a string or an array of strings." }
+            },
+            "required": ["questionId", "value"]
+          }
+        }
+      },
+      "required": ["surveyId", "submittedAt", "answers"]
     }
   },
   "auth": {
@@ -207,6 +260,26 @@
             "$ref": "#/backend/entities/MediaAsset"
           },
           "description": "Stores all media assets uploaded to the application."
+        }
+      },
+      {
+        "path": "/surveys/{surveyId}",
+        "definition": {
+          "entityName": "Survey",
+          "schema": {
+            "$ref": "#/backend/entities/Survey"
+          },
+          "description": "Stores individual surveys, including their questions and configuration."
+        }
+      },
+      {
+        "path": "/surveys/{surveyId}/responses/{responseId}",
+        "definition": {
+          "entityName": "SurveyResponse",
+          "schema": {
+            "$ref": "#/backend/entities/SurveyResponse"
+          },
+          "description": "Stores user responses for a specific survey."
         }
       }
     ]
