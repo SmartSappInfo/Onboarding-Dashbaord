@@ -52,6 +52,10 @@ const generateSchema = (elements: SurveyElement[]) => {
             schema = textSchema;
         }
 
+        if (q.type === 'file-upload') {
+            schema = z.string().url().optional();
+        }
+
         acc[q.id] = schema.optional();
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
@@ -98,16 +102,40 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
   const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [fileName, setFileName] = React.useState<string | null>(null);
+  
+  React.useEffect(() => {
+    if (value && !fileName) {
+      try {
+        if (value.startsWith('https://firebasestorage.googleapis.com')) {
+          const url = new URL(value);
+          const path = decodeURIComponent(url.pathname);
+          const name = path.substring(path.lastIndexOf('/') + 1);
+          if (name.includes('-')) {
+            const nameWithoutTimestamp = name.substring(name.indexOf('-') + 1);
+            setFileName(nameWithoutTimestamp);
+          } else {
+            setFileName(name);
+          }
+        }
+      } catch (e) {
+        console.error("Could not parse file URL:", e);
+      }
+    } else if (!value && fileName) {
+      setFileName(null);
+      setUploadProgress(null);
+      setError(null);
+    }
+  }, [value, fileName]);
+
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset state
     setError(null);
     setUploadProgress(0);
     setFileName(file.name);
-    onChange(undefined); // Clear old value
+    onChange(undefined);
 
     const storage = getStorage();
     const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${file.name}`;
@@ -131,6 +159,9 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
           onChange(downloadURL);
           setUploadProgress(100);
+          setTimeout(() => {
+            setUploadProgress(null);
+          }, 1500);
         } catch (urlError) {
           console.error("Failed to get download URL:", urlError);
           setError("Could not retrieve file URL.");
@@ -143,22 +174,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
   
   const handleRemoveFile = () => {
       onChange(undefined);
-      setUploadProgress(null);
-      setError(null);
-      setFileName(null);
   };
-
-  if (value && fileName) {
-    return (
-      <div className="flex items-center gap-2 p-2 border rounded-md bg-secondary">
-        <FileIcon className="h-5 w-5 text-secondary-foreground" />
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm font-medium truncate flex-1 hover:underline">{fileName}</a>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRemoveFile} disabled={disabled}>
-            <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
   
   if (uploadProgress !== null && fileName) {
     return (
@@ -171,6 +187,18 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
             <Progress value={uploadProgress} />
             {error && <p className="text-sm text-destructive">{error}</p>}
         </div>
+    );
+  }
+
+  if (value && fileName) {
+    return (
+      <div className="flex items-center gap-2 p-2 border rounded-md bg-secondary">
+        <FileIcon className="h-5 w-5 text-secondary-foreground" />
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm font-medium truncate flex-1 hover:underline">{fileName}</a>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRemoveFile} disabled={disabled}>
+            <X className="h-4 w-4" />
+        </Button>
+      </div>
     );
   }
 
