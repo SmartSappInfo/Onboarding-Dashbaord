@@ -25,8 +25,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
-import QuestionEditor from '../../components/question-editor';
 import SurveyPreviewButton from '../../components/survey-preview-button';
+import SurveyFormBuilder from '../../components/survey-form-builder';
 
 
 const questionSchema = z.object({
@@ -261,15 +261,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     </CardContent>
                 </Card>
                 
-                <Card className="bg-muted">
-                    <CardHeader>
-                        <CardTitle>Form Builder</CardTitle>
-                        <CardDescription>Build your survey using the editor below.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <QuestionEditor />
-                    </CardContent>
-                </Card>
+                <SurveyFormBuilder />
 
                 <div className="flex justify-end items-center gap-4">
                     <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>

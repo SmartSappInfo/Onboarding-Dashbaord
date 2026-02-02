@@ -23,8 +23,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
-import QuestionEditor from '../components/question-editor';
 import SurveyPreviewButton from '../components/survey-preview-button';
+import SurveyFormBuilder from '../components/survey-form-builder';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -326,16 +326,7 @@ export default function NewSurveyPage() {
                         </CardContent>
                     </Card>
                     
-                    <Card className="bg-muted/30">
-                        <CardHeader>
-                            <CardTitle>Form Builder</CardTitle>
-                            <CardDescription>Build your survey using the editor below.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <QuestionEditor />
-                        </CardContent>
-                    </Card>
-
+                    <SurveyFormBuilder />
 
                     <div className="flex justify-end items-center gap-4">
                         <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
