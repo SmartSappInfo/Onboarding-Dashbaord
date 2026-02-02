@@ -41,3 +41,34 @@ export interface MediaAsset {
   linkDescription?: string;
   previewImageUrl?: string;
 }
+
+export interface SurveyQuestion {
+  id: string;
+  title: string;
+  type: 'yes-no' | 'multiple-choice' | 'checkboxes' | 'text';
+  options?: string[];
+  allowOther?: boolean;
+  isRequired: boolean;
+}
+
+export interface Survey {
+  id: string;
+  title: string;
+  description: string;
+  slug: string;
+  bannerImageUrl?: string;
+  status: 'draft' | 'published' | 'archived';
+  questions: SurveyQuestion[];
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export interface SurveyResponse {
+  id: string;
+  surveyId: string;
+  submittedAt: string; // ISO string
+  answers: {
+    questionId: string;
+    value: string | string[];
+  }[];
+}

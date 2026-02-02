@@ -15,7 +15,7 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,6 +27,7 @@ const navItems = [
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/media', icon: Film, label: 'Media' },
+  { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
 ];
 
 
@@ -38,6 +39,7 @@ function AdminDashboardSkeleton() {
                 <Skeleton className="h-8 w-32" />
             </div>
             <div className="flex flex-col gap-2 p-2">
+                <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
                 <Skeleton className="h-10 w-full" />
