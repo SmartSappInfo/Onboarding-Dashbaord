@@ -220,7 +220,7 @@ export default function NewSurveyPage() {
         }
     };
     
-    const slug = form.watch('title').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = (form.watch('title') || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     return (
         <FormProvider {...form}>
