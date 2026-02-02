@@ -34,6 +34,21 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 
+function SurveyResponseCount({ surveyId }: { surveyId: string }) {
+    const firestore = useFirestore();
+    const responsesCol = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return collection(firestore, `surveys/${surveyId}/responses`);
+    }, [firestore, surveyId]);
+    
+    const { data: responses, isLoading } = useCollection<{id: string}>(responsesCol);
+
+    if (isLoading) return <Skeleton className="h-5 w-8" />;
+
+    return <>{responses?.length ?? 0}</>;
+}
+
+
 export default function SurveysPage() {
   const firestore = useFirestore();
   const router = useRouter();
@@ -132,7 +147,7 @@ export default function SurveysPage() {
                   <TableRow key={survey.id}>
                     <TableCell className="font-medium">{survey.title}</TableCell>
                     <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
-                    <TableCell>0</TableCell>
+                    <TableCell><SurveyResponseCount surveyId={survey.id} /></TableCell>
                     <TableCell>
                       {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
                     </TableCell>
