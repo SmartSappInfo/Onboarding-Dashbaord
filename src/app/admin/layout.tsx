@@ -66,6 +66,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
 
+  const pageTitle = React.useMemo(() => {
+    if (pathname.startsWith('/admin/settings')) {
+      return 'Settings';
+    }
+
+    // Reverse to match more specific paths first e.g. '/admin/schools' before '/admin'
+    const activeItem = [...navItems].reverse().find(item => pathname.startsWith(item.href));
+    
+    return activeItem?.label || 'Dashboard';
+  }, [pathname]);
+
   React.useEffect(() => {
     // If loading is finished and there's no user, redirect to login.
     if (!isUserLoading && !user) {
@@ -82,7 +93,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/30">
-        <Sidebar collapsible="icon" className="border-r">
+        <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg">
           <SidebarHeader className="p-2">
              <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
                 <Link href="/admin" className="flex items-center gap-2 font-semibold">
@@ -94,9 +105,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
-              <div className="flex h-8 items-center justify-between group-data-[collapsible=icon]:justify-center">
+              <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
                 <SidebarGroupLabel>Onboarding Workspace</SidebarGroupLabel>
-                <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0"/>
+                <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
               </div>
               <SidebarMenu>
                 {navItems.map((item) => (
@@ -149,7 +160,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
             <SidebarTrigger className="md:hidden" />
             <div className="w-full flex-1">
-              <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
+              <h1 className="text-lg font-semibold">{pageTitle}</h1>
             </div>
             <ThemeToggle />
           </header>
