@@ -440,7 +440,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={dateValue} onSelect={onChange} initialFocus />
+                <Calendar mode="single" selected={dateValue} onSelect={onChange} />
             </PopoverContent>
         </Popover>
     );
@@ -487,16 +487,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                         <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
                         <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
-                    <Controller
-                        name={`elements.${index}.placeholder`}
-                        control={control}
-                        render={({ field }) => (
-                            <FormItem className="rounded-lg border p-3">
-                                <FormLabel>Placeholder</FormLabel>
-                                <Input {...field} placeholder="e.g., Type your answer here..." />
-                            </FormItem>
-                        )}
-                    />
                     {isTextQuestion && (
                         <>
                             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -673,33 +663,43 @@ export default function QuestionEditor() {
                                 
                                 {showDefaultValueEditor && (
                                     <div className="space-y-2">
-                                        <Label>Default Value</Label>
+                                        <Label>{element.type === 'text' || element.type === 'long-text' ? 'Placeholder' : 'Default Value'}</Label>
                                         <div className="p-4 border rounded-lg bg-background">
-                                            <Controller
-                                                name={`elements.${index}.defaultValue`}
-                                                control={control}
-                                                render={({ field }) => {
-                                                    switch(element.type) {
-                                                        case 'text':
-                                                            return <Input {...field} value={field.value || ''} placeholder="Default value..." />;
-                                                        case 'long-text':
-                                                            return <Textarea {...field} value={field.value || ''} placeholder="Default value..." />;
-                                                        case 'yes-no':
-                                                            return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
-                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
-                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
-                                                            </RadioGroup>;
-                                                        case 'rating':
-                                                            return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
-                                                        case 'date':
-                                                            return <DatePicker value={field.value} onChange={field.onChange} />;
-                                                        case 'time':
-                                                            return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
-                                                        default:
-                                                            return null;
-                                                    }
-                                                }}
-                                            />
+                                            { (element.type === 'text' || element.type === 'long-text') ? (
+                                                <Controller
+                                                    name={`elements.${index}.placeholder`}
+                                                    control={control}
+                                                    render={({ field }) => {
+                                                        if (element.type === 'text') {
+                                                            return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." />;
+                                                        } else {
+                                                            return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." />;
+                                                        }
+                                                    }}
+                                                />
+                                            ) : (
+                                                <Controller
+                                                    name={`elements.${index}.defaultValue`}
+                                                    control={control}
+                                                    render={({ field }) => {
+                                                        switch(element.type) {
+                                                            case 'yes-no':
+                                                                return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                                                                </RadioGroup>;
+                                                            case 'rating':
+                                                                return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
+                                                            case 'date':
+                                                                return <DatePicker value={field.value} onChange={field.onChange} />;
+                                                            case 'time':
+                                                                return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
+                                                            default:
+                                                                return null;
+                                                        }
+                                                    }}
+                                                />
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -751,3 +751,4 @@ export default function QuestionEditor() {
   );
 
     
+}
