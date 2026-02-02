@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { format, isValid } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -421,14 +421,49 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChang
     );
 };
 
+const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onChange: (date?: Date) => void, disabled?: boolean }) => {
+    let dateValue: Date | undefined = undefined;
+    if (value) {
+        const parsed = value instanceof Date ? value : parseISO(value);
+        if (isValid(parsed)) {
+            dateValue = parsed;
+        }
+    }
+    
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                    <Calendar className="mr-2 h-4" />
+                    {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0">
+                <Calendar mode="single" selected={dateValue} onSelect={onChange} initialFocus />
+            </PopoverContent>
+        </Popover>
+    );
+}
+
 const ResponseControlPreview = ({ question, index, control }: { question: SurveyQuestion; index: number; control: any }) => {
     switch (question.type) {
         case 'text':
-            return <Controller name={`elements.${index}.placeholder`} control={control} render={({ field }) => <Input {...field} placeholder="Placeholder text..." />} />;
+            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} value={field.value || ''} placeholder="Default value..." />} />;
         case 'long-text':
-            return <Controller name={`elements.${index}.placeholder`} control={control} render={({ field }) => <Textarea {...field} placeholder="Placeholder text..." />} />;
+            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder="Default value..." />} />;
         case 'yes-no':
-            return <RadioGroup disabled className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div></RadioGroup>;
+            return (
+                <Controller
+                    control={control}
+                    name={`elements.${index}.defaultValue`}
+                    render={({ field }) => (
+                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                            <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                        </RadioGroup>
+                    )}
+                />
+            );
         case 'multiple-choice':
             return <RadioGroup disabled className="space-y-2">{question.options?.map(opt => <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}</RadioGroup>;
         case 'checkboxes':
@@ -436,11 +471,28 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
         case 'dropdown':
             return <Select disabled><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></Select>;
         case 'rating':
-            return <StarRatingInput value={0} onChange={() => {}} disabled />;
+             return (
+                <Controller
+                    name={`elements.${index}.defaultValue`}
+                    control={control}
+                    render={({ field }) => (
+                        <StarRatingInput
+                            value={field.value || 0}
+                            onChange={field.onChange}
+                        />
+                    )}
+                />
+            );
         case 'date':
-            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><Calendar className="mr-2 h-4" /><span>Pick a date</span></Button>;
+            return (
+                <Controller
+                   control={control}
+                   name={`elements.${index}.defaultValue`}
+                   render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
+               />
+           );
         case 'time':
-            return <Input type="time" disabled className="w-fit" />;
+            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="time" className="w-fit" {...field} value={field.value || ''} />} />;
         default:
             return null;
     }
@@ -456,7 +508,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
     
     // Local state to manage UI toggles
-    const [useDefault, setUseDefault] = React.useState(false);
     const [useMin, setUseMin] = React.useState(false);
     const [useMax, setUseMax] = React.useState(false);
 
@@ -475,10 +526,9 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     ];
 
     React.useEffect(() => {
-        setUseDefault(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
         setUseMin(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
         setUseMax(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
-    }, [getValues, index, isElemQuestion, isTextQuestion]);
+    }, [getValues, index, isTextQuestion]);
 
     return (
         <div className="space-y-4">
@@ -489,6 +539,16 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                         <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
                         <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
+                    <Controller
+                        name={`elements.${index}.placeholder`}
+                        control={control}
+                        render={({ field }) => (
+                            <FormItem className="rounded-lg border p-3">
+                                <FormLabel>Placeholder</FormLabel>
+                                <Input {...field} placeholder="e.g., Type your answer here..." />
+                            </FormItem>
+                        )}
+                    />
                     {isTextQuestion && (
                         <>
                             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -512,15 +572,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                    <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
                 </div>
-                {isElemQuestion && isTextQuestion && (
-                    <>
-                        <div className="flex items-center justify-between rounded-lg border p-3">
-                            <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
-                            <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
-                        </div>
-                        {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
-                    </>
-                )}
             </div>
             <div className="space-y-4">
                 <h4 className="font-semibold text-muted-foreground text-sm px-1">Change To</h4>
@@ -615,6 +666,7 @@ export default function QuestionEditor() {
         
         const isElementQuestion = isQuestion(element);
         const ElementIcon = getElementIcon(element.type);
+        const showDefaultValueEditor = isElementQuestion && !['multiple-choice', 'checkboxes', 'dropdown'].includes(element.type);
 
         return (
             <div key={field.id} className="relative group">
@@ -664,12 +716,14 @@ export default function QuestionEditor() {
                                     {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                                 </div>
                                 
-                                <div className="space-y-2">
-                                    <Label className="text-sm text-muted-foreground">Response Preview</Label>
-                                    <div className="p-4 border rounded-lg bg-background">
-                                        <ResponseControlPreview question={element} index={index} control={control} />
+                                {showDefaultValueEditor && (
+                                    <div className="space-y-2">
+                                        <Label>Default Value</Label>
+                                        <div className="p-4 border rounded-lg bg-background">
+                                            <ResponseControlPreview question={element} index={index} control={control} />
+                                        </div>
                                     </div>
-                                </div>
+                                )}
 
                                 {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
                                     <div>
@@ -717,4 +771,3 @@ export default function QuestionEditor() {
     </div>
   );
 }
-
