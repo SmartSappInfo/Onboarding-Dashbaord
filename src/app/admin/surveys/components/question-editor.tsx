@@ -26,6 +26,9 @@ import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import MediaSelectorDialog from '../../media/components/media-selector-dialog';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -616,16 +619,231 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     );
 }
 
-export default function QuestionEditor() {
+function SortableSurveyElement({ id, index }: { id: string; index: number }) {
   const { control, watch, setValue, getValues, formState: { errors } } = useFormContext();
-  const { fields, append, remove, swap, insert } = useFieldArray({
+  
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  const element = watch(`elements.${index}`);
+  const formErrors = errors.elements as any[] | undefined;
+  const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
+  
+  const { fields, remove, swap, insert } = useFieldArray({
+    control,
+    name: 'elements',
+  });
+
+  const duplicateElement = (index: number) => {
+    const elementToDuplicate = fields[index];
+    const newElement = {
+        ...JSON.parse(JSON.stringify(elementToDuplicate)),
+        id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    };
+    insert(index + 1, newElement);
+  };
+
+  const changeElementType = (index: number, newType: SurveyElement['type']) => {
+      const currentElement = getValues(`elements.${index}`);
+      const newElement = { ...currentElement, type: newType };
+      
+      if(newType === 'multiple-choice' || newType === 'checkboxes' || newType === 'dropdown') {
+          if(!newElement.options) newElement.options = ['Option 1', 'Option 2'];
+      } else {
+          delete newElement.options;
+          delete newElement.allowOther;
+      }
+      
+      setValue(`elements.${index}`, newElement, { shouldDirty: true });
+  }
+
+  const toggleHidden = (index: number) => {
+    const currentHiddenState = getValues(`elements.${index}.hidden`);
+    setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
+  };
+  
+  if (!element) return null;
+
+  const isElementQuestion = isQuestion(element);
+  const isElementLayout = isLayoutBlock(element);
+  const isElementSection = element.type === 'section';
+  const ElementIcon = getElementIcon(element.type);
+  
+  return (
+    <div ref={setNodeRef} style={style} className="relative group">
+        <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+        >
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </div>
+        <Card className={cn(
+            "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
+            element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
+        )}>
+             <CardHeader className={cn((isElementLayout && !isElementSection) && 'p-0 mb-4')}>
+                <div className="flex justify-between items-start">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {(!isElementLayout || isElementSection) && (
+                            <>
+                                <ElementIcon className="w-5 h-5" />
+                                {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
+                                <span>
+                                  {isElementQuestion ? `Question #${watch('elements').filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
+                                    : isElementSection ? '' // No text for sections, title is in content
+                                    : 'Logic Block'}
+                                </span>
+                            </>
+                        )}
+                        {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
+                    </div>
+                    <div className="flex items-center gap-1 z-10">
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+                            <ArrowUp className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
+                            <ArrowDown className="h-4 w-4" />
+                        </Button>
+                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
+                            {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-2">
+                                <QuestionSettingsPopover
+                                    element={element}
+                                    index={index}
+                                    changeType={changeElementType}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className={cn(isElementLayout && "p-0")}>
+                 {isElementQuestion ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
+                        <div className="space-y-2">
+                            <Label>Question Text</Label>
+                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} placeholder="e.g., What is your favorite color?" />} />
+                            {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
+                        </div>
+                        <div className="space-y-2">
+                             <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
+                             
+                             {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
+                                 <Controller
+                                    name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
+                                    control={control}
+                                    render={({ field }) => {
+                                        switch(element.type) {
+                                            case 'text':
+                                                return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="placeholder:italic placeholder:text-[#969696]" />;
+                                            case 'long-text':
+                                                return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
+                                            case 'yes-no':
+                                                return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
+                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                                                </RadioGroup>;
+                                            case 'rating':
+                                                return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
+                                            case 'date':
+                                                return <DatePicker value={field.value} onChange={field.onChange} />;
+                                            case 'time':
+                                                return <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} value={field.value || ''} />;
+                                            case 'file-upload':
+                                                return (
+                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md border-dashed h-10 w-full">
+                                                        <Upload className="w-4 h-4" />
+                                                        <span>File Upload Field</span>
+                                                    </div>
+                                                );
+                                            default:
+                                                return null;
+                                        }
+                                    }}
+                                />
+                             ): (
+                                <OptionsEditor questionIndex={index} />
+                            )}
+                             {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
+                        </div>
+                    </div>
+                ) : isElementLayout ? (
+                     <div>
+                        {element.type === 'section' && (
+                             <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
+                                 <div className="flex items-center gap-2">
+                                     <div className="flex-grow h-px bg-border" />
+                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
+                                     <div className="flex-grow h-px bg-border" />
+                                 </div>
+                                 <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
+                                <div className="flex justify-center items-center gap-2 pt-2">
+                                    <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
+                                    <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
+                                </div>
+                             </div>
+                         )}
+                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
+                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
+                        {element.type === 'divider' && <hr className="my-4 border-border" />}
+                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                            <Controller
+                                name={`elements.${index}.url`}
+                                control={control}
+                                render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
+                            />
+                        )}
+                        {element.type === 'embed' && (
+                            <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Embed HTML</FormLabel>
+                                    <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
+                                </FormItem>
+                            )} />
+                        )}
+                    </div>
+                ) : (
+                    <LogicBlockEditor elementIndex={index} />
+                )}
+            </CardContent>
+        </Card>
+    </div>
+  );
+}
+
+
+export default function QuestionEditor() {
+  const { control, formState: { errors } } = useFormContext();
+  const { fields, append, remove, move } = useFieldArray({
     control,
     name: 'elements',
   });
   
   const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
-
-  const elements = watch('elements');
 
   const addElement = (type: SurveyElement['type']) => {
     const newElement: Partial<SurveyElement> = {
@@ -669,208 +887,48 @@ export default function QuestionEditor() {
     append(newElement);
   };
   
-  const duplicateElement = (index: number) => {
-    const elementToDuplicate = fields[index];
-    const newElement = {
-        ...JSON.parse(JSON.stringify(elementToDuplicate)),
-        id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    };
-    insert(index + 1, newElement);
-  };
-
-  const changeElementType = (index: number, newType: SurveyElement['type']) => {
-      const currentElement = getValues(`elements.${index}`);
-      const newElement = { ...currentElement, type: newType };
-      
-      if(newType === 'multiple-choice' || newType === 'checkboxes' || newType === 'dropdown') {
-          if(!newElement.options) newElement.options = ['Option 1', 'Option 2'];
-      } else {
-          delete newElement.options;
-          delete newElement.allowOther;
-      }
-      
-      setValue(`elements.${index}`, newElement, { shouldDirty: true });
-  }
-
   const formErrors = errors.elements as any[] | undefined;
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
-  const toggleHidden = (index: number) => {
-    const currentHiddenState = getValues(`elements.${index}.hidden`);
-    setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
-  };
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = fields.findIndex((field) => field.id === active.id);
+      const newIndex = fields.findIndex((field) => field.id === over.id);
+      if (oldIndex !== -1 && newIndex !== -1) {
+          move(oldIndex, newIndex);
+      }
+    }
+  }
 
 
   return (
-    <div className="space-y-6">
-      {fields.map((field, index) => {
-        const element = elements[index];
-        const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
-        
-        const isElementQuestion = isQuestion(element);
-        const isElementLayout = isLayoutBlock(element);
-        const isElementSection = element.type === 'section';
-        const ElementIcon = getElementIcon(element.type);
-
-        return (
-            <div key={field.id} className="relative group">
-                <div className="absolute top-1/2 -translate-y-1/2 -right-12 hidden md:flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <GripVertical className="h-6 w-6 text-muted-foreground cursor-grab" />
+    <div>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                <div className="space-y-6">
+                    {fields.map((field, index) => (
+                        <SortableSurveyElement key={field.id} id={field.id} index={index} />
+                    ))}
                 </div>
-                <Card className={cn(
-                    "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
-                )}>
-                     <CardHeader className={cn((isElementLayout && !isElementSection) && 'p-0 mb-4')}>
-                        <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                {(!isElementLayout || isElementSection) && (
-                                    <>
-                                        <ElementIcon className="w-5 h-5" />
-                                        {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                                        <span>
-                                          {isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
-                                            : isElementSection ? '' // No text for sections, title is in content
-                                            : 'Logic Block'}
-                                        </span>
-                                    </>
-                                )}
-                                {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
-                            </div>
-                            <div className="flex items-center gap-1 z-10">
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
-                                    <ArrowUp className="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
-                                    <ArrowDown className="h-4 w-4" />
-                                </Button>
-                                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
-                                    {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
-                                    <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-80 p-2">
-                                        <QuestionSettingsPopover
-                                            element={element}
-                                            index={index}
-                                            changeType={changeElementType}
-                                        />
-                                    </PopoverContent>
-                                </Popover>
-                            </div>
-                        </div>
-                    </CardHeader>
-                    <CardContent className={cn(isElementLayout && "p-0")}>
-                         {isElementQuestion ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
-                                <div className="space-y-2">
-                                    <Label>Question Text</Label>
-                                    <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} placeholder="e.g., What is your favorite color?" />} />
-                                    {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
-                                </div>
-                                <div className="space-y-2">
-                                     <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
-                                     
-                                     {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
-                                         <Controller
-                                            name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
-                                            control={control}
-                                            render={({ field }) => {
-                                                switch(element.type) {
-                                                    case 'text':
-                                                        return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="placeholder:italic placeholder:text-[#969696]" />;
-                                                    case 'long-text':
-                                                        return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
-                                                    case 'yes-no':
-                                                        return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
-                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
-                                                        </RadioGroup>;
-                                                    case 'rating':
-                                                        return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
-                                                    case 'date':
-                                                        return <DatePicker value={field.value} onChange={field.onChange} />;
-                                                    case 'time':
-                                                        return <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} value={field.value || ''} />;
-                                                    case 'file-upload':
-                                                        return (
-                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md border-dashed h-10 w-full">
-                                                                <Upload className="w-4 h-4" />
-                                                                <span>File Upload Field</span>
-                                                            </div>
-                                                        );
-                                                    default:
-                                                        return null;
-                                                }
-                                            }}
-                                        />
-                                     ): (
-                                        <OptionsEditor questionIndex={index} />
-                                    )}
-                                     {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
-                                </div>
-                            </div>
-                        ) : isElementLayout ? (
-                             <div>
-                                {element.type === 'section' && (
-                                     <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
-                                         <div className="flex items-center gap-2">
-                                             <div className="flex-grow h-px bg-border" />
-                                             <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
-                                             <div className="flex-grow h-px bg-border" />
-                                         </div>
-                                         <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
-                                        <div className="flex justify-center items-center gap-2 pt-2">
-                                            <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
-                                            <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
-                                        </div>
-                                     </div>
-                                 )}
-                                {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
-                                {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
-                                {element.type === 'divider' && <hr className="my-4 border-border" />}
-                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                                    <Controller
-                                        name={`elements.${index}.url`}
-                                        control={control}
-                                        render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
-                                    />
-                                )}
-                                {element.type === 'embed' && (
-                                    <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Embed HTML</FormLabel>
-                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
-                                        </FormItem>
-                                    )} />
-                                )}
-                            </div>
-                        ) : (
-                            <LogicBlockEditor elementIndex={index} />
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-        )
-      })}
-
-      {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
-          <FormMessage>{(formErrors as any).message}</FormMessage>
-      )}
-
-      <Button type="button" variant="outline" onClick={() => setIsAddElementModalOpen(true)}>
-        <PlusCircle className="mr-2 h-4 w-4" />
-        Add Element
-      </Button>
+            </SortableContext>
+        </DndContext>
+        <div className="mt-6">
+            {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
+                <FormMessage>{(formErrors as any).message}</FormMessage>
+            )}
+            <Button type="button" variant="outline" onClick={() => setIsAddElementModalOpen(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add Element
+            </Button>
+        </div>
       
       <AddElementModal 
         open={isAddElementModalOpen}
