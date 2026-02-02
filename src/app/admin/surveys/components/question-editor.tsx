@@ -643,7 +643,10 @@ export default function QuestionEditor() {
 
         return (
             <div key={field.id} className="relative group">
-                <Card className="bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors">
+                <Card className={cn(
+                    "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
+                    element.hidden ? "bg-disabled" : "bg-muted/30"
+                )}>
                     <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
                             <ArrowUp className="h-4 w-4" />
