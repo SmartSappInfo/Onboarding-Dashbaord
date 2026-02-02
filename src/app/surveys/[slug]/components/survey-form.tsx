@@ -216,7 +216,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                             <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
                         )}
                         {question.type === 'time' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" className="w-fit" {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} />} />
                         )}
                         {errors[question.id] && (
                             <p className="text-sm font-medium text-destructive mt-2">
@@ -453,5 +453,3 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
         </form>
     );
 }
-
-    

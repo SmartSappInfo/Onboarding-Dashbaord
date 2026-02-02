@@ -719,7 +719,7 @@ export default function QuestionEditor() {
                                                     case 'date':
                                                         return <DatePicker value={field.value} onChange={field.onChange} />;
                                                     case 'time':
-                                                        return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
+                                                        return <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} value={field.value || ''} />;
                                                     default:
                                                         return null;
                                                 }

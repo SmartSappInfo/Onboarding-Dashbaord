@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
@@ -58,7 +59,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                         {question.type === 'dropdown' && <Select disabled><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></Select>}
                         {question.type === 'rating' && <StarRatingPreview />}
                         {question.type === 'date' && <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><CalendarIcon className="mr-2 h-4" /><span>Pick a date</span></Button>}
-                        {question.type === 'time' && <Input type="time" disabled className="w-fit" />}
+                        {question.type === 'time' && <Input type="time" step="1" disabled className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />}
                     </div>
                 </CardContent>
             </Card>
