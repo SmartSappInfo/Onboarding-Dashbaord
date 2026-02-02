@@ -13,7 +13,6 @@ import {
   SidebarInset,
   SidebarGroup,
   SidebarGroupLabel,
-  SidebarGroupAction,
 } from '@/components/ui/sidebar';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
@@ -96,9 +95,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarContent>
             <SidebarGroup>
               <SidebarGroupLabel>Workspace</SidebarGroupLabel>
-              <SidebarGroupAction asChild>
-                <SidebarTrigger />
-              </SidebarGroupAction>
               <SidebarMenu>
                 {navItems.map((item) => (
                   <SidebarMenuItem key={item.href}>
@@ -148,6 +144,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         
         <SidebarInset>
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
+            <SidebarTrigger />
             <div className="w-full flex-1">
               <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
             </div>
