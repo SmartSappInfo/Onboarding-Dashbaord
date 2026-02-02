@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Baseline, CheckCircle2, CheckCircle, Layers } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 
@@ -176,7 +176,7 @@ export default function SurveyFormBuilder() {
     }, [debouncedForm, storageKey, isDirty]);
 
     return (
-        <div className="relative">
+        <div className="relative pb-24">
             <Card className="bg-muted/30">
                 <CardHeader>
                     <div className="flex justify-between items-center">
@@ -189,16 +189,6 @@ export default function SurveyFormBuilder() {
                                 {autosaveStatus === 'saving' && 'Saving...'}
                                 {autosaveStatus === 'saved' && 'Changes saved.'}
                             </span>
-                             <div className="flex items-center gap-1 rounded-md border bg-background p-1">
-                                <Button type="button" variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
-                                    <Undo className="h-4 w-4" />
-                                    <span className="sr-only">Undo</span>
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
-                                    <Redo className="h-4 w-4" />
-                                    <span className="sr-only">Redo</span>
-                                </Button>
-                            </div>
                         </div>
                     </div>
                 </CardHeader>
@@ -213,11 +203,41 @@ export default function SurveyFormBuilder() {
                     <div className="mt-8 flex justify-center">
                         <Button type="button" variant="outline" size="lg" onClick={() => setIsAddElementModalOpen(true)}>
                             <PlusCircle className="mr-2 h-5 w-5" />
-                            Add Element
+                            Add More Elements
                         </Button>
                     </div>
                 </CardContent>
             </Card>
+            
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                <div className="flex items-center gap-2 rounded-full border bg-card/80 backdrop-blur-md p-2 shadow-2xl">
+                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('text')}>
+                        <Baseline className="mr-2 h-4 w-4" />
+                        Text
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('yes-no')}>
+                        <CheckCircle2 className="mr-2 h-4 w-4" />
+                        Yes/No
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('multiple-choice')}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Multiple Choice
+                    </Button>
+                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('section')}>
+                        <Layers className="mr-2 h-4 w-4" />
+                        Section
+                    </Button>
+                    <div className="h-6 w-px bg-border mx-2"></div>
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={handleUndo} disabled={!canUndo}>
+                        <Undo className="h-5 w-5" />
+                        <span className="sr-only">Undo</span>
+                    </Button>
+                    <Button variant="ghost" size="icon" className="rounded-full" onClick={handleRedo} disabled={!canRedo}>
+                        <Redo className="h-5 w-5" />
+                        <span className="sr-only">Redo</span>
+                    </Button>
+                </div>
+            </div>
             
             <AddElementModal 
                 open={isAddElementModalOpen}
