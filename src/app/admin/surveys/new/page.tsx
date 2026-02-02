@@ -56,6 +56,8 @@ const layoutBlockSchema = z.object({
   url: z.string().url().optional().or(z.literal('')),
   html: z.string().optional(),
   hidden: z.boolean().optional(),
+  description: z.string().optional(),
+  renderAsPage: z.boolean().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
@@ -71,6 +73,7 @@ const logicActionSchema = z.object({
   targetElementId: z.string().optional(),
   targetElementIds: z.array(z.string()).optional(),
 });
+
 
 const logicBlockSchema = z.object({
   id: z.string(),
@@ -125,7 +128,7 @@ export default function NewSurveyPage() {
             description: 'This survey includes all available question types and layout blocks for testing and demonstration purposes. Please review and interact with each element.',
             status: 'draft',
             elements: [
-                { id: 'sec_1', type: 'section', title: 'Personal Information' },
+                { id: 'sec_1', type: 'section', title: 'Personal Information', description: 'Lets start with some basic details.', renderAsPage: true },
                 // Questions
                 { id: 'q_text', title: 'What is your full name?', type: 'text', isRequired: true, placeholder: 'e.g., Jane Doe' },
                 { id: 'q_yesno', title: 'Do you personally pick up your child from school?', type: 'yes-no', isRequired: true },
@@ -138,7 +141,7 @@ export default function NewSurveyPage() {
                     hidden: true, // Hidden by default, shown by logic
                 },
 
-                { id: 'sec_2', type: 'section', title: 'App Usage & Feedback' },
+                { id: 'sec_2', type: 'section', title: 'App Usage & Feedback', description: 'This section is about your experience with the app.', renderAsPage: true },
                 { 
                     id: 'q_multiplechoice', 
                     title: 'How often do you use the SmartSapp app?', 
@@ -172,7 +175,7 @@ export default function NewSurveyPage() {
                 },
                 { id: 'q_fileupload', title: 'Please upload a copy of your child\'s last report card.', type: 'file-upload', isRequired: false },
 
-                { id: 'sec_3', type: 'section', title: 'Additional Media Section' },
+                { id: 'sec_3', type: 'section', title: 'Additional Media Section', description: 'This section is not a new page.', renderAsPage: false },
                 // Layout Blocks
                 { id: 'layout_heading', type: 'heading', title: 'This is a Heading' },
                 { id: 'layout_description', type: 'description', text: 'This is a description block. It can contain longer text to provide context or instructions to the user.' },

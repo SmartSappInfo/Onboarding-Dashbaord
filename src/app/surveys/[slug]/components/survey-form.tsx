@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { addDoc, collection } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -371,9 +371,10 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
             </Card>
         )
     } else {
-        const block = element;
+        const block = element as SurveyLayoutBlock;
         switch (block.type) {
             case 'section':
+                 if (block.renderAsPage) return null; // Handled by page-level component
                 return <h2 id={block.id} className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2">{block.title}</h2>;
             case 'heading':
                 return <h2 id={block.id} className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
@@ -455,6 +456,28 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
 
     const [elementStates, setElementStates] = React.useState<Record<string, ElementState>>({});
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
+    const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
+
+    const pages = React.useMemo(() => {
+        const p: SurveyElement[][] = [];
+        let currentPage: SurveyElement[] = [];
+
+        survey.elements.forEach(element => {
+            if (element.type === 'section' && element.renderAsPage && currentPage.length > 0) {
+                p.push(currentPage);
+                currentPage = [element];
+            } else {
+                currentPage.push(element);
+            }
+        });
+
+        if (currentPage.length > 0) {
+            p.push(currentPage);
+        }
+        return p.length > 0 ? p : [[]];
+    }, [survey.elements]);
+
+    const isMultiPage = pages.length > 1;
 
     React.useEffect(() => {
         const initialStates: Record<string, ElementState> = {};
@@ -580,22 +603,68 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
             });
     };
 
+     const handleNext = async () => {
+        const questionIdsOnPage = pages[currentPageIndex].filter(isQuestion).map(q => q.id);
+        const isValid = await form.trigger(questionIdsOnPage);
+        if (isValid) {
+            setCurrentPageIndex(prev => prev + 1);
+            window.scrollTo(0, 0);
+        } else {
+            toast({ variant: 'destructive', title: 'Please fill out all required fields on this page.' });
+        }
+    };
+
+    const handlePrev = () => {
+        setCurrentPageIndex(prev => prev - 1);
+        window.scrollTo(0, 0);
+    };
+
+    const currentElements = pages[currentPageIndex];
+    const pageSection = currentElements[0]?.type === 'section' && currentElements[0].renderAsPage ? currentElements[0] : null;
+
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {survey.elements.map((el) => (
-                <ElementRenderer 
-                    key={el.id}
-                    element={el}
-                    control={form.control}
-                    errors={form.formState.errors}
-                    isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
-                    isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
-                    surveyId={survey.id}
-                />
-            ))}
-            <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || isSubmitDisabled}>
-                {form.formState.isSubmitting ? 'Submitting...' : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
-            </Button>
+            {isMultiPage && <Progress value={((currentPageIndex + 1) / pages.length) * 100} className="w-full mb-8" />}
+            
+            {pageSection && (
+                 <div className="mb-8 text-center">
+                    <h2 className="text-2xl font-bold">{pageSection.title}</h2>
+                    {pageSection.description && <p className="text-muted-foreground mt-1">{pageSection.description}</p>}
+                </div>
+            )}
+
+            {currentElements.map((el) => {
+                 if (el.id === pageSection?.id) return null;
+                return (
+                    <ElementRenderer 
+                        key={el.id}
+                        element={el}
+                        control={form.control}
+                        errors={form.formState.errors}
+                        isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
+                        isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
+                        surveyId={survey.id}
+                    />
+                )
+            })}
+
+             <div className={cn("flex items-center", isMultiPage ? "justify-between" : "justify-end")}>
+                {isMultiPage && currentPageIndex > 0 && (
+                    <Button type="button" variant="outline" onClick={handlePrev} disabled={form.formState.isSubmitting}>
+                        Previous
+                    </Button>
+                )}
+                 {isMultiPage && currentPageIndex < pages.length - 1 && (
+                     <Button type="button" onClick={handleNext} disabled={form.formState.isSubmitting} className="ml-auto">
+                        Next
+                    </Button>
+                 )}
+                {currentPageIndex === pages.length - 1 && (
+                    <Button type="submit" size="lg" disabled={form.formState.isSubmitting || isSubmitDisabled} className={cn(isMultiPage && "ml-auto")}>
+                        {form.formState.isSubmitting ? 'Submitting...' : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                    </Button>
+                )}
+            </div>
         </form>
     );
 }

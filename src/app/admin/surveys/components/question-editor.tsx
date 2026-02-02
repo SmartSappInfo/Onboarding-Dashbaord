@@ -657,6 +657,8 @@ export default function QuestionEditor() {
         (newElement as any).rules = [];
     } else if (type === 'section') {
         (newElement as SurveyLayoutBlock).title = 'New Section';
+        (newElement as SurveyLayoutBlock).description = '';
+        (newElement as SurveyLayoutBlock).renderAsPage = false;
     } else if (isLayoutBlock(newElement as SurveyElement)) {
         if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Section';
         if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
@@ -820,10 +822,17 @@ export default function QuestionEditor() {
                         ) : isElementLayout ? (
                              <div>
                                 {element.type === 'section' && (
-                                     <div className="flex items-center gap-2">
-                                         <div className="flex-grow h-px bg-border" />
-                                         <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-lg font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
-                                         <div className="flex-grow h-px bg-border" />
+                                     <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
+                                         <div className="flex items-center gap-2">
+                                             <div className="flex-grow h-px bg-border" />
+                                             <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
+                                             <div className="flex-grow h-px bg-border" />
+                                         </div>
+                                         <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
+                                        <div className="flex justify-center items-center gap-2 pt-2">
+                                            <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
+                                            <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
+                                        </div>
                                      </div>
                                  )}
                                 {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}

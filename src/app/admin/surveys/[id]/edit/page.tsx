@@ -59,6 +59,8 @@ const layoutBlockSchema = z.object({
   url: z.string().url().optional().or(z.literal('')),
   html: z.string().optional(),
   hidden: z.boolean().optional(),
+  description: z.string().optional(),
+  renderAsPage: z.boolean().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;

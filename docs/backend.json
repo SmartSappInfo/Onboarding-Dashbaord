@@ -200,7 +200,9 @@
             "text": { "type": "string", "description": "Content for a description block." },
             "url": { "type": "string", "format": "uri", "description": "URL for image, video, audio, or document blocks." },
             "html": { "type": "string", "description": "HTML content for an embed block." },
-            "hidden": { "type": "boolean", "description": "Whether the block is hidden by default. Can be overridden by logic blocks." }
+            "hidden": { "type": "boolean", "description": "Whether the block is hidden by default. Can be overridden by logic blocks." },
+            "description": { "type": "string", "description": "Optional descriptive text for a section block." },
+            "renderAsPage": { "type": "boolean", "description": "If true, the section and its contents will be rendered as a separate page." }
         },
         "required": ["id", "type"]
     },

@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { CalendarIcon, Star, Upload } from 'lucide-react';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
+import { Badge } from '@/components/ui/badge';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -74,7 +75,14 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
 
     const block = element as SurveyLayoutBlock;
     switch (block.type) {
-        case 'section': return <h2 className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2">{block.title}</h2>;
+        case 'section': 
+            return (
+                <div className="my-12 pt-4 border-t-4 border-dashed border-border">
+                    <h2 id={block.id} className="text-3xl font-bold text-center">{block.title}</h2>
+                    {block.description && <p className="text-center text-muted-foreground mt-2">{block.description}</p>}
+                    {block.renderAsPage && <Badge variant="outline" className="mt-4 mx-auto block w-fit">New Page</Badge>}
+                </div>
+            );
         case 'heading': return <h2 className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
         case 'description': return <p className="text-muted-foreground my-4">{block.text}</p>;
         case 'divider': return <hr className="my-8" />;
