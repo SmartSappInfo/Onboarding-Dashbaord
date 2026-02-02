@@ -6,7 +6,7 @@ import AppDownloadSection from '@/components/app-download-section';
 import HelpSection from '@/components/help-section';
 import SetupProfileSection from '@/components/setup-profile-section';
 import TestimonialsSection from '@/components/testimonials-section';
-import WelcomeSection from '@/components/welcome-section';
+import WelcomeHeroSection from '@/components/welcome-hero-section';
 
 export default function Home() {
   const helpVideos = [
@@ -25,7 +25,7 @@ export default function Home() {
     <>
       <Header />
       <main className="flex-grow">
-        <WelcomeSection />
+        <WelcomeHeroSection />
 
         <AppDownloadSection />
         
