@@ -148,6 +148,15 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
+        defaultValues: {
+            title: "",
+            description: "",
+            elements: [],
+            thankYouTitle: "Thank You!",
+            thankYouDescription: "Your response has been recorded.",
+            bannerImageUrl: "",
+            status: "draft",
+        }
     });
 
     React.useEffect(() => {
