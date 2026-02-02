@@ -52,11 +52,11 @@ export default function TestimonialsSection() {
                     {testimonials.map((testimonial, index) => (
                         <Card
                         key={index}
-                        className="overflow-hidden shadow-lg"
+                        className="overflow-hidden shadow-lg bg-white"
                         >
                         <VideoEmbed url={testimonial.videoUrl} />
                         <CardContent className="p-6">
-                            <p className="font-quote italic text-gray-600">
+                            <p className="font-quote italic text-gray-800">
                             &quot;{testimonial.quote}&quot;
                             </p>
                         </CardContent>
