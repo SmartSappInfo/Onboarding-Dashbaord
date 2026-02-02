@@ -26,10 +26,10 @@ export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { va
   );
 };
 
-export const SmartSappIcon = ({ className, ...props }: { className?: string } & React.HTMLAttributes<HTMLDivElement>) => {
+export const SmartSappIcon = ({ className, variant, ...props }: { className?: string, variant?: 'primary' | 'white' } & React.HTMLAttributes<HTMLDivElement>) => {
     return (
         <div className={cn("relative", className)} {...props}>
-            <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" />
+            <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" className={cn(variant === 'white' && 'brightness-0 invert')} />
         </div>
     )
 };

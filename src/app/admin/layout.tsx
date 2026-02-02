@@ -84,8 +84,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <SidebarHeader className="p-2">
              <div className="flex h-10 items-center justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
                 <Link href="/admin" className="flex items-center gap-2 font-semibold">
-                  <Logo className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
-                  <SmartSappIcon className="h-8 w-8 hidden group-data-[collapsible=icon]:block" />
+                  <Logo variant="white" className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
+                  <SmartSappIcon variant="white" className="h-8 w-8 hidden group-data-[collapsible=icon]:block" />
                   <span className="sr-only">SmartSapp</span>
                 </Link>
              </div>
@@ -135,8 +135,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </Sidebar>
         
         <SidebarInset>
-          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
-            <SidebarTrigger />
+          <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-primary/90 bg-primary px-4 text-primary-foreground">
+            <SidebarTrigger className="hover:bg-white/20" />
             <div className="w-full flex-1">
               <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
             </div>
