@@ -120,10 +120,11 @@ export default function NewSurveyPage() {
 
         // Seed with a default survey for demonstration
         form.reset({
-            title: 'Parent Feedback Survey',
-            description: 'We are redesigning the SmartsAPP experience and would love to learn more about your preferences. Please take a few moments to answer the following questions.',
+            title: 'Comprehensive Feedback Survey (All Elements)',
+            description: 'This survey includes all available question types and layout blocks for testing and demonstration purposes. Please review and interact with each element.',
             status: 'draft',
             elements: [
+                // Questions
                 { id: 'q_text', title: 'What is your full name?', type: 'text', isRequired: true, placeholder: 'e.g., Jane Doe' },
                 { id: 'q_yesno', title: 'Do you personally pick up your child from school?', type: 'yes-no', isRequired: true },
                 { 
@@ -141,12 +142,13 @@ export default function NewSurveyPage() {
                     options: ['Express Pickup', 'Billing & Payments', 'School Announcements', 'Academic Reports'],
                     allowOther: true,
                 },
-                { 
+                 { 
                     id: 'q_dropdown', 
                     title: 'What is your primary relationship to the student?', 
                     type: 'dropdown', 
                     isRequired: true, 
-                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other']
+                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other'],
+                    hidden: true, // Hidden by default, shown by logic
                 },
                 { 
                     id: 'q_rating', 
@@ -163,7 +165,35 @@ export default function NewSurveyPage() {
                     type: 'long-text',
                     isRequired: false,
                     placeholder: 'Share your thoughts on how we can improve...'
-                }
+                },
+                { id: 'q_fileupload', title: 'Please upload a copy of your child\'s last report card.', type: 'file-upload', isRequired: false },
+
+                // Layout Blocks
+                { id: 'layout_heading', type: 'heading', title: 'Additional Media Section' },
+                { id: 'layout_description', type: 'description', text: 'This section contains various media and layout elements for demonstration.' },
+                { id: 'layout_divider', type: 'divider' },
+                { id: 'layout_image', type: 'image', url: 'https://picsum.photos/seed/survey-image/600/400' },
+                { id: 'layout_video', type: 'video', url: 'https://youtu.be/M6MUlDkfZOg' },
+                { id: 'layout_audio', type: 'audio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
+                { id: 'layout_document', type: 'document', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
+                { id: 'layout_embed', type: 'embed', html: '<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Hello world!</p>&mdash; Studio (@Firebase) <a href="https://twitter.com/Firebase/status/1580224096059375616">October 12, 2022</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>' },
+                
+                // Logic Block
+                {
+                    id: 'logic_1',
+                    type: 'logic',
+                    rules: [
+                        {
+                            sourceQuestionId: 'q_yesno',
+                            operator: 'isEqualTo',
+                            targetValue: 'No',
+                            action: {
+                                type: 'show',
+                                targetElementIds: ['q_dropdown']
+                            }
+                        }
+                    ]
+                },
             ]
         })
     }, [form]);
