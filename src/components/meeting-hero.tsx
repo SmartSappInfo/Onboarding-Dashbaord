@@ -59,7 +59,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             Join us for a short onboarding session where we’ll show you how SmartSapp improves communication, payments, and school engagement for parents.
           </p>
 
-          <div className="my-10 w-full max-w-lg">
+          <div className="my-10 w-full">
             <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
           </div>
           
