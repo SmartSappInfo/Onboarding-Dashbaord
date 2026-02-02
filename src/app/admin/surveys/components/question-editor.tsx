@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import { useFieldArray, useFormContext, Controller, get } from 'react-hook-form';
+import { useFormContext, Controller, get } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,7 @@ import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, 
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
-import AddElementModal from './add-element-modal';
+import { useFieldArray } from 'react-hook-form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
@@ -621,7 +620,13 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     );
 }
 
-function SortableSurveyElement({ id, index }: { id: string; index: number }) {
+function SortableSurveyElement({ id, index, remove, swap, insert }: { 
+    id: string; 
+    index: number;
+    remove: (index: number) => void;
+    swap: (indexA: number, indexB: number) => void;
+    insert: (index: number, value: SurveyElement) => void;
+}) {
   const { control, watch, setValue, getValues, formState: { errors } } = useFormContext();
   
   const {
@@ -640,14 +645,9 @@ function SortableSurveyElement({ id, index }: { id: string; index: number }) {
   const element = watch(`elements.${index}`);
   const formErrors = errors.elements as any[] | undefined;
   const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
-  
-  const { fields, remove, swap, insert } = useFieldArray({
-    control,
-    name: 'elements',
-  });
 
   const duplicateElement = (index: number) => {
-    const elementToDuplicate = fields[index];
+    const elementToDuplicate = getValues(`elements.${index}`);
     const newElement = {
         ...JSON.parse(JSON.stringify(elementToDuplicate)),
         id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -722,7 +722,7 @@ function SortableSurveyElement({ id, index }: { id: string; index: number }) {
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
                             <ArrowUp className="h-4 w-4" />
                         </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
                             <ArrowDown className="h-4 w-4" />
                         </Button>
                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
@@ -845,61 +845,14 @@ function SortableSurveyElement({ id, index }: { id: string; index: number }) {
   );
 }
 
-
-export default function QuestionEditor() {
-  const { control, formState: { errors }, getValues } = useFormContext();
-  const { fields, append, remove, move } = useFieldArray({
-    control,
-    name: 'elements',
-  });
-  
-  const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
-
-  const addElement = (type: SurveyElement['type']) => {
-    const newElement: Partial<SurveyElement> = {
-      id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      type,
-      hidden: false,
-    };
-
-    const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
-
-    if (questionTypes.includes(type as SurveyQuestion['type'])) {
-        (newElement as SurveyQuestion).title = '';
-        (newElement as SurveyQuestion).isRequired = false;
-        if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
-            (newElement as SurveyQuestion).options = ['Option 1', 'Option 2'];
-        }
-        if (type === 'checkboxes') {
-            (newElement as SurveyQuestion).allowOther = false;
-        }
-        if (type === 'date') {
-            (newElement as SurveyQuestion).defaultValue = new Date();
-        }
-        if (type === 'time') {
-            const now = new Date();
-            const hours = String(now.getHours()).padStart(2, '0');
-            const minutes = String(now.getMinutes()).padStart(2, '0');
-            const seconds = String(now.getSeconds()).padStart(2, '0');
-            (newElement as SurveyQuestion).defaultValue = `${hours}:${minutes}:${seconds}`;
-        }
-    } else if (type === 'logic') {
-        (newElement as any).rules = [];
-    } else if (type === 'section') {
-        const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
-        (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
-        (newElement as SurveyLayoutBlock).description = '';
-        (newElement as SurveyLayoutBlock).renderAsPage = false;
-    } else if (isLayoutBlock(newElement as SurveyElement)) {
-        if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Heading';
-        if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
-        if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
-        if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
-    }
-    
-    append(newElement);
-  };
-  
+export default function QuestionEditor({ fields, remove, move, swap, insert }: {
+    fields: any[];
+    remove: (index: number) => void;
+    move: (from: number, to: number) => void;
+    swap: (indexA: number, indexB: number) => void;
+    insert: (index: number, value: SurveyElement) => void;
+}) {
+  const { formState: { errors } } = useFormContext();
   const formErrors = errors.elements as any[] | undefined;
   
   const sensors = useSensors(
@@ -928,7 +881,14 @@ export default function QuestionEditor() {
             <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                 <div className="space-y-6">
                     {fields.map((field, index) => (
-                        <SortableSurveyElement key={field.id} id={field.id} index={index} />
+                        <SortableSurveyElement 
+                            key={field.id} 
+                            id={field.id} 
+                            index={index} 
+                            remove={remove}
+                            swap={swap}
+                            insert={insert}
+                        />
                     ))}
                 </div>
             </SortableContext>
@@ -937,17 +897,7 @@ export default function QuestionEditor() {
             {formErrors && typeof formErrors === 'object' && 'message' in formErrors && (
                 <FormMessage>{(formErrors as any).message}</FormMessage>
             )}
-            <Button type="button" variant="outline" onClick={() => setIsAddElementModalOpen(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Add Element
-            </Button>
         </div>
-      
-      <AddElementModal 
-        open={isAddElementModalOpen}
-        onOpenChange={setIsAddElementModalOpen}
-        onSelect={addElement}
-      />
     </div>
   );
 }

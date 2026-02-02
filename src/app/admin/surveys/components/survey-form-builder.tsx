@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, useFieldArray } from 'react-hook-form';
 import { useParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,17 +9,75 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo } from 'lucide-react';
-import type { SurveyElement } from '@/lib/types';
+import { Undo, Redo, PlusCircle } from 'lucide-react';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import AddElementModal from './add-element-modal';
+
+// isLayoutBlock helper function
+function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
+    const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
+    return layoutTypes.includes(element.type);
+}
 
 export default function SurveyFormBuilder() {
-    const { getValues, setValue, watch, formState: { isDirty } } = useFormContext();
+    const { getValues, setValue, watch, formState: { isDirty }, control } = useFormContext();
     const { toast } = useToast();
     const surveyId = (useParams() as { id?: string }).id || 'new-survey';
     const storageKey = `survey-autosave-${surveyId}`;
     
+    const { fields, append, remove, move, swap, insert } = useFieldArray({
+      control,
+      name: 'elements',
+    });
+    const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
+
+    const addElement = (type: SurveyElement['type']) => {
+        const newElement: Partial<SurveyElement> = {
+          id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+          type,
+          hidden: false,
+        };
+    
+        const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
+    
+        if (questionTypes.includes(type as SurveyQuestion['type'])) {
+            (newElement as SurveyQuestion).title = '';
+            (newElement as SurveyQuestion).isRequired = false;
+            if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
+                (newElement as SurveyQuestion).options = ['Option 1', 'Option 2'];
+            }
+            if (type === 'checkboxes') {
+                (newElement as SurveyQuestion).allowOther = false;
+            }
+            if (type === 'date') {
+                (newElement as SurveyQuestion).defaultValue = new Date();
+            }
+            if (type === 'time') {
+                const now = new Date();
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                const seconds = String(now.getSeconds()).padStart(2, '0');
+                (newElement as SurveyQuestion).defaultValue = `${hours}:${minutes}:${seconds}`;
+            }
+        } else if (type === 'logic') {
+            (newElement as any).rules = [];
+        } else if (type === 'section') {
+            const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
+            (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
+            (newElement as SurveyLayoutBlock).description = '';
+            (newElement as SurveyLayoutBlock).renderAsPage = false;
+        } else if (isLayoutBlock(newElement as SurveyElement)) {
+            if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Heading';
+            if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
+            if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
+            if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
+        }
+        
+        append(newElement);
+    };
+
     const watchedElements = watch('elements');
-    const debouncedElements = useDebounce(watchedElements, 10000); // 10 seconds
+    const debouncedElements = useDebounce(watchedElements, 10000);
 
     const {
         state: historyState,
@@ -35,9 +92,7 @@ export default function SurveyFormBuilder() {
     const isProgrammaticChange = React.useRef(false);
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
-    // Effect for initializing and restoring data
     React.useEffect(() => {
-        // Initialize history state with form values on mount
         const initialElements = getValues('elements');
         resetHistory(initialElements);
 
@@ -65,9 +120,8 @@ export default function SurveyFormBuilder() {
             }
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []); // Run only on mount
+    }, []);
 
-    // Effect for syncing form changes to history
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
             return;
@@ -75,7 +129,6 @@ export default function SurveyFormBuilder() {
         setHistory(watchedElements);
     }, [watchedElements, setHistory]);
 
-    // Undo/Redo handlers
     const handleUndo = () => {
         isProgrammaticChange.current = true;
         undoHistory();
@@ -86,7 +139,6 @@ export default function SurveyFormBuilder() {
         redoHistory();
     };
 
-    // Effect for applying undo/redo changes back to the form
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
             setValue('elements', historyState, { shouldDirty: true });
@@ -94,7 +146,6 @@ export default function SurveyFormBuilder() {
         }
     }, [historyState, setValue]);
 
-    // Effect for autosaving to localStorage
     React.useEffect(() => {
         if (isDirty) {
             setAutosaveStatus('saving');
@@ -109,32 +160,56 @@ export default function SurveyFormBuilder() {
     }, [debouncedElements, storageKey, isDirty]);
 
     return (
-        <Card className="bg-muted/30">
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <div>
-                        <CardTitle>Form Builder</CardTitle>
-                        <CardDescription>Build your survey using the editor below.</CardDescription>
+        <div className="relative">
+            <Card className="bg-muted/30 pb-20">
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Form Builder</CardTitle>
+                            <CardDescription>Build your survey using the editor below.</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <span className="text-sm text-muted-foreground transition-opacity duration-500 w-28 text-right">
+                                {autosaveStatus === 'saving' && 'Saving...'}
+                                {autosaveStatus === 'saved' && 'Changes saved.'}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                         <span className="text-sm text-muted-foreground transition-opacity duration-500 w-28 text-right">
-                            {autosaveStatus === 'saving' && 'Saving...'}
-                            {autosaveStatus === 'saved' && 'Changes saved.'}
-                        </span>
-                        <Button type="button" variant="outline" size="icon" onClick={handleUndo} disabled={!canUndo}>
-                            <Undo className="h-4 w-4" />
-                            <span className="sr-only">Undo</span>
-                        </Button>
-                        <Button type="button" variant="outline" size="icon" onClick={handleRedo} disabled={!canRedo}>
-                            <Redo className="h-4 w-4" />
-                            <span className="sr-only">Redo</span>
-                        </Button>
-                    </div>
+                </CardHeader>
+                <CardContent>
+                    <QuestionEditor 
+                        fields={fields} 
+                        remove={remove} 
+                        move={move} 
+                        swap={swap} 
+                        insert={insert} 
+                    />
+                </CardContent>
+            </Card>
+
+            <div className="sticky bottom-8 z-10 -mt-16 flex justify-center">
+                <div className="flex items-center gap-2 rounded-full border bg-card p-2 shadow-lg">
+                    <Button type="button" variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
+                        <Undo className="h-4 w-4" />
+                        <span className="sr-only">Undo</span>
+                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
+                        <Redo className="h-4 w-4" />
+                        <span className="sr-only">Redo</span>
+                    </Button>
+                    <div className="h-6 w-px bg-border" />
+                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsAddElementModalOpen(true)}>
+                        <PlusCircle className="h-5 w-5" />
+                        <span className="sr-only">Add Element</span>
+                    </Button>
                 </div>
-            </CardHeader>
-            <CardContent>
-                <QuestionEditor />
-            </CardContent>
-        </Card>
+            </div>
+            
+            <AddElementModal 
+                open={isAddElementModalOpen}
+                onOpenChange={setIsAddElementModalOpen}
+                onSelect={addElement}
+            />
+        </div>
     );
 }
