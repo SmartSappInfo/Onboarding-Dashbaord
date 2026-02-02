@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -617,81 +617,86 @@ export default function QuestionEditor() {
         const ElementIcon = getElementIcon(element.type);
 
         return (
-            <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors group">
-            <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
-                    <ArrowUp className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
-                    <ArrowDown className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
-                    <Copy className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
-                    <Trash2 className="h-4 w-4" />
-                </Button>
-                <Popover>
-                    <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
+            <div key={field.id} className="relative group">
+                <Card className="bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors">
+                    <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+                            <ArrowUp className="h-4 w-4" />
                         </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-2">
-                        <QuestionSettingsPopover
-                            element={element}
-                            index={index}
-                            changeType={changeElementType}
-                        />
-                    </PopoverContent>
-                </Popover>
-            </div>
-            <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                   <ElementIcon className="w-5 h-5 text-muted-foreground" />
-                   {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                   <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
-                   {element.hidden && <EyeOff className="w-4 h-4 text-muted-foreground" />}
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {isElementQuestion ? (
-                    <>
-                        <div className="space-y-2">
-                             <Label>Question Text</Label>
-                             <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="e.g., What is your favorite color?" />} />
-                             {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
-                        </div>
-                        
-                        <div className="space-y-2">
-                            <Label className="text-sm text-muted-foreground">Response Preview</Label>
-                            <div className="p-4 border rounded-lg bg-background">
-                                <ResponseControlPreview question={element} index={index} control={control} />
-                            </div>
-                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
+                            <ArrowDown className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-2">
+                                <QuestionSettingsPopover
+                                    element={element}
+                                    index={index}
+                                    changeType={changeElementType}
+                                />
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                    <CardHeader>
+                        <CardTitle className="text-lg flex items-center gap-2">
+                        <ElementIcon className="w-5 h-5 text-muted-foreground" />
+                        {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
+                        <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
+                        {element.hidden && <EyeOff className="w-4 h-4 text-muted-foreground" />}
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        {isElementQuestion ? (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>Question Text</Label>
+                                    <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="e.g., What is your favorite color?" />} />
+                                    {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
+                                </div>
+                                
+                                <div className="space-y-2">
+                                    <Label className="text-sm text-muted-foreground">Response Preview</Label>
+                                    <div className="p-4 border rounded-lg bg-background">
+                                        <ResponseControlPreview question={element} index={index} control={control} />
+                                    </div>
+                                </div>
 
-                         {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
-                            <div>
-                                <OptionsEditor questionIndex={index} />
-                                {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
-                            </div>
-                         )}
-                    </>
-                ) : element.type === 'logic' ? (
-                     <LogicBlockEditor elementIndex={index} />
-                ) : (
-                    <>
-                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
-                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
-                        {element.type === 'divider' && <hr className="border-border" />}
-                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                             <Controller name={`elements.${index}.url`} control={control} render={({ field }) => <FormItem><FormLabel>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} URL</FormLabel><MediaSelect {...field} filterType={getMediaFilterType(element.type)}/></FormItem>} />
+                                {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
+                                    <div>
+                                        <OptionsEditor questionIndex={index} />
+                                        {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
+                                    </div>
+                                )}
+                            </>
+                        ) : element.type === 'logic' ? (
+                            <LogicBlockEditor elementIndex={index} />
+                        ) : (
+                            <>
+                                {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <FormItem><FormLabel>Heading Text</FormLabel><Input {...field} /></FormItem>} />}
+                                {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <FormItem><FormLabel>Description Text</FormLabel><Textarea {...field} /></FormItem>} />}
+                                {element.type === 'divider' && <hr className="border-border" />}
+                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                                    <Controller name={`elements.${index}.url`} control={control} render={({ field }) => <FormItem><FormLabel>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} URL</FormLabel><MediaSelect {...field} filterType={getMediaFilterType(element.type)}/></FormItem>} />
+                                )}
+                                {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
+                            </>
                         )}
-                        {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
-                    </>
-                )}
-            </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+                <div className="absolute top-1/2 -translate-y-1/2 -right-8 z-0 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Drag to reorder">
+                    <GripVertical className="h-8 w-8 text-muted-foreground/50" />
+                </div>
+            </div>
         )
       })}
 
