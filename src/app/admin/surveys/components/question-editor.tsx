@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar as CalendarIcon, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar as CalendarIcon, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -144,86 +144,115 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
     control,
     name: `elements.${questionIndex}.options`,
   });
-  
+
   const questionType = watch(`elements.${questionIndex}.type`);
   const defaultValue = watch(`elements.${questionIndex}.defaultValue`);
+  const allowOther = watch(`elements.${questionIndex}.allowOther`);
 
-  const handleDefaultChange = (newValue: string | string[]) => {
-      setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true });
+  const handleDefaultChange = (newValue: any) => {
+    setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true, shouldValidate: true });
   }
 
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-background">
       <Label>Options</Label>
-       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
-            <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
-                {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                    <RadioGroupItem value={(field as any).value !== undefined ? String((field as any).value) : `Option ${index + 1}`} id={`${field.id}-radio`} />
-                    <Controller
-                        name={`elements.${questionIndex}.options.${index}`}
-                        control={control}
-                        render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
-                    />
-                    <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
-                </div>
-            ))}
-            </RadioGroup>
-       )}
-       {questionType === 'checkboxes' && (
-            <div className="space-y-2">
-                 {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2">
-                        <Checkbox
-                            id={`${field.id}-checkbox`}
-                            checked={defaultValue?.includes((field as any).value)}
-                            onCheckedChange={(checked) => {
-                                const currentDefaults = Array.isArray(defaultValue) ? defaultValue : [];
-                                const optionValue = (field as any).value || `Option ${index + 1}`;
-                                if (checked) {
-                                    handleDefaultChange([...currentDefaults, optionValue]);
-                                } else {
-                                    handleDefaultChange(currentDefaults.filter(val => val !== optionValue));
-                                }
-                            }}
-                        />
-                        <Controller
-                            name={`elements.${questionIndex}.options.${index}`}
-                            control={control}
-                            render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
-                        />
-                        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ))}
-            </div>
-       )}
+      {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
+        <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
+          {fields.map((field, index) => {
+            const optionValue = watch(`elements.${questionIndex}.options.${index}`);
+            return (
+              <div key={field.id} className="flex items-center gap-2">
+                <RadioGroupItem value={optionValue} id={`${field.id}-radio`} />
+                <Controller
+                  name={`elements.${questionIndex}.options.${index}`}
+                  control={control}
+                  render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                />
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )
+          })}
+        </RadioGroup>
+      )}
+      {questionType === 'checkboxes' && (
+        <div className="space-y-2">
+          {fields.map((field, index) => {
+            const optionValue = watch(`elements.${questionIndex}.options.${index}`);
+            const isChecked = allowOther
+              ? Array.isArray(defaultValue?.options) && defaultValue.options.includes(optionValue)
+              : Array.isArray(defaultValue) && defaultValue.includes(optionValue);
+
+            return (
+              <div key={field.id} className="flex items-center gap-2">
+                <Checkbox
+                  id={`${field.id}-checkbox`}
+                  checked={isChecked}
+                  onCheckedChange={(checked) => {
+                    if (allowOther) {
+                      const currentSelected = defaultValue?.options || [];
+                      const newSelected = checked
+                        ? [...currentSelected, optionValue]
+                        : currentSelected.filter((v: string) => v !== optionValue);
+                      handleDefaultChange({ ...(defaultValue || { options: [], other: '' }), options: newSelected });
+                    } else {
+                      const currentSelected = Array.isArray(defaultValue) ? defaultValue : [];
+                      const newSelected = checked
+                        ? [...currentSelected, optionValue]
+                        : currentSelected.filter((v: string) => v !== optionValue);
+                      handleDefaultChange(newSelected);
+                    }
+                  }}
+                />
+                <Controller
+                  name={`elements.${questionIndex}.options.${index}`}
+                  control={control}
+                  render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                />
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
         Add Option
       </Button>
       {questionType === 'checkboxes' && (
-          <div className="flex items-center space-x-2 pt-2">
-              <Controller
-                name={`elements.${questionIndex}.allowOther`}
-                control={control}
-                render={({ field }) => (
-                    <Switch
-                        id={`allowOther-${questionIndex}`}
-                        checked={!!field.value}
-                        onCheckedChange={field.onChange}
-                    />
-                )}
-               />
-              <Label htmlFor={`allowOther-${questionIndex}`}>Allow "Other" option</Label>
-          </div>
+        <div className="flex items-center space-x-2 pt-2">
+          <Controller
+            name={`elements.${questionIndex}.allowOther`}
+            control={control}
+            render={({ field }) => (
+              <Switch
+                id={`allowOther-${questionIndex}`}
+                checked={!!field.value}
+                onCheckedChange={(isChecked) => {
+                  field.onChange(isChecked);
+                  if (isChecked) {
+                    // from string[] to { options: string[], other: '' }
+                    const currentArray = Array.isArray(defaultValue) ? defaultValue : [];
+                    handleDefaultChange({ options: currentArray, other: '' });
+                  } else {
+                    // from { options: string[] } to string[]
+                    const currentOptions = defaultValue?.options || [];
+                    handleDefaultChange(currentOptions);
+                  }
+                }}
+              />
+            )}
+          />
+          <Label htmlFor={`allowOther-${questionIndex}`}>Allow "Other" option</Label>
+        </div>
       )}
     </div>
   );
 }
+
 
 function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
     const { control, watch } = useFormContext();
@@ -510,6 +539,16 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                    <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
                 </div>
+                 {isElemQuestion && (element.type === 'text' || element.type === 'long-text') && (
+                    <div className="space-y-2">
+                        <Label>Placeholder</Label>
+                        <Controller
+                            name={`elements.${index}.placeholder`}
+                            control={control}
+                            render={({ field }) => <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer..." />}
+                        />
+                    </div>
+                )}
             </div>
             <div className="space-y-4">
                 <h4 className="font-semibold text-muted-foreground text-sm px-1">Change To</h4>
@@ -663,26 +702,17 @@ export default function QuestionEditor() {
                                 
                                 {showDefaultValueEditor && (
                                     <div className="space-y-2">
-                                        <Label>{element.type === 'text' || element.type === 'long-text' ? 'Placeholder' : 'Default Value'}</Label>
+                                        <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
                                         <div className="p-4 border rounded-lg bg-background">
-                                            { (element.type === 'text' || element.type === 'long-text') ? (
                                                 <Controller
-                                                    name={`elements.${index}.placeholder`}
-                                                    control={control}
-                                                    render={({ field }) => {
-                                                        if (element.type === 'text') {
-                                                            return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." />;
-                                                        } else {
-                                                            return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." />;
-                                                        }
-                                                    }}
-                                                />
-                                            ) : (
-                                                <Controller
-                                                    name={`elements.${index}.defaultValue`}
+                                                    name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
                                                     control={control}
                                                     render={({ field }) => {
                                                         switch(element.type) {
+                                                            case 'text':
+                                                                return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." />;
+                                                            case 'long-text':
+                                                                return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." />;
                                                             case 'yes-no':
                                                                 return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
                                                                     <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
@@ -699,7 +729,6 @@ export default function QuestionEditor() {
                                                         }
                                                     }}
                                                 />
-                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -726,9 +755,6 @@ export default function QuestionEditor() {
                         )}
                     </CardContent>
                 </Card>
-                <div className="absolute top-1/2 -translate-y-1/2 -right-8 z-0 cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" aria-label="Drag to reorder">
-                    <GripVertical className="h-8 w-8 text-muted-foreground/50" />
-                </div>
             </div>
         )
       })}
