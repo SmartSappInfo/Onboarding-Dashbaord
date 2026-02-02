@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
@@ -699,9 +700,9 @@ export default function QuestionEditor() {
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="placeholder:italic placeholder:text-muted-foreground/80"/>;
+                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="italic text-[#969696]" />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-muted-foreground/80"/>;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="italic text-[#969696]" />;
                                                 case 'yes-no':
                                                     return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
                                                         <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
@@ -765,3 +766,5 @@ export default function QuestionEditor() {
 
     
 }
+
+    
