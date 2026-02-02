@@ -42,9 +42,9 @@ const generateSchema = (questions: SurveyQuestion[]) => {
     return z.object(baseSchemaObject).superRefine((data, ctx) => {
         questions.forEach((q) => {
             let isVisible = true;
-            if (q.displayCondition) {
-                const parentValue = data[q.displayCondition.questionId];
-                if (parentValue !== q.displayCondition.expectedValue) {
+            if (q.visibilityLogic) {
+                const parentValue = data[q.visibilityLogic.questionId];
+                if (parentValue !== q.visibilityLogic.expectedValue) {
                     isVisible = false;
                 }
             }
@@ -135,16 +135,16 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
 }
 
 const ElementRenderer = ({ element, index, control, setValue, errors }: { element: SurveyElement; index: number; control: any, setValue: any, errors: any }) => {
-    const { displayCondition } = element;
+    const { visibilityLogic } = element;
     const parentValue = useWatch({
         control,
-        name: displayCondition ? displayCondition.questionId : 'non-existent-field',
+        name: visibilityLogic ? visibilityLogic.questionId : 'non-existent-field',
     });
 
     const isVisible = React.useMemo(() => {
-        if (!displayCondition) return true;
-        return parentValue === displayCondition.expectedValue;
-    }, [displayCondition, parentValue]);
+        if (!visibilityLogic) return true;
+        return parentValue === visibilityLogic.expectedValue;
+    }, [visibilityLogic, parentValue]);
 
     React.useEffect(() => {
         if (!isVisible && isQuestion(element)) {
@@ -288,7 +288,7 @@ const ElementRenderer = ({ element, index, control, setValue, errors }: { elemen
         const block = element;
         switch (block.type) {
             case 'heading':
-                return <h2 className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
+                return <h2 id={block.id} className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
             case 'description':
                 return <p className="text-muted-foreground my-4">{block.text}</p>;
             case 'divider':
@@ -332,6 +332,32 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
             return acc;
         }, {} as any)
     });
+
+    const watchedValues = useWatch({ control: form.control });
+
+    React.useEffect(() => {
+        if (!watchedValues) return;
+
+        Object.keys(watchedValues).forEach(questionId => {
+            const question = questions.find(q => q.id === questionId);
+            const value = watchedValues[questionId];
+
+            if (question?.branchingLogic && value) {
+                const rule = question.branchingLogic.find(r => r.onValue === value);
+                if (rule?.action === 'jump') {
+                    const targetElement = document.getElementById(rule.targetElementId);
+                    if (targetElement) {
+                        // Needs a slight delay to allow the DOM to update if the target was conditionally hidden
+                        setTimeout(() => {
+                            targetElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                    }
+                }
+            }
+        });
+
+    }, [watchedValues, questions]);
+
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (!firestore) return;

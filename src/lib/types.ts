@@ -50,10 +50,15 @@ export interface SurveyQuestion {
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
-  displayCondition?: {
+  visibilityLogic?: {
     questionId: string;
     expectedValue: string | string[];
   };
+  branchingLogic?: {
+    onValue: string;
+    action: 'jump';
+    targetElementId: string;
+  }[];
 }
 
 export interface SurveyLayoutBlock {
@@ -63,7 +68,7 @@ export interface SurveyLayoutBlock {
   text?: string; // For description
   url?: string; // For media types
   html?: string; // For embed
-  displayCondition?: {
+  visibilityLogic?: {
     questionId: string;
     expectedValue: string | string[];
   };

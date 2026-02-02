@@ -32,10 +32,15 @@ const questionSchema = z.object({
   options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
-  displayCondition: z.object({
+  visibilityLogic: z.object({
     questionId: z.string(),
     expectedValue: z.string().min(1, "Expected value is required for condition."),
   }).optional(),
+  branchingLogic: z.array(z.object({
+    onValue: z.string(),
+    action: z.literal('jump'),
+    targetElementId: z.string(),
+  })).optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -53,7 +58,7 @@ const layoutBlockSchema = z.object({
   text: z.string().optional(),
   url: z.string().url().optional().or(z.literal('')),
   html: z.string().optional(),
-  displayCondition: z.object({
+  visibilityLogic: z.object({
     questionId: z.string(),
     expectedValue: z.string().min(1, "Expected value is required for condition."),
   }).optional(),
@@ -63,11 +68,8 @@ const layoutBlockSchema = z.object({
     return true;
 }, {
     message: 'This block requires content.',
-    path: ['title'] // Or path that makes sense
+    path: ['title']
 });
-
-// A type guard for Zod
-const isQuestion = (data: any) => 'isRequired' in data;
 
 const elementSchema = z.union([questionSchema, layoutBlockSchema]);
 
@@ -110,7 +112,7 @@ export default function NewSurveyPage() {
                     title: 'Is the current pickup process at your ward’s school effective and convenient for you?',
                     type: 'yes-no',
                     isRequired: true,
-                    displayCondition: { questionId: 'q1', expectedValue: 'Yes' }
+                    visibilityLogic: { questionId: 'q1', expectedValue: 'Yes' }
                 },
                 {
                     id: 'q3',
@@ -119,7 +121,7 @@ export default function NewSurveyPage() {
                     isRequired: true,
                     options: ['My child takes a long time to come out', 'My child is still doing classwork at closing time', 'Long queues or delays', 'Poor communication from the school'],
                     allowOther: true,
-                    displayCondition: { questionId: 'q2', expectedValue: 'No' }
+                    visibilityLogic: { questionId: 'q2', expectedValue: 'No' }
                 },
                 {
                     id: 'q4',

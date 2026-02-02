@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical, Bot } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -67,10 +67,10 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   );
 }
 
-function ConditionalLogicEditor({ elementIndex }: { elementIndex: number }) {
+function VisibilityLogicEditor({ elementIndex }: { elementIndex: number }) {
   const { control, watch, setValue } = useFormContext();
   const allElements: SurveyElement[] = watch('elements') || [];
-  const condition = watch(`elements.${elementIndex}.displayCondition`);
+  const condition = watch(`elements.${elementIndex}.visibilityLogic`);
   const parentQuestionId = condition?.questionId;
 
   const potentialParents = allElements
@@ -81,9 +81,9 @@ function ConditionalLogicEditor({ elementIndex }: { elementIndex: number }) {
 
   const handleParentChange = (id: string) => {
     if (id === 'none') {
-        setValue(`elements.${elementIndex}.displayCondition`, undefined);
+        setValue(`elements.${elementIndex}.visibilityLogic`, undefined);
     } else {
-        setValue(`elements.${elementIndex}.displayCondition`, { questionId: id, expectedValue: '' });
+        setValue(`elements.${elementIndex}.visibilityLogic`, { questionId: id, expectedValue: '' });
     }
   }
 
@@ -92,18 +92,18 @@ function ConditionalLogicEditor({ elementIndex }: { elementIndex: number }) {
   return (
     <div className="space-y-3 p-4 border rounded-lg bg-background">
         <div className="flex justify-between items-center">
-             <Label>Conditional Logic</Label>
+             <Label>Visibility Logic</Label>
              <Controller
-                name={`elements.${elementIndex}.displayCondition`}
+                name={`elements.${elementIndex}.visibilityLogic`}
                 control={control}
                 render={({ field }) => (
                     <Switch
                         checked={!!field.value}
                         onCheckedChange={(checked) => {
                             if (checked) {
-                                setValue(`elements.${elementIndex}.displayCondition`, { questionId: '', expectedValue: '' });
+                                setValue(`elements.${elementIndex}.visibilityLogic`, { questionId: '', expectedValue: '' });
                             } else {
-                                setValue(`elements.${elementIndex}.displayCondition`, undefined);
+                                setValue(`elements.${elementIndex}.visibilityLogic`, undefined);
                             }
                         }}
                     />
@@ -133,7 +133,7 @@ function ConditionalLogicEditor({ elementIndex }: { elementIndex: number }) {
                         <div>
                             <Label className="text-xs font-normal">...has this answer:</Label>
                             <Controller
-                                name={`elements.${elementIndex}.displayCondition.expectedValue`}
+                                name={`elements.${elementIndex}.visibilityLogic.expectedValue`}
                                 control={control}
                                 render={({ field }) => (
                                     <Select onValueChange={field.onChange} value={field.value}>
@@ -157,6 +157,83 @@ function ConditionalLogicEditor({ elementIndex }: { elementIndex: number }) {
   );
 }
 
+function BranchingLogicEditor({ elementIndex }: { elementIndex: number }) {
+  const { control, watch } = useFormContext();
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `elements.${elementIndex}.branchingLogic`,
+  });
+
+  const allElements: SurveyElement[] = watch('elements') || [];
+  const currentElement = allElements[elementIndex];
+
+  if (!isQuestion(currentElement) || !['yes-no', 'multiple-choice', 'dropdown'].includes(currentElement.type)) {
+    return null;
+  }
+
+  const availableOptions = currentElement.type === 'yes-no' ? ['Yes', 'No'] : currentElement.options || [];
+  const availableJumpTargets = allElements
+    .map((el, idx) => ({ ...el, originalIndex: idx }))
+    .filter(el => el.type === 'heading' && el.originalIndex > elementIndex);
+
+  return (
+    <div className="space-y-4 p-4 border rounded-lg bg-background">
+      <Label>Branching / Skip Logic</Label>
+      <div className="space-y-3">
+        {fields.map((field, index) => (
+          <div key={field.id} className="grid grid-cols-1 md:grid-cols-2 gap-3 items-end p-3 border rounded-md">
+            <div>
+              <Label className="text-xs font-normal">When the answer is...</Label>
+              <Controller
+                name={`elements.${elementIndex}.branchingLogic.${index}.onValue`}
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <SelectTrigger><SelectValue placeholder="Select an answer..." /></SelectTrigger>
+                    <SelectContent>
+                      {availableOptions.map(opt => <SelectItem key={opt} value={opt}>{opt}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="flex items-end gap-2">
+                <div className="flex-grow">
+                    <Label className="text-xs font-normal">Then jump to...</Label>
+                    <Controller
+                        name={`elements.${elementIndex}.branchingLogic.${index}.targetElementId`}
+                        control={control}
+                        render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger><SelectValue placeholder="Select a section..." /></SelectTrigger>
+                            <SelectContent>
+                            {availableJumpTargets.map(target => (
+                                <SelectItem key={target.id} value={target.id}>{target.title}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        )}
+                    />
+                </div>
+                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => append({ onValue: '', action: 'jump', targetElementId: '' })}
+      >
+        <PlusCircle className="mr-2 h-4 w-4" /> Add Rule
+      </Button>
+    </div>
+  );
+}
+
 
 export default function QuestionEditor() {
   const { control, watch, formState: { errors } } = useFormContext();
@@ -171,7 +248,7 @@ export default function QuestionEditor() {
 
   const addElement = (type: SurveyElement['type']) => {
     const newElement: SurveyElement = {
-      id: `el_${Date.now()}`,
+      id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       type,
     } as any; // Cast to any to build the object
 
@@ -185,28 +262,15 @@ export default function QuestionEditor() {
             (newElement as SurveyQuestion).allowOther = false;
         }
     } else {
-        if(type === 'heading') (newElement as any).title = '';
-        if(type === 'description') (newElement as any).text = '';
-        if(type === 'embed') (newElement as any).html = '';
+        if(type === 'heading') (newElement as any).title = 'New Section';
+        if(type === 'description') (newElement as any).text = 'Descriptive text goes here.';
+        if(type === 'embed') (newElement as any).html = '<!-- Paste your HTML code here -->';
         if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as any).url = '';
     }
     
     append(newElement);
   };
   
-  // This logic is a bit brittle, but it's the simplest way to add the `isQuestion` property for validation
-  React.useEffect(() => {
-    fields.forEach((field, index) => {
-        const el = elements[index];
-        if(el.type === 'text' || el.type === 'long-text' || el.type === 'yes-no' || el.type === 'multiple-choice' || el.type === 'checkboxes' || el.type === 'dropdown' || el.type === 'rating' || el.type === 'date' || el.type === 'time' || el.type === 'file-upload') {
-            if(!('isRequired' in el)) {
-                (el as any).isRequired = true; // Add it if it's missing
-            }
-        }
-    })
-  }, [elements, fields]);
-
-
   const formErrors = errors.elements as any[] | undefined;
 
   const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'audio' | 'document' | undefined => {
@@ -226,7 +290,7 @@ export default function QuestionEditor() {
         const isElementQuestion = isQuestion(element);
 
         return (
-            <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[input:focus]:border-primary has-[textarea:focus]:border-primary transition-colors group">
+            <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[:focus]:border-primary transition-colors group">
             <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
                 <Button
                     type="button"
@@ -330,7 +394,8 @@ export default function QuestionEditor() {
                         {element.type === 'embed' && <Controller name={`elements.${index}.html`} control={control} render={({ field }) => <FormItem><FormLabel>Embed HTML</FormLabel><Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono" /></FormItem>} />}
                     </>
                 )}
-                 <ConditionalLogicEditor elementIndex={index} />
+                 <VisibilityLogicEditor elementIndex={index} />
+                 <BranchingLogicEditor elementIndex={index} />
             </CardContent>
             </Card>
         )
