@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar as CalendarIcon, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -22,6 +22,7 @@ import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format, isValid, parseISO } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -41,7 +42,7 @@ const getElementIcon = (type: SurveyElement['type']) => {
         'checkboxes': ListChecks,
         'dropdown': ChevronDownSquare,
         'rating': Star,
-        'date': Calendar,
+        'date': CalendarIcon,
         'time': Clock,
         'file-upload': Upload,
         'heading': Heading1,
@@ -434,7 +435,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
         <Popover>
             <PopoverTrigger asChild>
                 <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
-                    <Calendar className="mr-2 h-4" />
+                    <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
@@ -748,4 +749,5 @@ export default function QuestionEditor() {
       />
     </div>
   );
-}
+
+    
