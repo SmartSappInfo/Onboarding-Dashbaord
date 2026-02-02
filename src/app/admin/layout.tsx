@@ -82,7 +82,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full bg-muted/30">
         <Sidebar collapsible="icon" className="border-r">
           <SidebarHeader className="p-2">
-             <div className="flex h-10 items-center justify-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
+             <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
                 <Link href="/admin" className="flex items-center gap-2 font-semibold">
                   <Logo variant="white" className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
                   <SmartSappIcon variant="white" className="h-8 w-8 hidden group-data-[collapsible=icon]:block" />
