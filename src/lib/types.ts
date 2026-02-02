@@ -2,6 +2,7 @@
 
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -54,6 +55,8 @@ export interface SurveyQuestion {
   allowOther?: boolean;
   isRequired: boolean;
   hidden?: boolean;
+  placeholder?: string;
+  defaultValue?: any;
 }
 
 export interface SurveyLayoutBlock {
@@ -98,7 +101,7 @@ export interface Survey {
 }
 
 export interface SurveyResponse {
-  id: string;
+  id:string;
   surveyId: string;
   submittedAt: string; // ISO string
   answers: {

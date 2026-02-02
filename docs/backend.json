@@ -181,7 +181,9 @@
           "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice, checkbox, or dropdown questions." },
           "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option for checkboxes." },
           "isRequired": { "type": "boolean", "description": "Whether the question must be answered. Can be overridden by logic blocks." },
-          "hidden": { "type": "boolean", "description": "Whether the question is hidden by default. Can be overridden by logic blocks." }
+          "hidden": { "type": "boolean", "description": "Whether the question is hidden by default. Can be overridden by logic blocks." },
+          "placeholder": { "type": "string", "description": "Placeholder text for text-based inputs." },
+          "defaultValue": { "description": "The default value for the question." }
         },
         "required": ["id", "title", "type", "isRequired"]
     },
@@ -342,5 +344,3 @@
     ]
   }
 }
-
-    

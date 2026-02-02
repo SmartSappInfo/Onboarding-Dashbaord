@@ -33,6 +33,8 @@ const questionSchema = z.object({
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
   hidden: z.boolean().optional(),
+  placeholder: z.string().optional(),
+  defaultValue: z.any().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -113,7 +115,7 @@ export default function NewSurveyPage() {
             description: 'We are redesigning the SmartsAPP pickup feature in the app and would love to learn more about your preferences.',
             status: 'draft',
             elements: [
-                { id: 'q1', title: 'Do you personally pick up your ward at school closing time?', type: 'yes-no', isRequired: true },
+                { id: 'q1', title: 'Do you personally pick up your ward at school closing time?', type: 'yes-no', isRequired: true, defaultValue: 'Yes' },
                 {
                     id: 'q2',
                     title: 'Is the current pickup process at your ward’s school effective and convenient for you?',
@@ -133,6 +135,20 @@ export default function NewSurveyPage() {
                     title: 'If an express pickup service were available—guaranteeing that your child is brought out with 3mins of arriving at the school without you getting of your car—would you use it?',
                     type: 'yes-no',
                     isRequired: true,
+                },
+                 {
+                    id: 'q5',
+                    title: 'How would you rate the school\'s communication?',
+                    type: 'rating',
+                    isRequired: true,
+                    defaultValue: 4,
+                },
+                {
+                    id: 'q6',
+                    title: 'Any additional comments?',
+                    type: 'long-text',
+                    isRequired: false,
+                    placeholder: 'Share your thoughts...'
                 }
             ]
         })

@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CalendarIcon, Star } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
@@ -63,16 +63,17 @@ const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (v
 };
 
 const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (date?: Date) => void, disabled?: boolean }) => {
+    const dateValue = value && isValid(value) ? value : undefined;
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !value && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {value ? format(value, "PPP") : <span>Pick a date</span>}
+                    {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={value} onSelect={onChange} initialFocus />
+                <Calendar mode="single" selected={dateValue} onSelect={onChange} initialFocus />
             </PopoverContent>
         </Popover>
     );
@@ -95,10 +96,10 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                     </Label>
                     <div className="mt-4">
                         {question.type === 'text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} placeholder={question.placeholder} />} />
                         )}
                         {question.type === 'long-text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} placeholder={question.placeholder} />} />
                         )}
                         {question.type === 'yes-no' && (
                             <Controller
@@ -129,7 +130,6 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                             <Controller
                                 name={question.id}
                                 control={control}
-                                defaultValue={question.allowOther ? { options: [], other: ''} : []}
                                 render={({ field }) => (
                                     <div className="space-y-2">
                                         {question.options?.map(opt => (
@@ -141,7 +141,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                                                         if (question.allowOther) {
                                                             const currentOptions = field.value?.options || [];
                                                             const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                            field.onChange({ ...field.value, options: newOptions });
+                                                            field.onChange({ ...(field.value || {}), options: newOptions });
                                                         } else {
                                                             const currentVal = field.value || [];
                                                             const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
@@ -161,7 +161,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                                                         if (checked) {
                                                             setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
                                                         } else {
-                                                            field.onChange({ ...field.value, other: '' });
+                                                            field.onChange({ ...(field.value || {}), other: '' });
                                                         }
                                                     }}
                                                 />
@@ -170,7 +170,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                                                     placeholder="Other (please specify)"
                                                     className="h-8 flex-1"
                                                     value={field.value?.other || ''}
-                                                    onChange={(e) => field.onChange({ ...field.value, other: e.target.value })}
+                                                    onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
                                                 />
                                             </div>
                                         )}
@@ -266,16 +266,31 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const { toast } = useToast();
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
+    
+    const defaultValues = React.useMemo(() => {
+        return survey.elements.filter(isQuestion).reduce((acc, q) => {
+            if (q.defaultValue !== undefined) {
+                if (q.type === 'date' && typeof q.defaultValue === 'string') {
+                    const parsedDate = parseISO(q.defaultValue);
+                    if(isValid(parsedDate)) {
+                        acc[q.id] = parsedDate;
+                    }
+                } else {
+                    acc[q.id] = q.defaultValue;
+                }
+            } else {
+                if (q.type === 'checkboxes') {
+                    acc[q.id] = q.allowOther ? { options: [], other: '' } : [];
+                }
+                if (q.type === 'rating') acc[q.id] = 0;
+            }
+            return acc;
+        }, {} as any);
+    }, [survey.elements]);
 
     const form = useForm<z.infer<typeof surveySchema>>({
         resolver: zodResolver(surveySchema),
-        defaultValues: survey.elements.filter(isQuestion).reduce((acc, q) => {
-            if (q.type === 'checkboxes') {
-                acc[q.id] = q.allowOther ? { options: [], other: '' } : [];
-            }
-            if (q.type === 'rating') acc[q.id] = 0;
-            return acc;
-        }, {} as any)
+        defaultValues: defaultValues
     });
     
     const watchedValues = useWatch({ control: form.control });
@@ -343,7 +358,6 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (!firestore) return;
         
-        // Manual validation for conditional required fields
         let isValid = true;
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
@@ -416,8 +430,8 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
                     element={el}
                     control={form.control}
                     errors={form.formState.errors}
-                    isVisible={elementStates[el.id]?.isVisible ?? false}
-                    isRequired={elementStates[el.id]?.isRequired ?? false}
+                    isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
+                    isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
                 />
             ))}
             <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || isSubmitDisabled}>
@@ -426,5 +440,3 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
         </form>
     );
 }
-
-    

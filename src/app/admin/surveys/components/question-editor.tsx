@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch, CalendarIcon, Star } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -31,10 +31,14 @@ import {
   DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuCheckboxItem,
   DropdownMenuLabel,
-  DropdownMenuCheckboxItem
 } from '@/components/ui/dropdown-menu';
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { format } from 'date-fns';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
@@ -343,8 +347,105 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
         </Button>
       </div>
     );
-  }
+}
 
+const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
+    return (
+        <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map(star => (
+                <Star
+                    key={star}
+                    className={cn(
+                        'w-8 h-8 cursor-pointer',
+                        star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
+                        disabled ? 'cursor-not-allowed opacity-50' : ''
+                    )}
+                    onClick={() => !disabled && onChange(star)}
+                />
+            ))}
+        </div>
+    );
+};
+
+const ResponseControlPreview = ({ question, index, control }: { question: SurveyQuestion; index: number; control: any }) => {
+    switch (question.type) {
+        case 'text':
+            return <Controller name={`elements.${index}.placeholder`} control={control} render={({ field }) => <Input {...field} placeholder="Placeholder text..." />} />;
+        case 'long-text':
+            return <Controller name={`elements.${index}.placeholder`} control={control} render={({ field }) => <Textarea {...field} placeholder="Placeholder text..." />} />;
+        case 'yes-no':
+            return <RadioGroup disabled className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div></RadioGroup>;
+        case 'multiple-choice':
+            return <RadioGroup disabled className="space-y-2">{question.options?.map(opt => <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}</RadioGroup>;
+        case 'checkboxes':
+            return <div className="space-y-2">{question.options?.map(opt => <div key={opt} className="flex items-start space-x-2"><Checkbox disabled /><Label className="font-normal">{opt}</Label></div>)}{question.allowOther && <div className="flex items-start space-x-2 pt-2"><Checkbox disabled /><Input disabled placeholder="Other (please specify)" className="h-8 flex-1" /></div>}</div>
+        case 'dropdown':
+            return <Select disabled><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></Select>;
+        case 'rating':
+            return <StarRatingInput value={0} onChange={() => {}} disabled />;
+        case 'date':
+            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><CalendarIcon className="mr-2 h-4 w-4" /><span>Pick a date</span></Button>;
+        case 'time':
+            return <Input type="time" disabled className="w-fit" />;
+        default:
+            return null;
+    }
+}
+
+const SetDefaultValueDialog = ({ question, index, open, onOpenChange }: { question: SurveyQuestion; index: number; open: boolean; onOpenChange: (open: boolean) => void }) => {
+    const { control, getValues, setValue } = useFormContext();
+    const [currentValue, setCurrentValue] = React.useState(getValues(`elements.${index}.defaultValue`));
+
+    React.useEffect(() => {
+        setCurrentValue(getValues(`elements.${index}.defaultValue`));
+    }, [open, getValues, index]);
+
+    const handleSave = () => {
+        setValue(`elements.${index}.defaultValue`, currentValue);
+        onOpenChange(false);
+    }
+    
+    const renderInput = () => {
+        switch(question.type) {
+            case 'text':
+            case 'long-text':
+                return <Input value={currentValue || ''} onChange={(e) => setCurrentValue(e.target.value)} />
+            case 'yes-no':
+                return <RadioGroup onValueChange={setCurrentValue} value={currentValue} className="flex gap-4"><div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div><div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div></RadioGroup>;
+            case 'multiple-choice':
+            case 'dropdown':
+                 return <RadioGroup onValueChange={setCurrentValue} value={currentValue}>{question.options?.map(opt => <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}</RadioGroup>;
+            case 'checkboxes':
+                return <p className="text-sm text-muted-foreground">Default values for checkboxes are not supported yet.</p>; // To be implemented
+            case 'rating':
+                return <StarRatingInput value={currentValue || 0} onChange={setCurrentValue} />;
+            case 'date':
+                return <Input type="date" value={currentValue ? format(new Date(currentValue), 'yyyy-MM-dd') : ''} onChange={(e) => setCurrentValue(e.target.value ? new Date(e.target.value).toISOString() : undefined)} />;
+            case 'time':
+                return <Input type="time" value={currentValue || ''} onChange={(e) => setCurrentValue(e.target.value)} />;
+            default:
+                return <p>This question type does not support default values.</p>
+        }
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Set Default Answer for "{question.title}"</DialogTitle>
+                    <DialogDescription>This value will be pre-filled for users taking the survey.</DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    {renderInput()}
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleSave}>Save Default</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 export default function QuestionEditor() {
   const { control, watch, setValue, formState: { errors } } = useFormContext();
@@ -354,16 +455,17 @@ export default function QuestionEditor() {
   });
   
   const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
+  const [defaultingElement, setDefaultingElement] = React.useState<number | null>(null);
 
   const elements = watch('elements');
 
   const addElement = (type: SurveyElement['type']) => {
-    const newElement: SurveyElement = {
+    const newElement: Partial<SurveyElement> = {
       id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       type,
-    } as any; 
+    };
 
-    if (isQuestion(newElement)) {
+    if (isQuestion(newElement as SurveyElement)) {
         (newElement as SurveyQuestion).title = '';
         (newElement as SurveyQuestion).isRequired = false;
         (newElement as SurveyQuestion).hidden = false;
@@ -465,6 +567,9 @@ export default function QuestionEditor() {
                                 <CheckSquare className="mr-2 h-4 w-4" />
                                 <span>Required</span>
                             </DropdownMenuCheckboxItem>
+                             <DropdownMenuItem onSelect={() => setDefaultingElement(index)}>
+                                Set Default Answer...
+                             </DropdownMenuItem>
                             <DropdownMenuSub>
                                 <DropdownMenuSubTrigger>
                                     <Type className="mr-2 h-4 w-4" />
@@ -496,14 +601,17 @@ export default function QuestionEditor() {
                             <Copy className="mr-2 h-4 w-4" />
                             <span>Duplicate</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive" onClick={() => remove(index)}>
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            <span>Delete</span>
-                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-
+                 <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => remove(index)}
+                >
+                    <Trash2 className="h-4 w-4" />
+                </Button>
             </div>
             <CardHeader>
                 <CardTitle className="text-lg">
@@ -520,6 +628,13 @@ export default function QuestionEditor() {
                              {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
                         
+                        <div className="space-y-2">
+                            <Label className="text-sm text-muted-foreground">Response Preview</Label>
+                            <div className="p-4 border rounded-lg bg-background">
+                                <ResponseControlPreview question={element} index={index} control={control} />
+                            </div>
+                        </div>
+
                          {(element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown') && (
                             <div>
                                 <OptionsEditor questionIndex={index} />
@@ -559,6 +674,15 @@ export default function QuestionEditor() {
         onOpenChange={setIsAddElementModalOpen}
         onSelect={addElement}
       />
+      
+      {defaultingElement !== null && elements[defaultingElement] && isQuestion(elements[defaultingElement]) && (
+        <SetDefaultValueDialog
+            open={defaultingElement !== null}
+            onOpenChange={(open) => !open && setDefaultingElement(null)}
+            question={elements[defaultingElement]}
+            index={defaultingElement}
+        />
+      )}
     </div>
   );
 }

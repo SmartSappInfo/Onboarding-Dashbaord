@@ -36,6 +36,8 @@ const questionSchema = z.object({
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
   hidden: z.boolean().optional(),
+  placeholder: z.string().optional(),
+  defaultValue: z.any().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
