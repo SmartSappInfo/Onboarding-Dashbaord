@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey } from '@/lib/types';
 
 // --- SEED DATA ---
 
@@ -59,6 +59,197 @@ const meetingData: Omit<Meeting, 'id'>[] = [
   },
 ];
 
+const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
+  {
+    title: 'Comprehensive Feedback Survey',
+    description: 'Please provide your valuable feedback to help us improve our services. This survey includes examples of all available question and layout types.',
+    status: 'published',
+    thankYouTitle: 'Thank You for Your Feedback!',
+    thankYouDescription: 'We have received your submission and will use it to improve our services.',
+    bannerImageUrl: 'https://picsum.photos/seed/survey1-banner/1200/400',
+    elements: [
+      {
+        id: 'sec_1',
+        type: 'section',
+        title: 'Personal Information',
+        description: 'Let\'s start with some basic details.',
+        renderAsPage: true,
+      },
+      {
+        id: 'q_name',
+        type: 'text',
+        title: 'What is your full name?',
+        isRequired: true,
+        placeholder: 'e.g., Jane Doe',
+      },
+      {
+        id: 'q_email',
+        type: 'text',
+        title: 'What is your email address?',
+        isRequired: true,
+        placeholder: 'e.g., jane.doe@example.com',
+      },
+      {
+        id: 'layout_divider_1',
+        type: 'divider',
+      },
+      {
+        id: 'q_rating',
+        type: 'rating',
+        title: 'How would you rate your overall experience (1-5 stars)?',
+        isRequired: true,
+        defaultValue: 0,
+      },
+      {
+        id: 'sec_2',
+        type: 'section',
+        title: 'Your Experience',
+        description: 'Tell us more about your recent interaction.',
+        renderAsPage: true,
+      },
+      {
+        id: 'layout_heading_1',
+        type: 'heading',
+        title: 'Our Website',
+      },
+      {
+        id: 'q_found_what_you_need',
+        type: 'yes-no',
+        title: 'Did you find what you were looking for on our website?',
+        isRequired: true,
+      },
+      {
+        id: 'logic_1',
+        type: 'logic',
+        rules: [
+          {
+            sourceQuestionId: 'q_found_what_you_need',
+            operator: 'isEqualTo',
+            targetValue: 'No',
+            action: {
+              type: 'jump',
+              targetElementId: 'sec_4_follow_up',
+            },
+          },
+        ],
+      },
+      {
+        id: 'sec_3_details',
+        type: 'section',
+        title: 'Further Details',
+        description: 'This section will be skipped if you answered "No" above.',
+        renderAsPage: false,
+      },
+      {
+        id: 'q_which_products',
+        type: 'checkboxes',
+        title: 'Which of our products/services have you used? (Select all that apply)',
+        isRequired: false,
+        options: ['Product A', 'Service B', 'Consulting C'],
+        allowOther: true,
+      },
+      {
+        id: 'layout_video_1',
+        type: 'video',
+        url: 'https://youtu.be/M6MUlDkfZOg',
+      },
+      {
+        id: 'sec_4_follow_up',
+        type: 'section',
+        title: 'Follow-Up',
+        description: 'Thank you for your feedback. We appreciate your time.',
+        renderAsPage: true,
+      },
+      {
+        id: 'q_contact_permission',
+        type: 'dropdown',
+        title: 'May we contact you for a follow-up interview?',
+        isRequired: false,
+        options: ['Yes, by email', 'Yes, by phone', 'No, thank you'],
+      },
+    ],
+  },
+  {
+    title: 'Event Registration Form',
+    description: 'Register for our upcoming annual tech conference. This form demonstrates conditional logic.',
+    status: 'published',
+    thankYouTitle: 'Registration Confirmed!',
+    thankYouDescription: 'You are all set for the event. We look forward to seeing you there.',
+    bannerImageUrl: 'https://picsum.photos/seed/survey2-banner/1200/400',
+    elements: [
+      {
+        id: 'sec_event_details',
+        type: 'section',
+        title: 'Annual Tech Conference 2025',
+        description: 'Please fill out your details to register.',
+        renderAsPage: false,
+      },
+      {
+        id: 'q_full_name',
+        type: 'text',
+        title: 'Full Name',
+        isRequired: true,
+        placeholder: 'Enter your full name',
+      },
+      {
+        id: 'q_attendance_type',
+        type: 'multiple-choice',
+        title: 'How will you be attending?',
+        isRequired: true,
+        options: ['In-Person', 'Virtually'],
+        defaultValue: 'In-Person',
+      },
+      {
+        id: 'q_tshirt_size',
+        type: 'dropdown',
+        title: 'What is your T-shirt size?',
+        isRequired: true,
+        options: ['Small', 'Medium', 'Large', 'X-Large'],
+      },
+      {
+        id: 'logic_hide_tshirt',
+        type: 'logic',
+        rules: [
+          {
+            sourceQuestionId: 'q_attendance_type',
+            operator: 'isEqualTo',
+            targetValue: 'Virtually',
+            action: {
+              type: 'hide',
+              targetElementIds: ['q_tshirt_size'],
+            },
+          },
+        ],
+      },
+       {
+        id: 'sec_confirmation',
+        type: 'section',
+        title: 'Confirmation',
+        renderAsPage: false,
+      },
+       {
+        id: 'q_agree_terms',
+        type: 'yes-no',
+        title: 'Do you agree to our terms and conditions?',
+        isRequired: true,
+      },
+      {
+        id: 'logic_disable_submit',
+        type: 'logic',
+        rules: [
+          {
+            sourceQuestionId: 'q_agree_terms',
+            operator: 'isNotEqualTo',
+            targetValue: 'Yes',
+            action: {
+              type: 'disableSubmit',
+            },
+          },
+        ],
+      },
+    ],
+  },
+];
 
 // --- SEEDING FUNCTIONS ---
 
@@ -112,4 +303,25 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
   });
   await batch.commit();
   return updatedMeetingData.length;
+}
+
+export async function seedSurveys(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'surveys');
+  const batch = writeBatch(firestore);
+  const surveysCollection = collection(firestore, 'surveys');
+
+  surveyData.forEach((survey) => {
+    const docRef = doc(surveysCollection);
+    const slug = survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const completeSurvey = {
+      ...survey,
+      slug,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    batch.set(docRef, completeSurvey);
+  });
+  
+  await batch.commit();
+  return surveyData.length;
 }

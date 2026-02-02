@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings } from '@/lib/seed';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys';
 
 export default function SettingsPage() {
   const firestore = useFirestore();
@@ -18,6 +18,7 @@ export default function SettingsPage() {
     media: 'idle',
     schools: 'idle',
     meetings: 'idle',
+    surveys: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -44,6 +45,9 @@ export default function SettingsPage() {
       } else if (seeder === 'meetings') {
         count = await seedMeetings(firestore);
         name = 'Meetings';
+      } else if (seeder === 'surveys') {
+        count = await seedSurveys(firestore);
+        name = 'Surveys';
       }
       
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
@@ -89,6 +93,7 @@ export default function SettingsPage() {
         <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
         <SeedingButton seeder="schools">Seed Schools</SeedingButton>
         <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
+        <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
       </CardContent>
     </Card>
   );
