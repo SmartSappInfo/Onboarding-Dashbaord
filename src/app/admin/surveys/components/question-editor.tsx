@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -19,7 +19,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format, isValid } from 'date-fns';
@@ -439,7 +438,7 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
         case 'rating':
             return <StarRatingInput value={0} onChange={() => {}} disabled />;
         case 'date':
-            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><Calendar className="mr-2 h-4 w-4" /><span>Pick a date</span></Button>;
+            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><Calendar className="mr-2 h-4" /><span>Pick a date</span></Button>;
         case 'time':
             return <Input type="time" disabled className="w-fit" />;
         default:
@@ -447,23 +446,26 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
     }
 }
 
-const QuestionSettingsDialog = ({ element, index, open, onOpenChange, remove, duplicate, changeType }: {
+function QuestionSettingsPopover({ element, index, changeType }: {
     element: SurveyElement;
     index: number;
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    remove: (index: number) => void;
-    duplicate: (index: number) => void;
     changeType: (index: number, type: SurveyElement['type']) => void;
-}) => {
+}) {
     const { control, getValues, setValue } = useFormContext();
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
     
     // Local state to manage UI toggles
-    const [useDefault, setUseDefault] = React.useState(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined);
-    const [useMin, setUseMin] = React.useState(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
-    const [useMax, setUseMax] = React.useState(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
+    const [useDefault, setUseDefault] = React.useState(false);
+    const [useMin, setUseMin] = React.useState(false);
+    const [useMax, setUseMax] = React.useState(false);
+
+    const handleToggle = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean, fieldName: string) => {
+        setter(value);
+        if (!value) {
+            setValue(`elements.${index}.${fieldName}`, undefined);
+        }
+    };
     
     const questionTypes: { type: SurveyQuestion['type'], label: string }[] = [
         { type: 'text', label: 'Short Text'}, { type: 'long-text', label: 'Long Text'}, { type: 'yes-no', label: 'Yes/No'},
@@ -473,90 +475,64 @@ const QuestionSettingsDialog = ({ element, index, open, onOpenChange, remove, du
     ];
 
     React.useEffect(() => {
-        if (open) {
-            setUseDefault(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
-            setUseMin(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
-            setUseMax(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
-        }
-    }, [open, getValues, index, isElemQuestion, isTextQuestion]);
+        setUseDefault(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
+        setUseMin(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
+        setUseMax(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
+    }, [getValues, index, isElemQuestion, isTextQuestion]);
 
-    const handleToggle = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean, fieldName: string) => {
-        setter(value);
-        if (!value) {
-            setValue(`elements.${index}.${fieldName}`, undefined);
-        }
-    };
-    
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Settings for "{element.title || 'element'}"</DialogTitle>
-                    <DialogDescription>Manage validation, content, and actions for this element.</DialogDescription>
-                </DialogHeader>
-                <div className="flex-grow overflow-y-auto space-y-6 p-1 -mx-1 pr-2">
-                    {isElemQuestion && (
-                        <div className="space-y-4">
-                            <h4 className="font-semibold text-muted-foreground text-sm">Validation</h4>
-                             <div className="flex items-center justify-between rounded-lg border p-3">
-                                <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
-                                <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
+        <div className="space-y-4">
+            {isElemQuestion && (
+                <div className="space-y-4">
+                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation</h4>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                        <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
+                        <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
+                    </div>
+                    {isTextQuestion && (
+                        <>
+                            <div className="flex items-center justify-between rounded-lg border p-3">
+                                <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
+                                <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                             </div>
-                            {isTextQuestion && (
-                                <>
-                                    <div className="flex items-center justify-between rounded-lg border p-3">
-                                        <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
-                                        <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
-                                    </div>
-                                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
+                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
-                                    <div className="flex items-center justify-between rounded-lg border p-3">
-                                        <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
-                                        <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
-                                    </div>
-                                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
-                                </>
-                            )}
-                        </div>
+                            <div className="flex items-center justify-between rounded-lg border p-3">
+                                <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
+                                <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
+                            </div>
+                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+                        </>
                     )}
-                     <div className="space-y-4">
-                        <h4 className="font-semibold text-muted-foreground text-sm">Content</h4>
-                        <div className="flex items-center justify-between rounded-lg border p-3">
-                           <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
-                           <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
-                        </div>
-                        {isElemQuestion && isTextQuestion && (
-                            <>
-                                <div className="flex items-center justify-between rounded-lg border p-3">
-                                    <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
-                                    <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
-                                </div>
-                                {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
-                            </>
-                        )}
-                    </div>
-                     <div className="space-y-4">
-                        <h4 className="font-semibold text-muted-foreground text-sm">Actions</h4>
-                         <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
-                            <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
-                            <SelectContent>
-                                {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>{qType.label}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Button variant="outline" className="w-full" onClick={() => { duplicate(index); onOpenChange(false); }}>
-                            <Copy className="mr-2 h-4 w-4" /> Duplicate
-                        </Button>
-                        <Button variant="destructive" className="w-full" onClick={() => { remove(index); onOpenChange(false); }}>
-                             <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </Button>
-                    </div>
                 </div>
-                <DialogFooter>
-                    <Button onClick={() => onOpenChange(false)}>Done</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    )
+            )}
+            <div className="space-y-4">
+                <h4 className="font-semibold text-muted-foreground text-sm px-1">Content</h4>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                   <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
+                   <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                </div>
+                {isElemQuestion && isTextQuestion && (
+                    <>
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                            <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
+                            <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
+                        </div>
+                        {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
+                    </>
+                )}
+            </div>
+            <div className="space-y-4">
+                <h4 className="font-semibold text-muted-foreground text-sm px-1">Actions</h4>
+                <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
+                    <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
+                    <SelectContent>
+                        {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>{qType.label}</SelectItem>)}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+    );
 }
 
 export default function QuestionEditor() {
@@ -567,7 +543,6 @@ export default function QuestionEditor() {
   });
   
   const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
-  const [settingsElementIndex, setSettingsElementIndex] = React.useState<number | null>(null);
 
   const elements = watch('elements');
 
@@ -631,8 +606,6 @@ export default function QuestionEditor() {
       if (type === 'document') return 'document';
       return undefined;
   }
-  
-  const settingsElement = settingsElementIndex !== null ? elements[settingsElementIndex] : null;
 
   return (
     <div className="space-y-6">
@@ -646,29 +619,32 @@ export default function QuestionEditor() {
         return (
             <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors group">
             <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={index === 0}
-                    onClick={() => swap(index, index - 1)}
-                >
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
                     <ArrowUp className="h-4 w-4" />
                 </Button>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={index === fields.length - 1}
-                    onClick={() => swap(index, index + 1)}
-                >
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
                     <ArrowDown className="h-4 w-4" />
                 </Button>
-                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsElementIndex(index)}>
-                    <Settings className="h-4 w-4" />
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                    <Copy className="h-4 w-4" />
                 </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-2">
+                        <QuestionSettingsPopover
+                            element={element}
+                            index={index}
+                            changeType={changeElementType}
+                        />
+                    </PopoverContent>
+                </Popover>
             </div>
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -732,20 +708,6 @@ export default function QuestionEditor() {
         onOpenChange={setIsAddElementModalOpen}
         onSelect={addElement}
       />
-      
-      {settingsElementIndex !== null && settingsElement && (
-        <QuestionSettingsDialog
-            open={settingsElementIndex !== null}
-            onOpenChange={(open) => !open && setSettingsElementIndex(null)}
-            element={settingsElement}
-            index={settingsElementIndex}
-            remove={remove}
-            duplicate={duplicateElement}
-            changeType={changeElementType}
-        />
-      )}
     </div>
   );
 }
-
-    
