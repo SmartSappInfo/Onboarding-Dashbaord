@@ -25,6 +25,9 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import SurveyFormBuilder from '../components/survey-form-builder';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -92,119 +95,60 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+  elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
+  thankYouTitle: z.string().optional(),
+  thankYouDescription: z.string().optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
-  elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+
+const Stepper = ({ currentStep }: { currentStep: number }) => {
+    const steps = ['Details', 'Builder', 'Thank You', 'Publish'];
+
+    return (
+        <div className="flex justify-center items-center mb-12">
+            {steps.map((step, index) => (
+                <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                        <div
+                            className={cn(
+                                'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors',
+                                currentStep > index + 1 ? 'bg-primary border-primary text-primary-foreground' : '',
+                                currentStep === index + 1 ? 'border-primary' : 'border-border',
+                            )}
+                        >
+                            {currentStep > index + 1 ? <Check className="w-6 h-6" /> : <span className={cn('text-lg', currentStep === index + 1 ? 'text-primary' : 'text-muted-foreground')}>{index + 1}</span>}
+                        </div>
+                        <p className={cn('mt-2 text-sm', currentStep >= index + 1 ? 'font-semibold text-primary' : 'text-muted-foreground')}>{step}</p>
+                    </div>
+                    {index < steps.length - 1 && <div className="flex-1 h-px bg-border mx-4"></div>}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+};
 
 export default function NewSurveyPage() {
     const { toast } = useToast();
     const router = useRouter();
     const firestore = useFirestore();
+    const [step, setStep] = React.useState(1);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
             title: '',
             description: '',
-            bannerImageUrl: '',
             status: 'draft',
             elements: [],
+            thankYouTitle: 'Thank You!',
+            thankYouDescription: 'Your response has been recorded.',
+            bannerImageUrl: '',
         },
     });
-    
-    React.useEffect(() => {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const seconds = String(now.getSeconds()).padStart(2, '0');
-        const timeString = `${hours}:${minutes}:${seconds}`;
-
-        // Seed with a default survey for demonstration
-        form.reset({
-            title: 'Comprehensive Feedback Survey (All Elements)',
-            description: 'This survey includes all available question types and layout blocks for testing and demonstration purposes. Please review and interact with each element.',
-            status: 'draft',
-            elements: [
-                { id: 'sec_1', type: 'section', title: 'Personal Information', description: 'Lets start with some basic details.', renderAsPage: true },
-                // Questions
-                { id: 'q_text', title: 'What is your full name?', type: 'text', isRequired: true, placeholder: 'e.g., Jane Doe' },
-                { id: 'q_yesno', title: 'Do you personally pick up your child from school?', type: 'yes-no', isRequired: true },
-                { 
-                    id: 'q_dropdown', 
-                    title: 'What is your primary relationship to the student?', 
-                    type: 'dropdown', 
-                    isRequired: true, 
-                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other'],
-                    hidden: true, // Hidden by default, shown by logic
-                },
-
-                { id: 'sec_2', type: 'section', title: 'App Usage & Feedback', description: 'This section is about your experience with the app.', renderAsPage: true },
-                { 
-                    id: 'q_multiplechoice', 
-                    title: 'How often do you use the SmartSapp app?', 
-                    type: 'multiple-choice', 
-                    isRequired: true, 
-                    options: ['Daily', 'Weekly', 'Monthly', 'Rarely'] 
-                },
-                { 
-                    id: 'q_checkboxes', 
-                    title: 'What features do you find most useful? (Select all that apply)', 
-                    type: 'checkboxes', 
-                    isRequired: true, 
-                    options: ['Express Pickup', 'Billing & Payments', 'School Announcements', 'Academic Reports'],
-                    allowOther: true,
-                },
-                { 
-                    id: 'q_rating', 
-                    title: 'On a scale of 1-5, how would you rate the school\'s communication?', 
-                    type: 'rating', 
-                    isRequired: true,
-                    defaultValue: 4,
-                },
-                { id: 'q_date', title: 'What date would be best for a parent-teacher conference this term?', type: 'date', isRequired: false, defaultValue: now },
-                { id: 'q_time', title: 'What time do you usually arrive for pickup?', type: 'time', isRequired: false, defaultValue: timeString },
-                {
-                    id: 'q_longtext',
-                    title: 'Do you have any additional comments or suggestions for us?',
-                    type: 'long-text',
-                    isRequired: false,
-                    placeholder: 'Share your thoughts on how we can improve...'
-                },
-                { id: 'q_fileupload', title: 'Please upload a copy of your child\'s last report card.', type: 'file-upload', isRequired: false },
-
-                { id: 'sec_3', type: 'section', title: 'Additional Media Section', description: 'This section is not a new page.', renderAsPage: false },
-                // Layout Blocks
-                { id: 'layout_heading', type: 'heading', title: 'This is a Heading' },
-                { id: 'layout_description', type: 'description', text: 'This is a description block. It can contain longer text to provide context or instructions to the user.' },
-                { id: 'layout_divider', type: 'divider' },
-                { id: 'layout_image', type: 'image', url: 'https://picsum.photos/seed/survey-image/600/400' },
-                { id: 'layout_video', type: 'video', url: 'https://youtu.be/M6MUlDkfZOg' },
-                { id: 'layout_audio', type: 'audio', url: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' },
-                { id: 'layout_document', type: 'document', url: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf' },
-                { id: 'layout_embed', type: 'embed', html: '<blockquote class="twitter-tweet"><p lang="en" dir="ltr">Hello world!</p>&mdash; Studio (@Firebase) <a href="https://twitter.com/Firebase/status/1580224096059375616">October 12, 2022</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>' },
-                
-                // Logic Block
-                {
-                    id: 'logic_1',
-                    type: 'logic',
-                    rules: [
-                        {
-                            sourceQuestionId: 'q_yesno',
-                            operator: 'isEqualTo',
-                            targetValue: 'No',
-                            action: {
-                                type: 'show',
-                                targetElementIds: ['q_dropdown']
-                            }
-                        }
-                    ]
-                },
-            ]
-        })
-    }, [form]);
 
     const onSubmit = (data: FormData) => {
         if (!firestore) {
@@ -251,94 +195,175 @@ export default function NewSurveyPage() {
                 form.control.disabled = false;
             });
     };
+    
+    const handleNext = async () => {
+        let isValid = false;
+        if (step === 1) {
+            isValid = await form.trigger(['title', 'description']);
+        } else if (step === 2) {
+            isValid = await form.trigger(['elements']);
+        } else {
+            isValid = true; // No validation needed for step 3 to 4
+        }
+        
+        if (isValid) {
+            setStep(s => s + 1);
+        }
+    };
+    
+    const slug = form.watch('title').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     return (
-        <div>
-            <FormProvider {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Survey Details</CardTitle>
-                            <CardDescription>Fill in the details for your new survey.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-8">
-                             <FormField
-                                control={form.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Survey Title</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="description"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Description / Instructions</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                             <FormField
-                                control={form.control}
-                                name="bannerImageUrl"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Banner Image</FormLabel>
-                                        <FormControl>
-                                            <MediaSelect {...field} filterType="image" />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
+        <FormProvider {...form}>
+            <Stepper currentStep={step} />
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                
+                {/* Step 1: Details */}
+                <Card className={cn(step !== 1 && 'hidden')}>
+                    <CardHeader>
+                        <CardTitle>Survey Details</CardTitle>
+                        <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormLabel>Survey Title</FormLabel>
                                     <FormControl>
-                                        <SelectTrigger>
-                                        <SelectValue placeholder="Select survey status" />
-                                        </SelectTrigger>
+                                        <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
                                     </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="draft">Draft</SelectItem>
-                                        <SelectItem value="published">Published</SelectItem>
-                                        <SelectItem value="archived">Archived</SelectItem>
-                                    </SelectContent>
-                                    </Select>
                                     <FormMessage />
                                 </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
-                    
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description / Instructions</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+                
+                {/* Step 2: Builder */}
+                <div className={cn(step !== 2 && 'hidden')}>
                     <SurveyFormBuilder />
+                </div>
+                
+                {/* Step 3: Thank You Page */}
+                <Card className={cn(step !== 3 && 'hidden')}>
+                    <CardHeader>
+                        <CardTitle>Thank You Page</CardTitle>
+                        <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        <FormField
+                            control={form.control}
+                            name="thankYouTitle"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Thank You Title</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Thank You!" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="thankYouDescription"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Thank You Message</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Your response has been recorded." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
 
-                    <div className="flex justify-end items-center gap-4">
-                        <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
-                        Cancel
-                        </Button>
-                        <SurveyPreviewButton />
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                        {form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}
-                        </Button>
+                {/* Step 4: Publish */}
+                <Card className={cn(step !== 4 && 'hidden')}>
+                    <CardHeader>
+                        <CardTitle>Publish</CardTitle>
+                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        <FormField
+                            control={form.control}
+                            name="bannerImageUrl"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Banner Image</FormLabel>
+                                    <FormControl>
+                                        <MediaSelect {...field} filterType="image" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="status"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select survey status" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="draft">Draft</SelectItem>
+                                    <SelectItem value="published">Published</SelectItem>
+                                    <SelectItem value="archived">Archived</SelectItem>
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        {slug && (
+                            <FormItem>
+                                <FormLabel>Survey URL</FormLabel>
+                                <p className="text-sm text-muted-foreground">Once published, your survey will be available at this URL. The URL is generated from the survey title.</p>
+                                <Link href={`/surveys/${slug}`} target="_blank" className="text-primary hover:underline break-all">
+                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${slug}` : `/surveys/${slug}`}
+                                </Link>
+                            </FormItem>
+                        )}
+                    </CardContent>
+                </Card>
+
+                <div className="flex justify-between items-center mt-12">
+                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
+                    <div className="flex items-center gap-4">
+                        {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                        {step < 4 ? (
+                            <Button type="button" onClick={handleNext}>Next</Button>
+                        ) : (
+                             <div className="flex items-center gap-4">
+                                <SurveyPreviewButton />
+                                <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
+                            </div>
+                        )}
                     </div>
-                </form>
-            </FormProvider>
-        </div>
+                </div>
+            </form>
+        </FormProvider>
     );
 }

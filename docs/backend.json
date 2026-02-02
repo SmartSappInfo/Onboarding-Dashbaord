@@ -260,7 +260,9 @@
           }
         },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "thankYouTitle": { "type": "string", "description": "Title for the 'Thank You' page shown after submission." },
+        "thankYouDescription": { "type": "string", "description": "Description for the 'Thank You' page." }
       },
       "required": ["title", "slug", "status", "elements", "createdAt", "updatedAt"]
     },

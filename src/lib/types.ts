@@ -6,6 +6,7 @@
 
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -105,6 +106,8 @@ export interface Survey {
   elements: SurveyElement[];
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
+  thankYouTitle?: string;
+  thankYouDescription?: string;
 }
 
 export interface SurveyResponse {

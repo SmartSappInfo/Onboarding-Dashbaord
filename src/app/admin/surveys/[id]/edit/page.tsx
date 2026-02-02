@@ -27,6 +27,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
 import SurveyPreviewButton from '../../components/survey-preview-button';
 import SurveyFormBuilder from '../../components/survey-form-builder';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 
 const questionSchema = z.object({
@@ -93,18 +96,48 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 const formSchema = z.object({
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
+  elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
+  thankYouTitle: z.string().optional(),
+  thankYouDescription: z.string().optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
-  elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
+
+
+const Stepper = ({ currentStep }: { currentStep: number }) => {
+    const steps = ['Details', 'Builder', 'Thank You', 'Publish'];
+
+    return (
+        <div className="flex justify-center items-center mb-12">
+            {steps.map((step, index) => (
+                <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                        <div
+                            className={cn(
+                                'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors',
+                                currentStep > index + 1 ? 'bg-primary border-primary text-primary-foreground' : '',
+                                currentStep === index + 1 ? 'border-primary' : 'border-border',
+                            )}
+                        >
+                            {currentStep > index + 1 ? <Check className="w-6 h-6" /> : <span className={cn('text-lg', currentStep === index + 1 ? 'text-primary' : 'text-muted-foreground')}>{index + 1}</span>}
+                        </div>
+                        <p className={cn('mt-2 text-sm', currentStep >= index + 1 ? 'font-semibold text-primary' : 'text-muted-foreground')}>{step}</p>
+                    </div>
+                    {index < steps.length - 1 && <div className="flex-1 h-px bg-border mx-4"></div>}
+                </React.Fragment>
+            ))}
+        </div>
+    );
+};
 
 
 function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const { toast } = useToast();
     const router = useRouter();
     const firestore = useFirestore();
+    const [step, setStep] = React.useState(1);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -122,9 +155,11 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             form.reset({
                 title: survey.title,
                 description: survey.description,
+                elements: survey.elements || [],
+                thankYouTitle: survey.thankYouTitle || 'Thank You!',
+                thankYouDescription: survey.thankYouDescription || 'Your response has been recorded.',
                 bannerImageUrl: survey.bannerImageUrl || '',
                 status: survey.status,
-                elements: survey.elements || [],
             });
         }
     }, [survey, form]);
@@ -167,6 +202,21 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 form.control.disabled = false;
             });
     };
+    
+    const handleNext = async () => {
+        let isValid = false;
+        if (step === 1) {
+            isValid = await form.trigger(['title', 'description']);
+        } else if (step === 2) {
+            isValid = await form.trigger(['elements']);
+        } else {
+            isValid = true;
+        }
+        
+        if (isValid) {
+            setStep(s => s + 1);
+        }
+    };
 
     if (isLoading) {
         return (
@@ -190,11 +240,14 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     return (
         <FormProvider {...form}>
+            <Stepper currentStep={step} />
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Card>
+                
+                {/* Step 1: Details */}
+                <Card className={cn(step !== 1 && 'hidden')}>
                     <CardHeader>
-                        <CardTitle>Edit Survey</CardTitle>
-                        <CardDescription>Update the details and questions for your survey.</CardDescription>
+                        <CardTitle>Survey Details</CardTitle>
+                        <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-8">
                         <FormField
@@ -223,6 +276,57 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                                 </FormItem>
                             )}
                         />
+                    </CardContent>
+                </Card>
+                
+                {/* Step 2: Builder */}
+                <div className={cn(step !== 2 && 'hidden')}>
+                    <SurveyFormBuilder />
+                </div>
+                
+                {/* Step 3: Thank You Page */}
+                <Card className={cn(step !== 3 && 'hidden')}>
+                    <CardHeader>
+                        <CardTitle>Thank You Page</CardTitle>
+                        <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
+                        <FormField
+                            control={form.control}
+                            name="thankYouTitle"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Thank You Title</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Thank You!" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="thankYouDescription"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Thank You Message</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Your response has been recorded." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
+                {/* Step 4: Publish */}
+                <Card className={cn(step !== 4 && 'hidden')}>
+                    <CardHeader>
+                        <CardTitle>Publish</CardTitle>
+                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-8">
                         <FormField
                             control={form.control}
                             name="bannerImageUrl"
@@ -258,19 +362,31 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                             </FormItem>
                             )}
                         />
+                         {survey && (
+                            <FormItem>
+                                <FormLabel>Survey URL</FormLabel>
+                                <p className="text-sm text-muted-foreground">Once published, your survey will be available at:</p>
+                                <Link href={`/surveys/${survey.slug}`} target="_blank" className="text-primary hover:underline break-all">
+                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}` : `/surveys/${survey.slug}`}
+                                </Link>
+                            </FormItem>
+                        )}
                     </CardContent>
                 </Card>
-                
-                <SurveyFormBuilder />
 
-                <div className="flex justify-end items-center gap-4">
-                    <Button type="button" variant="outline" onClick={() => router.push('/admin/surveys')}>
-                    Cancel
-                    </Button>
-                    <SurveyPreviewButton />
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
-                    </Button>
+                <div className="flex justify-between items-center mt-12">
+                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
+                    <div className="flex items-center gap-4">
+                        {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                        {step < 4 ? (
+                            <Button type="button" onClick={handleNext}>Next</Button>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <SurveyPreviewButton />
+                                <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}</Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </form>
         </FormProvider>

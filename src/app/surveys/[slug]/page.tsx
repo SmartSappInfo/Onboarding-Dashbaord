@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useParams } from 'next/navigation';
@@ -117,8 +118,8 @@ export default function PublicSurveyPage() {
             <div className="bg-background min-h-screen flex items-center justify-center">
                  <div className="max-w-2xl mx-auto text-center p-8">
                      <SmartSappLogo className="h-12 mx-auto mb-8" />
-                    <h1 className="text-3xl font-bold mb-4">Thank You!</h1>
-                    <p className="text-muted-foreground text-lg">Your response has been submitted successfully.</p>
+                    <h1 className="text-3xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                    <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been submitted successfully.'}</p>
                 </div>
             </div>
         )
