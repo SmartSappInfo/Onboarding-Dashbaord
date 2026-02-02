@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
-import { FormMessage } from '@/components/ui/form';
+import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import AddElementModal from './add-question-modal';
 import { MediaSelect } from '../../schools/components/media-select';
 
