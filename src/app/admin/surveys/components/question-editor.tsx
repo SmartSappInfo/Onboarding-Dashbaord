@@ -536,7 +536,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
 }
 
 export default function QuestionEditor() {
-  const { control, watch, setValue, formState: { errors } } = useFormContext();
+  const { control, watch, setValue, getValues, formState: { errors } } = useFormContext();
   const { fields, append, remove, swap, insert } = useFieldArray({
     control,
     name: 'elements',
@@ -649,6 +649,7 @@ export default function QuestionEditor() {
             <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
                    <ElementIcon className="w-5 h-5 text-muted-foreground" />
+                   {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
                    <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
                    {element.hidden && <EyeOff className="w-4 h-4 text-muted-foreground" />}
                 </CardTitle>
