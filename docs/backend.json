@@ -212,7 +212,7 @@
               "type": "object",
               "properties": {
                 "sourceQuestionId": { "type": "string" },
-                "operator": { "type": "string", "enum": ["isEqualTo", "isNotEqualTo", "contains", "isGreaterThan", "isLessThan"] },
+                "operator": { "type": "string", "enum": ["isEqualTo", "isNotEqualTo", "contains", "doesNotContain", "startsWith", "doesNotStartWith", "endsWith", "doesNotEndWith", "isEmpty", "isNotEmpty", "isGreaterThan", "isLessThan"] },
                 "targetValue": { "description": "The value to compare against." },
                 "action": { "type": "string", "enum": ["jump"] },
                 "targetElementId": { "type": "string" }
@@ -333,3 +333,5 @@
     ]
   }
 }
+
+    

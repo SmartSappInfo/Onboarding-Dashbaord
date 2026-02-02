@@ -1,5 +1,6 @@
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -67,7 +68,7 @@ export interface SurveyLogicBlock {
   type: 'logic';
   rules: {
     sourceQuestionId: string;
-    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'isGreaterThan' | 'isLessThan';
+    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
     targetValue: any;
     action: 'jump';
     targetElementId: string;
@@ -97,3 +98,5 @@ export interface SurveyResponse {
     value: any; // Can be string, string[], number, or object for checkboxes with 'other'
   }[];
 }
+
+    

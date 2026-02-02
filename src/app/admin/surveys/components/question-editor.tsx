@@ -86,98 +86,112 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
 
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-      {fields.map((field, index) => (
-        <div key={field.id} className="p-4 border rounded-md bg-background relative">
-           <div className="absolute top-2 right-2">
-             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
-                <Trash2 className="h-4 w-4" />
-            </Button>
-           </div>
-          <div className="flex items-start gap-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
-                <Bot className="h-5 w-5" />
-                <span>When</span>
+      {fields.map((field, index) => {
+        const operator = watch(`elements.${elementIndex}.rules.${index}.operator`);
+        const showValueInput = operator !== 'isEmpty' && operator !== 'isNotEmpty';
+
+        return (
+            <div key={field.id} className="p-4 border rounded-md bg-background relative">
+            <div className="absolute top-2 right-2">
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4" />
+                </Button>
             </div>
-            <div className="flex-grow space-y-2">
-              <Controller
-                name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select a question..." /></SelectTrigger>
-                    <SelectContent>
-                      {potentialSourceQuestions.map((q) => (
-                        <SelectItem key={q.id} value={q.id}>
-                          Q{allElements.findIndex(el => el.id === q.id) + 1}: {q.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-              <div className="flex items-center gap-2">
+            <div className="flex items-start gap-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+                    <Bot className="h-5 w-5" />
+                    <span>When</span>
+                </div>
+                <div className="flex-grow space-y-2">
                 <Controller
-                  name={`elements.${elementIndex}.rules.${index}.operator`}
-                  control={control}
-                  render={({ field }) => (
+                    name={`elements.${elementIndex}.rules.${index}.sourceQuestionId`}
+                    control={control}
+                    render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="w-1/2"><SelectValue placeholder="Operator..." /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="isEqualTo">Is equal to</SelectItem>
-                        <SelectItem value="isNotEqualTo">Is not equal to</SelectItem>
-                        <SelectItem value="contains">Contains</SelectItem>
-                        <SelectItem value="isGreaterThan">Is greater than</SelectItem>
-                        <SelectItem value="isLessThan">Is less than</SelectItem>
-                      </SelectContent>
+                        <SelectTrigger><SelectValue placeholder="Select a question..." /></SelectTrigger>
+                        <SelectContent>
+                        {potentialSourceQuestions.map((q) => (
+                            <SelectItem key={q.id} value={q.id}>
+                            Q{allElements.findIndex(el => el.id === q.id) + 1}: {q.title}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
                     </Select>
-                  )}
+                    )}
                 />
-                <Controller
-                  name={`elements.${elementIndex}.rules.${index}.targetValue`}
-                  control={control}
-                  render={({ field }) => <Input {...field} placeholder="Value..." />}
-                />
-              </div>
-            </div>
-          </div>
-          <div className="flex items-start gap-4 mt-4">
-            <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
-                <span className="text-lg">↳</span>
-                <span>Then</span>
-            </div>
-             <div className="flex-grow flex items-center gap-2">
-                <Controller
-                    name={`elements.${elementIndex}.rules.${index}.action`}
+                <div className="flex items-center gap-2">
+                    <Controller
+                    name={`elements.${elementIndex}.rules.${index}.operator`}
                     control={control}
                     render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="w-1/2"><SelectValue placeholder="Action..." /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="jump">Jump To</SelectItem>
-                            </SelectContent>
+                        <SelectTrigger className="w-1/2"><SelectValue placeholder="Operator..." /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="isEqualTo">Is</SelectItem>
+                            <SelectItem value="isNotEqualTo">Is not</SelectItem>
+                            <SelectItem value="contains">Contains</SelectItem>
+                            <SelectItem value="doesNotContain">Does not contain</SelectItem>
+                            <SelectItem value="startsWith">Starts with</SelectItem>
+                            <SelectItem value="doesNotStartWith">Does not start with</SelectItem>
+                            <SelectItem value="endsWith">Ends with</SelectItem>
+                            <SelectItem value="doesNotEndWith">Does not end with</SelectItem>
+                            <SelectItem value="isEmpty">Is empty</SelectItem>
+                            <SelectItem value="isNotEmpty">Is not empty</SelectItem>
+                            <SelectItem value="isGreaterThan">Is greater than</SelectItem>
+                            <SelectItem value="isLessThan">Is less than</SelectItem>
+                        </SelectContent>
                         </Select>
                     )}
-                />
-                <Controller
-                    name={`elements.${elementIndex}.rules.${index}.targetElementId`}
-                    control={control}
-                    render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger><SelectValue placeholder="Target element..." /></SelectTrigger>
-                            <SelectContent>
-                               {potentialTargetElements.map((el) => (
-                                    <SelectItem key={el.id} value={el.id}>
-                                        {isQuestion(el) ? `Q${allElements.findIndex(e => e.id === el.id) + 1}: ${el.title}` : `Section: ${el.title}`}
-                                    </SelectItem>
-                               ))}
-                            </SelectContent>
-                        </Select>
+                    />
+                    {showValueInput && (
+                        <Controller
+                        name={`elements.${elementIndex}.rules.${index}.targetValue`}
+                        control={control}
+                        render={({ field }) => <Input {...field} placeholder="Value..." />}
+                        />
                     )}
-                />
+                </div>
+                </div>
             </div>
-          </div>
-        </div>
-      ))}
+            <div className="flex items-start gap-4 mt-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground pt-2">
+                    <span className="text-lg">↳</span>
+                    <span>Then</span>
+                </div>
+                <div className="flex-grow flex items-center gap-2">
+                    <Controller
+                        name={`elements.${elementIndex}.rules.${index}.action`}
+                        control={control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger className="w-1/2"><SelectValue placeholder="Action..." /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="jump">Jump To</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                    <Controller
+                        name={`elements.${elementIndex}.rules.${index}.targetElementId`}
+                        control={control}
+                        render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <SelectTrigger><SelectValue placeholder="Target element..." /></SelectTrigger>
+                                <SelectContent>
+                                {potentialTargetElements.map((el) => (
+                                        <SelectItem key={el.id} value={el.id}>
+                                            {isQuestion(el) ? `Q${allElements.findIndex(e => e.id === el.id) + 1}: ${el.title}` : `Section: ${el.title}`}
+                                        </SelectItem>
+                                ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                </div>
+            </div>
+            </div>
+        );
+      })}
        <Button
         type="button"
         variant="outline"
@@ -376,3 +390,5 @@ export default function QuestionEditor() {
     </div>
   );
 }
+
+    

@@ -246,12 +246,33 @@ const ElementRenderer = ({ element, index, control, errors }: { element: SurveyE
 }
 
 const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: any): boolean => {
+    const strAnswer = String(answer ?? ''); // Treat null/undefined as empty string
+
     switch (operator) {
-        case 'isEqualTo': return String(answer) === String(targetValue);
-        case 'isNotEqualTo': return String(answer) !== String(targetValue);
-        case 'contains': return String(answer).includes(String(targetValue));
-        case 'isGreaterThan': return Number(answer) > Number(targetValue);
-        case 'isLessThan': return Number(answer) < Number(targetValue);
+        case 'isEqualTo': 
+            return strAnswer === String(targetValue);
+        case 'isNotEqualTo': 
+            return strAnswer !== String(targetValue);
+        case 'contains': 
+            return strAnswer.includes(String(targetValue));
+        case 'doesNotContain':
+            return !strAnswer.includes(String(targetValue));
+        case 'startsWith':
+            return strAnswer.startsWith(String(targetValue));
+        case 'doesNotStartWith':
+            return !strAnswer.startsWith(String(targetValue));
+        case 'endsWith':
+            return strAnswer.endsWith(String(targetValue));
+        case 'doesNotEndWith':
+            return !strAnswer.endsWith(String(targetValue));
+        case 'isEmpty':
+            return strAnswer.trim() === '';
+        case 'isNotEmpty':
+            return strAnswer.trim() !== '';
+        case 'isGreaterThan': 
+            return Number(answer) > Number(targetValue);
+        case 'isLessThan': 
+            return Number(answer) < Number(targetValue);
         default: return false;
     }
 }
@@ -381,3 +402,5 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
         </form>
     );
 }
+
+    
