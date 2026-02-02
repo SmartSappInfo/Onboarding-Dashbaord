@@ -20,7 +20,7 @@ function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
 }
 
 export default function SurveyFormBuilder() {
-    const { getValues, setValue, watch, formState: { isDirty }, control } = useFormContext();
+    const { getValues, setValue, watch, formState: { isDirty }, control, reset } = useFormContext();
     const { toast } = useToast();
     const surveyId = (useParams() as { id?: string }).id || 'new-survey';
     const storageKey = `survey-autosave-${surveyId}`;
@@ -76,8 +76,8 @@ export default function SurveyFormBuilder() {
         append(newElement);
     };
 
-    const watchedElements = watch('elements');
-    const debouncedElements = useDebounce(watchedElements, 10000);
+    const watchedForm = watch();
+    const debouncedForm = useDebounce(watchedForm, 10000);
 
     const {
         state: historyState,
@@ -87,27 +87,36 @@ export default function SurveyFormBuilder() {
         canUndo,
         canRedo,
         reset: resetHistory
-    } = useUndoRedo<SurveyElement[]>(getValues('elements') || []);
+    } = useUndoRedo<any>(getValues());
 
     const isProgrammaticChange = React.useRef(false);
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
     React.useEffect(() => {
-        const initialElements = getValues('elements');
-        resetHistory(initialElements);
+        resetHistory(getValues());
 
         const savedData = localStorage.getItem(storageKey);
         if (savedData) {
             try {
                 const parsedData = JSON.parse(savedData);
+                
+                if (parsedData.elements) {
+                    parsedData.elements.forEach((el: any) => {
+                        if (el.type === 'date' && el.defaultValue && typeof el.defaultValue === 'string') {
+                            el.defaultValue = new Date(el.defaultValue);
+                        }
+                    });
+                }
+
                 toast({
                     title: "Unsaved Changes Found",
                     description: "Do you want to restore your unsaved changes from a previous session?",
                     action: (
                         <Button onClick={() => {
-                            setValue('elements', parsedData, { shouldDirty: true });
+                            reset(parsedData);
                             resetHistory(parsedData);
                             toast({ title: 'Success', description: 'Restored unsaved changes.' });
+                            localStorage.removeItem(storageKey);
                         }}>
                             Restore
                         </Button>
@@ -126,8 +135,8 @@ export default function SurveyFormBuilder() {
         if (isProgrammaticChange.current) {
             return;
         }
-        setHistory(watchedElements);
-    }, [watchedElements, setHistory]);
+        setHistory(watchedForm);
+    }, [watchedForm, setHistory]);
 
     const handleUndo = () => {
         isProgrammaticChange.current = true;
@@ -141,15 +150,22 @@ export default function SurveyFormBuilder() {
 
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
-            setValue('elements', historyState, { shouldDirty: true });
+            reset(historyState, {
+                keepErrors: true,
+                keepDirty: true,
+                keepIsSubmitted: true,
+                keepTouched: true,
+                keepIsValid: true,
+                keepSubmitCount: true,
+            });
             isProgrammaticChange.current = false;
         }
-    }, [historyState, setValue]);
+    }, [historyState, reset]);
 
     React.useEffect(() => {
         if (isDirty) {
             setAutosaveStatus('saving');
-            localStorage.setItem(storageKey, JSON.stringify(debouncedElements));
+            localStorage.setItem(storageKey, JSON.stringify(debouncedForm));
             const timer = setTimeout(() => setAutosaveStatus('saved'), 500);
             const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 2500);
             return () => {
@@ -157,11 +173,11 @@ export default function SurveyFormBuilder() {
                 clearTimeout(idleTimer);
             };
         }
-    }, [debouncedElements, storageKey, isDirty]);
+    }, [debouncedForm, storageKey, isDirty]);
 
     return (
         <div className="relative">
-            <Card className="bg-muted/30 pb-20">
+            <Card className="bg-muted/30">
                 <CardHeader>
                     <div className="flex justify-between items-center">
                         <div>
@@ -173,6 +189,16 @@ export default function SurveyFormBuilder() {
                                 {autosaveStatus === 'saving' && 'Saving...'}
                                 {autosaveStatus === 'saved' && 'Changes saved.'}
                             </span>
+                             <div className="flex items-center gap-1 rounded-md border bg-background p-1">
+                                <Button type="button" variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
+                                    <Undo className="h-4 w-4" />
+                                    <span className="sr-only">Undo</span>
+                                </Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
+                                    <Redo className="h-4 w-4" />
+                                    <span className="sr-only">Redo</span>
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </CardHeader>
@@ -184,26 +210,14 @@ export default function SurveyFormBuilder() {
                         swap={swap} 
                         insert={insert} 
                     />
+                    <div className="mt-8 flex justify-center">
+                        <Button type="button" variant="outline" size="lg" onClick={() => setIsAddElementModalOpen(true)}>
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Add Element
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
-
-            <div className="sticky bottom-8 z-10 -mt-16 flex justify-center">
-                <div className="flex items-center gap-2 rounded-full border bg-card p-2 shadow-lg">
-                    <Button type="button" variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
-                        <Undo className="h-4 w-4" />
-                        <span className="sr-only">Undo</span>
-                    </Button>
-                    <Button type="button" variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
-                        <Redo className="h-4 w-4" />
-                        <span className="sr-only">Redo</span>
-                    </Button>
-                    <div className="h-6 w-px bg-border" />
-                    <Button type="button" variant="ghost" size="icon" onClick={() => setIsAddElementModalOpen(true)}>
-                        <PlusCircle className="h-5 w-5" />
-                        <span className="sr-only">Add Element</span>
-                    </Button>
-                </div>
-            </div>
             
             <AddElementModal 
                 open={isAddElementModalOpen}
