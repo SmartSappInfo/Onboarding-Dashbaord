@@ -191,7 +191,21 @@
               "type": { "type": "string", "enum": ["yes-no", "multiple-choice", "checkboxes", "text"], "description": "The type of question." },
               "options": { "type": "array", "items": { "type": "string" }, "description": "A list of options for multiple-choice or checkbox questions." },
               "allowOther": { "type": "boolean", "description": "Whether to allow a free-text 'Other' option." },
-              "isRequired": { "type": "boolean", "description": "Whether the question must be answered." }
+              "isRequired": { "type": "boolean", "description": "Whether the question must be answered." },
+              "displayCondition": {
+                "type": "object",
+                "description": "Specifies a condition for this question to be displayed, based on the answer to another question.",
+                "properties": {
+                  "questionId": {
+                    "type": "string",
+                    "description": "The ID of the question that this question depends on."
+                  },
+                  "expectedValue": {
+                    "description": "The answer value that the dependent question must have for this question to be displayed. For checkboxes, use an array of strings."
+                  }
+                },
+                "required": ["questionId", "expectedValue"]
+              }
             },
             "required": ["id", "title", "type", "isRequired"]
           }

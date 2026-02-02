@@ -47,7 +47,11 @@ const seedQuestions: SurveyQuestion[] = [
       id: 'q2-process-effective',
       title: 'If yes, is the current pickup process at your ward’s school effective and convenient for you?',
       type: 'yes-no',
-      isRequired: false, // This depends on the answer to q1
+      isRequired: true,
+      displayCondition: {
+        questionId: 'q1-pickup-duty',
+        expectedValue: 'Yes',
+      },
     },
     {
       id: 'q3-challenges',
@@ -60,7 +64,11 @@ const seedQuestions: SurveyQuestion[] = [
         'Poor communication from the school',
       ],
       allowOther: true,
-      isRequired: false, // This depends on the answer to q2
+      isRequired: true,
+      displayCondition: {
+        questionId: 'q2-process-effective',
+        expectedValue: 'No',
+      },
     },
     {
       id: 'q4-express-pickup',

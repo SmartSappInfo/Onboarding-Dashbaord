@@ -49,6 +49,10 @@ export interface SurveyQuestion {
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
+  displayCondition?: {
+    questionId: string;
+    expectedValue: string | string[];
+  };
 }
 
 export interface Survey {
@@ -69,6 +73,6 @@ export interface SurveyResponse {
   submittedAt: string; // ISO string
   answers: {
     questionId: string;
-    value: string | string[];
+    value: any; // Can be string, string[], or object for checkboxes with 'other'
   }[];
 }

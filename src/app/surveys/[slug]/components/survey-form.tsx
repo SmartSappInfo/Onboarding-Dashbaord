@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addDoc, collection } from 'firebase/firestore';
@@ -22,52 +22,190 @@ interface SurveyFormProps {
     onSubmitted: () => void;
 }
 
+// Generates a Zod schema with conditional validation
 const generateSchema = (questions: SurveyQuestion[]) => {
-    const schemaObject: Record<string, z.ZodTypeAny> = {};
-  
-    questions.forEach((q) => {
-      let validator: z.ZodTypeAny;
-  
-      switch (q.type) {
-        case 'yes-no':
-          validator = z.enum(['Yes', 'No']);
-          break;
-        case 'multiple-choice':
-          validator = z.string().min(1, 'Please select an option.');
-          break;
-        case 'checkboxes':
-          validator = z.array(z.string());
-          if (q.allowOther) {
-             validator = z.object({
-                options: z.array(z.string()),
-                other: z.string().optional(),
-             }).refine(data => data.options.length > 0 || (data.other && data.other.trim().length > 0), {
-                message: 'Please select at least one option or specify "Other".'
-             });
-          }
-          break;
-        case 'text':
-          validator = z.string();
-          break;
-        default:
-          validator = z.any();
-      }
-  
-      if (q.isRequired && validator instanceof z.ZodType) {
-        if (q.type === 'text') {
-            validator = (validator as z.ZodString).min(1, 'This field is required.');
-        } else if (q.type === 'checkboxes' && !q.allowOther) {
-            validator = (validator as z.ZodArray<any, any>).nonempty('Please select at least one option.');
-        }
-      } else {
-        validator = validator.optional();
-      }
-  
-      schemaObject[q.id] = validator;
+    // Create a base schema object where every field is optional initially.
+    // Validation will be handled by superRefine.
+    const baseSchemaObject = questions.reduce((acc, q) => {
+        acc[q.id] = z.any().optional();
+        return acc;
+    }, {} as Record<string, z.ZodTypeAny>);
+
+    return z.object(baseSchemaObject).superRefine((data, ctx) => {
+        questions.forEach((q) => {
+            // Determine if the current question should be visible based on its displayCondition
+            let isVisible = true;
+            if (q.displayCondition) {
+                const parentValue = data[q.displayCondition.questionId];
+                if (parentValue !== q.displayCondition.expectedValue) {
+                    isVisible = false;
+                }
+            }
+
+            // If the question is visible and marked as required, perform validation.
+            if (isVisible && q.isRequired) {
+                const value = data[q.id];
+                let hasError = false;
+                let errorMessage = "This field is required.";
+
+                switch (q.type) {
+                    case 'yes-no':
+                    case 'multiple-choice':
+                        if (!value) hasError = true;
+                        break;
+                    case 'text':
+                        if (!value || typeof value !== 'string' || !value.trim()) hasError = true;
+                        break;
+                    case 'checkboxes':
+                        if (q.allowOther) {
+                            if (!value || typeof value !== 'object' || (value.options?.length === 0 && (!value.other || !value.other.trim()))) {
+                                hasError = true;
+                                errorMessage = "Please select at least one option or specify 'Other'.";
+                            }
+                        } else {
+                            if (!value || !Array.isArray(value) || value.length === 0) {
+                                hasError = true;
+                                errorMessage = "Please select at least one option.";
+                            }
+                        }
+                        break;
+                }
+
+                if (hasError) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        path: [q.id],
+                        message: errorMessage,
+                    });
+                }
+            }
+        });
     });
-  
-    return z.object(schemaObject);
 };
+
+
+// A component to render a single question, handling its own visibility.
+const QuestionRenderer = ({ question, index, control, getValues, setValue, errors }: { question: SurveyQuestion; index: number; control: any, getValues: any, setValue: any, errors: any }) => {
+    const { displayCondition } = question;
+    // Watch the value of the parent question, if one exists
+    const parentValue = useWatch({
+        control,
+        name: displayCondition ? displayCondition.questionId : 'non-existent-field',
+    });
+
+    const isVisible = React.useMemo(() => {
+        if (!displayCondition) return true;
+        return parentValue === displayCondition.expectedValue;
+    }, [displayCondition, parentValue]);
+
+    React.useEffect(() => {
+        // If a question becomes hidden, reset its value to avoid submitting stale data
+        if (!isVisible) {
+            setValue(question.id, undefined, { shouldValidate: false });
+        }
+    }, [isVisible, question.id, setValue]);
+
+    if (!isVisible) return null;
+
+    return (
+        <Card>
+            <CardContent className="pt-6">
+                <Label className="text-base font-semibold">
+                    {index + 1}. {question.title}
+                    {question.isRequired && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                <div className="mt-4">
+                    {question.type === 'yes-no' && (
+                        <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" id={`${question.id}-yes`} /><Label htmlFor={`${question.id}-yes`}>Yes</Label></div>
+                                    <div className="flex items-center space-x-2"><RadioGroupItem value="No" id={`${question.id}-no`} /><Label htmlFor={`${question.id}-no`}>No</Label></div>
+                                </RadioGroup>
+                            )}
+                        />
+                    )}
+                    {question.type === 'multiple-choice' && (
+                         <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-2">
+                                    {question.options?.map(opt => (
+                                        <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} id={`${question.id}-${opt}`} /><Label htmlFor={`${question.id}-${opt}`}>{opt}</Label></div>
+                                    ))}
+                                </RadioGroup>
+                            )}
+                        />
+                    )}
+                     {question.type === 'checkboxes' && (
+                         <Controller
+                            name={question.id}
+                            control={control}
+                            defaultValue={question.allowOther ? { options: [], other: ''} : []}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    {question.options?.map(opt => (
+                                        <div key={opt} className="flex items-start space-x-2">
+                                            <Checkbox
+                                                id={`${question.id}-${opt}`}
+                                                checked={question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt)}
+                                                onCheckedChange={(checked) => {
+                                                    if (question.allowOther) {
+                                                        const currentOptions = field.value?.options || [];
+                                                        const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
+                                                        field.onChange({ ...field.value, options: newOptions });
+                                                    } else {
+                                                        const currentVal = field.value || [];
+                                                        const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
+                                                        field.onChange(newVal);
+                                                    }
+                                                }}
+                                            />
+                                            <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
+                                        </div>
+                                    ))}
+                                    {question.allowOther && (
+                                        <div className="flex items-start space-x-2 pt-2">
+                                            <Checkbox
+                                                id={`${question.id}-other-checkbox`}
+                                                checked={!!(field.value?.other || '')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
+                                                    } else {
+                                                        field.onChange({ ...field.value, other: '' });
+                                                    }
+                                                }}
+                                            />
+                                            <Input
+                                                id={`${question.id}-other-input`}
+                                                placeholder="Other (please specify)"
+                                                className="h-8 flex-1"
+                                                value={field.value?.other || ''}
+                                                onChange={(e) => field.onChange({ ...field.value, other: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        />
+                    )}
+                    {question.type === 'text' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} />} />
+                    )}
+                     {errors[question.id] && (
+                         <p className="text-sm font-medium text-destructive mt-2">
+                            { (errors as any)[question.id]?.message }
+                         </p>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     const firestore = useFirestore();
@@ -82,10 +220,8 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
                 if (q.allowOther) {
                      acc[q.id] = { options: [], other: '' };
                 } else {
-                    acc[q.id] = [];
+                     acc[q.id] = [];
                 }
-            } else {
-                acc[q.id] = '';
             }
             return acc;
         }, {} as any)
@@ -93,8 +229,10 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (!firestore) return;
+        
+        const cleanedData = Object.fromEntries(Object.entries(data).filter(([_, v]) => v !== undefined));
 
-        const answers = Object.entries(data).map(([questionId, value]) => ({
+        const answers = Object.entries(cleanedData).map(([questionId, value]) => ({
             questionId,
             value,
         }));
@@ -129,109 +267,15 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             {survey.questions.map((q, index) => (
-                <Card key={q.id}>
-                    <CardContent className="pt-6">
-                        <Label className="text-base font-semibold">
-                            {index + 1}. {q.title}
-                            {q.isRequired && <span className="text-destructive ml-1">*</span>}
-                        </Label>
-                        <div className="mt-4">
-                            {q.type === 'yes-no' && (
-                                <Controller
-                                    control={form.control}
-                                    name={q.id}
-                                    render={({ field }) => (
-                                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="Yes" id={`${q.id}-yes`} />
-                                                <Label htmlFor={`${q.id}-yes`}>Yes</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="No" id={`${q.id}-no`} />
-                                                <Label htmlFor={`${q.id}-no`}>No</Label>
-                                            </div>
-                                        </RadioGroup>
-                                    )}
-                                />
-                            )}
-                            {q.type === 'multiple-choice' && (
-                                <Controller
-                                    control={form.control}
-                                    name={q.id}
-                                    render={({ field }) => (
-                                        <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-2">
-                                            {q.options?.map(opt => (
-                                                <div key={opt} className="flex items-center space-x-2">
-                                                    <RadioGroupItem value={opt} id={`${q.id}-${opt}`} />
-                                                    <Label htmlFor={`${q.id}-${opt}`}>{opt}</Label>
-                                                </div>
-                                            ))}
-                                        </RadioGroup>
-                                    )}
-                                />
-                            )}
-                             {q.type === 'checkboxes' && (
-                                 <div className="space-y-2">
-                                    {q.options?.map(opt => (
-                                        <div key={opt} className="flex items-start space-x-2">
-                                           <Checkbox
-                                                id={`${q.id}-${opt}`}
-                                                onCheckedChange={(checked) => {
-                                                    const currentVal = form.getValues(q.id);
-                                                    const options = q.allowOther ? currentVal.options : currentVal;
-                                                    const newOptions = checked
-                                                        ? [...options, opt]
-                                                        : options.filter((v: string) => v !== opt);
-                                                    
-                                                    form.setValue(q.id, q.allowOther ? { ...currentVal, options: newOptions } : newOptions, { shouldValidate: true });
-                                                }}
-                                            />
-                                            <Label htmlFor={`${q.id}-${opt}`} className="font-normal">{opt}</Label>
-                                        </div>
-                                    ))}
-                                    {q.allowOther && (
-                                        <div className="flex items-start space-x-2 pt-2">
-                                            <Checkbox
-                                                id={`${q.id}-other-checkbox`}
-                                                onCheckedChange={(checked) => {
-                                                    const currentVal = form.getValues(q.id);
-                                                    form.setValue(q.id, { ...currentVal, other: checked ? currentVal.other : '' }, { shouldValidate: true });
-                                                    if(checked) setTimeout(() => document.getElementById(`${q.id}-other-input`)?.focus(), 0);
-                                                }}
-                                            />
-                                            <Input
-                                                id={`${q.id}-other-input`}
-                                                placeholder="Other (please specify)"
-                                                className="h-8 flex-1"
-                                                {...form.register(`${q.id}.other`)}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    const currentVal = form.getValues(q.id);
-                                                    form.setValue(q.id, { ...currentVal, other: val }, { shouldValidate: true });
-                                                    if(val && !form.getValues(q.id).options.includes('Other')){
-                                                        document.getElementById(`${q.id}-other-checkbox`)?.click();
-                                                    }
-                                                }}
-                                            />
-                                        </div>
-                                    )}
-                                 </div>
-                            )}
-                            {q.type === 'text' && (
-                                <Controller
-                                    control={form.control}
-                                    name={q.id}
-                                    render={({ field }) => <Textarea {...field} />}
-                                />
-                            )}
-                             {form.formState.errors[q.id] && (
-                                 <p className="text-sm font-medium text-destructive mt-2">
-                                    { (form.formState.errors as any)[q.id]?.message || (form.formState.errors as any)[q.id]?.root?.message }
-                                 </p>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                <QuestionRenderer 
+                    key={q.id}
+                    question={q}
+                    index={index}
+                    control={form.control}
+                    getValues={form.getValues}
+                    setValue={form.setValue}
+                    errors={form.formState.errors}
+                />
             ))}
             <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting}>
                 {form.formState.isSubmitting ? 'Submitting...' : 'Submit Survey'}
