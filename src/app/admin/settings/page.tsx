@@ -77,23 +77,19 @@ export default function SettingsPage() {
   };
 
   return (
-    <div>
-      <h1 className="text-4xl font-bold tracking-tight mb-8">Settings</h1>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Data Seeding</CardTitle>
-          <CardDescription>
-            Use these actions to populate your Firestore database with sample data. 
-            This will clear any existing data in the respective collections.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col sm:flex-row gap-4">
-          <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
-          <SeedingButton seeder="schools">Seed Schools</SeedingButton>
-          <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Data Seeding</CardTitle>
+        <CardDescription>
+          Use these actions to populate your Firestore database with sample data. 
+          This will clear any existing data in the respective collections.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col sm:flex-row gap-4">
+        <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
+        <SeedingButton seeder="schools">Seed Schools</SeedingButton>
+        <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
+      </CardContent>
+    </Card>
   );
 }

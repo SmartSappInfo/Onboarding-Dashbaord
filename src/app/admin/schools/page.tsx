@@ -79,8 +79,7 @@ export default function SchoolsPage() {
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">Schools</h1>
+        <div className="flex items-center justify-end mb-8">
           <Button asChild>
             <Link href="/admin/schools/new">Add New School</Link>
           </Button>

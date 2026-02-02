@@ -54,8 +54,7 @@ export default function MediaLibraryPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-4xl font-bold tracking-tight">Media Library</h1>
+      <div className="flex items-center justify-end mb-8">
         <div className="flex items-center gap-2">
           <AddLinkButton />
           <UploadButton />

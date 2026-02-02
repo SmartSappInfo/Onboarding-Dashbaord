@@ -83,8 +83,7 @@ export default function MeetingsPage() {
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">Meetings</h1>
+        <div className="flex items-center justify-end mb-8">
           <Button asChild>
             <Link href="/admin/meetings/new">Add New Meeting</Link>
           </Button>

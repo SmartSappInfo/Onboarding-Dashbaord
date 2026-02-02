@@ -110,8 +110,7 @@ export default function SurveysPage() {
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">Surveys</h1>
+        <div className="flex items-center justify-end mb-8">
           <Button asChild>
             <Link href="/admin/surveys/new">
               <PlusCircle className="mr-2 h-4 w-4" />
