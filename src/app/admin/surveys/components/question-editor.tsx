@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, MoreVertical, Copy, EyeOff, CheckSquare, Square, Type, GitBranch, CalendarIcon, Star, Settings } from 'lucide-react';
-import type { SurveyElement, SurveyQuestion } from '@/lib/types';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text } from 'lucide-react';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import AddElementModal from './add-element-modal';
@@ -19,31 +19,44 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
-  DropdownMenuPortal,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuCheckboxItem,
-  DropdownMenuLabel,
-} from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Calendar } from '@/components/ui/calendar';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     return 'isRequired' in element;
 }
 
+function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
+    const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed'];
+    return layoutTypes.includes(element.type);
+}
+
+const getElementIcon = (type: SurveyElement['type']) => {
+    const iconMap: { [key in SurveyElement['type']]: React.ElementType } = {
+        'text': Baseline,
+        'long-text': Pilcrow,
+        'yes-no': CheckCircle2,
+        'multiple-choice': CheckCircle,
+        'checkboxes': ListChecks,
+        'dropdown': ChevronDownSquare,
+        'rating': Star,
+        'date': Calendar,
+        'time': Clock,
+        'file-upload': Upload,
+        'heading': Heading1,
+        'description': Text,
+        'divider': Minus,
+        'image': ImageIcon,
+        'video': Video,
+        'audio': AudioWaveform,
+        'document': FileText,
+        'embed': Code,
+        'logic': Bot,
+    };
+    return iconMap[type] || Type;
+}
 
 interface MultiSelectProps {
   options: { label: string; value: string; }[];
@@ -146,7 +159,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
             <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
                 {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-2">
-                    <RadioGroupItem value={(field as any).value} id={field.id} />
+                    <RadioGroupItem value={(field as any).value !== undefined ? String((field as any).value) : `Option ${index + 1}`} id={`${field.id}-radio`} />
                     <Controller
                         name={`elements.${questionIndex}.options.${index}`}
                         control={control}
@@ -164,11 +177,11 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                  {fields.map((field, index) => (
                     <div key={field.id} className="flex items-center gap-2">
                         <Checkbox
-                            id={field.id}
+                            id={`${field.id}-checkbox`}
                             checked={defaultValue?.includes((field as any).value)}
                             onCheckedChange={(checked) => {
                                 const currentDefaults = Array.isArray(defaultValue) ? defaultValue : [];
-                                const optionValue = (field as any).value;
+                                const optionValue = (field as any).value || `Option ${index + 1}`;
                                 if (checked) {
                                     handleDefaultChange([...currentDefaults, optionValue]);
                                 } else {
@@ -230,9 +243,10 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
             .map((el, idx) => ({ el, idx }))
             .filter(({ el, idx }) => excludeSelf ? idx !== elementIndex : true)
             .map(({ el, idx }) => {
-                const prefix = isQuestion(el) ? `Q${idx + 1}` : (el.type.charAt(0).toUpperCase() + el.type.slice(1));
-                const label = el.title ? `${prefix}: ${el.title}` : `${prefix}: ${el.id}`;
-                return { value: el.id, label: label.length > 50 ? label.substring(0, 50) + '...' : label };
+                const Icon = getElementIcon(el.type);
+                const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : (el.type.charAt(0).toUpperCase() + el.type.slice(1));
+                const label = el.title ? `${prefix}: ${el.title}` : `${prefix}: untitled`;
+                return { value: el.id, label: label.length > 50 ? label.substring(0, 50) + '...' : label, icon: Icon };
             });
     }
 
@@ -241,12 +255,13 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
             .slice(elementIndex + 1)
             .map((el, idx) => ({ el, originalIndex: elementIndex + 1 + idx }))
             .filter(({ el }) => isQuestion(el) || el.type === 'heading')
-            .map(({ el, originalIndex }) => ({
-                value: el.id,
-                label: isQuestion(el)
-                    ? `Q${originalIndex + 1}: ${el.title}`
-                    : `Section: ${el.title}`
-            }))
+            .map(({ el, originalIndex }) => {
+                const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : 'Section';
+                return {
+                    value: el.id,
+                    label: `${prefix}: ${el.title || 'untitled'}`
+                }
+            })
     }
   
     return (
@@ -278,7 +293,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <SelectContent>
                           {potentialSourceQuestions.map((q) => (
                               <SelectItem key={q.id} value={q.id}>
-                              Q{allElements.findIndex(el => el.id === q.id) + 1}: {q.title}
+                              Q{allElements.filter(isQuestion).findIndex(el => el.id === q.id) + 1}: {q.title}
                               </SelectItem>
                           ))}
                           </SelectContent>
@@ -424,7 +439,7 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
         case 'rating':
             return <StarRatingInput value={0} onChange={() => {}} disabled />;
         case 'date':
-            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><CalendarIcon className="mr-2 h-4 w-4" /><span>Pick a date</span></Button>;
+            return <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><Calendar className="mr-2 h-4 w-4" /><span>Pick a date</span></Button>;
         case 'time':
             return <Input type="time" disabled className="w-fit" />;
         default:
@@ -432,23 +447,38 @@ const ResponseControlPreview = ({ question, index, control }: { question: Survey
     }
 }
 
-const QuestionSettingsDialog = ({ question, index, open, onOpenChange }: { question: SurveyQuestion; index: number; open: boolean; onOpenChange: (open: boolean) => void }) => {
+const QuestionSettingsDialog = ({ element, index, open, onOpenChange, remove, duplicate, changeType }: {
+    element: SurveyElement;
+    index: number;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    remove: (index: number) => void;
+    duplicate: (index: number) => void;
+    changeType: (index: number, type: SurveyElement['type']) => void;
+}) => {
     const { control, getValues, setValue } = useFormContext();
-    const isTextQuestion = question.type === 'text' || question.type === 'long-text';
+    const isElemQuestion = isQuestion(element);
+    const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
     
     // Local state to manage UI toggles
-    const [useDefault, setUseDefault] = React.useState(!!getValues(`elements.${index}.defaultValue`));
-    const [useMin, setUseMin] = React.useState(!!getValues(`elements.${index}.minLength`));
-    const [useMax, setUseMax] = React.useState(!!getValues(`elements.${index}.maxLength`));
+    const [useDefault, setUseDefault] = React.useState(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined);
+    const [useMin, setUseMin] = React.useState(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
+    const [useMax, setUseMax] = React.useState(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
+    
+    const questionTypes: { type: SurveyQuestion['type'], label: string }[] = [
+        { type: 'text', label: 'Short Text'}, { type: 'long-text', label: 'Long Text'}, { type: 'yes-no', label: 'Yes/No'},
+        { type: 'multiple-choice', label: 'Multiple Choice'}, { type: 'checkboxes', label: 'Checkboxes'}, { type: 'dropdown', label: 'Dropdown'},
+        { type: 'rating', label: 'Rating'}, { type: 'date', label: 'Date'}, { type: 'time', label: 'Time'},
+        { type: 'file-upload', label: 'File Upload'},
+    ];
 
     React.useEffect(() => {
-        // Reset local state when dialog opens
         if (open) {
-            setUseDefault(getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
-            setUseMin(getValues(`elements.${index}.minLength`) !== undefined);
-            setUseMax(getValues(`elements.${index}.maxLength`) !== undefined);
+            setUseDefault(isElemQuestion && getValues(`elements.${index}.defaultValue`) !== undefined && getValues(`elements.${index}.defaultValue`) !== '');
+            setUseMin(isTextQuestion && getValues(`elements.${index}.minLength`) !== undefined);
+            setUseMax(isTextQuestion && getValues(`elements.${index}.maxLength`) !== undefined);
         }
-    }, [open, getValues, index]);
+    }, [open, getValues, index, isElemQuestion, isTextQuestion]);
 
     const handleToggle = (setter: React.Dispatch<React.SetStateAction<boolean>>, value: boolean, fieldName: string) => {
         setter(value);
@@ -457,58 +487,72 @@ const QuestionSettingsDialog = ({ question, index, open, onOpenChange }: { quest
         }
     };
     
-    const renderSimpleDefaultInput = () => {
-         switch(question.type) {
-            case 'rating':
-                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <StarRating value={field.value || 0} onChange={field.onChange} />} />;
-            case 'date':
-                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="date" value={field.value ? format(new Date(field.value), 'yyyy-MM-dd') : ''} onChange={(e) => field.onChange(e.target.value ? new Date(e.target.value).toISOString() : undefined)} />} />;
-            case 'time':
-                return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="time" {...field} />} />;
-            default:
-                return <p>This question type does not support default values via this dialog.</p>
-        }
-    }
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent>
+            <DialogContent className="max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle>Settings for "{question.title || 'Untitled Question'}"</DialogTitle>
-                    <DialogDescription>Manage validation and default values for this question.</DialogDescription>
+                    <DialogTitle>Settings for "{element.title || 'element'}"</DialogTitle>
+                    <DialogDescription>Manage validation, content, and actions for this element.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                     <div className="flex items-center justify-between rounded-lg border p-4">
-                        <Label htmlFor={`required-${index}`}>Required</Label>
-                        <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
-                    </div>
-
-                    {isTextQuestion ? (
-                        <>
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
-                                <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
+                <div className="flex-grow overflow-y-auto space-y-6 p-1 -mx-1 pr-2">
+                    {isElemQuestion && (
+                        <div className="space-y-4">
+                            <h4 className="font-semibold text-muted-foreground text-sm">Validation</h4>
+                             <div className="flex items-center justify-between rounded-lg border p-3">
+                                <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
+                                <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                             </div>
-                            {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
+                            {isTextQuestion && (
+                                <>
+                                    <div className="flex items-center justify-between rounded-lg border p-3">
+                                        <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
+                                        <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
+                                    </div>
+                                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
-                                <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
-                            </div>
-                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
-
-                            <div className="flex items-center justify-between rounded-lg border p-4">
-                                <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
-                                <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
-                            </div>
-                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
-                        </>
-                    ) : (
-                        renderSimpleDefaultInput()
+                                    <div className="flex items-center justify-between rounded-lg border p-3">
+                                        <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
+                                        <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
+                                    </div>
+                                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+                                </>
+                            )}
+                        </div>
                     )}
+                     <div className="space-y-4">
+                        <h4 className="font-semibold text-muted-foreground text-sm">Content</h4>
+                        <div className="flex items-center justify-between rounded-lg border p-3">
+                           <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
+                           <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                        </div>
+                        {isElemQuestion && isTextQuestion && (
+                            <>
+                                <div className="flex items-center justify-between rounded-lg border p-3">
+                                    <Label htmlFor={`default-answer-toggle-${index}`}>Default answer</Label>
+                                    <Switch id={`default-answer-toggle-${index}`} checked={useDefault} onCheckedChange={(val) => handleToggle(setUseDefault, val, 'defaultValue')} />
+                                </div>
+                                {useDefault && <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} placeholder="Enter default answer" />} />}
+                            </>
+                        )}
+                    </div>
+                     <div className="space-y-4">
+                        <h4 className="font-semibold text-muted-foreground text-sm">Actions</h4>
+                         <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
+                            <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
+                            <SelectContent>
+                                {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>{qType.label}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Button variant="outline" className="w-full" onClick={() => { duplicate(index); onOpenChange(false); }}>
+                            <Copy className="mr-2 h-4 w-4" /> Duplicate
+                        </Button>
+                        <Button variant="destructive" className="w-full" onClick={() => { remove(index); onOpenChange(false); }}>
+                             <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                    </div>
                 </div>
                 <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Close</Button>
+                    <Button onClick={() => onOpenChange(false)}>Done</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
@@ -523,7 +567,7 @@ export default function QuestionEditor() {
   });
   
   const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
-  const [settingsElement, setSettingsElement] = React.useState<number | null>(null);
+  const [settingsElementIndex, setSettingsElementIndex] = React.useState<number | null>(null);
 
   const elements = watch('elements');
 
@@ -531,12 +575,12 @@ export default function QuestionEditor() {
     const newElement: Partial<SurveyElement> = {
       id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       type,
+      hidden: false,
     };
 
     if (isQuestion(newElement as SurveyElement)) {
         (newElement as SurveyQuestion).title = '';
         (newElement as SurveyQuestion).isRequired = false;
-        (newElement as SurveyQuestion).hidden = false;
         if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
             (newElement as SurveyQuestion).options = ['Option 1', 'Option 2'];
         }
@@ -545,11 +589,11 @@ export default function QuestionEditor() {
         }
     } else if (type === 'logic') {
         (newElement as any).rules = [];
-    } else {
-        if(type === 'heading') (newElement as any).title = 'New Section';
-        if(type === 'description') (newElement as any).text = 'Descriptive text goes here.';
-        if(type === 'embed') (newElement as any).html = '<!-- Paste your HTML code here -->';
-        if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as any).url = '';
+    } else if (isLayoutBlock(newElement as SurveyElement)) {
+        if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Section';
+        if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
+        if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
+        if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
     }
     
     append(newElement);
@@ -564,6 +608,20 @@ export default function QuestionEditor() {
     insert(index + 1, newElement);
   };
 
+  const changeElementType = (index: number, newType: SurveyElement['type']) => {
+      const currentElement = getValues(`elements.${index}`);
+      const newElement = { ...currentElement, type: newType };
+      
+      if(newType === 'multiple-choice' || newType === 'checkboxes' || newType === 'dropdown') {
+          if(!newElement.options) newElement.options = ['Option 1', 'Option 2'];
+      } else {
+          delete newElement.options;
+          delete newElement.allowOther;
+      }
+      
+      setValue(`elements.${index}`, newElement, { shouldDirty: true });
+  }
+
   const formErrors = errors.elements as any[] | undefined;
 
   const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'audio' | 'document' | undefined => {
@@ -574,18 +632,7 @@ export default function QuestionEditor() {
       return undefined;
   }
   
-  const questionTypes: { type: SurveyQuestion['type'], label: string }[] = [
-    { type: 'text', label: 'Short Text'},
-    { type: 'long-text', label: 'Long Text'},
-    { type: 'yes-no', label: 'Yes/No'},
-    { type: 'multiple-choice', label: 'Multiple Choice'},
-    { type: 'checkboxes', label: 'Checkboxes'},
-    { type: 'dropdown', label: 'Dropdown'},
-    { type: 'rating', label: 'Rating'},
-    { type: 'date', label: 'Date'},
-    { type: 'time', label: 'Time'},
-    { type: 'file-upload', label: 'File Upload'},
-  ];
+  const settingsElement = settingsElementIndex !== null ? elements[settingsElementIndex] : null;
 
   return (
     <div className="space-y-6">
@@ -594,6 +641,7 @@ export default function QuestionEditor() {
         const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
         
         const isElementQuestion = isQuestion(element);
+        const ElementIcon = getElementIcon(element.type);
 
         return (
             <Card key={field.id} className="relative bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors group">
@@ -618,71 +666,16 @@ export default function QuestionEditor() {
                 >
                     <ArrowDown className="h-4 w-4" />
                 </Button>
-                
-                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                       {isElementQuestion && (
-                        <>
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>
-                                    <Type className="mr-2 h-4 w-4" />
-                                    <span>Turn into</span>
-                                </DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuRadioGroup value={element.type} onValueChange={(type) => setValue(`elements.${index}.type`, type)}>
-                                            {questionTypes.map(qType => (
-                                                <DropdownMenuRadioItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>
-                                                    {qType.label} {qType.type === 'file-upload' && '(soon)'}
-                                                </DropdownMenuRadioItem>
-                                            ))}
-                                        </DropdownMenuRadioGroup>
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                            </DropdownMenuSub>
-                            <DropdownMenuSeparator />
-                        </>
-                       )}
-                        <DropdownMenuCheckboxItem
-                            checked={element.hidden}
-                            onCheckedChange={(checked) => setValue(`elements.${index}.hidden`, checked)}
-                        >
-                            <EyeOff className="mr-2 h-4 w-4" />
-                            <span>Hide by default</span>
-                        </DropdownMenuCheckboxItem>
-                        <DropdownMenuItem onClick={() => duplicateElement(index)}>
-                            <Copy className="mr-2 h-4 w-4" />
-                            <span>Duplicate</span>
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-
-                {isElementQuestion && (
-                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsElement(index)}>
-                        <Settings className="h-4 w-4" />
-                    </Button>
-                )}
-
-                 <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                    onClick={() => remove(index)}
-                >
-                    <Trash2 className="h-4 w-4" />
+                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => setSettingsElementIndex(index)}>
+                    <Settings className="h-4 w-4" />
                 </Button>
             </div>
             <CardHeader>
-                <CardTitle className="text-lg">
-                    {isElementQuestion ? `Question #${index + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout Block`}
+                <CardTitle className="text-lg flex items-center gap-2">
+                   <ElementIcon className="w-5 h-5 text-muted-foreground" />
+                   <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : element.type === 'logic' ? 'Logic Block' : `Layout: ${element.type}`}</span>
+                   {element.hidden && <EyeOff className="w-4 h-4 text-muted-foreground" />}
                 </CardTitle>
-                <CardDescription className="capitalize">{element.type.replace('-', ' ')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
                 {isElementQuestion ? (
@@ -740,18 +733,19 @@ export default function QuestionEditor() {
         onSelect={addElement}
       />
       
-      {settingsElement !== null && elements[settingsElement] && isQuestion(elements[settingsElement]) && (
+      {settingsElementIndex !== null && settingsElement && (
         <QuestionSettingsDialog
-            open={settingsElement !== null}
-            onOpenChange={(open) => !open && setSettingsElement(null)}
-            question={elements[settingsElement]}
-            index={settingsElement}
+            open={settingsElementIndex !== null}
+            onOpenChange={(open) => !open && setSettingsElementIndex(null)}
+            element={settingsElement}
+            index={settingsElementIndex}
+            remove={remove}
+            duplicate={duplicateElement}
+            changeType={changeElementType}
         />
       )}
     </div>
   );
 }
-
-    
 
     
