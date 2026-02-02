@@ -11,6 +11,7 @@ import { Trash2, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import type { SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage } from '@/components/ui/form';
+import AddQuestionModal from './add-question-modal';
 
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const { control, watch } = useFormContext();
@@ -156,18 +157,25 @@ export default function QuestionEditor() {
     control,
     name: 'questions',
   });
+  
+  const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = React.useState(false);
 
   const questions = watch('questions');
 
-  const addQuestion = () => {
-    append({
+  const addQuestion = (type: SurveyQuestion['type']) => {
+    let newQuestion: SurveyQuestion = {
       id: `q${Date.now()}`,
       title: '',
-      type: 'text',
+      type,
       isRequired: true,
-      options: [],
-      allowOther: false,
-    });
+    };
+    if (type === 'multiple-choice' || type === 'checkboxes' || type === 'dropdown') {
+        newQuestion.options = ['Option 1', 'Option 2'];
+    }
+     if (type === 'checkboxes') {
+        newQuestion.allowOther = false;
+    }
+    append(newQuestion);
   };
 
   const formErrors = errors.questions as any[] | undefined;
@@ -247,6 +255,7 @@ export default function QuestionEditor() {
                           <SelectItem value="rating">Rating (1-5)</SelectItem>
                           <SelectItem value="date">Date</SelectItem>
                           <SelectItem value="time">Time</SelectItem>
+                          <SelectItem value="file-upload" disabled>File Upload (Soon)</SelectItem>
                         </SelectContent>
                     </Select>
                     )}
@@ -284,10 +293,16 @@ export default function QuestionEditor() {
           <FormMessage>{(formErrors as any).message}</FormMessage>
       )}
 
-      <Button type="button" variant="outline" onClick={addQuestion}>
+      <Button type="button" variant="outline" onClick={() => setIsAddQuestionModalOpen(true)}>
         <PlusCircle className="mr-2 h-4 w-4" />
         Add Question
       </Button>
+      
+      <AddQuestionModal 
+        open={isAddQuestionModalOpen}
+        onOpenChange={setIsAddQuestionModalOpen}
+        onSelect={addQuestion}
+      />
     </div>
   );
 }

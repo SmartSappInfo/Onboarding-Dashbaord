@@ -70,6 +70,40 @@ export default function NewSurveyPage() {
             questions: [],
         },
     });
+    
+    React.useEffect(() => {
+        // Seed with a default survey for demonstration
+        form.reset({
+            title: 'Parents perspective on Express Pickup',
+            description: 'We are redesigning the SmartsAPP pickup feature in the app and would love to learn more about your preferences.',
+            status: 'draft',
+            questions: [
+                { id: 'q1', title: 'Do you personally pick up your ward at school closing time?', type: 'yes-no', isRequired: true },
+                {
+                    id: 'q2',
+                    title: 'Is the current pickup process at your ward’s school effective and convenient for you?',
+                    type: 'yes-no',
+                    isRequired: true,
+                    displayCondition: { questionId: 'q1', expectedValue: 'Yes' }
+                },
+                {
+                    id: 'q3',
+                    title: 'What challenges do you experience? (Select all that apply)',
+                    type: 'checkboxes',
+                    isRequired: true,
+                    options: ['My child takes a long time to come out', 'My child is still doing classwork at closing time', 'Long queues or delays', 'Poor communication from the school'],
+                    allowOther: true,
+                    displayCondition: { questionId: 'q2', expectedValue: 'No' }
+                },
+                {
+                    id: 'q4',
+                    title: 'If an express pickup service were available—guaranteeing that your child is brought out with 3mins of arriving at the school without you getting of your car—would you use it?',
+                    type: 'yes-no',
+                    isRequired: true,
+                }
+            ]
+        })
+    }, [form]);
 
     const onSubmit = (data: FormData) => {
         if (!firestore) {
