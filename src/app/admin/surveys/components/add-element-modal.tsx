@@ -90,11 +90,9 @@ export default function AddElementModal({ open, onOpenChange, onSelect }: AddEle
                                     variant="outline"
                                     className="h-28 flex-col gap-2 p-4"
                                     onClick={() => handleSelect(type)}
-                                    disabled={type === 'file-upload'} // Disable file upload for now
                                 >
                                     <Icon className="h-8 w-8 text-primary" />
                                     <span className="text-center text-xs font-normal">{label}</span>
-                                    {type === 'file-upload' && <span className="text-xs text-muted-foreground">(Soon)</span>}
                                 </Button>
                             ))}
                         </div>

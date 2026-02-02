@@ -4,7 +4,7 @@
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -546,7 +546,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                 <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
                     <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
                     <SelectContent>
-                        {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type} disabled={qType.type === 'file-upload'}>{qType.label}</SelectItem>)}
+                        {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type}>{qType.label}</SelectItem>)}
                     </SelectContent>
                 </Select>
             </div>
@@ -658,7 +658,7 @@ export default function QuestionEditor() {
                 </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : ""
+                    element.hidden ? "bg-disabled" : "bg-card"
                 )}>
                      <CardHeader>
                         <div className="flex justify-between items-start">
@@ -733,6 +733,13 @@ export default function QuestionEditor() {
                                                         return <DatePicker value={field.value} onChange={field.onChange} />;
                                                     case 'time':
                                                         return <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} value={field.value || ''} />;
+                                                    case 'file-upload':
+                                                        return (
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground p-2 border rounded-md border-dashed h-10 w-full">
+                                                                <Upload className="w-4 h-4" />
+                                                                <span>File Upload Field</span>
+                                                            </div>
+                                                        );
                                                     default:
                                                         return null;
                                                 }

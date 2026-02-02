@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon, Star } from 'lucide-react';
+import { CalendarIcon, Star, Upload } from 'lucide-react';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 
@@ -60,6 +60,12 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                         {question.type === 'rating' && <StarRatingPreview />}
                         {question.type === 'date' && <Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><CalendarIcon className="mr-2 h-4" /><span>Pick a date</span></Button>}
                         {question.type === 'time' && <Input type="time" step="1" disabled className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" />}
+                        {question.type === 'file-upload' && (
+                            <Button variant="outline" disabled>
+                                <Upload className="mr-2 h-4 w-4" />
+                                Upload a file
+                            </Button>
+                        )}
                     </div>
                 </CardContent>
             </Card>

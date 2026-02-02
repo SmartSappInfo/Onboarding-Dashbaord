@@ -5,6 +5,7 @@ import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { addDoc, collection } from 'firebase/firestore';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,12 +20,13 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
+import { Progress } from '@/components/ui/progress';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -92,7 +94,106 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     );
 }
 
-const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { element: SurveyElement; control: any, errors: any; isVisible: boolean; isRequired: boolean; }) => {
+const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; onChange: (value?: string) => void; disabled?: boolean; surveyId: string }) => {
+  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
+  const [fileName, setFileName] = React.useState<string | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset state
+    setError(null);
+    setUploadProgress(0);
+    setFileName(file.name);
+    onChange(undefined); // Clear old value
+
+    const storage = getStorage();
+    const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${file.name}`;
+    const storageRef = ref(storage, storagePath);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (uploadError) => {
+        console.error("Upload failed:", uploadError);
+        setError("Upload failed. Please try again.");
+        setUploadProgress(null);
+        setFileName(null);
+      },
+      async () => {
+        try {
+          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          onChange(downloadURL);
+          setUploadProgress(100);
+        } catch (urlError) {
+          console.error("Failed to get download URL:", urlError);
+          setError("Could not retrieve file URL.");
+          setUploadProgress(null);
+          setFileName(null);
+        }
+      }
+    );
+  };
+  
+  const handleRemoveFile = () => {
+      onChange(undefined);
+      setUploadProgress(null);
+      setError(null);
+      setFileName(null);
+  };
+
+  if (value && fileName) {
+    return (
+      <div className="flex items-center gap-2 p-2 border rounded-md bg-secondary">
+        <FileIcon className="h-5 w-5 text-secondary-foreground" />
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm font-medium truncate flex-1 hover:underline">{fileName}</a>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleRemoveFile} disabled={disabled}>
+            <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
+  
+  if (uploadProgress !== null && fileName) {
+    return (
+        <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+                <FileIcon className="h-5 w-5 text-muted-foreground" />
+                <span className="truncate flex-1">{fileName}</span>
+                {uploadProgress === 100 ? <span className="text-green-600 font-medium">Done!</span> : <span>{Math.round(uploadProgress)}%</span>}
+            </div>
+            <Progress value={uploadProgress} />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+        </div>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <Button asChild variant="outline" disabled={disabled}>
+        <div>
+            <Upload className="mr-2 h-4 w-4" />
+            <span>Upload a file</span>
+        </div>
+      </Button>
+      <Input
+        type="file"
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+        onChange={handleFileChange}
+        disabled={disabled}
+      />
+    </div>
+  );
+};
+
+
+const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surveyId }: { element: SurveyElement; control: any, errors: any; isVisible: boolean; isRequired: boolean; surveyId: string; }) => {
 
     if (isLogic(element) || !isVisible) {
         return null;
@@ -217,6 +318,20 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired }: { 
                         )}
                         {question.type === 'time' && (
                             <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} />} />
+                        )}
+                        {question.type === 'file-upload' && (
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                render={({ field }) => (
+                                    <FileUpload
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        disabled={false}
+                                        surveyId={surveyId}
+                                    />
+                                )}
+                            />
                         )}
                         {errors[question.id] && (
                             <p className="text-sm font-medium text-destructive mt-2">
@@ -445,6 +560,7 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
                     errors={form.formState.errors}
                     isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
                     isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
+                    surveyId={survey.id}
                 />
             ))}
             <Button type="submit" size="lg" className="w-full" disabled={form.formState.isSubmitting || isSubmitDisabled}>
