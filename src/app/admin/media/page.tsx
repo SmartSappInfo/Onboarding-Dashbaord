@@ -54,7 +54,14 @@ export default function MediaLibraryPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-full max-w-sm">
+            <Input
+              placeholder="Search by name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+        </div>
         <div className="flex items-center gap-2">
           <AddLinkButton />
           <UploadButton />
@@ -62,28 +69,19 @@ export default function MediaLibraryPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="flex items-center justify-between mb-4">
-          <TabsList>
+        <TabsList className="grid w-full grid-cols-5">
             {TABS.map(tab => (
               <TabsTrigger key={tab} value={tab} className="capitalize">{tab}</TabsTrigger>
             ))}
-          </TabsList>
-          <div className="w-full max-w-sm">
-            <Input
-              placeholder="Search by name..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
+        </TabsList>
 
         {TABS.map(tab => (
-          <TabsContent key={tab} value={tab}>
+          <TabsContent key={tab} value={tab} className="mt-0 rounded-lg border bg-card p-4 shadow-sm">
             {error && <div className="text-destructive">Error loading media: {error.message}</div>}
             
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
+                Array.from({ length: 10 }).map((_, i) => (
                   <Skeleton key={i} className="aspect-square rounded-lg" />
                 ))
               ) : filteredAssets.length > 0 ? (
