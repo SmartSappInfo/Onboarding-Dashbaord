@@ -13,7 +13,7 @@ import { Trash2, PlusCircle, ArrowUp, ArrowDown, GripVertical } from 'lucide-rea
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage } from '@/components/ui/form';
-import AddElementModal from './add-element-modal';
+import AddElementModal from './add-question-modal';
 import { MediaSelect } from '../../schools/components/media-select';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
