@@ -30,6 +30,7 @@ import {
     FileText,
     Code,
     Bot,
+    Layers,
 } from 'lucide-react';
 import type { SurveyElement } from '@/lib/types';
 
@@ -53,6 +54,7 @@ const questionTypes: { type: SurveyElement['type']; label: string; icon: React.E
 ];
 
 const layoutTypes: { type: SurveyElement['type']; label: string; icon: React.ElementType }[] = [
+    { type: 'section', label: 'Section', icon: Layers },
     { type: 'heading', label: 'Heading', icon: Heading1 },
     { type: 'description', label: 'Description', icon: Text },
     { type: 'divider', label: 'Divider', icon: Minus },

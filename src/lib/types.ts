@@ -4,6 +4,7 @@
 
 
 
+
 export interface School {
   id: string;
   name: string;
@@ -64,8 +65,8 @@ export interface SurveyQuestion {
 
 export interface SurveyLayoutBlock {
   id: string;
-  type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed';
-  title?: string; // For heading
+  type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
+  title?: string; // For heading and section
   text?: string; // For description
   url?: string; // For media types
   html?: string; // For embed

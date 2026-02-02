@@ -195,8 +195,8 @@
         "description": "Represents a non-interactive layout element within a survey form.",
         "properties": {
             "id": { "type": "string", "description": "Unique identifier for the layout block." },
-            "type": { "type": "string", "enum": ["heading", "description", "divider", "image", "video", "audio", "document", "embed"], "description": "The type of layout block." },
-            "title": { "type": "string", "description": "Content for a heading block." },
+            "type": { "type": "string", "enum": ["heading", "description", "divider", "image", "video", "audio", "document", "embed", "section"], "description": "The type of layout block." },
+            "title": { "type": "string", "description": "Content for a heading or section block." },
             "text": { "type": "string", "description": "Content for a description block." },
             "url": { "type": "string", "format": "uri", "description": "URL for image, video, audio, or document blocks." },
             "html": { "type": "string", "description": "HTML content for an embed block." },

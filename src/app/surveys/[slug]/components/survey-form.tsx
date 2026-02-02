@@ -373,6 +373,8 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
     } else {
         const block = element;
         switch (block.type) {
+            case 'section':
+                return <h2 id={block.id} className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2">{block.title}</h2>;
             case 'heading':
                 return <h2 id={block.id} className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
             case 'description':

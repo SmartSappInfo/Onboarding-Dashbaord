@@ -53,7 +53,7 @@ const questionSchema = z.object({
 
 const layoutBlockSchema = z.object({
   id: z.string(),
-  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed']),
+  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
   title: z.string().optional(),
   text: z.string().optional(),
   url: z.string().url().optional().or(z.literal('')),
@@ -62,6 +62,7 @@ const layoutBlockSchema = z.object({
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
+    if (data.type === 'section' && !data.title) return false;
     return true;
 }, {
     message: 'This block requires content.',
@@ -227,7 +228,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                                 <FormItem>
                                     <FormLabel>Banner Image</FormLabel>
                                     <FormControl>
-                                        <MediaSelect {...field} />
+                                        <MediaSelect {...field} filterType="image" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

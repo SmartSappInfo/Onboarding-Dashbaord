@@ -50,7 +50,7 @@ const questionSchema = z.object({
 
 const layoutBlockSchema = z.object({
   id: z.string(),
-  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed']),
+  type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
   title: z.string().optional(),
   text: z.string().optional(),
   url: z.string().url().optional().or(z.literal('')),
@@ -59,6 +59,7 @@ const layoutBlockSchema = z.object({
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
+    if (data.type === 'section' && !data.title) return false;
     return true;
 }, {
     message: 'This block requires content.',
@@ -124,9 +125,20 @@ export default function NewSurveyPage() {
             description: 'This survey includes all available question types and layout blocks for testing and demonstration purposes. Please review and interact with each element.',
             status: 'draft',
             elements: [
+                { id: 'sec_1', type: 'section', title: 'Personal Information' },
                 // Questions
                 { id: 'q_text', title: 'What is your full name?', type: 'text', isRequired: true, placeholder: 'e.g., Jane Doe' },
                 { id: 'q_yesno', title: 'Do you personally pick up your child from school?', type: 'yes-no', isRequired: true },
+                { 
+                    id: 'q_dropdown', 
+                    title: 'What is your primary relationship to the student?', 
+                    type: 'dropdown', 
+                    isRequired: true, 
+                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other'],
+                    hidden: true, // Hidden by default, shown by logic
+                },
+
+                { id: 'sec_2', type: 'section', title: 'App Usage & Feedback' },
                 { 
                     id: 'q_multiplechoice', 
                     title: 'How often do you use the SmartSapp app?', 
@@ -141,14 +153,6 @@ export default function NewSurveyPage() {
                     isRequired: true, 
                     options: ['Express Pickup', 'Billing & Payments', 'School Announcements', 'Academic Reports'],
                     allowOther: true,
-                },
-                 { 
-                    id: 'q_dropdown', 
-                    title: 'What is your primary relationship to the student?', 
-                    type: 'dropdown', 
-                    isRequired: true, 
-                    options: ['Parent', 'Guardian', 'Driver', 'Family Member', 'Other'],
-                    hidden: true, // Hidden by default, shown by logic
                 },
                 { 
                     id: 'q_rating', 
@@ -168,9 +172,10 @@ export default function NewSurveyPage() {
                 },
                 { id: 'q_fileupload', title: 'Please upload a copy of your child\'s last report card.', type: 'file-upload', isRequired: false },
 
+                { id: 'sec_3', type: 'section', title: 'Additional Media Section' },
                 // Layout Blocks
-                { id: 'layout_heading', type: 'heading', title: 'Additional Media Section' },
-                { id: 'layout_description', type: 'description', text: 'This section contains various media and layout elements for demonstration.' },
+                { id: 'layout_heading', type: 'heading', title: 'This is a Heading' },
+                { id: 'layout_description', type: 'description', text: 'This is a description block. It can contain longer text to provide context or instructions to the user.' },
                 { id: 'layout_divider', type: 'divider' },
                 { id: 'layout_image', type: 'image', url: 'https://picsum.photos/seed/survey-image/600/400' },
                 { id: 'layout_video', type: 'video', url: 'https://youtu.be/M6MUlDkfZOg' },
@@ -287,7 +292,7 @@ export default function NewSurveyPage() {
                                     <FormItem>
                                         <FormLabel>Banner Image</FormLabel>
                                         <FormControl>
-                                            <MediaSelect {...field} />
+                                            <MediaSelect {...field} filterType="image" />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>

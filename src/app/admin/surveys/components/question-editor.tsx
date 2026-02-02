@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useFieldArray, useFormContext, Controller } from 'react-hook-form';
@@ -10,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, Calendar as CalendarIcon, GripVertical, Layers } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -33,7 +32,7 @@ function isQuestion(element: SurveyElement): element is SurveyQuestion {
 }
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
-    const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed'];
+    const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
     return layoutTypes.includes(element.type);
 }
 
@@ -58,6 +57,7 @@ const getElementIcon = (type: SurveyElement['type']) => {
         'document': FileText,
         'embed': Code,
         'logic': Bot,
+        'section': Layers,
     };
     return iconMap[type] || Type;
 }
@@ -346,7 +346,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
         return allElements
             .slice(elementIndex + 1)
             .map((el, idx) => ({ el, originalIndex: elementIndex + 1 + idx }))
-            .filter(({ el }) => isQuestion(el) || el.type === 'heading')
+            .filter(({ el }) => isQuestion(el) || el.type === 'heading' || el.type === 'section')
             .map(({ el, originalIndex }) => {
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : 'Section';
                 return {
@@ -655,6 +655,8 @@ export default function QuestionEditor() {
         }
     } else if (type === 'logic') {
         (newElement as any).rules = [];
+    } else if (type === 'section') {
+        (newElement as SurveyLayoutBlock).title = 'New Section';
     } else if (isLayoutBlock(newElement as SurveyElement)) {
         if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Section';
         if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
@@ -704,6 +706,7 @@ export default function QuestionEditor() {
         
         const isElementQuestion = isQuestion(element);
         const isElementLayout = isLayoutBlock(element);
+        const isElementSection = element.type === 'section';
         const ElementIcon = getElementIcon(element.type);
 
         return (
@@ -713,16 +716,20 @@ export default function QuestionEditor() {
                 </div>
                 <Card className={cn(
                     "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-                    element.hidden ? "bg-disabled" : (isElementLayout ? "bg-transparent shadow-none border-none" : "bg-card")
+                    element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
                 )}>
-                     <CardHeader className={cn(isElementLayout && 'p-0 mb-4')}>
+                     <CardHeader className={cn((isElementLayout && !isElementSection) && 'p-0 mb-4')}>
                         <div className="flex justify-between items-start">
                             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                {!isElementLayout && (
+                                {(!isElementLayout || isElementSection) && (
                                     <>
                                         <ElementIcon className="w-5 h-5" />
                                         {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                                        <span>{isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}` : 'Logic Block'}</span>
+                                        <span>
+                                          {isElementQuestion ? `Question #${elements.filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
+                                            : isElementSection ? '' // No text for sections, title is in content
+                                            : 'Logic Block'}
+                                        </span>
                                     </>
                                 )}
                                 {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
@@ -740,7 +747,7 @@ export default function QuestionEditor() {
                                 <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
                                     <Copy className="h-4 w-4" />
                                 </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                                 <Popover>
@@ -812,6 +819,13 @@ export default function QuestionEditor() {
                             </div>
                         ) : isElementLayout ? (
                              <div>
+                                {element.type === 'section' && (
+                                     <div className="flex items-center gap-2">
+                                         <div className="flex-grow h-px bg-border" />
+                                         <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-lg font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
+                                         <div className="flex-grow h-px bg-border" />
+                                     </div>
+                                 )}
                                 {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
                                 {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
                                 {element.type === 'divider' && <hr className="my-4 border-border" />}

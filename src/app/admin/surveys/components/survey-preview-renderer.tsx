@@ -74,6 +74,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
 
     const block = element as SurveyLayoutBlock;
     switch (block.type) {
+        case 'section': return <h2 className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2">{block.title}</h2>;
         case 'heading': return <h2 className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
         case 'description': return <p className="text-muted-foreground my-4">{block.text}</p>;
         case 'divider': return <hr className="my-8" />;
