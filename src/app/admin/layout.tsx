@@ -136,7 +136,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background px-4">
             <SidebarTrigger />
             <div className="w-full flex-1">
-              <h1 className="text-lg font-semibold">Onboarding Centre</h1>
+              <h1 className="text-lg font-semibold">SmartSapp Onboarding</h1>
             </div>
             <ThemeToggle />
           </header>

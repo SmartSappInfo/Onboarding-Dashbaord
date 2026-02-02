@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { ThemeProvider } from '@/components/theme-provider';
 
 export const metadata: Metadata = {
-  title: 'SmartOnboard',
+  title: 'Welcome To SmartSapp Family',
   description: 'Onboarding for SmartsApp Schools',
 };
 
