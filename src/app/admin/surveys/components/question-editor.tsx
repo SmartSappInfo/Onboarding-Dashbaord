@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Settings, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
+import { Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Calendar, Clock, Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video, AudioWaveform, FileText, Code, Minus, Text, MoreVertical, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
@@ -445,59 +445,6 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     );
 }
 
-const ResponseControlPreview = ({ question, index, control }: { question: SurveyQuestion; index: number; control: any }) => {
-    switch (question.type) {
-        case 'text':
-            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input {...field} value={field.value || ''} placeholder="Default value..." />} />;
-        case 'long-text':
-            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder="Default value..." />} />;
-        case 'yes-no':
-            return (
-                <Controller
-                    control={control}
-                    name={`elements.${index}.defaultValue`}
-                    render={({ field }) => (
-                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
-                            <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
-                        </RadioGroup>
-                    )}
-                />
-            );
-        case 'multiple-choice':
-            return <RadioGroup disabled className="space-y-2">{question.options?.map(opt => <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}</RadioGroup>;
-        case 'checkboxes':
-            return <div className="space-y-2">{question.options?.map(opt => <div key={opt} className="flex items-start space-x-2"><Checkbox disabled /><Label className="font-normal">{opt}</Label></div>)}{question.allowOther && <div className="flex items-start space-x-2 pt-2"><Checkbox disabled /><Input disabled placeholder="Other (please specify)" className="h-8 flex-1" /></div>}</div>
-        case 'dropdown':
-            return <Select disabled><SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger></Select>;
-        case 'rating':
-             return (
-                <Controller
-                    name={`elements.${index}.defaultValue`}
-                    control={control}
-                    render={({ field }) => (
-                        <StarRatingInput
-                            value={field.value || 0}
-                            onChange={field.onChange}
-                        />
-                    )}
-                />
-            );
-        case 'date':
-            return (
-                <Controller
-                   control={control}
-                   name={`elements.${index}.defaultValue`}
-                   render={({ field }) => <DatePicker value={field.value} onChange={field.onChange} />}
-               />
-           );
-        case 'time':
-            return <Controller name={`elements.${index}.defaultValue`} control={control} render={({ field }) => <Input type="time" className="w-fit" {...field} value={field.value || ''} />} />;
-        default:
-            return null;
-    }
-}
-
 function QuestionSettingsPopover({ element, index, changeType }: {
     element: SurveyElement;
     index: number;
@@ -668,6 +615,10 @@ export default function QuestionEditor() {
         const ElementIcon = getElementIcon(element.type);
         const showDefaultValueEditor = isElementQuestion && !['multiple-choice', 'checkboxes', 'dropdown'].includes(element.type);
 
+        const toggleHidden = () => {
+          setValue(`elements.${index}.hidden`, !element.hidden, { shouldDirty: true });
+        };
+
         return (
             <div key={field.id} className="relative group">
                 <Card className="bg-muted/30 border-2 border-transparent has-[:focus-within]:border-primary transition-colors">
@@ -677,6 +628,9 @@ export default function QuestionEditor() {
                         </Button>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === fields.length - 1} onClick={() => swap(index, index + 1)} >
                             <ArrowDown className="h-4 w-4" />
+                        </Button>
+                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={toggleHidden}>
+                            {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </Button>
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
                             <Copy className="h-4 w-4" />
@@ -720,7 +674,31 @@ export default function QuestionEditor() {
                                     <div className="space-y-2">
                                         <Label>Default Value</Label>
                                         <div className="p-4 border rounded-lg bg-background">
-                                            <ResponseControlPreview question={element} index={index} control={control} />
+                                            <Controller
+                                                name={`elements.${index}.defaultValue`}
+                                                control={control}
+                                                render={({ field }) => {
+                                                    switch(element.type) {
+                                                        case 'text':
+                                                            return <Input {...field} value={field.value || ''} placeholder="Default value..." />;
+                                                        case 'long-text':
+                                                            return <Textarea {...field} value={field.value || ''} placeholder="Default value..." />;
+                                                        case 'yes-no':
+                                                            return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
+                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                                                            </RadioGroup>;
+                                                        case 'rating':
+                                                            return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
+                                                        case 'date':
+                                                            return <DatePicker value={field.value} onChange={field.onChange} />;
+                                                        case 'time':
+                                                            return <Input type="time" className="w-fit" {...field} value={field.value || ''} />;
+                                                        default:
+                                                            return null;
+                                                    }
+                                                }}
+                                            />
                                         </div>
                                     </div>
                                 )}
