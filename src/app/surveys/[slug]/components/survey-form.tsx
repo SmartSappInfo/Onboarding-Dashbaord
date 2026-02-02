@@ -31,6 +31,7 @@ import { Progress } from '@/components/ui/progress';
 interface SurveyFormProps {
     survey: Survey;
     onSubmitted: () => void;
+    isPreview?: boolean;
 }
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
@@ -432,7 +433,7 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
     return initialStates;
 };
 
-export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
+export default function SurveyForm({ survey, onSubmitted, isPreview = false }: SurveyFormProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
     
@@ -532,6 +533,12 @@ export default function SurveyForm({ survey, onSubmitted }: SurveyFormProps) {
 
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
+        if (isPreview) {
+            toast({ title: 'Preview Submission', description: 'This is a preview. No data was saved.' });
+            onSubmitted();
+            return;
+        }
+
         if (!firestore) return;
         
         let isValid = true;
