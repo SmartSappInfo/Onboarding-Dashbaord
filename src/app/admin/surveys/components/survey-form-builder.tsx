@@ -9,10 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Baseline, CheckCircle2, CheckCircle, Layers } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Baseline, CheckCircle2, CheckCircle, Layers, Eye } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // isLayoutBlock helper function
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -185,7 +186,7 @@ export default function SurveyFormBuilder() {
                             <CardTitle>Form Builder</CardTitle>
                             <CardDescription>Build your survey using the editor below.</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
+                         <div className="flex items-center gap-2">
                              <span className="text-sm text-muted-foreground transition-opacity duration-500 w-28 text-right">
                                 {autosaveStatus === 'saving' && 'Saving...'}
                                 {autosaveStatus === 'saved' && 'Changes saved.'}
@@ -210,35 +211,70 @@ export default function SurveyFormBuilder() {
                 </CardContent>
             </Card>
             
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
-                <div className="flex items-center gap-2 rounded-full border bg-card/80 backdrop-blur-md p-2 shadow-2xl">
-                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('text')}>
-                        <Baseline className="mr-2 h-4 w-4" />
-                        Text
-                    </Button>
-                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('yes-no')}>
-                        <CheckCircle2 className="mr-2 h-4 w-4" />
-                        Yes/No
-                    </Button>
-                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('multiple-choice')}>
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Multiple Choice
-                    </Button>
-                    <Button variant="ghost" size="sm" className="rounded-full px-4" onClick={() => addElement('section')}>
-                        <Layers className="mr-2 h-4 w-4" />
-                        Section
-                    </Button>
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+                <div className="flex items-center gap-1 rounded-full border bg-card/80 backdrop-blur-md p-1 shadow-2xl">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('text')}>
+                                <Baseline className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Add Text</p></TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('yes-no')}>
+                                <CheckCircle2 className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Add Yes/No</p></TooltipContent>
+                    </Tooltip>
+                     <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('multiple-choice')}>
+                                <CheckCircle className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Add Multiple Choice</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('section')}>
+                                <Layers className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Add Section</p></TooltipContent>
+                    </Tooltip>
+                    
                     <div className="h-6 w-px bg-border mx-2"></div>
-                    <SurveyPreviewButton variant="ghost" size="sm" className="rounded-full px-4" />
+                    
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <SurveyPreviewButton variant="ghost" size="icon" className="rounded-full">
+                                <Eye className="h-5 w-5" />
+                            </SurveyPreviewButton>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Preview</p></TooltipContent>
+                    </Tooltip>
+                    
                     <div className="h-6 w-px bg-border mx-2"></div>
-                    <Button variant="ghost" size="icon" className="rounded-full" onClick={handleUndo} disabled={!canUndo}>
-                        <Undo className="h-5 w-5" />
-                        <span className="sr-only">Undo</span>
-                    </Button>
-                    <Button variant="ghost" size="icon" className="rounded-full" onClick={handleRedo} disabled={!canRedo}>
-                        <Redo className="h-5 w-5" />
-                        <span className="sr-only">Redo</span>
-                    </Button>
+                    
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                             <Button variant="ghost" size="icon" className="rounded-full" onClick={handleUndo} disabled={!canUndo}>
+                                <Undo className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Undo</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="rounded-full" onClick={handleRedo} disabled={!canRedo}>
+                                <Redo className="h-5 w-5" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Redo</p></TooltipContent>
+                    </Tooltip>
                 </div>
             </div>
             
