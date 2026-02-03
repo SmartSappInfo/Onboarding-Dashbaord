@@ -9,11 +9,9 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Baseline, CheckCircle2, CheckCircle, Layers, Eye } from 'lucide-react';
+import { Undo, Redo, PlusCircle } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
-import SurveyPreviewButton from './survey-preview-button';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 // isLayoutBlock helper function
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -32,8 +30,14 @@ export default function SurveyFormBuilder() {
       name: 'elements',
     });
     const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
+    const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
 
-    const addElement = (type: SurveyElement['type']) => {
+    const requestAddElement = (index: number) => {
+        setInsertionIndex(index + 1);
+        setIsAddElementModalOpen(true);
+    };
+
+    const handleElementSelect = (type: SurveyElement['type']) => {
         const newElement: Partial<SurveyElement> = {
           id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
           type,
@@ -75,7 +79,7 @@ export default function SurveyFormBuilder() {
             if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';
         }
         
-        append(newElement);
+        insert(insertionIndex, newElement);
     };
 
     const watchedForm = watch();
@@ -191,97 +195,44 @@ export default function SurveyFormBuilder() {
                                 {autosaveStatus === 'saving' && 'Saving...'}
                                 {autosaveStatus === 'saved' && 'Changes saved.'}
                             </span>
+                            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
+                                <Undo className="h-5 w-5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
+                                <Redo className="h-5 w-5" />
+                            </Button>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <QuestionEditor 
-                        fields={fields} 
-                        remove={remove} 
-                        move={move} 
-                        swap={swap} 
-                        insert={insert} 
-                    />
-                    <div className="mt-8 flex justify-center">
-                        <Button type="button" variant="outline" size="lg" onClick={() => setIsAddElementModalOpen(true)}>
-                            <PlusCircle className="mr-2 h-5 w-5" />
-                            Add More Elements
-                        </Button>
-                    </div>
+                    {fields.length > 0 ? (
+                        <QuestionEditor 
+                            fields={fields} 
+                            remove={remove} 
+                            move={move} 
+                            swap={swap} 
+                            insert={insert}
+                            requestAddElement={requestAddElement}
+                        />
+                    ) : (
+                         <div className="text-center py-20">
+                            <p className="text-muted-foreground mb-4">This survey has no elements yet.</p>
+                            <Button type="button" variant="outline" size="lg" onClick={() => {
+                                setInsertionIndex(0);
+                                setIsAddElementModalOpen(true);
+                            }}>
+                                <PlusCircle className="mr-2 h-5 w-5" />
+                                Add First Element
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
-            
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
-                <div className="flex items-center gap-1 rounded-full border bg-card/80 backdrop-blur-md p-1 shadow-2xl">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('text')}>
-                                <Baseline className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Add Text</p></TooltipContent>
-                    </Tooltip>
-                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('yes-no')}>
-                                <CheckCircle2 className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Add Yes/No</p></TooltipContent>
-                    </Tooltip>
-                     <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('multiple-choice')}>
-                                <CheckCircle className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Add Multiple Choice</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={() => addElement('section')}>
-                                <Layers className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Add Section</p></TooltipContent>
-                    </Tooltip>
-                    
-                    <div className="h-6 w-px bg-border mx-2"></div>
-                    
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <SurveyPreviewButton variant="ghost" size="icon" className="rounded-full">
-                                <Eye className="h-5 w-5" />
-                            </SurveyPreviewButton>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Preview</p></TooltipContent>
-                    </Tooltip>
-                    
-                    <div className="h-6 w-px bg-border mx-2"></div>
-                    
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button variant="ghost" size="icon" className="rounded-full" onClick={handleUndo} disabled={!canUndo}>
-                                <Undo className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Undo</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="rounded-full" onClick={handleRedo} disabled={!canRedo}>
-                                <Redo className="h-5 w-5" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Redo</p></TooltipContent>
-                    </Tooltip>
-                </div>
-            </div>
             
             <AddElementModal 
                 open={isAddElementModalOpen}
                 onOpenChange={setIsAddElementModalOpen}
-                onSelect={addElement}
+                onSelect={handleElementSelect}
             />
         </div>
     );

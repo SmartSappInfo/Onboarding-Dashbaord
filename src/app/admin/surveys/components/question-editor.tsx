@@ -157,6 +157,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                             e.stopPropagation();
                         }}
                         onClick={(e) => {
+                            e.preventDefault();
                             const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
                             onChange(newSelection);
                         }}
@@ -181,9 +182,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                  }}
                   onSelect={() => {
                     const newSelection = new Set(selectedValues);
                     if (newSelection.has(option.value)) {
@@ -627,12 +625,13 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     );
 }
 
-function SortableSurveyElement({ id, index, remove, swap, insert }: { 
+function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElement }: { 
     id: string; 
     index: number;
     remove: (index: number) => void;
     swap: (indexA: number, indexB: number) => void;
     insert: (index: number, value: SurveyElement) => void;
+    requestAddElement: (index: number) => void;
 }) {
   const { control, watch, setValue, getValues, formState: { errors } } = useFormContext();
   
@@ -848,16 +847,23 @@ function SortableSurveyElement({ id, index, remove, swap, insert }: {
                 )}
             </CardContent>
         </Card>
+        <div
+            className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            onClick={() => requestAddElement(index)}
+        >
+            <PlusCircle className="h-5 w-5 text-muted-foreground" />
+        </div>
     </div>
   );
 }
 
-export default function QuestionEditor({ fields, remove, move, swap, insert }: {
+export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement }: {
     fields: any[];
     remove: (index: number) => void;
     move: (from: number, to: number) => void;
     swap: (indexA: number, indexB: number) => void;
     insert: (index: number, value: SurveyElement) => void;
+    requestAddElement: (index: number) => void;
 }) {
   const { formState: { errors } } = useFormContext();
   const formErrors = errors.elements as any[] | undefined;
@@ -895,6 +901,7 @@ export default function QuestionEditor({ fields, remove, move, swap, insert }: {
                             remove={remove}
                             swap={swap}
                             insert={insert}
+                            requestAddElement={requestAddElement}
                         />
                     ))}
                 </div>
@@ -908,5 +915,3 @@ export default function QuestionEditor({ fields, remove, move, swap, insert }: {
     </div>
   );
 }
-
-    
