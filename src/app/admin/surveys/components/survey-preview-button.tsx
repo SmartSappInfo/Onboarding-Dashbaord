@@ -77,7 +77,7 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                     <div className="max-w-2xl mx-auto py-12 px-4">
                                         {previewData.bannerImageUrl && (
                                             <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
-                                                <Image src={previewData.bannerImageUrl} alt={previewData.title || ''} layout="fill" objectFit="cover" />
+                                                <Image src={previewData.bannerImageUrl} alt={previewData.title || ''} fill className="object-cover" />
                                             </div>
                                         )}
                                         <h1 className="text-3xl md:text-4xl font-bold mb-2">{previewData.title || '[Untitled Survey]'}</h1>
@@ -87,9 +87,19 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                     </div>
                                 )}
                                 {previewData && isSubmitted && (
-                                    <div className="flex items-center justify-center h-full min-h-[50vh]">
-                                        <div className="max-w-2xl mx-auto text-center p-8">
+                                    <div className="flex items-center justify-center h-full min-h-[50vh] p-4">
+                                        <div className="max-w-2xl w-full mx-auto text-center">
                                             <SmartSappLogo className="h-12 mx-auto mb-8" />
+                                            {previewData.bannerImageUrl && (
+                                                <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                                                    <Image 
+                                                        src={previewData.bannerImageUrl} 
+                                                        alt={previewData.title || 'Survey thank you banner'} 
+                                                        fill
+                                                        className="object-cover"
+                                                    />
+                                                </div>
+                                            )}
                                             <h1 className="text-3xl font-bold mb-4">{previewData.thankYouTitle || 'Thank You!'}</h1>
                                             <p className="text-muted-foreground text-lg">{previewData.thankYouDescription || 'Your response has been submitted successfully.'}</p>
                                         </div>
