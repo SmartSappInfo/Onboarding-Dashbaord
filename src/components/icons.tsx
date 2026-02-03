@@ -50,6 +50,15 @@ export const MinexLogo = ({ className, ...props }: React.HTMLAttributes<HTMLDivE
   )
 };
 
+export const GoogleIcon = (props: SVGProps<SVGSVGElement>) => (
+    <svg role="img" viewBox="0 0 24 24" {...props}>
+      <path
+        fill="currentColor"
+        d="M12.48 10.92v3.28h7.84c-.24 1.84-.85 3.18-1.73 4.1-1.05 1.05-2.86 2.25-5.08 2.25-4.49 0-8.16-3.6-8.16-8.1s3.67-8.1 8.16-8.1c2.51 0 4.22.98 5.17 1.89l2.62-2.61C18.44 1.56 15.98 0 12.48 0 5.88 0 0 5.88 0 12.48s5.88 12.48 12.48 12.48c7.34 0 12.07-4.89 12.07-12.07 0-.76-.08-1.51-.23-2.25h-11.83z"
+      ></path>
+    </svg>
+);
+
 
 export const GooglePlayIcon = (props: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 512 512" {...props}>

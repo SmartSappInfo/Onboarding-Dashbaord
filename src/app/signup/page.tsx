@@ -6,8 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
@@ -22,7 +22,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { SmartSappLogo } from '@/components/icons';
+import { SmartSappLogo, GoogleIcon } from '@/components/icons';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -70,11 +70,8 @@ export default function SignupPage() {
 
         const userDocRef = doc(firestore, 'users', user.uid);
         
-        // This is a special `setDoc` that should not be caught by the global error handler
-        // as it's part of the sign-up flow.
         try {
           await setDoc(userDocRef, userProfile);
-
           await auth.signOut();
 
           toast({
@@ -90,7 +87,6 @@ export default function SignupPage() {
             title: 'Database Error',
             description: "Could not save your user profile. Please try again."
           });
-          // Optionally delete the auth user if the db write fails
           await user.delete();
         }
       })
@@ -111,6 +107,62 @@ export default function SignupPage() {
         });
       }).finally(() => {
          form.control.disabled = false;
+      });
+  };
+
+  const handleGoogleSignIn = () => {
+    if (!auth || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Firebase not available",
+        description: "Please check your connection and try again.",
+      });
+      return;
+    }
+
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider)
+      .then(async (result) => {
+        const user = result.user;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+          // User already exists, so just sign out and prompt to log in.
+          await auth.signOut();
+          toast({
+            title: 'Account Exists',
+            description: 'An account with this Google profile already exists. Please log in.',
+          });
+          router.push('/login');
+        } else {
+          // New user signing up via Google
+          const userProfile = {
+            name: user.displayName,
+            email: user.email,
+            phone: user.phoneNumber || '',
+            isAuthorized: false,
+            createdAt: new Date().toISOString(),
+          };
+
+          await setDoc(userDocRef, userProfile);
+          await auth.signOut();
+          
+          toast({
+            title: 'Account Created',
+            description: 'Your account has been created and is now awaiting authorization.',
+            duration: 5000,
+          });
+          router.push('/login');
+        }
+      })
+      .catch((error) => {
+        console.error("Google Sign-Up Error:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-Up Failed',
+          description: error.message || 'An unexpected error occurred. Please try again.',
+        });
       });
   };
 
@@ -197,6 +249,23 @@ export default function SignupPage() {
               </Button>
             </form>
           </Form>
+
+          <div className="relative my-4">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or continue with
+              </span>
+            </div>
+          </div>
+          
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            <GoogleIcon className="mr-2 h-4 w-4" />
+            Continue with Google
+          </Button>
+          
           <div className="mt-4 text-center text-sm">
             Already have an account?{' '}
             <Link href="/login" className="underline">
