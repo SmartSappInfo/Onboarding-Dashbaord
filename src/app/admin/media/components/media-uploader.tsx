@@ -159,12 +159,12 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                                         requestResourceData: mediaDocData,
                                     });
                                     errorEmitter.emit('permission-error', permissionError);
-                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: 'Failed to save to database.' } : sf));
+                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: firestoreError.message || 'Failed to save to database.' } : sf));
                                     reject(firestoreError);
                                 });
                             
                         } catch (storageError: any) {
-                             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: 'Failed to retrieve file URL.' } : sf));
+                             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: storageError.message || 'Failed to retrieve file URL.' } : sf));
                             reject(storageError);
                         }
                     }
