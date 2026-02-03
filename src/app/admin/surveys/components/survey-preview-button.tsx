@@ -10,8 +10,16 @@ import SurveyForm from '../../../surveys/[slug]/components/survey-form';
 import { SmartSappLogo } from '@/components/icons';
 import Image from 'next/image';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { buttonVariants } from '@/components/ui/button';
+import { type VariantProps } from 'class-variance-authority';
 
-export default function SurveyPreviewButton() {
+interface SurveyPreviewButtonProps extends VariantProps<typeof buttonVariants> {
+    className?: string;
+    children?: React.ReactNode;
+}
+
+
+export default function SurveyPreviewButton({ variant, size, className, children }: SurveyPreviewButtonProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const { getValues } = useFormContext<Survey>();
     const [previewData, setPreviewData] = React.useState<Survey | null>(null);
@@ -49,9 +57,11 @@ export default function SurveyPreviewButton() {
     
     return (
         <>
-            <Button type="button" variant="outline" onClick={handlePreviewClick}>
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
+            <Button type="button" variant={variant ?? 'outline'} size={size} className={className} onClick={handlePreviewClick}>
+                {children ?? <>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Preview
+                </>}
             </Button>
 
             <Dialog open={isOpen} onOpenChange={handleOpenChange}>

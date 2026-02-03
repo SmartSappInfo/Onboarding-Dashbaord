@@ -23,7 +23,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
-import SurveyPreviewButton from '../components/survey-preview-button';
 import SurveyFormBuilder from '../components/survey-form-builder';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -366,7 +365,6 @@ export default function NewSurveyPage() {
                             <Button type="button" onClick={handleNext}>Next</Button>
                         ) : (
                              <div className="flex items-center gap-4">
-                                <SurveyPreviewButton />
                                 <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
                             </div>
                         )}

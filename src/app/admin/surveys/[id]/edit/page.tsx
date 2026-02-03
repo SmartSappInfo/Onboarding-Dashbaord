@@ -25,7 +25,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
-import SurveyPreviewButton from '../../components/survey-preview-button';
 import SurveyFormBuilder from '../../components/survey-form-builder';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -391,7 +390,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                             <Button type="button" onClick={handleNext}>Next</Button>
                         ) : (
                             <div className="flex items-center gap-4">
-                                <SurveyPreviewButton />
                                 <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}</Button>
                             </div>
                         )}
