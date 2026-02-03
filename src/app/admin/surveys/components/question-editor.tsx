@@ -687,6 +687,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isElementQuestion = isQuestion(element);
   const isElementLayout = isLayoutBlock(element);
   const isElementSection = element.type === 'section';
+  const isMediaLayout = isElementLayout && ['image', 'video', 'audio', 'document', 'embed'].includes(element.type);
   const ElementIcon = getElementIcon(element.type);
   
   return (
@@ -702,7 +703,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
             element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
         )}>
-             <CardHeader className={cn((isElementLayout && !isElementSection) && 'p-0 mb-4')}>
+             <CardHeader className={cn(
+                (isElementLayout && !isElementSection) && 'p-0',
+                (isElementLayout && !isElementSection && !isMediaLayout) && 'mb-4'
+             )}>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {(!isElementLayout || isElementSection) && (
@@ -834,7 +838,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Embed HTML</FormLabel>
-                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-background" />
+                                            <Textarea {...field} placeholder="&lt;p&gt;Paste your HTML code here&lt;/p&gt;" className="font-mono bg-background" />
                                         </FormItem>
                                     )} />
                                 )}
@@ -914,3 +918,5 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     </div>
   );
 }
+
+    
