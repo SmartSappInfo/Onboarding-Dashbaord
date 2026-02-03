@@ -190,10 +190,18 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                       newSelection.add(option.value);
                     }
                     onChange(Array.from(newSelection));
-                    // Keep popover open for multi-select
-                    setOpen(true);
                   }}
-                  onMouseDown={(e) => e.preventDefault()} // Prevents popover from closing on click
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    const newSelection = new Set(selectedValues);
+                    if (newSelection.has(option.value)) {
+                        newSelection.delete(option.value);
+                    } else {
+                        newSelection.add(option.value);
+                    }
+                    onChange(Array.from(newSelection));
+                  }}
                 >
                   <Check
                     className={cn(
@@ -831,7 +839,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.type === 'divider' && <hr className="my-4 border-border" />}
                         
                         {(['image', 'video', 'audio', 'document', 'embed'].includes(element.type)) && (
-                            <div>
+                            <div className="bg-card rounded-lg border p-4">
                                 {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
                                     <Controller
                                         name={`elements.${index}.url`}
@@ -843,7 +851,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Embed HTML</FormLabel>
-                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
+                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-background" />
                                         </FormItem>
                                     )} />
                                 )}
