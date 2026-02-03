@@ -66,7 +66,11 @@ export default function SurveyFormBuilder() {
                 (newElement as SurveyQuestion).defaultValue = `${hours}:${minutes}:${seconds}`;
             }
         } else if (type === 'logic') {
-            (newElement as any).rules = [];
+            (newElement as any).rules = [{
+                sourceQuestionId: '',
+                operator: 'isEqualTo',
+                action: { type: 'jump' },
+            }];
         } else if (type === 'section') {
             const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
             (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
