@@ -10,7 +10,7 @@ import type { Survey } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -110,7 +110,13 @@ export default function SurveysPage() {
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-end mb-8">
+        <div className="flex items-center justify-end mb-8 gap-2">
+          <Button asChild variant="outline">
+            <Link href="/admin/surveys/new/ai">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Create with AI
+            </Link>
+          </Button>
           <Button asChild>
             <Link href="/admin/surveys/new">
               <PlusCircle className="mr-2 h-4 w-4" />
