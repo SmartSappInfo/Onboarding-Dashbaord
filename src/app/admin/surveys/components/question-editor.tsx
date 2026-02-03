@@ -143,7 +143,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto"
+          className="w-full justify-between h-auto min-h-10"
         >
           <div className="flex gap-1 flex-wrap">
             {selectedValues.size > 0 ? (
@@ -152,19 +152,23 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                         variant="secondary"
                         key={option.value}
                         className="mr-1 mb-1"
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        }}
-                        onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
-                            onChange(newSelection);
-                        }}
                     >
                         {option.label}
-                        <X className="ml-1 h-3 w-3" />
+                         <button
+                            type="button"
+                            aria-label={`Remove ${option.label}`}
+                            className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                            onMouseDown={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                            }}
+                            onClick={() => {
+                                const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
+                                onChange(newSelection);
+                            }}
+                        >
+                            <X className="h-3 w-3" />
+                        </button>
                     </Badge>
                 ))
             ) : (
@@ -174,7 +178,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent 
+        className="w-[--radix-popover-trigger-width] p-0"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
         <Command>
           <CommandInput placeholder="Search..." />
           <CommandList>
@@ -191,10 +198,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                       newSelection.add(option.value);
                     }
                     onChange(Array.from(newSelection));
-                  }}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
                   }}
                 >
                   <Check
@@ -806,7 +809,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         </div>
                     </div>
                 ) : isElementLayout ? (
-                     <div>
+                     <div className={cn(isMediaLayout && "bg-card rounded-lg border p-4")}>
                         {element.type === 'section' && (
                              <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
                                  <div className="flex items-center gap-2">
@@ -825,24 +828,20 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
                         {element.type === 'divider' && <hr className="my-4 border-border" />}
                         
-                        {(['image', 'video', 'audio', 'document', 'embed'].includes(element.type)) && (
-                            <div className="bg-card rounded-lg border p-4">
-                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                                    <Controller
-                                        name={`elements.${index}.url`}
-                                        control={control}
-                                        render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
-                                    />
-                                )}
-                                {element.type === 'embed' && (
-                                    <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Embed HTML</FormLabel>
-                                            <Textarea {...field} placeholder="&lt;p&gt;Paste your HTML code here&lt;/p&gt;" className="font-mono bg-background" />
-                                        </FormItem>
-                                    )} />
-                                )}
-                            </div>
+                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                            <Controller
+                                name={`elements.${index}.url`}
+                                control={control}
+                                render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
+                            />
+                        )}
+                        {element.type === 'embed' && (
+                            <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Embed HTML</FormLabel>
+                                    <Textarea {...field} placeholder="&lt;p&gt;Paste your HTML code here&lt;/p&gt;" className="font-mono bg-background" />
+                                </FormItem>
+                            )} />
                         )}
                     </div>
                 ) : (
@@ -918,5 +917,3 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     </div>
   );
 }
-
-    
