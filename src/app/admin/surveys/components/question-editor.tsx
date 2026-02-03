@@ -192,7 +192,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                     }
                     onChange(Array.from(newSelection));
                   }}
-                  onMouseDown={(e) => e.preventDefault()}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                 >
                   <Check
                     className={cn(
@@ -701,12 +704,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         </div>
         <Card className={cn(
             "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-            element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
+            element.hidden ? "bg-disabled" : "bg-card"
         )}>
-             <CardHeader className={cn(
-                (isElementLayout && !isElementSection) && 'p-0',
-                (isElementLayout && !isElementSection && !isMediaLayout) && 'mb-4'
-             )}>
+             <CardHeader className={cn(isMediaLayout && 'p-0 mb-4')}>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {(!isElementLayout || isElementSection) && (
@@ -755,7 +755,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                     </div>
                 </div>
             </CardHeader>
-            <CardContent className={cn(isElementLayout && "p-0")}>
+            <CardContent>
                  {isElementQuestion ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
                         <div className="space-y-2">
