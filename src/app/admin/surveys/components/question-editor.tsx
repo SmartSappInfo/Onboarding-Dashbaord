@@ -158,6 +158,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                         }}
                         onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
                             onChange(newSelection);
                         }}
@@ -192,16 +193,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                     onChange(Array.from(newSelection));
                   }}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    const newSelection = new Set(selectedValues);
-                    if (newSelection.has(option.value)) {
-                        newSelection.delete(option.value);
-                    } else {
-                        newSelection.add(option.value);
-                    }
-                    onChange(Array.from(newSelection));
-                  }}
                 >
                   <Check
                     className={cn(
@@ -697,19 +688,16 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isElementLayout = isLayoutBlock(element);
   const isElementSection = element.type === 'section';
   const ElementIcon = getElementIcon(element.type);
-  const useInlineDragHandle = isElementLayout && !isElementSection;
   
   return (
     <div ref={setNodeRef} style={style} className="relative group">
-        {!useInlineDragHandle && (
-            <div
-                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                {...attributes}
-                {...listeners}
-            >
-                <GripVertical className="h-5 w-5 text-muted-foreground" />
-            </div>
-        )}
+        <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            {...attributes}
+            {...listeners}
+        >
+            <GripVertical className="h-5 w-5 text-muted-foreground" />
+        </div>
         <Card className={cn(
             "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
             element.hidden ? "bg-disabled" : (isElementLayout && !isElementSection ? "bg-transparent shadow-none border-none" : "bg-card")
@@ -731,11 +719,6 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                     </div>
                     <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {useInlineDragHandle && (
-                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 cursor-grab" {...attributes} {...listeners}>
-                                <GripVertical className="h-4 w-4" />
-                            </Button>
-                        )}
                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
                             <ArrowUp className="h-4 w-4" />
                         </Button>
