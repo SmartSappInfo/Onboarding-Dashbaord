@@ -255,7 +255,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                 <Controller
                   name={`elements.${questionIndex}.options.${index}`}
                   control={control}
-                  render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                  render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} />}
                 />
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
                   <Trash2 className="h-4 w-4" />
@@ -297,7 +297,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                 <Controller
                   name={`elements.${questionIndex}.options.${index}`}
                   control={control}
-                  render={({ field }) => <Input {...field} placeholder={`Option ${index + 1}`} />}
+                  render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} />}
                 />
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
                   <Trash2 className="h-4 w-4" />
@@ -446,7 +446,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <Controller
                           name={`elements.${elementIndex}.rules.${index}.targetValue`}
                           control={control}
-                          render={({ field }) => <Input {...field} placeholder="Value..." />}
+                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." />}
                           />
                       )}
                   </div>
@@ -611,13 +611,13 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                                 <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
                                 <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                             </div>
-                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
+                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
                             <div className="flex items-center justify-between rounded-lg border p-3">
                                 <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
                                 <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
                             </div>
-                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                         </>
                     )}
                 </div>
@@ -772,7 +772,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
                         <div className="space-y-2">
                             <Label>Question Text</Label>
-                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} placeholder="e.g., What is your favorite color?" />} />
+                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" />} />
                             {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
                         <div className="space-y-2">
@@ -823,18 +823,18 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
                                  <div className="flex items-center gap-2">
                                      <div className="flex-grow h-px bg-border" />
-                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
+                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
                                      <div className="flex-grow h-px bg-border" />
                                  </div>
-                                 <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
+                                 <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
                                 <div className="flex justify-center items-center gap-2 pt-2">
                                     <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
                                     <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
                                 </div>
                              </div>
                          )}
-                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
-                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
+                        {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
+                        {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
                         {element.type === 'divider' && <hr className="my-4 border-border" />}
                         
                         {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
@@ -848,7 +848,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Embed HTML</FormLabel>
-                                    <Textarea {...field} placeholder="&lt;p&gt;Paste your HTML code here&lt;/p&gt;" className="font-mono bg-background" />
+                                    <Textarea {...field} value={field.value ?? ''} placeholder="&lt;p&gt;Paste your HTML code here&lt;/p&gt;" className="font-mono bg-background" />
                                 </FormItem>
                             )} />
                         )}
