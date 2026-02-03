@@ -121,7 +121,7 @@ export default function PublicSurveyPage() {
                  <div className="max-w-2xl w-full mx-auto text-center">
                     <SmartSappLogo className="h-12 mx-auto mb-8" />
                     {survey.bannerImageUrl && (
-                        <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
                             <Image 
                                 src={survey.bannerImageUrl} 
                                 alt={survey.title || 'Survey thank you banner'} 
@@ -141,7 +141,7 @@ export default function PublicSurveyPage() {
         <div className="bg-background min-h-screen">
             <div className="max-w-2xl mx-auto py-12 px-4">
                 {survey.bannerImageUrl && (
-                    <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                    <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
                         <Image src={survey.bannerImageUrl} alt={survey.title} fill className="object-cover" />
                     </div>
                 )}

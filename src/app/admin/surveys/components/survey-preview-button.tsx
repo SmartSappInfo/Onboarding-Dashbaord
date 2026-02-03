@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -76,7 +77,7 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                 {previewData && !isSubmitted && (
                                     <div className="max-w-2xl mx-auto py-12 px-4">
                                         {previewData.bannerImageUrl && (
-                                            <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                                            <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
                                                 <Image src={previewData.bannerImageUrl} alt={previewData.title || ''} fill className="object-cover" />
                                             </div>
                                         )}
@@ -91,7 +92,7 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                         <div className="max-w-2xl w-full mx-auto text-center">
                                             <SmartSappLogo className="h-12 mx-auto mb-8" />
                                             {previewData.bannerImageUrl && (
-                                                <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                                                <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
                                                     <Image 
                                                         src={previewData.bannerImageUrl} 
                                                         alt={previewData.title || 'Survey thank you banner'} 
