@@ -115,9 +115,19 @@ export default function PublicSurveyPage() {
     
     if (isSubmitted) {
         return (
-            <div className="bg-background min-h-screen flex items-center justify-center">
-                 <div className="max-w-2xl mx-auto text-center p-8">
-                     <SmartSappLogo className="h-12 mx-auto mb-8" />
+            <div className="bg-background min-h-screen flex items-center justify-center p-4">
+                 <div className="max-w-2xl w-full mx-auto text-center">
+                    <SmartSappLogo className="h-12 mx-auto mb-8" />
+                    {survey.bannerImageUrl && (
+                        <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
+                            <Image 
+                                src={survey.bannerImageUrl} 
+                                alt={survey.title || 'Survey thank you banner'} 
+                                fill
+                                className="object-cover"
+                            />
+                        </div>
+                    )}
                     <h1 className="text-3xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
                     <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been submitted successfully.'}</p>
                 </div>
@@ -130,7 +140,7 @@ export default function PublicSurveyPage() {
             <div className="max-w-2xl mx-auto py-12 px-4">
                 {survey.bannerImageUrl && (
                     <div className="relative w-full h-40 md:h-60 rounded-lg overflow-hidden mb-8">
-                        <Image src={survey.bannerImageUrl} alt={survey.title} layout="fill" objectFit="cover" />
+                        <Image src={survey.bannerImageUrl} alt={survey.title} fill className="object-cover" />
                     </div>
                 )}
                 <h1 className="text-3xl md:text-4xl font-bold mb-2">{survey.title}</h1>
