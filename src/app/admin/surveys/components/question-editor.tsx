@@ -152,7 +152,8 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                         variant="secondary"
                         key={option.value}
                         className="mr-1 mb-1"
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
                             onChange(newSelection);
                         }}
@@ -177,6 +178,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onSelect={() => {
                     const newSelection = new Set(selectedValues);
                     if (newSelection.has(option.value)) {
@@ -901,3 +906,5 @@ export default function QuestionEditor({ fields, remove, move, swap, insert }: {
     </div>
   );
 }
+
+    
