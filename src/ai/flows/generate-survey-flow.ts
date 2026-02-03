@@ -58,14 +58,14 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 
 // ------ Input and Output Schemas for the Flow ------
 
-export const GenerateSurveyInputSchema = z.object({
+const GenerateSurveyInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
 
-export const GenerateSurveyOutputSchema = z.object({
+const GenerateSurveyOutputSchema = z.object({
     title: z.string().describe('A concise and engaging title for the survey based on the provided content.'),
     description: z.string().describe('A brief introduction or instruction for the survey respondents, derived from the content.'),
     elements: z.array(elementSchema).describe("An array of questions, layout, and logic blocks structured from the content. Ensure IDs are unique for each element (e.g., 'el_timestamp_random')."),
