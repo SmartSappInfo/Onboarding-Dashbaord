@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -17,22 +18,25 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
-import { useUser } from '@/firebase';
+import { useUser, useAuth, useFirestore, useFirebaseApp } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import * as React from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ThemeProvider } from '@/components/theme-provider';
+import { doc, getDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { getAuth } from 'firebase/auth';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
 ];
-
 
 function AdminDashboardSkeleton() {
   return (
@@ -66,30 +70,62 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const auth = useAuth();
+  const { toast } = useToast();
+  const [isAuthorizing, setIsAuthorizing] = React.useState(true);
 
   const pageTitle = React.useMemo(() => {
-    if (pathname.startsWith('/admin/settings')) {
-      return 'Settings';
-    }
-
-    // Reverse to match more specific paths first e.g. '/admin/schools' before '/admin'
-    const activeItem = [...navItems].reverse().find(item => pathname.startsWith(item.href));
+    if (pathname.startsWith('/admin/settings')) return 'Settings';
+    if (pathname.startsWith('/admin/users')) return 'Users';
     
+    const activeItem = [...navItems].reverse().find(item => pathname.startsWith(item.href));
     return activeItem?.label || 'Dashboard';
   }, [pathname]);
 
   React.useEffect(() => {
-    // If loading is finished and there's no user, redirect to login.
-    if (!isUserLoading && !user) {
-      router.push('/login');
-    }
-  }, [isUserLoading, user, router]);
+    if (isUserLoading) return;
 
-  // While loading or if there's no user (before redirect happens), show a skeleton.
-  if (isUserLoading || !user) {
+    if (!user) {
+      router.push('/login');
+      setIsAuthorizing(false);
+      return;
+    }
+    
+    if (!firestore || !auth) {
+        setIsAuthorizing(false);
+        return;
+    }
+
+    const userDocRef = doc(firestore, 'users', user.uid);
+    getDoc(userDocRef).then(docSnap => {
+      if (docSnap.exists() && docSnap.data().isAuthorized === true) {
+        setIsAuthorizing(false); // Authorized
+      } else {
+        auth.signOut();
+        router.push('/login');
+        toast({
+          variant: "destructive",
+          title: 'Authorization Required',
+          description: 'Your account is not authorized to access this area.',
+        });
+      }
+    }).catch(error => {
+      console.error("Authorization check failed:", error);
+      auth.signOut();
+      router.push('/login');
+      toast({
+        variant: "destructive",
+        title: 'Error',
+        description: 'Failed to check your authorization status.',
+      });
+    });
+
+  }, [isUserLoading, user, router, firestore, auth, toast]);
+
+  if (isUserLoading || isAuthorizing) {
     return <AdminDashboardSkeleton />;
   }
-
 
   return (
     <ThemeProvider
@@ -181,3 +217,5 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </ThemeProvider>
   );
 }
+
+    

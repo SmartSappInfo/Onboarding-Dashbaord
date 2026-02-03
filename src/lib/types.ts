@@ -1,11 +1,12 @@
 
-
-
-
-
-
-
-
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  isAuthorized: boolean;
+  createdAt: string; // ISO string
+}
 
 export interface School {
   id: string;
@@ -119,7 +120,5 @@ export interface SurveyResponse {
     value: any; // Can be string, string[], number, or object for checkboxes with 'other'
   }[];
 }
-
-    
 
     

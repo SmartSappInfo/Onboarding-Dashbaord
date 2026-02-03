@@ -1,11 +1,14 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { useAuth } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { useAuth, useFirestore } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -32,6 +35,7 @@ export default function LoginPage() {
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+  const firestore = useFirestore();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -44,13 +48,27 @@ export default function LoginPage() {
   const onSubmit = (data: FormData) => {
     form.control.disabled = true;
     signInWithEmailAndPassword(auth, data.email, data.password)
-      .then(() => {
-        toast({ title: 'Login Successful', description: 'Welcome back!' });
-        router.push('/admin');
+      .then(async (userCredential) => {
+        const user = userCredential.user;
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists() && docSnap.data().isAuthorized === true) {
+          toast({ title: 'Login Successful', description: 'Welcome back!' });
+          router.push('/admin');
+        } else {
+          await auth.signOut();
+          toast({
+            variant: 'destructive',
+            title: 'Authorization Required',
+            description: 'Your account is not authorized. Please contact an administrator.',
+            duration: 5000,
+          });
+        }
       })
       .catch((error) => {
         const errorCode = error.code;
-        let errorMessage = error.message;
+        let errorMessage = "An unexpected error occurred. Please try again.";
 
         if (errorCode === 'auth/invalid-credential' || errorCode === 'auth/user-not-found' || errorCode === 'auth/wrong-password') {
             errorMessage = 'Invalid email or password. Please try again.';
@@ -68,9 +86,9 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-        <div className="mb-8">
-            <SmartSappLogo />
-        </div>
+      <div className="mb-8">
+        <SmartSappLogo />
+      </div>
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle className="text-2xl">Admin Login</CardTitle>
@@ -110,8 +128,16 @@ export default function LoginPage() {
               </Button>
             </form>
           </Form>
+          <div className="mt-4 text-center text-sm">
+            Don&apos;t have an account?{' '}
+            <Link href="/signup" className="underline">
+              Sign up
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    

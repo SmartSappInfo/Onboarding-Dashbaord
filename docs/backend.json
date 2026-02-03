@@ -1,6 +1,37 @@
 
 {
   "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "type": "object",
+      "description": "Represents an administrator's profile in the system.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The full name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "isAuthorized": {
+          "type": "boolean",
+          "description": "Whether the user is authorized to access the admin dashboard.",
+          "default": false
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user account was created."
+        }
+      },
+      "required": ["name", "email", "isAuthorized", "createdAt"]
+    },
     "School": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "School",
@@ -291,18 +322,27 @@
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "password"
     ]
   },
   "firestore": {
     "structure": [
       {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/entities/UserProfile"
+          },
+          "description": "Stores user profile information for administrators."
+        }
+      },
+      {
         "path": "/schools/{schoolId}",
         "definition": {
           "entityName": "School",
           "schema": {
-            "$ref": "#/backend/entities/School"
+            "$ref": "#/entities/School"
           },
           "description": "Stores school data. Each document represents a school using the SmartSApp onboarding platform."
         }
@@ -312,7 +352,7 @@
         "definition": {
           "entityName": "Meeting",
           "schema": {
-            "$ref": "#/backend/entities/Meeting"
+            "$ref": "#/entities/Meeting"
           },
           "description": "Stores meeting data for schools. Each document represents a specific meeting."
         }
@@ -322,7 +362,7 @@
         "definition": {
           "entityName": "MediaAsset",
           "schema": {
-            "$ref": "#/backend/entities/MediaAsset"
+            "$ref": "#/entities/MediaAsset"
           },
           "description": "Stores all media assets uploaded to the application."
         }
@@ -332,7 +372,7 @@
         "definition": {
           "entityName": "Survey",
           "schema": {
-            "$ref": "#/backend/entities/Survey"
+            "$ref": "#/entities/Survey"
           },
           "description": "Stores individual surveys, including their questions and configuration."
         }
@@ -342,7 +382,7 @@
         "definition": {
           "entityName": "SurveyResponse",
           "schema": {
-            "$ref": "#/backend/entities/SurveyResponse"
+            "$ref": "#/entities/SurveyResponse"
           },
           "description": "Stores user responses for a specific survey."
         }
@@ -350,5 +390,6 @@
     ]
   }
 }
+    
 
     

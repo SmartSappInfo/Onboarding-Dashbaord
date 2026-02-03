@@ -1,9 +1,12 @@
+
 'use client';
 
 import React, { useMemo, useEffect, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -20,30 +23,47 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     const seedAdminUser = async () => {
       // Ensure this only runs in a browser environment in development mode.
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-        const auth = firebaseServices.auth;
+        const { auth, firestore } = firebaseServices;
         const email = 'admin@smartsapp.com';
         const password = 'SecurePassword123!';
 
         try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          // If creation is successful, immediately sign the user out so they can log in manually.
-          if (userCredential && auth.currentUser) {
-            await auth.signOut();
-          }
+          // Check if user exists by trying to sign in first
+          await signInWithEmailAndPassword(auth, email, password);
+          console.log("Admin user already exists.");
+          await auth.signOut();
         } catch (error: any) {
-          // If the user already exists ('auth/email-already-in-use'), we can safely ignore the error.
-          // For any other error, we log it to the console for debugging purposes.
-          if (error.code !== 'auth/email-already-in-use') {
-            console.error('Failed to seed admin user:', error);
+          if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
+            // User does not exist, create them
+            try {
+              const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+              const user = userCredential.user;
+
+              const userDocRef = doc(firestore, 'users', user.uid);
+              await setDoc(userDocRef, {
+                name: 'Default Admin',
+                email: user.email,
+                phone: '000-000-0000',
+                isAuthorized: true,
+                createdAt: new Date().toISOString(),
+              });
+              console.log("Default admin user created and authorized.");
+              await auth.signOut(); // Sign out after seeding
+            } catch (creationError) {
+              console.error("Failed to create default admin user:", creationError);
+            }
+          } else {
+            // Other sign-in error
+            console.error("Error checking for admin user:", error);
           }
         }
       }
     };
 
-    if (firebaseServices.auth) {
+    if (firebaseServices.auth && firebaseServices.firestore) {
         seedAdminUser();
     }
-  }, [firebaseServices.auth]);
+  }, [firebaseServices]);
 
   return (
     <FirebaseProvider
@@ -55,3 +75,5 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     </FirebaseProvider>
   );
 }
+
+    
