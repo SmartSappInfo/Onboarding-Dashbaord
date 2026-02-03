@@ -88,7 +88,7 @@ const logicBlockSchema = z.object({
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
     targetValue: z.any().optional(),
     action: logicActionSchema,
-  })).min(1, 'Logic block must have at least one rule.'),
+  })),
 });
 
 const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
@@ -176,11 +176,8 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const onSubmit = (data: FormData) => {
         if (!firestore || !surveyId) return;
 
-        const slug = data.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-
         const surveyData = {
           ...data,
-          slug,
           updatedAt: new Date().toISOString(),
         };
 
@@ -417,5 +414,3 @@ export default function EditSurveyPage() {
         </div>
     );
 }
-
-    
