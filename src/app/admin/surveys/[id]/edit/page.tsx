@@ -29,6 +29,7 @@ import SurveyFormBuilder from '../../components/survey-form-builder';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import SurveyPreviewButton from '../../components/survey-preview-button';
 
 
 const questionSchema = z.object({
@@ -58,7 +59,7 @@ const layoutBlockSchema = z.object({
   type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
   title: z.string().optional(),
   text: z.string().optional(),
-  url: z.string().url().optional().or(z.literal('')),
+  url: z.string().url().optional(),
   html: z.string().optional(),
   hidden: z.boolean().optional(),
   description: z.string().optional(),
@@ -81,7 +82,7 @@ const logicActionSchema = z.object({
 
 const logicBlockSchema = z.object({
   id: z.string(),
-  type: z.literal('logic'),
+  type: z.enum(['logic']),
   rules: z.array(z.object({
     sourceQuestionId: z.string().min(1, 'A source question must be selected.'),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
@@ -183,10 +184,12 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
           updatedAt: new Date().toISOString(),
         };
 
+        const cleanedData = JSON.parse(JSON.stringify(surveyData));
+
         const docRef = doc(firestore, 'surveys', surveyId);
         form.control.disabled = true;
         
-        updateDoc(docRef, surveyData)
+        updateDoc(docRef, cleanedData)
             .then(() => {
                 toast({
                     title: 'Survey Updated',
@@ -198,7 +201,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 const permissionError = new FirestorePermissionError({
                     path: docRef.path,
                     operation: 'update',
-                    requestResourceData: surveyData,
+                    requestResourceData: cleanedData,
                 });
                 errorEmitter.emit('permission-error', permissionError);
                 toast({
@@ -390,6 +393,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                             <Button type="button" onClick={handleNext}>Next</Button>
                         ) : (
                             <div className="flex items-center gap-4">
+                                <SurveyPreviewButton />
                                 <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}</Button>
                             </div>
                         )}

@@ -27,6 +27,7 @@ import SurveyFormBuilder from '../components/survey-form-builder';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import SurveyPreviewButton from '../components/survey-preview-button';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -55,7 +56,7 @@ const layoutBlockSchema = z.object({
   type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
   title: z.string().optional(),
   text: z.string().optional(),
-  url: z.string().url().optional().or(z.literal('')),
+  url: z.string().url().optional(),
   html: z.string().optional(),
   hidden: z.boolean().optional(),
   description: z.string().optional(),
@@ -176,10 +177,12 @@ export default function NewSurveyPage() {
             updatedAt: new Date().toISOString(),
         };
 
+        const cleanedData = JSON.parse(JSON.stringify(surveyData));
+
         const surveysCollection = collection(firestore, 'surveys');
         form.control.disabled = true;
 
-        addDoc(surveysCollection, surveyData)
+        addDoc(surveysCollection, cleanedData)
             .then(() => {
                 toast({
                     title: 'Survey Created',
@@ -191,7 +194,7 @@ export default function NewSurveyPage() {
                 const permissionError = new FirestorePermissionError({
                     path: surveysCollection.path,
                     operation: 'create',
-                    requestResourceData: surveyData,
+                    requestResourceData: cleanedData,
                 });
                 errorEmitter.emit('permission-error', permissionError);
                 toast({
@@ -365,6 +368,7 @@ export default function NewSurveyPage() {
                             <Button type="button" onClick={handleNext}>Next</Button>
                         ) : (
                              <div className="flex items-center gap-4">
+                                <SurveyPreviewButton />
                                 <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
                             </div>
                         )}
