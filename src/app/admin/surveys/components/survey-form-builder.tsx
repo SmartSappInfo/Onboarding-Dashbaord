@@ -9,9 +9,11 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
+import SurveyPreviewButton from './survey-preview-button';
+import { Separator } from '@/components/ui/separator';
 
 // isLayoutBlock helper function
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
@@ -205,6 +207,10 @@ export default function SurveyFormBuilder() {
                             <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
                                 <Redo className="h-5 w-5" />
                             </Button>
+                            <Separator orientation="vertical" className="h-6" />
+                            <SurveyPreviewButton variant="ghost" size="icon" className="h-9 w-9">
+                                <Eye className="h-5 w-5" />
+                            </SurveyPreviewButton>
                         </div>
                     </div>
                 </CardHeader>
