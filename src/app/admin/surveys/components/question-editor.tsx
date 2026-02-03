@@ -190,7 +190,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                       newSelection.add(option.value);
                     }
                     onChange(Array.from(newSelection));
+                    // Keep popover open for multi-select
+                    setOpen(true);
                   }}
+                  onMouseDown={(e) => e.preventDefault()} // Prevents popover from closing on click
                 >
                   <Check
                     className={cn(
@@ -826,20 +829,25 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.type === 'heading' && <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} placeholder="Heading" className="text-2xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />} />}
                         {element.type === 'description' && <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />}
                         {element.type === 'divider' && <hr className="my-4 border-border" />}
-                        {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
-                            <Controller
-                                name={`elements.${index}.url`}
-                                control={control}
-                                render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
-                            />
-                        )}
-                        {element.type === 'embed' && (
-                            <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Embed HTML</FormLabel>
-                                    <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
-                                </FormItem>
-                            )} />
+                        
+                        {(['image', 'video', 'audio', 'document', 'embed'].includes(element.type)) && (
+                            <div>
+                                {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
+                                    <Controller
+                                        name={`elements.${index}.url`}
+                                        control={control}
+                                        render={({ field }) => <MediaLayoutEditor element={element} field={field} />}
+                                    />
+                                )}
+                                {element.type === 'embed' && (
+                                    <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Embed HTML</FormLabel>
+                                            <Textarea {...field} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-card" />
+                                        </FormItem>
+                                    )} />
+                                )}
+                            </div>
                         )}
                     </div>
                 ) : (
