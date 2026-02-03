@@ -64,7 +64,6 @@ const layoutBlockSchema = z.object({
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
-    if (data.type === 'section' && !data.title) return false;
     return true;
 }, {
     message: 'This block requires content.',
@@ -86,7 +85,7 @@ const logicBlockSchema = z.object({
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
     targetValue: z.any().optional(),
     action: logicActionSchema,
-  })).min(1, 'Logic block must have at least one rule.'),
+  })),
 });
 
 
