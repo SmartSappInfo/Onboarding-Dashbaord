@@ -80,9 +80,9 @@ const logicActionSchema = z.object({
 
 const logicBlockSchema = z.object({
   id: z.string(),
-  type: z.literal('logic'),
+  type: z.enum(['logic']),
   rules: z.array(z.object({
-    sourceQuestionId: z.string().min(1, 'A source question must be selected.'),
+    sourceQuestionId: z.string(),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
     targetValue: z.any().optional(),
     action: logicActionSchema,
@@ -177,7 +177,9 @@ export default function NewSurveyPage() {
             updatedAt: new Date().toISOString(),
         };
 
-        const cleanedData = JSON.parse(JSON.stringify(surveyData));
+        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => 
+            value === undefined ? null : value
+        ));
 
         const surveysCollection = collection(firestore, 'surveys');
         form.control.disabled = true;
@@ -378,3 +380,5 @@ export default function NewSurveyPage() {
         </FormProvider>
     );
 }
+
+    

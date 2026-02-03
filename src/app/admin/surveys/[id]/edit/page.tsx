@@ -84,7 +84,7 @@ const logicBlockSchema = z.object({
   id: z.string(),
   type: z.enum(['logic']),
   rules: z.array(z.object({
-    sourceQuestionId: z.string().min(1, 'A source question must be selected.'),
+    sourceQuestionId: z.string(),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
     targetValue: z.any().optional(),
     action: logicActionSchema,
@@ -184,7 +184,9 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
           updatedAt: new Date().toISOString(),
         };
 
-        const cleanedData = JSON.parse(JSON.stringify(surveyData));
+        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => 
+            value === undefined ? null : value
+        ));
 
         const docRef = doc(firestore, 'surveys', surveyId);
         form.control.disabled = true;
@@ -415,3 +417,5 @@ export default function EditSurveyPage() {
         </div>
     );
 }
+
+    
