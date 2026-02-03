@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to generate a survey from various content sources.
@@ -29,7 +30,7 @@ const layoutBlockSchema = z.object({
   type: z.enum(['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section']),
   title: z.string().optional(),
   text: z.string().optional(),
-  url: z.string().url().optional().or(z.literal('')),
+  url: z.string().url().optional(),
   html: z.string().optional(),
   hidden: z.boolean().optional(),
   description: z.string().optional(),
@@ -44,7 +45,7 @@ const logicActionSchema = z.object({
 
 const logicBlockSchema = z.object({
   id: z.string(),
-  type: z.literal('logic'),
+  type: z.enum(['logic']),
   rules: z.array(z.object({
     sourceQuestionId: z.string(),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
