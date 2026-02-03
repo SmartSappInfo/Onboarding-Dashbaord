@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { collection, addDoc } from 'firebase/firestore';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
@@ -136,7 +136,7 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                             
                             const mediaCollection = collection(firestore, 'media');
-                            await addDoc(mediaCollection, {
+                            const mediaDocData = {
                                 name: stagedFile.file.name,
                                 url: downloadURL,
                                 fullPath: storagePath,
@@ -145,13 +145,27 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                                 size: stagedFile.file.size,
                                 uploadedBy: user.uid,
                                 createdAt: new Date().toISOString(),
-                            });
+                            };
+
+                            addDoc(mediaCollection, mediaDocData)
+                                .then(() => {
+                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'success' } : sf));
+                                    resolve();
+                                })
+                                .catch((firestoreError) => {
+                                    const permissionError = new FirestorePermissionError({
+                                        path: mediaCollection.path,
+                                        operation: 'create',
+                                        requestResourceData: mediaDocData,
+                                    });
+                                    errorEmitter.emit('permission-error', permissionError);
+                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: 'Failed to save to database.' } : sf));
+                                    reject(firestoreError);
+                                });
                             
-                            setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'success' } : sf));
-                            resolve();
-                        } catch (error: any) {
-                             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: 'Failed to save to database.' } : sf));
-                            reject(error);
+                        } catch (storageError: any) {
+                             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: 'Failed to retrieve file URL.' } : sf));
+                            reject(storageError);
                         }
                     }
                 );

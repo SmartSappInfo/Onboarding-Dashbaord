@@ -77,26 +77,35 @@ export default function AddLinkButton() {
 
         // 3. Save to Firestore
         const mediaCollection = collection(firestore, 'media');
-        await addDoc(mediaCollection, linkData);
-
-        toast({ title: 'Link Added', description: `${linkData.name} has been added to your library.` });
-        setIsDialogOpen(false);
-        form.reset();
+        addDoc(mediaCollection, linkData)
+          .then(() => {
+            toast({ title: 'Link Added', description: `${linkData.name} has been added to your library.` });
+            setIsDialogOpen(false);
+            form.reset();
+          })
+          .catch((error) => {
+            const permissionError = new FirestorePermissionError({
+                path: mediaCollection.path,
+                operation: 'create',
+                requestResourceData: linkData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({
+              variant: 'destructive',
+              title: 'Error Adding Link',
+              description: 'Could not save the link. You may not have the required permissions.',
+            });
+          })
+          .finally(() => {
+            setIsProcessing(false);
+          });
 
     } catch (error: any) {
-        const mediaCollection = collection(firestore, 'media');
-        const permissionError = new FirestorePermissionError({
-            path: mediaCollection.path,
-            operation: 'create',
-            requestResourceData: { name: data.name, url: data.url, type: 'link' }, // a simplified object for the error
-        });
-        errorEmitter.emit('permission-error', permissionError);
         toast({
           variant: 'destructive',
-          title: 'Error Adding Link',
-          description: error.message || 'Could not save the link.',
+          title: 'Error Fetching Metadata',
+          description: error.message || 'Could not get metadata from the URL.',
         });
-    } finally {
         setIsProcessing(false);
     }
   };
