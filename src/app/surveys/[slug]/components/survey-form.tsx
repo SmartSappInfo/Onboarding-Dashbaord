@@ -233,25 +233,31 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
         return (
             <Card id={question.id}>
                 <CardContent className="pt-6">
-                    <Label className="text-base font-semibold">
+                    <Label className="text-lg font-semibold">
                         {question.title}
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     <div className="mt-4">
                         {question.type === 'text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} placeholder={question.placeholder} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} placeholder={question.placeholder} className="text-base" />} />
                         )}
                         {question.type === 'long-text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} placeholder={question.placeholder} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} placeholder={question.placeholder} className="text-base"/>} />
                         )}
                         {question.type === 'yes-no' && (
                             <Controller
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4">
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" id={`${question.id}-yes`} /><Label htmlFor={`${question.id}-yes`}>Yes</Label></div>
-                                        <div className="flex items-center space-x-2"><RadioGroupItem value="No" id={`${question.id}-no`} /><Label htmlFor={`${question.id}-no`}>No</Label></div>
+                                     <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                                            <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
+                                            Yes
+                                        </Label>
+                                        <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                                            <RadioGroupItem value="No" id={`${question.id}-no`} />
+                                            No
+                                        </Label>
                                     </RadioGroup>
                                 )}
                             />
@@ -261,9 +267,12 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-2">
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-3">
                                         {question.options?.map(opt => (
-                                            <div key={opt} className="flex items-center space-x-2"><RadioGroupItem value={opt} id={`${question.id}-${opt}`} /><Label htmlFor={`${question.id}-${opt}`}>{opt}</Label></div>
+                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
+                                                <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
+                                                {opt}
+                                            </Label>
                                         ))}
                                     </RadioGroup>
                                 )}
@@ -273,30 +282,34 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                             <Controller
                                 name={question.id}
                                 control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        {question.options?.map(opt => (
-                                            <div key={opt} className="flex items-start space-x-2">
-                                                <Checkbox
-                                                    id={`${question.id}-${opt}`}
-                                                    checked={question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (question.allowOther) {
-                                                            const currentOptions = field.value?.options || [];
-                                                            const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                            field.onChange({ ...(field.value || {}), options: newOptions });
-                                                        } else {
-                                                            const currentVal = field.value || [];
-                                                            const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
-                                                            field.onChange(newVal);
-                                                        }
-                                                    }}
-                                                />
-                                                <Label htmlFor={`${question.id}-${opt}`} className="font-normal">{opt}</Label>
-                                            </div>
-                                        ))}
+                                render={({ field }) => {
+                                    return (
+                                    <div className="space-y-3">
+                                        {question.options?.map(opt => {
+                                            const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
+                                            return (
+                                                <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent", isChecked && "border-primary bg-primary/10")}>
+                                                    <Checkbox
+                                                        id={`${question.id}-${opt}`}
+                                                        checked={isChecked}
+                                                        onCheckedChange={(checked) => {
+                                                            if (question.allowOther) {
+                                                                const currentOptions = field.value?.options || [];
+                                                                const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
+                                                                field.onChange({ ...(field.value || {}), options: newOptions });
+                                                            } else {
+                                                                const currentVal = field.value || [];
+                                                                const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
+                                                                field.onChange(newVal);
+                                                            }
+                                                        }}
+                                                    />
+                                                     <span className="flex-1 -mt-1">{opt}</span>
+                                                </Label>
+                                            )
+                                        })}
                                         {question.allowOther && (
-                                            <div className="flex items-start space-x-2 pt-2">
+                                            <div className={cn("flex items-center gap-3 rounded-md border p-4 transition-colors", (field.value?.other || '') && "border-primary bg-primary/10")}>
                                                 <Checkbox
                                                     id={`${question.id}-other-checkbox`}
                                                     checked={!!(field.value?.other || '')}
@@ -311,14 +324,14 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                                 <Input
                                                     id={`${question.id}-other-input`}
                                                     placeholder="Other (please specify)"
-                                                    className="h-8 flex-1"
+                                                    className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
                                                     value={field.value?.other || ''}
                                                     onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
                                                 />
                                             </div>
                                         )}
                                     </div>
-                                )}
+                                )}}
                             />
                         )}
                         {question.type === 'dropdown' && (
@@ -327,12 +340,12 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 name={question.id}
                                 render={({ field }) => (
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className="w-full sm:w-1/2">
+                                        <SelectTrigger className="w-full sm:w-1/2 text-base h-11">
                                             <SelectValue placeholder="Select an option" />
                                         </SelectTrigger>
                                         <SelectContent>
                                             {question.options?.map(opt => (
-                                                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                                                <SelectItem key={opt} value={opt} className="text-base">{opt}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -346,7 +359,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                             <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
                         )}
                         {question.type === 'time' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} />} />
                         )}
                         {question.type === 'file-upload' && (
                             <Controller
@@ -380,7 +393,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
             case 'heading':
                 return <h2 id={block.id} className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
             case 'description':
-                return <p className="text-muted-foreground my-4">{block.text}</p>;
+                return <p className="text-muted-foreground my-4 text-base">{block.text}</p>;
             case 'divider':
                 return <hr className="my-8" />;
             case 'image':
