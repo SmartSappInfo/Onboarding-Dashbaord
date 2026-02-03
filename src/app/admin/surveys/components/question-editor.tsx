@@ -154,21 +154,30 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                         className="mr-1 mb-1"
                     >
                         {option.label}
-                         <button
-                            type="button"
+                         <div
+                            role="button"
+                            tabIndex={0}
                             aria-label={`Remove ${option.label}`}
                             className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             onMouseDown={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                             }}
-                            onClick={() => {
-                                const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                const newSelection = Array.from(selectedValues).filter((v) => v !== option.value);
                                 onChange(newSelection);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                    e.stopPropagation();
+                                    const newSelection = Array.from(selectedValues).filter((v) => v !== option.value);
+                                    onChange(newSelection);
+                                }
                             }}
                         >
                             <X className="h-3 w-3" />
-                        </button>
+                        </div>
                     </Badge>
                 ))
             ) : (
