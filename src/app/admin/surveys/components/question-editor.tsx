@@ -152,8 +152,11 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                         variant="secondary"
                         key={option.value}
                         className="mr-1 mb-1"
-                        onClick={(e) => {
+                        onMouseDown={(e) => {
+                            e.preventDefault();
                             e.stopPropagation();
+                        }}
+                        onClick={(e) => {
                             const newSelection = Array.from(selectedValues).filter(v => v !== option.value);
                             onChange(newSelection);
                         }}
@@ -180,7 +183,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                   key={option.value}
                   onMouseDown={(e) => {
                     e.preventDefault();
-                    e.stopPropagation();
                   }}
                   onSelect={() => {
                     const newSelection = new Set(selectedValues);
