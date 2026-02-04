@@ -30,7 +30,7 @@ export default function Footer() {
           <div className="space-y-4">
             <h3 className="font-semibold text-white">Useful Links</h3>
             <nav className="flex flex-col space-y-2 text-sm">
-                <Link href="/admin" className="text-gray-400 hover:text-white transition-colors">Admin</Link>
+                <Link href="/login" className="text-gray-400 hover:text-white transition-colors">Admin</Link>
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">Contact Us</Link>
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">Terms of Use</Link>
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</Link>
