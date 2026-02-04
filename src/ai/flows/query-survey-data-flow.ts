@@ -16,7 +16,7 @@ export type QuerySurveyDataInput = z.infer<typeof QuerySurveyDataInputSchema>;
 
 
 const QuerySurveyDataOutputSchema = z.object({
-    answer: z.string().describe('The answer to the user query, formatted in Markdown.'),
+    answer: z.string().describe('The answer to the user query, formatted as a simple HTML string.'),
 });
 export type QuerySurveyDataOutput = z.infer<typeof QuerySurveyDataOutputSchema>;
 
@@ -52,7 +52,7 @@ const queryPrompt = ai.definePrompt({
     Based on the data provided, please provide a clear and concise answer to the user's query.
     - If possible, provide quantitative data (percentages, counts) to support your answer.
     - If the query is about qualitative data (text responses), identify common themes or provide representative examples.
-    - Format your response in simple, clean Markdown.
+    - Format your response in simple, clean HTML using tags like <p>, <strong>, <ul>, and <blockquote>. Do not use complex HTML, inline styles, or <style> tags.
     `,
 });
 

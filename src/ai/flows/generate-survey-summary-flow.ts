@@ -15,7 +15,7 @@ export type GenerateSurveySummaryInput = z.infer<typeof GenerateSurveySummaryInp
 
 
 const GenerateSurveySummaryOutputSchema = z.object({
-    summary: z.string().describe('A professional, insightful summary of the survey results, formatted in Markdown.'),
+    summary: z.string().describe('A professional, insightful summary of the survey results, formatted as a simple HTML string.'),
 });
 export type GenerateSurveySummaryOutput = z.infer<typeof GenerateSurveySummaryOutputSchema>;
 
@@ -29,7 +29,7 @@ const summaryGenerationPrompt = ai.definePrompt({
         responsesJson: z.string(),
     }) },
     output: { schema: GenerateSurveySummaryOutputSchema },
-    prompt: `You are a professional data analyst tasked with creating a concise and actionable summary of survey results.
+    prompt: `You are a professional data analyst tasked with creating a concise and actionable summary of survey results. Your summary must be brief, precise, and help inform decisions.
 
     Here is the survey structure:
     Title: {{{title}}}
@@ -46,10 +46,10 @@ const summaryGenerationPrompt = ai.definePrompt({
     \`\`\`
 
     Please provide a high-level summary of the results. Your summary MUST:
-    1.  Start with a brief overview stating the total number of responses and the 1-2 most critical findings.
-    2.  Do NOT just list the results for each question. Instead, synthesize the data to identify key themes, patterns, and correlations.
+    1.  Start with a brief overview stating the total number of responses.
+    2.  Synthesize the data to identify 1-2 most critical, non-obvious findings that someone might easily miss.
     3.  Conclude with a bulleted list of 3-5 actionable insights or key takeaways for the survey creator.
-    4.  Format your response in simple, clean Markdown for readability. Use headings (#), bold text (**text**), and bullet points (* point). Do not use complex markdown like tables.
+    4.  Format your response in simple, clean HTML for readability. Use headings (e.g., <h2>), paragraphs (<p>), bold text (<strong>), and unordered lists (<ul> with <li>). Use blockquotes (<blockquote>) to highlight key statistics or findings. Do not use complex HTML, inline styles, or <style> tags.
     `,
 });
 
