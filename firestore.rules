@@ -67,8 +67,8 @@ service cloud.firestore {
     }
 
     match /surveys/{surveyId}/summaries/{summaryId} {
-      // Admins can create and read all summaries for a survey.
-      allow create, read, list: if isAuthorized();
+      // Admins can create, read, list, and delete all summaries for a survey.
+      allow create, read, list, delete: if isAuthorized();
     }
   }
 }
