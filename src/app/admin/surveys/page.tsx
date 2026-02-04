@@ -44,7 +44,7 @@ function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     
     const { data: responses, isLoading } = useCollection<{id: string}>(responsesCol);
 
-    if (isLoading) return <Skeleton className="h-5 w-8" />;
+    if (isLoading) return <Skeleton className="h-5 w-8 mx-auto" />;
 
     return <>{responses?.length ?? 0}</>;
 }
@@ -165,8 +165,8 @@ export default function SurveysPage() {
               <TableRow>
                 <TableHead>Title</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[120px]">Responses</TableHead>
-                <TableHead className="w-[180px]">Created At</TableHead>
+                <TableHead className="w-[120px] text-center">Responses</TableHead>
+                <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -176,8 +176,8 @@ export default function SurveysPage() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-10" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
@@ -186,8 +186,8 @@ export default function SurveysPage() {
                   <TableRow key={survey.id}>
                     <TableCell className="font-medium">{survey.title}</TableCell>
                     <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
-                    <TableCell><SurveyResponseCount surveyId={survey.id} /></TableCell>
-                    <TableCell>
+                    <TableCell className="text-center"><SurveyResponseCount surveyId={survey.id} /></TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
                     </TableCell>
                     <TableCell className="text-right">
