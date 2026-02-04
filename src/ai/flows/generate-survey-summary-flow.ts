@@ -49,7 +49,7 @@ const summaryGenerationPrompt = ai.definePrompt({
     1.  Start with a brief overview stating the total number of responses.
     2.  Synthesize the data to identify 1-2 most critical, non-obvious findings that someone might easily miss.
     3.  Conclude with a bulleted list of 3-5 actionable insights or key takeaways for the survey creator.
-    4.  Format your response in simple, clean HTML for readability. Use headings (e.g., <h2>), paragraphs (<p>), bold text (<strong>), and unordered lists (<ul> with <li>). Use blockquotes (<blockquote>) to highlight key statistics or findings. Do not use complex HTML, inline styles, or <style> tags.
+    4.  Format your response in simple, clean HTML for readability. Use headings (e.g., <h2>), paragraphs (<p>), bold text (<strong>), and unordered lists (<ul> with <li>). Use blockquotes (<blockquote>) to highlight key statistics or findings. Ensure each paragraph, list item, and heading is enclosed in its own tag to ensure proper spacing. Do not use complex HTML, inline styles, or <style> tags.
     `,
 });
 

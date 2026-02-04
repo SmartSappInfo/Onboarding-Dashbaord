@@ -52,7 +52,7 @@ const queryPrompt = ai.definePrompt({
     Based on the data provided, please provide a clear and concise answer to the user's query.
     - If possible, provide quantitative data (percentages, counts) to support your answer.
     - If the query is about qualitative data (text responses), identify common themes or provide representative examples.
-    - Format your response in simple, clean HTML using tags like <p>, <strong>, <ul>, and <blockquote>. Do not use complex HTML, inline styles, or <style> tags.
+    - Format your response in simple, clean HTML using tags like <p>, <strong>, <ul>, and <blockquote>. Ensure each paragraph, list item, and heading is enclosed in its own tag to ensure proper spacing. Do not use complex HTML, inline styles, or <style> tags.
     `,
 });
 

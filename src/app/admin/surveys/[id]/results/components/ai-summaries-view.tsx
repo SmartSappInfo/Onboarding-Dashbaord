@@ -197,9 +197,11 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                             {summaries.map(summary => (
                                 <AccordionItem key={summary.id} value={summary.id}>
                                     <div className="flex items-center group">
-                                        <AccordionTrigger className="flex-1 font-normal text-base hover:no-underline">
-                                            {summary.prompt ? `Response to: "${summary.prompt}"` : 'AI Generated Summary'}
-                                            <span className="text-sm text-muted-foreground ml-4 font-mono">{format(new Date(summary.createdAt), "MMM d, p")}</span>
+                                        <AccordionTrigger className="flex-1 font-normal text-base hover:no-underline text-left gap-4">
+                                            <span className="truncate">
+                                                {summary.prompt ? summary.prompt : 'AI Generated Summary'}
+                                            </span>
+                                            <span className="text-sm text-muted-foreground font-mono shrink-0">{format(new Date(summary.createdAt), "MMM d, p")}</span>
                                         </AccordionTrigger>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -223,9 +225,15 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
-                                    <AccordionContent>
+                                    <AccordionContent className="pt-2">
+                                        {summary.prompt && (
+                                            <div className="px-4 pb-4">
+                                                <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Question</h4>
+                                                <p className="text-base text-foreground mt-1 italic">"{summary.prompt}"</p>
+                                            </div>
+                                        )}
                                         <div
-                                            className="prose prose-sm dark:prose-invert max-w-none p-4"
+                                            className="prose prose-sm dark:prose-invert max-w-none p-4 border-t"
                                             dangerouslySetInnerHTML={{ __html: summary.summary }}
                                         />
                                     </AccordionContent>
