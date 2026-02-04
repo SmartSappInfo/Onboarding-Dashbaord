@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import Link from "next/link";
 
 
@@ -187,7 +187,7 @@ function AnalyticsView({ survey, responses }: { survey: Survey; responses: Surve
                         if (Array.isArray(selectedOptions)) {
                             hasScore = true;
                             selectedOptions.forEach(optionLabel => {
-                                const optionIndex = question.options.indexOf(optionLabel);
+                                const optionIndex = (question.options || []).indexOf(optionLabel);
                                 if (optionIndex > -1 && question.optionScores && question.optionScores[optionIndex] !== undefined) {
                                     responseScore += question.optionScores[optionIndex];
                                 }
@@ -291,25 +291,27 @@ function AnalyticsView({ survey, responses }: { survey: Survey; responses: Surve
 // ============================================================================
 // RESPONSES LIST VIEW
 // ============================================================================
-function ResponsesListView({ surveyId, responses, isLoading }: { surveyId: string, responses: SurveyResponse[], isLoading: boolean }) {
+function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, responses: SurveyResponse[], isLoading: boolean }) {
     const router = useRouter();
 
-    const getAnswerPreview = (response: SurveyResponse) => {
-        if (!response.answers || response.answers.length === 0) return <span className="text-muted-foreground">No answer</span>;
-        const firstAnswer = response.answers[0].value;
-        if (typeof firstAnswer === 'string' && firstAnswer) {
-            return firstAnswer.length > 50 ? `${firstAnswer.substring(0, 50)}...` : firstAnswer;
+    const questions = React.useMemo(() => survey.elements.filter(isQuestion), [survey.elements]);
+
+    const getAnswerForQuestion = (response: SurveyResponse, questionId: string) => {
+        return response.answers.find(a => a.questionId === questionId)?.value;
+    }
+
+    const formatAnswer = (value: any): string => {
+        if (value === undefined || value === null) return '-';
+        if (Array.isArray(value)) return value.join(', ');
+        if (typeof value === 'object') {
+            if (value.options) {
+                let text = value.options.join(', ');
+                if (value.other) text += `, Other: ${value.other}`;
+                return text;
+            }
+            return JSON.stringify(value);
         }
-        if (Array.isArray(firstAnswer) && firstAnswer.length > 0) {
-            return firstAnswer.join(', ');
-        }
-        if (typeof firstAnswer === 'number') {
-            return String(firstAnswer);
-        }
-        if (typeof firstAnswer === 'object' && firstAnswer !== null) {
-            return JSON.stringify(firstAnswer);
-        }
-        return <span className="text-muted-foreground">No answer</span>;
+        return String(value);
     }
     
     return (
@@ -317,33 +319,42 @@ function ResponsesListView({ surveyId, responses, isLoading }: { surveyId: strin
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">Submitted</TableHead>
-                <TableHead>Answers Preview</TableHead>
+                <TableHead className="sticky left-0 bg-card z-10 w-[200px]">Submitted</TableHead>
+                 {questions.map(q => (
+                    <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                    <TableCell className="sticky left-0 bg-card z-10"><Skeleton className="h-5 w-3/4" /></TableCell>
+                     {questions.map(q => (
+                        <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
+                    ))}
                   </TableRow>
                 ))
               ) : responses && responses.length > 0 ? (
                 responses.map((response) => (
-                  <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${surveyId}/results/${response.id}`)}>
-                    <TableCell>
-                        <div className="font-medium">{format(new Date(response.submittedAt), "PPP p")}</div>
-                        <div className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(response.submittedAt), { addSuffix: true })}</div>
+                  <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
+                    <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                        {format(new Date(response.submittedAt), "PPP p")}
                     </TableCell>
-                    <TableCell>
-                        {getAnswerPreview(response)}
-                    </TableCell>
+                    {questions.map(q => {
+                        const answer = getAnswerForQuestion(response, q.id);
+                        const formattedAnswer = formatAnswer(answer);
+                        return (
+                             <TableCell key={q.id} title={formattedAnswer} className="max-w-[250px] truncate">
+                                {formattedAnswer}
+                            </TableCell>
+                        )
+                    })}
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={2} className="h-24 text-center">
+                  <TableCell colSpan={questions.length + 1} className="h-24 text-center">
                     No responses yet.
                   </TableCell>
                 </TableRow>
@@ -411,11 +422,12 @@ export default function SurveyResultsPage() {
         const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
         const questionIds = questions.map(q => q.id);
 
-        const headerRow = questionIds.map(id => `"${questionIdToTitleMap.get(id)?.replace(/"/g, '""') ?? id}"`).join(',');
+        const headerRow = ["Submitted At", ...questionIds.map(id => `"${questionIdToTitleMap.get(id)?.replace(/"/g, '""') ?? id}"`)].join(',');
 
         const rows = responses.map(response => {
             const answerMap = new Map(response.answers.map(a => [a.questionId, a.value]));
-            return questionIds.map(id => {
+            const submittedAtCell = `"${format(new Date(response.submittedAt), "yyyy-MM-dd HH:mm:ss")}"`;
+            const answerCells = questionIds.map(id => {
                 const value = answerMap.get(id);
                 let cellValue = '';
                 if (value !== undefined && value !== null) {
@@ -428,7 +440,8 @@ export default function SurveyResultsPage() {
                     }
                 }
                 return `"${cellValue.replace(/"/g, '""')}"`;
-            }).join(',');
+            });
+            return [submittedAtCell, ...answerCells].join(',');
         });
 
         const csvContent = [headerRow, ...rows].join('\n');
@@ -515,7 +528,7 @@ export default function SurveyResultsPage() {
                         {responses && <AnalyticsView survey={survey} responses={responses} />}
                     </TabsContent>
                     <TabsContent value="responses">
-                        <ResponsesListView surveyId={survey.id} responses={responses || []} isLoading={areResponsesLoading} />
+                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
                     </TabsContent>
                 </Tabs>
                 
