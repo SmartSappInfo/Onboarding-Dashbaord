@@ -11,8 +11,22 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, Loader2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { RainbowButton } from "@/components/ui/rainbow-button";
+import { useToast } from "@/hooks/use-toast";
+import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -150,6 +164,10 @@ export default function SurveyResultsPage() {
     const router = useRouter();
     const firestore = useFirestore();
     const { id: surveyId } = params;
+    const { toast } = useToast();
+
+    const [summary, setSummary] = React.useState<string | null>(null);
+    const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -163,6 +181,24 @@ export default function SurveyResultsPage() {
 
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+
+    const handleGenerateSummary = async () => {
+        if (!survey || !responses) {
+            toast({ variant: 'destructive', title: 'Survey data not loaded yet.' });
+            return;
+        }
+        setIsGeneratingSummary(true);
+        setSummary(null); // Clear previous summary
+        try {
+            const result = await generateSurveySummary({ survey, responses });
+            setSummary(result.summary);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'AI Summary Failed', description: e.message });
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
+
 
     const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
         if (!survey || !responses) return [];
@@ -280,41 +316,70 @@ export default function SurveyResultsPage() {
     }
 
     return (
-        <div>
-            <Button variant="ghost" onClick={() => router.push('/admin/surveys')} className="mb-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to Surveys
-            </Button>
-            <h1 className="text-3xl font-bold tracking-tight">{survey.title}</h1>
-            <p className="text-muted-foreground mb-2">Results & Analytics</p>
-            <Card className="mb-8 w-fit">
-                <CardHeader>
-                    <CardTitle>Total Responses</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
-                </CardContent>
-            </Card>
+        <>
+            <div>
+                <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+                    <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Surveys
+                    </Button>
+                     <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                        {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                        {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
+                    </RainbowButton>
+                </div>
+                <h1 className="text-3xl font-bold tracking-tight">{survey.title}</h1>
+                <p className="text-muted-foreground mb-2">Results & Analytics</p>
+                <Card className="mb-8 w-fit">
+                    <CardHeader>
+                        <CardTitle>Total Responses</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
+                    </CardContent>
+                </Card>
 
-            <div className="space-y-8">
-                {analyzedResults.map((result, index) => (
-                    <Card key={result.question.id}>
-                        <CardHeader>
-                            <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
-                             <CardDescription>
-                                {result.total} {result.total === 1 ? 'response' : 'responses'}
-                             </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {result.type === 'chart' && <ChartResult result={result} />}
-                            {result.type === 'rating' && <RatingResult result={result} />}
-                            {result.type === 'checkbox' && <CheckboxResult result={result} />}
-                            {result.type === 'text' && <TextResult result={result} />}
-                            {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}
-                        </CardContent>
-                    </Card>
-                ))}
+                <div className="space-y-8">
+                    {analyzedResults.map((result, index) => (
+                        <Card key={result.question.id}>
+                            <CardHeader>
+                                <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
+                                <CardDescription>
+                                    {result.total} {result.total === 1 ? 'response' : 'responses'}
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {result.type === 'chart' && <ChartResult result={result} />}
+                                {result.type === 'rating' && <RatingResult result={result} />}
+                                {result.type === 'checkbox' && <CheckboxResult result={result} />}
+                                {result.type === 'text' && <TextResult result={result} />}
+                                {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
             </div>
-        </div>
+             <AlertDialog open={!!summary} onOpenChange={(open) => !open && setSummary(null)}>
+                <AlertDialogContent className="max-w-3xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                           <Sparkles className="h-5 w-5 text-primary" />
+                           AI-Generated Summary
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                            An analysis of the survey results based on {responses?.length ?? 0} response(s).
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <ScrollArea className="max-h-[60vh] pr-6">
+                        <div className="text-sm whitespace-pre-wrap font-sans">
+                            {summary}
+                        </div>
+                    </ScrollArea>
+                    <AlertDialogFooter>
+                        <Button onClick={() => setSummary(null)}>Close</Button>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
