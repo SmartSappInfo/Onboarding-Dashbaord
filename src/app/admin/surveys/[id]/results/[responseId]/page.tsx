@@ -1,8 +1,9 @@
+
 'use client';
 
 import * as React from 'react';
 import { useParams, useRouter } from "next/navigation";
-import { useDoc, useFirestore, useMemoFirebase } from "@/firebase";
+import { useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { Survey, SurveyResponse, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -11,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowLeft, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
+import { Label } from '@/components/ui/label';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -63,14 +65,15 @@ export default function ResponseDetailPage() {
     const router = useRouter();
     const { id: surveyId, responseId } = params;
     const firestore = useFirestore();
+    const { user, isUserLoading: isAuthLoading } = useUser();
 
-    const surveyDocRef = useMemoFirebase(() => firestore && surveyId ? doc(firestore, 'surveys', surveyId as string) : null, [firestore, surveyId]);
-    const responseDocRef = useMemoFirebase(() => firestore && surveyId && responseId ? doc(firestore, `surveys/${surveyId}/responses`, responseId as string) : null, [firestore, surveyId, responseId]);
+    const surveyDocRef = useMemoFirebase(() => firestore && surveyId && user ? doc(firestore, 'surveys', surveyId as string) : null, [firestore, surveyId, user]);
+    const responseDocRef = useMemoFirebase(() => firestore && surveyId && responseId && user ? doc(firestore, `surveys/${surveyId}/responses`, responseId as string) : null, [firestore, surveyId, responseId, user]);
 
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: response, isLoading: isResponseLoading } = useDoc<SurveyResponse>(responseDocRef);
 
-    const isLoading = isSurveyLoading || isResponseLoading;
+    const isLoading = isAuthLoading || isSurveyLoading || isResponseLoading;
 
     if (isLoading) {
         return (
