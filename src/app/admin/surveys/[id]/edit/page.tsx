@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -408,7 +407,7 @@ export default function EditSurveyPage() {
     const surveyId = params.id as string;
 
     return (
-        <div>
+        <div className="w-[70%] mx-auto">
             {surveyId ? <EditSurveyForm surveyId={surveyId} /> : <p>Survey ID not found.</p>}
         </div>
     );

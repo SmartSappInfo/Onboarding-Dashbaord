@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFormContext, Controller, get } from 'react-hook-form';
@@ -769,7 +768,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             </CardHeader>
             <CardContent>
                  {isElementQuestion ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 items-start">
+                    <div className="grid grid-cols-1 gap-y-6">
                         <div className="space-y-2">
                             <Label>Question Text</Label>
                             <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" />} />
