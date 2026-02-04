@@ -3,13 +3,13 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from "next/navigation";
-import { useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
 import { Survey, SurveyResponse, SurveyElement, SurveyQuestion } from '@/lib/types';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, FileText, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
 import { Label } from '@/components/ui/label';
@@ -69,16 +69,38 @@ export default function ResponseDetailPage() {
 
     const surveyDocRef = useMemoFirebase(() => firestore && surveyId && user ? doc(firestore, 'surveys', surveyId as string) : null, [firestore, surveyId, user]);
     const responseDocRef = useMemoFirebase(() => firestore && surveyId && responseId && user ? doc(firestore, `surveys/${surveyId}/responses`, responseId as string) : null, [firestore, surveyId, responseId, user]);
+    const responsesColRef = useMemoFirebase(() => {
+        if (!firestore || !surveyId) return null;
+        return query(collection(firestore, `surveys/${surveyId}/responses`), orderBy('submittedAt', 'asc'));
+    }, [firestore, surveyId]);
 
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: response, isLoading: isResponseLoading } = useDoc<SurveyResponse>(responseDocRef);
+    const { data: allResponses, isLoading: areAllResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
 
-    const isLoading = isAuthLoading || isSurveyLoading || isResponseLoading;
+    const isLoading = isAuthLoading || isSurveyLoading || isResponseLoading || areAllResponsesLoading;
+
+    const currentIndex = React.useMemo(() => {
+        if (!allResponses || !responseId) return -1;
+        return allResponses.findIndex(r => r.id === responseId);
+    }, [allResponses, responseId]);
+
+    const navigateToResponse = (index: number) => {
+        if (allResponses && index >= 0 && index < allResponses.length) {
+            const newResponseId = allResponses[index].id;
+            router.push(`/admin/surveys/${surveyId}/results/${newResponseId}`);
+        }
+    };
+    
+    const totalResponses = allResponses?.length ?? 0;
+    const canGoBack = currentIndex > 0;
+    const canGoForward = totalResponses > 0 && currentIndex < totalResponses - 1;
+
 
     if (isLoading) {
         return (
             <div className="w-full max-w-3xl mx-auto p-4 md:p-6 lg:p-8">
-                <Skeleton className="h-8 w-48 mb-6" />
+                <Skeleton className="h-10 w-full mb-6" />
                 <Skeleton className="h-10 w-3/4 mb-2" />
                 <Skeleton className="h-5 w-1/2 mb-8" />
                 <div className="space-y-6">
@@ -105,11 +127,36 @@ export default function ResponseDetailPage() {
     const answersMap = new Map(response.answers.map(a => [a.questionId, a.value]));
 
     return (
-        <div className="w-full max-w-3xl mx-auto p-4 md:p-6 lg:p-8">
-            <Button variant="ghost" onClick={() => router.push(`/admin/surveys/${surveyId}/results?view=responses`)} className="mb-4 -ml-4">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to All Responses
-            </Button>
+        <div className="w-full max-w-3xl mx-auto">
+            <div className="sticky top-14 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-4 border-b">
+                <div className="flex justify-between items-center">
+                    <Button variant="ghost" onClick={() => router.push(`/admin/surveys/${surveyId}/results?view=responses`)}>
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to All Responses
+                    </Button>
+
+                    {allResponses && totalResponses > 0 && currentIndex !== -1 && (
+                        <div className="flex items-center gap-2">
+                            <Button variant="outline" size="icon" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="Go to first response">
+                                <ChevronsLeft className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack} aria-label="Go to previous response">
+                                <ChevronLeft className="h-4 w-4" />
+                            </Button>
+                            <span className="text-sm font-medium text-muted-foreground tabular-nums w-20 text-center">
+                                {currentIndex + 1} / {totalResponses}
+                            </span>
+                            <Button variant="outline" size="icon" onClick={() => navigateToResponse(currentIndex + 1)} disabled={!canGoForward} aria-label="Go to next response">
+                                <ChevronRight className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="icon" onClick={() => navigateToResponse(totalResponses - 1)} disabled={!canGoForward} aria-label="Go to last response">
+                                <ChevronsRight className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+            
             <Card>
                 <CardHeader>
                     <CardTitle>Survey Response</CardTitle>
