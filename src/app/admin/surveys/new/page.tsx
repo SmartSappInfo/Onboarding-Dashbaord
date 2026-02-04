@@ -226,157 +226,165 @@ export default function NewSurveyPage() {
     const slug = (form.watch('title') || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     return (
-        <FormProvider {...form}>
-            <Stepper currentStep={step} />
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                
-                {/* Step 1: Details */}
-                <Card className={cn(step !== 1 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Survey Details</CardTitle>
-                        <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Survey Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description / Instructions</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-                
-                {/* Step 2: Builder */}
-                <div className={cn(step !== 2 && 'hidden')}>
-                    <SurveyFormBuilder />
-                </div>
-                
-                {/* Step 3: Thank You Page */}
-                <Card className={cn(step !== 3 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Thank You Page</CardTitle>
-                        <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="thankYouTitle"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Thank You Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Thank You!" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="thankYouDescription"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Thank You Message</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Your response has been recorded." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </CardContent>
-                </Card>
-
-                {/* Step 4: Publish */}
-                <Card className={cn(step !== 4 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Publish</CardTitle>
-                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="bannerImageUrl"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Banner Image</FormLabel>
-                                    <FormControl>
-                                        <MediaSelect {...field} filterType="image" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                    <SelectValue placeholder="Select survey status" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="draft">Draft</SelectItem>
-                                    <SelectItem value="published">Published</SelectItem>
-                                    <SelectItem value="archived">Archived</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                        {slug && (
-                            <FormItem>
-                                <FormLabel>Survey URL</FormLabel>
-                                <p className="text-sm text-muted-foreground">Once published, your survey will be available at this URL. The URL is generated from the survey title.</p>
-                                <Link href={`/surveys/${slug}`} target="_blank" className="text-primary hover:underline break-all">
-                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${slug}` : `/surveys/${slug}`}
-                                </Link>
-                            </FormItem>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <div className="flex justify-between items-center mt-12">
-                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
-                    <div className="flex items-center gap-4">
-                        {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
-                        {step < 4 ? (
-                            <Button type="button" onClick={handleNext}>Next</Button>
-                        ) : (
-                             <div className="flex items-center gap-4">
-                                <SurveyPreviewButton />
-                                <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
+        <div className="w-full md:w-[70%] mx-auto">
+            <FormProvider {...form}>
+                <Stepper currentStep={step} />
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    
+                    {/* Step 1: Details */}
+                    <Card className={cn(step !== 1 && 'hidden')}>
+                        <CardHeader>
+                            <CardTitle>Survey Details</CardTitle>
+                            <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-8">
+                                <FormField
+                                    control={form.control}
+                                    name="title"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Survey Title</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Description / Instructions</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                             </div>
-                        )}
+                        </CardContent>
+                    </Card>
+                    
+                    {/* Step 2: Builder */}
+                    <div className={cn(step !== 2 && 'hidden')}>
+                        <SurveyFormBuilder />
                     </div>
-                </div>
-            </form>
-        </FormProvider>
+                    
+                    {/* Step 3: Thank You Page */}
+                    <Card className={cn(step !== 3 && 'hidden')}>
+                        <CardHeader>
+                            <CardTitle>Thank You Page</CardTitle>
+                            <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-8">
+                                <FormField
+                                    control={form.control}
+                                    name="thankYouTitle"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Thank You Title</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Thank You!" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="thankYouDescription"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Thank You Message</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Your response has been recorded." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Step 4: Publish */}
+                    <Card className={cn(step !== 4 && 'hidden')}>
+                        <CardHeader>
+                            <CardTitle>Publish</CardTitle>
+                            <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-8">
+                                <FormField
+                                    control={form.control}
+                                    name="bannerImageUrl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Banner Image</FormLabel>
+                                            <FormControl>
+                                                <MediaSelect {...field} filterType="image" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                            <SelectValue placeholder="Select survey status" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="draft">Draft</SelectItem>
+                                            <SelectItem value="published">Published</SelectItem>
+                                            <SelectItem value="archived">Archived</SelectItem>
+                                        </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                {slug && (
+                                    <FormItem>
+                                        <FormLabel>Survey URL</FormLabel>
+                                        <p className="text-sm text-muted-foreground">Once published, your survey will be available at this URL. The URL is generated from the survey title.</p>
+                                        <Link href={`/surveys/${slug}`} target="_blank" className="text-primary hover:underline break-all">
+                                            {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${slug}` : `/surveys/${slug}`}
+                                        </Link>
+                                    </FormItem>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <div className="flex justify-between items-center mt-12">
+                        <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
+                        <div className="flex items-center gap-4">
+                            {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                            {step < 4 ? (
+                                <Button type="button" onClick={handleNext}>Next</Button>
+                            ) : (
+                                <div className="flex items-center gap-4">
+                                    <SurveyPreviewButton />
+                                    <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </form>
+            </FormProvider>
+        </div>
     );
 }
 

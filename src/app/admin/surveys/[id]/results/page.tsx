@@ -291,7 +291,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading || areResponsesLoading) {
         return (
-            <div className="max-w-6xl mx-auto">
+            <div className="w-full lg:max-w-6xl mx-auto">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -317,7 +317,7 @@ export default function SurveyResultsPage() {
 
     return (
         <>
-            <div className="max-w-6xl mx-auto">
+            <div className="w-full lg:max-w-6xl mx-auto">
                 <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
                     <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
                         <ArrowLeft className="mr-2 h-4 w-4" />

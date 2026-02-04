@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -257,33 +258,35 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                         <CardTitle>Survey Details</CardTitle>
                         <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Survey Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="description"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Description / Instructions</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    <CardContent>
+                        <div className="space-y-8">
+                            <FormField
+                                control={form.control}
+                                name="title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Survey Title</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="description"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Description / Instructions</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
                 
@@ -298,33 +301,35 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                         <CardTitle>Thank You Page</CardTitle>
                         <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="thankYouTitle"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Thank You Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Thank You!" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="thankYouDescription"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Thank You Message</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Your response has been recorded." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                    <CardContent>
+                         <div className="space-y-8">
+                            <FormField
+                                control={form.control}
+                                name="thankYouTitle"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Thank You Title</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Thank You!" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="thankYouDescription"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Thank You Message</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Your response has been recorded." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -334,51 +339,53 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                         <CardTitle>Publish</CardTitle>
                         <CardDescription>Configure the final settings and publish your survey.</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-8">
-                        <FormField
-                            control={form.control}
-                            name="bannerImageUrl"
-                            render={({ field }) => (
+                    <CardContent>
+                        <div className="space-y-8">
+                            <FormField
+                                control={form.control}
+                                name="bannerImageUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Banner Image</FormLabel>
+                                        <FormControl>
+                                            <MediaSelect {...field} filterType="image" />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Banner Image</FormLabel>
+                                    <FormLabel>Status</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
-                                        <MediaSelect {...field} filterType="image" />
+                                        <SelectTrigger>
+                                        <SelectValue placeholder="Select survey status" />
+                                        </SelectTrigger>
                                     </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="draft">Draft</SelectItem>
+                                        <SelectItem value="published">Published</SelectItem>
+                                        <SelectItem value="archived">Archived</SelectItem>
+                                    </SelectContent>
+                                    </Select>
                                     <FormMessage />
                                 </FormItem>
+                                )}
+                            />
+                            {survey && (
+                                <FormItem>
+                                    <FormLabel>Survey URL</FormLabel>
+                                    <p className="text-sm text-muted-foreground">Once published, your survey will be available at:</p>
+                                    <Link href={`/surveys/${survey.slug}`} target="_blank" className="text-primary hover:underline break-all">
+                                        {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}` : `/surveys/${survey.slug}`}
+                                    </Link>
+                                </FormItem>
                             )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="status"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Status</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger>
-                                    <SelectValue placeholder="Select survey status" />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    <SelectItem value="draft">Draft</SelectItem>
-                                    <SelectItem value="published">Published</SelectItem>
-                                    <SelectItem value="archived">Archived</SelectItem>
-                                </SelectContent>
-                                </Select>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                         {survey && (
-                            <FormItem>
-                                <FormLabel>Survey URL</FormLabel>
-                                <p className="text-sm text-muted-foreground">Once published, your survey will be available at:</p>
-                                <Link href={`/surveys/${survey.slug}`} target="_blank" className="text-primary hover:underline break-all">
-                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}` : `/surveys/${survey.slug}`}
-                                </Link>
-                            </FormItem>
-                        )}
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -407,7 +414,7 @@ export default function EditSurveyPage() {
     const surveyId = params.id as string;
 
     return (
-        <div className="w-[70%] mx-auto">
+        <div className="w-full md:w-[70%] mx-auto">
             {surveyId ? <EditSurveyForm surveyId={surveyId} /> : <p>Survey ID not found.</p>}
         </div>
     );
