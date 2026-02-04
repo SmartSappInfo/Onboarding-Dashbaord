@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to generate a summary of survey results.
@@ -28,7 +29,7 @@ const summaryGenerationPrompt = ai.definePrompt({
         responsesJson: z.string(),
     }) },
     output: { schema: GenerateSurveySummaryOutputSchema },
-    prompt: `You are a professional data analyst tasked with summarizing survey results.
+    prompt: `You are a professional data analyst tasked with creating a concise and actionable summary of survey results.
 
     Here is the survey structure:
     Title: {{{title}}}
@@ -44,13 +45,11 @@ const summaryGenerationPrompt = ai.definePrompt({
     {{{responsesJson}}}
     \`\`\`
 
-    Please provide a professional, insightful summary of the results. Your summary should:
-    1.  Start with a high-level overview stating the total number of responses and the key findings.
-    2.  For each significant question, provide a quantitative and qualitative analysis. For example, for multiple-choice questions, give percentages. For text questions, identify common themes or representative quotes.
-    3.  Identify any interesting correlations, patterns, or unexpected trends you notice in the data.
-    4.  Conclude with a bulleted list of 3-5 actionable insights or key takeaways for the survey creator.
-    
-    Format your response in simple, clean Markdown for readability. Use headings (#), bold text (**text**), and bullet points (* point). Do not use complex markdown like tables.
+    Please provide a high-level summary of the results. Your summary MUST:
+    1.  Start with a brief overview stating the total number of responses and the 1-2 most critical findings.
+    2.  Do NOT just list the results for each question. Instead, synthesize the data to identify key themes, patterns, and correlations.
+    3.  Conclude with a bulleted list of 3-5 actionable insights or key takeaways for the survey creator.
+    4.  Format your response in simple, clean Markdown for readability. Use headings (#), bold text (**text**), and bullet points (* point). Do not use complex markdown like tables.
     `,
 });
 

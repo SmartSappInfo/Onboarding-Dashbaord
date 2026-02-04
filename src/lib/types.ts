@@ -125,4 +125,10 @@ export interface SurveyResponse {
   }[];
 }
 
+export interface SurveySummary {
+  id: string;
+  summary: string;
+  createdAt: string; // ISO string
+  prompt?: string;
+}
     

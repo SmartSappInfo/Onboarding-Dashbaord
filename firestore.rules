@@ -65,5 +65,10 @@ service cloud.firestore {
       // Admins can read and list all responses.
       allow read, list: if isAuthorized();
     }
+
+    match /surveys/{surveyId}/summaries/{summaryId} {
+      // Admins can create and read all summaries for a survey.
+      allow create, read, list: if isAuthorized();
+    }
   }
 }

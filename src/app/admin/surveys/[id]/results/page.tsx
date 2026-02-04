@@ -4,9 +4,9 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
-import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { useDoc, useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
+import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveySummary } from "@/lib/types";
+import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,18 +17,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
-import {
-  AlertDialog,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { format } from 'date-fns';
 import Link from "next/link";
+import AISummariesView from "./components/ai-summaries-view";
 
 
 // ============================================================================
@@ -377,10 +370,9 @@ export default function SurveyResultsPage() {
     const { id: surveyId } = params;
     const { toast } = useToast();
 
-    const [summary, setSummary] = React.useState<string | null>(null);
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     
-    const activeTab = searchParams.get('view') || 'summary';
+    const activeTab = searchParams.get('view') || 'analytics';
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -396,15 +388,28 @@ export default function SurveyResultsPage() {
     const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
 
     const handleGenerateSummary = async () => {
-        if (!survey || !responses) {
+        if (!survey || !responses || !firestore) {
             toast({ variant: 'destructive', title: 'Survey data not loaded yet.' });
             return;
         }
         setIsGeneratingSummary(true);
-        setSummary(null);
         try {
             const result = await generateSurveySummary({ survey, responses });
-            setSummary(result.summary);
+            
+            const summariesCollection = collection(firestore, `surveys/${surveyId}/summaries`);
+            const summaryData = {
+                summary: result.summary,
+                createdAt: new Date().toISOString(),
+            };
+            
+            await addDoc(summariesCollection, summaryData);
+            
+            toast({
+                title: "AI Summary Generated",
+                description: "The new summary has been saved under the 'AI Summaries' tab.",
+            });
+            router.push(`/admin/surveys/${surveyId}/results?view=ai-summaries`);
+            
         } catch (e: any) {
             toast({ variant: 'destructive', title: 'AI Summary Failed', description: e.message });
         } finally {
@@ -500,23 +505,23 @@ export default function SurveyResultsPage() {
                 <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full">
                     <div className="flex justify-between items-center">
                         <TabsList>
-                            <TabsTrigger value="summary">Summary</TabsTrigger>
+                            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                            <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
                             <TabsTrigger value="responses">All Responses</TabsTrigger>
                         </TabsList>
-                        {activeTab === 'summary' && (
-                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
-                                {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
-                            </RainbowButton>
-                        )}
-                        {activeTab === 'responses' && (
+                        {activeTab === 'responses' ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
                                 <Download className="mr-2 h-4 w-4" />
                                 Export as CSV
                             </Button>
+                        ) : (
+                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                                {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
+                            </RainbowButton>
                         )}
                     </div>
-                    <TabsContent value="summary">
+                    <TabsContent value="analytics">
                          <Card className="my-6 w-fit rounded-xl shadow-md">
                             <CardHeader className="p-5">
                                 <CardTitle className="text-base">Total Responses</CardTitle>
@@ -527,34 +532,19 @@ export default function SurveyResultsPage() {
                         </Card>
                         {responses && <AnalyticsView survey={survey} responses={responses} />}
                     </TabsContent>
+                     <TabsContent value="ai-summaries">
+                        {responses ? (
+                            <AISummariesView survey={survey} responses={responses} />
+                        ) : (
+                            <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
+                        )}
+                    </TabsContent>
                     <TabsContent value="responses">
                         <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
                     </TabsContent>
                 </Tabs>
                 
             </div>
-             <AlertDialog open={!!summary} onOpenChange={(open) => !open && setSummary(null)}>
-                <AlertDialogContent className="max-w-3xl">
-                    <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                           <Sparkles className="h-5 w-5 text-primary" />
-                           AI-Generated Summary
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                            An analysis of the survey results based on {responses?.length ?? 0} response(s).
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <ScrollArea className="max-h-[60vh] pr-6">
-                        <div
-                            className="prose prose-sm dark:prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: summary || '' }}
-                        />
-                    </ScrollArea>
-                    <AlertDialogFooter>
-                        <Button onClick={() => setSummary(null)}>Close</Button>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </>
     );
 }

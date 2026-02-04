@@ -322,6 +322,27 @@
         }
       },
       "required": ["surveyId", "submittedAt", "answers"]
+    },
+    "SurveySummary": {
+      "title": "Survey Summary",
+      "type": "object",
+      "description": "Represents an AI-generated summary of a survey's results.",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "The AI-generated summary content in Markdown format."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The ISO timestamp when the summary was generated."
+        },
+        "prompt": {
+          "type": "string",
+          "description": "The user-provided prompt for this specific summary, if any."
+        }
+      },
+      "required": ["summary", "createdAt"]
     }
   },
   "auth": {
@@ -390,6 +411,16 @@
             "$ref": "#/entities/SurveyResponse"
           },
           "description": "Stores user responses for a specific survey."
+        }
+      },
+      {
+        "path": "/surveys/{surveyId}/summaries/{summaryId}",
+        "definition": {
+          "entityName": "SurveySummary",
+          "schema": {
+            "$ref": "#/entities/SurveySummary"
+          },
+          "description": "Stores AI-generated summaries for a specific survey."
         }
       }
     ]
