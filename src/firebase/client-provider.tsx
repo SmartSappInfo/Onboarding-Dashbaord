@@ -4,7 +4,13 @@
 import React, { useMemo, useEffect, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase';
-import { createUserWithEmailAndPassword, getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { 
+    createUserWithEmailAndPassword, 
+    getAuth, 
+    signInWithEmailAndPassword,
+    setPersistence,
+    browserLocalPersistence
+} from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 
@@ -17,6 +23,16 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     // Initialize Firebase on the client side, once per component mount.
     return initializeFirebase();
   }, []);
+
+  // This useEffect hook sets the auth persistence to 'local' to keep the user signed in.
+  useEffect(() => {
+    if (firebaseServices.auth) {
+        setPersistence(firebaseServices.auth, browserLocalPersistence)
+          .catch((error) => {
+              console.error("Firebase Auth Persistence Error:", error);
+          });
+    }
+  }, [firebaseServices.auth]);
 
   // This useEffect hook will create a default admin user for development purposes.
   useEffect(() => {
@@ -75,5 +91,3 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     </FirebaseProvider>
   );
 }
-
-    
