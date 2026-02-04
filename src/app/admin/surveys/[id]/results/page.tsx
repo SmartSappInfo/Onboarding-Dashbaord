@@ -5,13 +5,13 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
-import { doc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, collection, query, orderBy } from 'firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { ArrowLeft, Star, Sparkles, Loader2 } from "lucide-react";
+import { ArrowLeft, Star, Sparkles, Loader2, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
@@ -400,6 +400,51 @@ export default function SurveyResultsPage() {
         }
     };
 
+    const handleExport = () => {
+        if (!survey || !responses) {
+            toast({ variant: "destructive", title: "No data to export" });
+            return;
+        }
+
+        const questions = survey.elements.filter(isQuestion);
+        const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
+        const questionIds = questions.map(q => q.id);
+
+        const headerRow = questionIds.map(id => `"${questionIdToTitleMap.get(id)?.replace(/"/g, '""') ?? id}"`).join(',');
+
+        const rows = responses.map(response => {
+            const answerMap = new Map(response.answers.map(a => [a.questionId, a.value]));
+            return questionIds.map(id => {
+                const value = answerMap.get(id);
+                let cellValue = '';
+                if (value !== undefined && value !== null) {
+                    if (Array.isArray(value)) {
+                        cellValue = JSON.stringify(value);
+                    } else if (typeof value === 'object') {
+                        cellValue = JSON.stringify(value);
+                    } else {
+                        cellValue = String(value);
+                    }
+                }
+                return `"${cellValue.replace(/"/g, '""')}"`;
+            }).join(',');
+        });
+
+        const csvContent = [headerRow, ...rows].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        
+        const url = URL.createObjectURL(blob);
+        link.href = url;
+        link.setAttribute('download', `${survey.slug}-responses.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        
+        toast({ title: "Export Started", description: "Your CSV file is downloading." });
+    };
+
     if (isSurveyLoading) {
         return (
             <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
@@ -450,6 +495,12 @@ export default function SurveyResultsPage() {
                                 {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
                             </RainbowButton>
                         )}
+                        {activeTab === 'responses' && (
+                            <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export as CSV
+                            </Button>
+                        )}
                     </div>
                     <TabsContent value="summary">
                          <Card className="my-6 w-fit rounded-xl shadow-md">
@@ -493,3 +544,5 @@ export default function SurveyResultsPage() {
         </>
     );
 }
+
+    
