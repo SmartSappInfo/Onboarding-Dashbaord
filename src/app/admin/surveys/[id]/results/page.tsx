@@ -466,7 +466,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
-            <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
+            <div className="w-full md:w-4/5 mx-auto h-full flex flex-col">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -491,8 +491,8 @@ export default function SurveyResultsPage() {
     }
 
     return (
-        <>
-            <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
+        <div className="w-full md:w-4/5 mx-auto h-full flex flex-col">
+            <div className="flex-shrink-0">
                 <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
                     <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -501,50 +501,49 @@ export default function SurveyResultsPage() {
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
                 <p className="text-muted-foreground mb-4">Results & Analytics</p>
-
-                <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full">
-                    <div className="flex justify-between items-center">
-                        <TabsList>
-                            <TabsTrigger value="responses">All Responses</TabsTrigger>
-                            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                            <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
-                        </TabsList>
-                        {activeTab === 'responses' ? (
-                            <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Export as CSV
-                            </Button>
-                        ) : (
-                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
-                                {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
-                            </RainbowButton>
-                        )}
-                    </div>
-                     <TabsContent value="responses">
-                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
-                    </TabsContent>
-                    <TabsContent value="analytics">
-                         <Card className="my-6 w-fit rounded-xl shadow-md">
-                            <CardHeader className="p-5">
-                                <CardTitle className="text-base">Total Responses</CardTitle>
-                            </CardHeader>
-                            <CardContent className="p-5 pt-0">
-                                <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
-                            </CardContent>
-                        </Card>
-                        {responses && <AnalyticsView survey={survey} responses={responses} />}
-                    </TabsContent>
-                     <TabsContent value="ai-summaries">
-                        {responses ? (
-                            <AISummariesView survey={survey} responses={responses} />
-                        ) : (
-                            <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
-                        )}
-                    </TabsContent>
-                </Tabs>
-                
             </div>
-        </>
+
+            <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex flex-col flex-1 min-h-0">
+                <div className="flex justify-between items-center flex-shrink-0">
+                    <TabsList>
+                        <TabsTrigger value="responses">All Responses</TabsTrigger>
+                        <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                        <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
+                    </TabsList>
+                    {activeTab === 'responses' ? (
+                        <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Export as CSV
+                        </Button>
+                    ) : (
+                         <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                            {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
+                        </RainbowButton>
+                    )}
+                </div>
+                 <TabsContent value="responses" className="flex-1 overflow-y-auto mt-4">
+                    <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
+                </TabsContent>
+                <TabsContent value="analytics" className="flex-1 overflow-y-auto mt-4">
+                     <Card className="my-6 w-fit rounded-xl shadow-md">
+                        <CardHeader className="p-5">
+                            <CardTitle className="text-base">Total Responses</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-5 pt-0">
+                            <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
+                        </CardContent>
+                    </Card>
+                    {responses && <AnalyticsView survey={survey} responses={responses} />}
+                </TabsContent>
+                 <TabsContent value="ai-summaries" className="flex-1 overflow-y-auto mt-4">
+                    {responses ? (
+                        <AISummariesView survey={survey} responses={responses} />
+                    ) : (
+                        <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
+                    )}
+                </TabsContent>
+            </Tabs>
+        </div>
     );
 }
