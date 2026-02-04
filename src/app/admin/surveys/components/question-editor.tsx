@@ -199,6 +199,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onSelect={() => {
                     const newSelection = new Set(selectedValues);
                     if (newSelection.has(option.value)) {
