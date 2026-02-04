@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -23,7 +22,6 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo, GoogleIcon } from '@/components/icons';
-import { useState } from 'react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -37,7 +35,6 @@ export default function LoginPage() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
-  const [isSeeding, setIsSeeding] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,57 +43,6 @@ export default function LoginPage() {
       password: '',
     },
   });
-  
-  const handleSeedAdmin = async () => {
-    if (!auth || !firestore) {
-      toast({ variant: 'destructive', title: 'Firebase not available.' });
-      return;
-    }
-
-    setIsSeeding(true);
-    const email = 'admin@smartsapp.com';
-    const password = 'SecurePassword123!';
-
-    try {
-      // First, try to sign in to check if the user exists
-      await signInWithEmailAndPassword(auth, email, password);
-      const user = auth.currentUser;
-      if (user) {
-        const userDocRef = doc(firestore, 'users', user.uid);
-        await setDoc(userDocRef, { isAuthorized: true }, { merge: true });
-        toast({ title: 'Admin Already Exists', description: 'The default admin has been re-authorized.' });
-        await auth.signOut();
-      }
-    } catch (error: any) {
-      if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-        // User doesn't exist, so create them
-        try {
-          const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-          const user = userCredential.user;
-          const userDocRef = doc(firestore, 'users', user.uid);
-          await setDoc(userDocRef, {
-            name: 'Default Admin',
-            email: user.email,
-            phone: '000-000-0000',
-            isAuthorized: true,
-            createdAt: new Date().toISOString(),
-          });
-          toast({ title: 'Admin Seeded', description: 'Default admin user has been created and authorized.' });
-          await auth.signOut();
-        } catch (creationError) {
-          console.error("Failed to create seed admin:", creationError);
-          toast({ variant: 'destructive', title: 'Seeding Failed', description: 'Could not create the admin user.' });
-        }
-      } else {
-        // Another sign-in error occurred
-        console.error("Error during admin seed check:", error);
-        toast({ variant: 'destructive', title: 'Seeding Error', description: 'An unknown error occurred.' });
-      }
-    } finally {
-      setIsSeeding(false);
-    }
-  };
-
 
   const onSubmit = (data: FormData) => {
     form.control.disabled = true;
@@ -266,15 +212,6 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mt-4">
-          <Button variant="link" onClick={handleSeedAdmin} disabled={isSeeding}>
-            {isSeeding ? 'Seeding...' : 'Seed Default Admin'}
-          </Button>
-        </div>
-       )}
     </div>
   );
 }
-
-    
