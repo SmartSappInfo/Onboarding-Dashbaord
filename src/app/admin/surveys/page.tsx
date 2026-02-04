@@ -10,7 +10,7 @@ import type { Survey } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,7 +134,7 @@ export default function SurveysPage() {
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead className="w-[120px]">Responses</TableHead>
                 <TableHead className="w-[180px]">Created At</TableHead>
-                <TableHead className="w-[50px] text-right">Actions</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -145,7 +145,7 @@ export default function SurveysPage() {
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-10" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : surveys && surveys.length > 0 ? (
@@ -158,42 +158,59 @@ export default function SurveysPage() {
                       {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit Survey</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
-                            <BarChart2 className="mr-2 h-4 w-4" />
-                            <span>View Results</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={`/surveys/${survey.slug}`} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              <span>View Public Page</span>
-                            </a>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onSelect={(e) => e.preventDefault()}
-                              onClick={() => setSurveyToDelete(survey)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete Survey</span>
+                      <div className="flex items-center justify-end">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => {
+                              if (typeof window !== 'undefined') {
+                                const url = `${window.location.origin}/surveys/${survey.slug}`;
+                                navigator.clipboard.writeText(url);
+                                toast({ title: 'Link Copied!', description: 'Survey page URL copied to clipboard.' });
+                              }
+                          }}
+                        >
+                          <span className="sr-only">Copy survey link</span>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit Survey</span>
                             </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
+                              <BarChart2 className="mr-2 h-4 w-4" />
+                              <span>View Results</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <a href={`/surveys/${survey.slug}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                <span>View Public Page</span>
+                              </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                                onSelect={(e) => e.preventDefault()}
+                                onClick={() => setSurveyToDelete(survey)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Survey</span>
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
