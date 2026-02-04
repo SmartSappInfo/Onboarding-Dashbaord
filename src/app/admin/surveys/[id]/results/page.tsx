@@ -89,13 +89,6 @@ function RatingResult({ result }: { result: Extract<AnalyzedResult, { type: 'rat
     
     return (
         <div>
-            <div className="flex items-center gap-2 mb-4">
-                <span className="font-semibold">Average Rating:</span>
-                <div className="flex items-center gap-1">
-                    <span className="font-bold text-lg">{result.average.toFixed(2)}</span>
-                    <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                </div>
-            </div>
             <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={result.data} layout="vertical" margin={{ left: 20, right: 30 }}>
@@ -211,17 +204,17 @@ export default function SurveyResultsPage() {
             const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
     
             let scoreData: { totalScore?: number, averageScore?: number } = {};
-            if (question.enableScoring) {
+            if (question.enableScoring || question.type === 'rating') {
                 let totalScore = 0;
                 let scoredResponses = 0;
     
                 questionResponses.forEach(value => {
                     let responseScore = 0;
                     let hasScore = false;
-                    if (question.type === 'yes-no') {
+                    if (question.type === 'yes-no' && question.enableScoring) {
                         if (value === 'Yes') { responseScore = question.yesScore ?? 0; hasScore = true; }
                         if (value === 'No') { responseScore = question.noScore ?? 0; hasScore = true; }
-                    } else if (question.type === 'multiple-choice' || question.type === 'dropdown') {
+                    } else if ((question.type === 'multiple-choice' || question.type === 'dropdown') && question.enableScoring) {
                         if (question.options && question.optionScores) {
                             const optionIndex = question.options.indexOf(value as string);
                             if (optionIndex > -1 && question.optionScores[optionIndex] !== undefined) {
@@ -229,7 +222,7 @@ export default function SurveyResultsPage() {
                                 hasScore = true;
                             }
                         }
-                    } else if (question.type === 'checkboxes' && question.options && question.optionScores) {
+                    } else if (question.type === 'checkboxes' && question.enableScoring) {
                         const selectedOptions = (value as any)?.options || value as string[];
                         if (Array.isArray(selectedOptions)) {
                             hasScore = true; // A checkbox response is considered "scored" even if total is 0.
@@ -337,7 +330,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading || areResponsesLoading) {
         return (
-            <div className="w-full lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
+            <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -394,7 +387,7 @@ export default function SurveyResultsPage() {
                                     {result.total} {result.total === 1 ? 'response' : 'responses'}
                                 </CardDescription>
                             </CardHeader>
-                            {result.question.enableScoring && result.averageScore !== undefined && (
+                            {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
                                 <CardContent className="border-t pt-4">
                                     <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
                                     <div className="flex gap-8">
