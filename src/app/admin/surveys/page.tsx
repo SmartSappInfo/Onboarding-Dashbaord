@@ -44,7 +44,7 @@ function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     
     const { data: responses, isLoading } = useCollection<{id: string}>(responsesCol);
 
-    if (isLoading) return <Skeleton className="h-5 w-8 mx-auto" />;
+    if (isLoading) return <Skeleton className="h-5 w-8" />;
 
     return <>{responses?.length ?? 0}</>;
 }
@@ -186,7 +186,13 @@ export default function SurveysPage() {
                   <TableRow key={survey.id}>
                     <TableCell className="font-medium">{survey.title}</TableCell>
                     <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
-                    <TableCell className="text-center"><SurveyResponseCount surveyId={survey.id} /></TableCell>
+                    <TableCell className="text-center">
+                        <Button variant="link" asChild className="font-semibold">
+                            <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
+                                <SurveyResponseCount surveyId={survey.id} />
+                            </Link>
+                        </Button>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
                     </TableCell>

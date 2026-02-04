@@ -1,11 +1,11 @@
 
 'use client';
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
-import { doc, collection, query } from 'firebase/firestore';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -18,15 +18,21 @@ import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
 import {
   AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { format, formatDistanceToNow } from 'date-fns';
+import Link from "next/link";
 
+
+// ============================================================================
+// ANALYTICS VIEW COMPONENTS
+// ============================================================================
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -48,7 +54,6 @@ type AnalyzedResult = {
     | { type: 'unknown'; data: any[] }
 );
 
-
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
@@ -61,7 +66,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
-
 
 function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'chart' }> }) {
     if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
@@ -106,7 +110,6 @@ function RatingResult({ result }: { result: Extract<AnalyzedResult, { type: 'rat
         </div>
     );
 }
-
 
 function CheckboxResult({ result }: { result: Extract<AnalyzedResult, { type: 'checkbox' }> }) {
     if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
@@ -154,60 +157,16 @@ function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text'
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
-export default function SurveyResultsPage() {
-    const params = useParams();
-    const router = useRouter();
-    const firestore = useFirestore();
-    const { id: surveyId } = params;
-    const { toast } = useToast();
-
-    const [summary, setSummary] = React.useState<string | null>(null);
-    const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
-
-    const surveyDocRef = useMemoFirebase(() => {
-        if (!firestore || !surveyId) return null;
-        return doc(firestore, 'surveys', surveyId as string);
-    }, [firestore, surveyId]);
-
-    const responsesColRef = useMemoFirebase(() => {
-        if (!firestore || !surveyId) return null;
-        return query(collection(firestore, `surveys/${surveyId}/responses`));
-    }, [firestore, surveyId]);
-
-    const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
-    const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
-
-    const handleGenerateSummary = async () => {
-        if (!survey || !responses) {
-            toast({ variant: 'destructive', title: 'Survey data not loaded yet.' });
-            return;
-        }
-        setIsGeneratingSummary(true);
-        setSummary(null); // Clear previous summary
-        try {
-            const result = await generateSurveySummary({ survey, responses });
-            setSummary(result.summary);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'AI Summary Failed', description: e.message });
-        } finally {
-            setIsGeneratingSummary(false);
-        }
-    };
-
-
+function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
     const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
         if (!survey || !responses) return [];
-    
         const questions = survey.elements.filter(isQuestion);
-    
         return questions.map(question => {
             const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
-    
             let scoreData: { totalScore?: number, averageScore?: number } = {};
             if (question.enableScoring || question.type === 'rating') {
                 let totalScore = 0;
                 let scoredResponses = 0;
-    
                 questionResponses.forEach(value => {
                     let responseScore = 0;
                     let hasScore = false;
@@ -225,7 +184,7 @@ export default function SurveyResultsPage() {
                     } else if (question.type === 'checkboxes' && question.enableScoring) {
                         const selectedOptions = (value as any)?.options || value as string[];
                         if (Array.isArray(selectedOptions)) {
-                            hasScore = true; // A checkbox response is considered "scored" even if total is 0.
+                            hasScore = true;
                             selectedOptions.forEach(optionLabel => {
                                 const optionIndex = question.options.indexOf(optionLabel);
                                 if (optionIndex > -1 && question.optionScores && question.optionScores[optionIndex] !== undefined) {
@@ -243,7 +202,6 @@ export default function SurveyResultsPage() {
                         scoredResponses++;
                     }
                 });
-    
                 scoreData.totalScore = totalScore;
                 scoreData.averageScore = scoredResponses > 0 ? totalScore / scoredResponses : 0;
             }
@@ -251,46 +209,26 @@ export default function SurveyResultsPage() {
             if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
                 const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
                 const counts = Object.fromEntries(options.map(opt => [opt, 0]));
-    
-                questionResponses.forEach(value => {
-                    if (typeof value === 'string' && value in counts) {
-                        counts[value]++;
-                    }
-                });
-    
+                questionResponses.forEach(value => { if (typeof value === 'string' && value in counts) counts[value]++; });
                 const total = questionResponses.length;
-                const data = Object.entries(counts).map(([name, value]) => ({
-                    name,
-                    value,
-                    percentage: total > 0 ? (value / total) * 100 : 0
-                }));
+                const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
                 return { question, type: 'chart', data, total, ...scoreData };
             }
     
             if (question.type === 'checkboxes') {
                 const counts = Object.fromEntries((question.options || []).map(opt => [opt, 0]));
                 if (question.allowOther) counts['Other'] = 0;
-                 
                 let otherText: string[] = [];
-    
                 questionResponses.forEach((value: any) => {
                     const selectedOptions = (value as any)?.options || value;
-                    if (Array.isArray(selectedOptions)) { 
-                        selectedOptions.forEach(v => { if (v in counts) counts[v]++; });
-                    }
+                    if (Array.isArray(selectedOptions)) { selectedOptions.forEach(v => { if (v in counts) counts[v]++; }); }
                     if (value.other && value.other.trim()) {
                         if ('Other' in counts) counts['Other']++;
                         otherText.push(value.other.trim());
                     }
                 });
-    
                 const totalRespondents = questionResponses.length;
-                const data = Object.entries(counts).map(([name, value]) => ({
-                     name,
-                     value,
-                     percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0
-                }));
-    
+                const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0 }));
                 return { question, type: 'checkbox', data, otherText, total: totalRespondents, ...scoreData };
             }
             
@@ -303,32 +241,166 @@ export default function SurveyResultsPage() {
                 const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
                 const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
                 let totalScore = 0;
-    
                 ratingResponses.forEach(rating => {
                     if (rating >= 1 && rating <= 5) {
                         counts[rating as keyof typeof counts]++;
                         totalScore += rating;
                     }
                 });
-                
                 const total = ratingResponses.length;
                 const average = total > 0 ? totalScore / total : 0;
-                const data = Object.entries(counts).map(([name, value]) => ({
-                    name: `${name} Star`,
-                    value,
-                    percentage: total > 0 ? (value / total) * 100 : 0
-                }));
-    
+                const data = Object.entries(counts).map(([name, value]) => ({ name: `${name} Star`, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
                 return { question, type: 'rating', data, total, average, ...scoreData };
             }
     
             return { question, type: 'unknown', data: [], ...scoreData };
         });
-    
     }, [survey, responses]);
 
+    return (
+        <div className="space-y-10 mt-8">
+            {analyzedResults.map((result, index) => (
+                <Card key={result.question.id} className="rounded-xl shadow-md overflow-hidden">
+                    <CardHeader className="pb-4">
+                        <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
+                        <CardDescription>{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
+                    </CardHeader>
+                    {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
+                        <CardContent className="border-t pt-4">
+                            <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
+                            <div className="flex gap-8">
+                                <div><p className="text-sm text-muted-foreground">Total Score</p><p className="text-2xl font-bold">{result.totalScore}</p></div>
+                                <div><p className="text-sm text-muted-foreground">Average Score</p><p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p></div>
+                            </div>
+                        </CardContent>
+                    )}
+                    <CardContent className="pt-2">
+                        {result.type === 'chart' && <ChartResult result={result} />}
+                        {result.type === 'rating' && <RatingResult result={result} />}
+                        {result.type === 'checkbox' && <CheckboxResult result={result} />}
+                        {result.type === 'text' && <TextResult result={result} />}
+                        {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}
+                    </CardContent>
+                </Card>
+            ))}
+        </div>
+    );
+}
 
-    if (isSurveyLoading || areResponsesLoading) {
+// ============================================================================
+// RESPONSES LIST VIEW
+// ============================================================================
+function ResponsesListView({ surveyId, responses, isLoading }: { surveyId: string, responses: SurveyResponse[], isLoading: boolean }) {
+    const router = useRouter();
+
+    const getAnswerPreview = (response: SurveyResponse) => {
+        if (!response.answers || response.answers.length === 0) return <span className="text-muted-foreground">No answer</span>;
+        const firstAnswer = response.answers[0].value;
+        if (typeof firstAnswer === 'string' && firstAnswer) {
+            return firstAnswer.length > 50 ? `${firstAnswer.substring(0, 50)}...` : firstAnswer;
+        }
+        if (Array.isArray(firstAnswer) && firstAnswer.length > 0) {
+            return firstAnswer.join(', ');
+        }
+        if (typeof firstAnswer === 'number') {
+            return String(firstAnswer);
+        }
+        if (typeof firstAnswer === 'object' && firstAnswer !== null) {
+            return JSON.stringify(firstAnswer);
+        }
+        return <span className="text-muted-foreground">No answer</span>;
+    }
+    
+    return (
+         <div className="mt-6 rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[200px]">Submitted</TableHead>
+                <TableHead>Answers Preview</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : responses && responses.length > 0 ? (
+                responses.map((response) => (
+                  <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${surveyId}/results/${response.id}`)}>
+                    <TableCell>
+                        <div className="font-medium">{format(new Date(response.submittedAt), "PPP p")}</div>
+                        <div className="text-sm text-muted-foreground">{formatDistanceToNow(new Date(response.submittedAt), { addSuffix: true })}</div>
+                    </TableCell>
+                    <TableCell>
+                        {getAnswerPreview(response)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={2} className="h-24 text-center">
+                    No responses yet.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+    )
+}
+
+
+// ============================================================================
+// MAIN PAGE COMPONENT
+// ============================================================================
+export default function SurveyResultsPage() {
+    const params = useParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const firestore = useFirestore();
+    const { id: surveyId } = params;
+    const { toast } = useToast();
+
+    const [summary, setSummary] = React.useState<string | null>(null);
+    const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
+    
+    const activeTab = searchParams.get('view') || 'summary';
+
+    const surveyDocRef = useMemoFirebase(() => {
+        if (!firestore || !surveyId) return null;
+        return doc(firestore, 'surveys', surveyId as string);
+    }, [firestore, surveyId]);
+
+    const responsesColRef = useMemoFirebase(() => {
+        if (!firestore || !surveyId) return null;
+        return query(collection(firestore, `surveys/${surveyId}/responses`), orderBy('submittedAt', 'desc'));
+    }, [firestore, surveyId]);
+
+    const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
+    const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+
+    const handleGenerateSummary = async () => {
+        if (!survey || !responses) {
+            toast({ variant: 'destructive', title: 'Survey data not loaded yet.' });
+            return;
+        }
+        setIsGeneratingSummary(true);
+        setSummary(null);
+        try {
+            const result = await generateSurveySummary({ survey, responses });
+            setSummary(result.summary);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'AI Summary Failed', description: e.message });
+        } finally {
+            setIsGeneratingSummary(false);
+        }
+    };
+
+    if (isSurveyLoading) {
         return (
             <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
                 <Skeleton className="h-8 w-48 mb-2" />
@@ -362,56 +434,39 @@ export default function SurveyResultsPage() {
                         <ArrowLeft className="mr-2 h-4 w-4" />
                         Back to Surveys
                     </Button>
-                     <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
-                        {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                        {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
-                    </RainbowButton>
                 </div>
                 <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
                 <p className="text-muted-foreground mb-4">Results & Analytics</p>
-                <Card className="mb-10 w-fit rounded-xl shadow-md">
-                    <CardHeader className="p-5">
-                        <CardTitle className="text-base">Total Responses</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-5 pt-0">
-                        <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
-                    </CardContent>
-                </Card>
 
-                <div className="space-y-10">
-                    {analyzedResults.map((result, index) => (
-                        <Card key={result.question.id} className="rounded-xl shadow-md overflow-hidden">
-                            <CardHeader className="pb-4">
-                                <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
-                                <CardDescription>
-                                    {result.total} {result.total === 1 ? 'response' : 'responses'}
-                                </CardDescription>
+                <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full">
+                    <div className="flex justify-between items-center">
+                        <TabsList>
+                            <TabsTrigger value="summary">Summary</TabsTrigger>
+                            <TabsTrigger value="responses">All Responses</TabsTrigger>
+                        </TabsList>
+                        {activeTab === 'summary' && (
+                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                                {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
+                            </RainbowButton>
+                        )}
+                    </div>
+                    <TabsContent value="summary">
+                         <Card className="my-6 w-fit rounded-xl shadow-md">
+                            <CardHeader className="p-5">
+                                <CardTitle className="text-base">Total Responses</CardTitle>
                             </CardHeader>
-                            {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
-                                <CardContent className="border-t pt-4">
-                                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
-                                    <div className="flex gap-8">
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Total Score</p>
-                                            <p className="text-2xl font-bold">{result.totalScore}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">Average Score</p>
-                                            <p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            )}
-                            <CardContent className="pt-2">
-                                {result.type === 'chart' && <ChartResult result={result} />}
-                                {result.type === 'rating' && <RatingResult result={result} />}
-                                {result.type === 'checkbox' && <CheckboxResult result={result} />}
-                                {result.type === 'text' && <TextResult result={result} />}
-                                {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}
+                            <CardContent className="p-5 pt-0">
+                                <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
                             </CardContent>
                         </Card>
-                    ))}
-                </div>
+                        {responses && <AnalyticsView survey={survey} responses={responses} />}
+                    </TabsContent>
+                    <TabsContent value="responses">
+                        <ResponsesListView surveyId={survey.id} responses={responses || []} isLoading={areResponsesLoading} />
+                    </TabsContent>
+                </Tabs>
+                
             </div>
              <AlertDialog open={!!summary} onOpenChange={(open) => !open && setSummary(null)}>
                 <AlertDialogContent className="max-w-3xl">
@@ -425,9 +480,10 @@ export default function SurveyResultsPage() {
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <ScrollArea className="max-h-[60vh] pr-6">
-                        <div className="text-sm whitespace-pre-wrap font-sans">
-                            {summary}
-                        </div>
+                        <div
+                            className="prose prose-sm dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: summary || '' }}
+                        />
                     </ScrollArea>
                     <AlertDialogFooter>
                         <Button onClick={() => setSummary(null)}>Close</Button>
