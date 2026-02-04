@@ -2,36 +2,46 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAuthorized() {
+      // Check if the user is an admin by looking at their profile.
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+    }
+
     // By default, deny all reads and writes.
     match /{document=**} {
       allow read, write: if false;
     }
 
     // --- Admin Rules ---
-    // Allow authenticated users full read/write access to these collections.
-    // This is for the admin dashboard functionality.
+    // Allow authenticated admins full read/write access to these collections.
     match /schools/{document=**} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      allow read, write: if isAuthorized();
     }
     match /meetings/{document=**} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      allow read, write: if isAuthorized();
     }
     match /media/{document=**} {
-      allow read, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      allow read, write: if isAuthorized();
     }
     
     // --- User Management Rules ---
     match /users/{userId} {
-      // Admins can read/write any user profile to authorize them
-      allow list, write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
-      // Users can create their own profile on signup
-      allow create: if request.auth.uid == userId;
-      // Users can read their own profile
-      allow get: if request.auth.uid == userId;
+      // Admins can read/write any user profile to authorize them.
+      allow list, write: if isAuthorized();
+      // Users can create their own profile on signup.
+      allow create: if isSignedIn() && request.auth.uid == userId;
+      // Users can read their own profile, and admins can read any profile.
+      allow get: if (isSignedIn() && request.auth.uid == userId) || isAuthorized();
     }
 
     // --- Public Rules ---
     // Allow public GET access for specific pages (e.g., meeting pages).
+    // LIST is not allowed to prevent scraping all data.
     match /schools/{schoolId} {
       allow get: if true;
     }
@@ -41,21 +51,19 @@ service cloud.firestore {
     
     // --- Survey Rules ---
     match /surveys/{surveyId} {
-      // Admins can create, update, delete surveys
-      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
-      // Anyone can read a published survey, admins can read any survey
-      allow get: if resource.data.status == 'published' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
-      // Admins can list all surveys
-      allow list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      // Admins can create, update, delete surveys.
+      allow write: if isAuthorized();
+      // Anyone can read a published survey, and admins can read any survey.
+      allow get: if resource.data.status == 'published' || isAuthorized();
+      // Admins can list all surveys.
+      allow list: if isAuthorized();
     }
 
     match /surveys/{surveyId}/responses/{responseId} {
-      // Anyone can create a response for a published survey
+      // Anyone can create a response for a published survey.
       allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
-      // Admins can read and list responses
-      allow read, list: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      // Admins can read and list all responses.
+      allow read, list: if isAuthorized();
     }
   }
 }
-
-    
