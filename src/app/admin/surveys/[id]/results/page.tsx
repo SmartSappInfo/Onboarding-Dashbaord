@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
 import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
-import { doc, collection, query, orderBy } from 'firestore';
+import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -544,5 +545,7 @@ export default function SurveyResultsPage() {
         </>
     );
 }
+
+    
 
     
