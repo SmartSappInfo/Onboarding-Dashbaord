@@ -331,7 +331,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
               ) : responses && responses.length > 0 ? (
                 responses.map((response) => (
                   <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
-                    <TableCell className="sticky left-0 bg-card z-10 font-medium">
+                    <TableCell className="sticky left-0 bg-card z-10 font-medium whitespace-nowrap">
                         {format(new Date(response.submittedAt), "PPP p")}
                     </TableCell>
                     {questions.map(q => {
@@ -372,7 +372,7 @@ export default function SurveyResultsPage() {
 
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
     
-    const activeTab = searchParams.get('view') || 'analytics';
+    const activeTab = searchParams.get('view') || 'responses';
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -505,9 +505,9 @@ export default function SurveyResultsPage() {
                 <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full">
                     <div className="flex justify-between items-center">
                         <TabsList>
+                            <TabsTrigger value="responses">All Responses</TabsTrigger>
                             <TabsTrigger value="analytics">Analytics</TabsTrigger>
                             <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
-                            <TabsTrigger value="responses">All Responses</TabsTrigger>
                         </TabsList>
                         {activeTab === 'responses' ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
@@ -521,6 +521,9 @@ export default function SurveyResultsPage() {
                             </RainbowButton>
                         )}
                     </div>
+                     <TabsContent value="responses">
+                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
+                    </TabsContent>
                     <TabsContent value="analytics">
                          <Card className="my-6 w-fit rounded-xl shadow-md">
                             <CardHeader className="p-5">
@@ -539,16 +542,9 @@ export default function SurveyResultsPage() {
                             <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
                         )}
                     </TabsContent>
-                    <TabsContent value="responses">
-                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
-                    </TabsContent>
                 </Tabs>
                 
             </div>
         </>
     );
 }
-
-    
-
-    
