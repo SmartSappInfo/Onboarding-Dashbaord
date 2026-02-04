@@ -510,13 +510,13 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       <span className="text-lg">↳</span>
                       <span>Then</span>
                   </div>
-                  <div className="flex-grow flex flex-col sm:flex-row items-center gap-2">
+                  <div className="flex-grow flex flex-col gap-2">
                       <Controller
                           name={`elements.${elementIndex}.rules.${index}.action.type`}
                           control={control}
                           render={({ field }) => (
                               <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="w-full sm:w-1/2"><SelectValue placeholder="Action..." /></SelectTrigger>
+                                  <SelectTrigger className="w-full"><SelectValue placeholder="Action..." /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="jump">Jump To...</SelectItem>
                                       <SelectItem value="show">Show Element(s)...</SelectItem>
