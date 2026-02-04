@@ -193,7 +193,15 @@ export default function AiSurveyGenerator() {
                             </div>
                         </TabsContent>
                     </Tabs>
-                    <div className="flex justify-end mt-8">
+                    <div className="flex justify-between items-center mt-8">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => router.push('/admin/surveys')}
+                          disabled={isGenerating}
+                        >
+                            Cancel
+                        </Button>
                         <Button type="submit" disabled={isGenerating} size="lg">
                             {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                              <Sparkles className="mr-2 h-4 w-4" />
