@@ -9,7 +9,7 @@ import {
     getAuth, 
     signInWithEmailAndPassword,
     setPersistence,
-    browserLocalPersistence
+    browserSessionPersistence
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
@@ -24,10 +24,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     return initializeFirebase();
   }, []);
 
-  // This useEffect hook sets the auth persistence to 'local' to keep the user signed in.
+  // This useEffect hook sets the auth persistence to 'session' to keep the user signed in for the current session.
   useEffect(() => {
     if (firebaseServices.auth) {
-        setPersistence(firebaseServices.auth, browserLocalPersistence)
+        setPersistence(firebaseServices.auth, browserSessionPersistence)
           .catch((error) => {
               console.error("Firebase Auth Persistence Error:", error);
           });
@@ -46,7 +46,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         try {
           // Check if user exists by trying to sign in first
           await signInWithEmailAndPassword(auth, email, password);
-          console.log("Admin user already exists.");
           await auth.signOut();
         } catch (error: any) {
           if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
@@ -70,7 +69,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
             }
           } else {
             // Other sign-in error
-            console.error("Error checking for admin user:", error);
           }
         }
       }
