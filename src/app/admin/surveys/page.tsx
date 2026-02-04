@@ -33,6 +33,7 @@ import {
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -111,12 +112,12 @@ export default function SurveysPage() {
     <AlertDialog>
       <div>
         <div className="flex items-center justify-end mb-8 gap-2">
-          <Button asChild variant="outline">
+          <RainbowButton asChild>
             <Link href="/admin/surveys/new/ai">
               <Sparkles className="mr-2 h-4 w-4" />
-              Create with AI
+              Create With AI
             </Link>
-          </Button>
+          </RainbowButton>
           <Button asChild>
             <Link href="/admin/surveys/new">
               <PlusCircle className="mr-2 h-4 w-4" />
