@@ -3,14 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
+import { collection, orderBy, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Survey } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,6 +92,39 @@ export default function SurveysPage() {
           description: 'You may not have the required permissions.',
         });
         setSurveyToDelete(null);
+      });
+  };
+
+  const handleStatusChange = (survey: Survey, newStatus: 'published' | 'draft' | 'archived') => {
+    if (!firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Firestore not available.',
+      });
+      return;
+    }
+
+    const docRef = doc(firestore, 'surveys', survey.id);
+    updateDoc(docRef, { status: newStatus })
+      .then(() => {
+        toast({
+          title: 'Survey Updated',
+          description: `"${survey.title}" has been set to ${newStatus}.`,
+        });
+      })
+      .catch((error) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: { status: newStatus },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({
+          variant: 'destructive',
+          title: 'Update failed',
+          description: 'You may not have the required permissions to change the survey status.',
+        });
       });
   };
 
@@ -197,6 +230,18 @@ export default function SurveysPage() {
                                 <span>View Public Page</span>
                               </a>
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {survey.status === 'published' ? (
+                                <DropdownMenuItem onClick={() => handleStatusChange(survey, 'draft')}>
+                                    <EyeOff className="mr-2 h-4 w-4" />
+                                    <span>Unpublish (Set to Draft)</span>
+                                </DropdownMenuItem>
+                            ) : (
+                                <DropdownMenuItem onClick={() => handleStatusChange(survey, 'published')}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    <span>Publish</span>
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuSeparator />
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem 
