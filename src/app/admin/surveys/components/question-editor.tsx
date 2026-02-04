@@ -625,7 +625,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const { control, getValues, setValue } = useFormContext();
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
-    const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
     
     // Local state to manage UI toggles
     const [useMin, setUseMin] = React.useState(false);
@@ -654,18 +653,11 @@ function QuestionSettingsPopover({ element, index, changeType }: {
         <div className="space-y-4">
             {isElemQuestion && (
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation & Scoring</h4>
+                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation</h4>
                     <div className="flex items-center justify-between rounded-lg border p-3">
                         <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
                         <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
-
-                    {SCOREABLE_TYPES.includes(element.type) && (
-                         <div className="flex items-center justify-between rounded-lg border p-3">
-                            <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
-                            <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
-                        </div>
-                    )}
 
                     {isTextQuestion && (
                         <>
@@ -767,6 +759,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isElementSection = element.type === 'section';
   const isMediaLayout = isElementLayout && ['image', 'video', 'audio', 'document', 'embed'].includes(element.type);
   const ElementIcon = getElementIcon(element.type);
+  const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
+  const isScoreable = isElementQuestion && SCOREABLE_TYPES.includes(element.type);
   
   return (
     <div ref={setNodeRef} style={style} className="relative group">
@@ -895,6 +889,15 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                              {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                         </div>
+                         {isScoreable && (
+                            <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
+                                <div className="space-y-0.5">
+                                    <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
+                                    <p className="text-sm text-muted-foreground">Assign numerical values to answers.</p>
+                                </div>
+                                <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                            </div>
+                        )}
                     </div>
                 ) : isElementLayout ? (
                      <div className={cn(isMediaLayout && "bg-card rounded-lg border p-4")}>
