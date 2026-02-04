@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useFormContext, Controller, get } from 'react-hook-form';
@@ -227,7 +228,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
 
 
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
-  const { control, watch, setValue } = useFormContext();
+  const { control, watch, setValue, getValues } = useFormContext();
   const { fields, append, remove } = useFieldArray({
     control,
     name: `elements.${questionIndex}.options`,
@@ -236,6 +237,25 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const questionType = watch(`elements.${questionIndex}.type`);
   const defaultValue = watch(`elements.${questionIndex}.defaultValue`);
   const allowOther = watch(`elements.${questionIndex}.allowOther`);
+  const enableScoring = watch(`elements.${questionIndex}.enableScoring`);
+
+  const handleAddOption = () => {
+    append('');
+    if (enableScoring) {
+        const currentScores = getValues(`elements.${questionIndex}.optionScores`) || [];
+        setValue(`elements.${questionIndex}.optionScores`, [...currentScores, 0], { shouldDirty: true });
+    }
+  };
+
+  const handleRemoveOption = (index: number) => {
+    remove(index);
+    if (enableScoring) {
+        const currentScores = getValues(`elements.${questionIndex}.optionScores`) || [];
+        const newScores = currentScores.filter((_:any, i:number) => i !== index);
+        setValue(`elements.${questionIndex}.optionScores`, newScores, { shouldDirty: true });
+    }
+  };
+
 
   const handleDefaultChange = (newValue: any) => {
     setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true, shouldValidate: true });
@@ -256,7 +276,24 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                   control={control}
                   render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} />}
                 />
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                 {enableScoring && (
+                    <Controller
+                    name={`elements.${questionIndex}.optionScores.${index}`}
+                    control={control}
+                    defaultValue={0}
+                    render={({ field: scoreField }) => (
+                        <Input
+                        type="number"
+                        placeholder="Score"
+                        className="w-24"
+                        {...scoreField}
+                        value={scoreField.value ?? ''}
+                        onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
+                        />
+                    )}
+                    />
+                )}
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -298,7 +335,24 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                   control={control}
                   render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} />}
                 />
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => remove(index)}>
+                 {enableScoring && (
+                    <Controller
+                    name={`elements.${questionIndex}.optionScores.${index}`}
+                    control={control}
+                    defaultValue={0}
+                    render={({ field: scoreField }) => (
+                        <Input
+                        type="number"
+                        placeholder="Score"
+                        className="w-24"
+                        {...scoreField}
+                        value={scoreField.value ?? ''}
+                        onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
+                        />
+                    )}
+                    />
+                )}
+                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => handleRemoveOption(index)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
@@ -307,7 +361,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={() => append('')}>
+      <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>
         Add Option
       </Button>
       {questionType === 'checkboxes' && (
@@ -571,6 +625,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const { control, getValues, setValue } = useFormContext();
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
+    const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
     
     // Local state to manage UI toggles
     const [useMin, setUseMin] = React.useState(false);
@@ -599,11 +654,19 @@ function QuestionSettingsPopover({ element, index, changeType }: {
         <div className="space-y-4">
             {isElemQuestion && (
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation</h4>
+                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation & Scoring</h4>
                     <div className="flex items-center justify-between rounded-lg border p-3">
                         <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
                         <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
                     </div>
+
+                    {SCOREABLE_TYPES.includes(element.type) && (
+                         <div className="flex items-center justify-between rounded-lg border p-3">
+                            <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
+                            <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                        </div>
+                    )}
+
                     {isTextQuestion && (
                         <>
                             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -667,6 +730,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const element = watch(`elements.${index}`);
   const formErrors = errors.elements as any[] | undefined;
   const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
+  const enableScoring = watch(`elements.${index}.enableScoring`);
 
   const duplicateElement = (index: number) => {
     const elementToDuplicate = getValues(`elements.${index}`);
@@ -788,10 +852,26 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             case 'long-text':
                                                 return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
                                             case 'yes-no':
-                                                return <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
-                                                    <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
-                                                </RadioGroup>;
+                                                return (
+                                                    <div className="space-y-4">
+                                                        <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label>Yes</Label></div>
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label>No</Label></div>
+                                                        </RadioGroup>
+                                                        {enableScoring && (
+                                                            <div className="flex gap-4 items-center rounded-lg border p-4">
+                                                                <FormItem className="flex-1">
+                                                                    <FormLabel>Score for "Yes"</FormLabel>
+                                                                    <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />
+                                                                </FormItem>
+                                                                 <FormItem className="flex-1">
+                                                                    <FormLabel>Score for "No"</FormLabel>
+                                                                    <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />
+                                                                </FormItem>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
                                             case 'rating':
                                                 return <StarRatingInput value={field.value || 0} onChange={field.onChange} />;
                                             case 'date':

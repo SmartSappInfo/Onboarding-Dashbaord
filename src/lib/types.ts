@@ -64,6 +64,10 @@ export interface SurveyQuestion {
   defaultValue?: any;
   minLength?: number;
   maxLength?: number;
+  enableScoring?: boolean;
+  optionScores?: number[];
+  yesScore?: number;
+  noScore?: number;
 }
 
 export interface SurveyLayoutBlock {

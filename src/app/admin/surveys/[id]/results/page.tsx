@@ -38,6 +38,8 @@ const CHART_COLORS = [
 
 type AnalyzedResult = {
     question: SurveyQuestion;
+    totalScore?: number;
+    averageScore?: number;
 } & (
     | { type: 'chart'; data: { name: string; value: number; percentage: number }[]; total: number }
     | { type: 'rating'; data: { name: string; value: number; percentage: number }[]; total: number, average: number }
@@ -202,69 +204,113 @@ export default function SurveyResultsPage() {
 
     const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
         if (!survey || !responses) return [];
-
+    
         const questions = survey.elements.filter(isQuestion);
-
+    
         return questions.map(question => {
             const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
-
+    
+            let scoreData: { totalScore?: number, averageScore?: number } = {};
+            if (question.enableScoring) {
+                let totalScore = 0;
+                let scoredResponses = 0;
+    
+                questionResponses.forEach(value => {
+                    let responseScore = 0;
+                    let hasScore = false;
+                    if (question.type === 'yes-no') {
+                        if (value === 'Yes') { responseScore = question.yesScore ?? 0; hasScore = true; }
+                        if (value === 'No') { responseScore = question.noScore ?? 0; hasScore = true; }
+                    } else if (question.type === 'multiple-choice' || question.type === 'dropdown') {
+                        if (question.options && question.optionScores) {
+                            const optionIndex = question.options.indexOf(value as string);
+                            if (optionIndex > -1 && question.optionScores[optionIndex] !== undefined) {
+                                responseScore = question.optionScores[optionIndex];
+                                hasScore = true;
+                            }
+                        }
+                    } else if (question.type === 'checkboxes' && question.options && question.optionScores) {
+                        const selectedOptions = (value as any)?.options || value as string[];
+                        if (Array.isArray(selectedOptions)) {
+                            hasScore = true; // A checkbox response is considered "scored" even if total is 0.
+                            selectedOptions.forEach(optionLabel => {
+                                const optionIndex = question.options.indexOf(optionLabel);
+                                if (optionIndex > -1 && question.optionScores && question.optionScores[optionIndex] !== undefined) {
+                                    responseScore += question.optionScores[optionIndex];
+                                }
+                            });
+                        }
+                    } else if (question.type === 'rating' && typeof value === 'number') {
+                         responseScore = value;
+                         hasScore = true;
+                    }
+    
+                    if (hasScore) {
+                        totalScore += responseScore;
+                        scoredResponses++;
+                    }
+                });
+    
+                scoreData.totalScore = totalScore;
+                scoreData.averageScore = scoredResponses > 0 ? totalScore / scoredResponses : 0;
+            }
+    
             if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
                 const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
                 const counts = Object.fromEntries(options.map(opt => [opt, 0]));
-
+    
                 questionResponses.forEach(value => {
                     if (typeof value === 'string' && value in counts) {
                         counts[value]++;
                     }
                 });
-
+    
                 const total = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({
                     name,
                     value,
                     percentage: total > 0 ? (value / total) * 100 : 0
                 }));
-                return { question, type: 'chart', data, total };
+                return { question, type: 'chart', data, total, ...scoreData };
             }
-
+    
             if (question.type === 'checkboxes') {
                 const counts = Object.fromEntries((question.options || []).map(opt => [opt, 0]));
                 if (question.allowOther) counts['Other'] = 0;
                  
                 let otherText: string[] = [];
-
+    
                 questionResponses.forEach((value: any) => {
-                    if (Array.isArray(value)) { 
-                        value.forEach(v => { if (v in counts) counts[v]++; });
-                    } else if (typeof value === 'object' && value !== null) {
-                        (value.options || []).forEach((opt: string) => { if (opt in counts) counts[opt]++; });
-                        if (value.other && value.other.trim()) {
-                            if ('Other' in counts) counts['Other']++;
-                            otherText.push(value.other.trim());
-                        }
+                    const selectedOptions = (value as any)?.options || value;
+                    if (Array.isArray(selectedOptions)) { 
+                        selectedOptions.forEach(v => { if (v in counts) counts[v]++; });
+                    }
+                    if (value.other && value.other.trim()) {
+                        if ('Other' in counts) counts['Other']++;
+                        otherText.push(value.other.trim());
                     }
                 });
-
+    
                 const totalRespondents = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({
                      name,
                      value,
                      percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0
                 }));
-
-                return { question, type: 'checkbox', data, otherText, total: totalRespondents };
+    
+                return { question, type: 'checkbox', data, otherText, total: totalRespondents, ...scoreData };
             }
             
             if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
                 const textResponses = questionResponses.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
-                return { question, type: 'text', data: textResponses, total: textResponses.length };
+                return { question, type: 'text', data: textResponses, total: textResponses.length, ...scoreData };
             }
-
+    
             if (question.type === 'rating') {
                 const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
                 const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
                 let totalScore = 0;
-
+    
                 ratingResponses.forEach(rating => {
                     if (rating >= 1 && rating <= 5) {
                         counts[rating as keyof typeof counts]++;
@@ -279,19 +325,19 @@ export default function SurveyResultsPage() {
                     value,
                     percentage: total > 0 ? (value / total) * 100 : 0
                 }));
-
-                return { question, type: 'rating', data, total, average };
+    
+                return { question, type: 'rating', data, total, average, ...scoreData };
             }
-
-            return { question, type: 'unknown', data: [] };
+    
+            return { question, type: 'unknown', data: [], ...scoreData };
         });
-
+    
     }, [survey, responses]);
 
 
     if (isSurveyLoading || areResponsesLoading) {
         return (
-            <div className="w-full lg:max-w-6xl mx-auto">
+            <div className="w-full lg:max-w-4xl xl:max-w-5xl 2xl:max-w-6xl mx-auto p-4 md:p-6 lg:p-8">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -317,7 +363,7 @@ export default function SurveyResultsPage() {
 
     return (
         <>
-            <div className="w-full lg:max-w-6xl mx-auto">
+            <div className="w-full md:w-4/5 mx-auto p-4 md:p-6 lg:p-8">
                 <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
                     <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -331,23 +377,38 @@ export default function SurveyResultsPage() {
                 <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
                 <p className="text-muted-foreground mb-4">Results & Analytics</p>
                 <Card className="mb-10 w-fit rounded-xl shadow-md">
-                    <CardHeader>
-                        <CardTitle>Total Responses</CardTitle>
+                    <CardHeader className="p-5">
+                        <CardTitle className="text-base">Total Responses</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="p-5 pt-0">
                         <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
                     </CardContent>
                 </Card>
 
                 <div className="space-y-10">
                     {analyzedResults.map((result, index) => (
-                        <Card key={result.question.id} className="rounded-xl shadow-md">
+                        <Card key={result.question.id} className="rounded-xl shadow-md overflow-hidden">
                             <CardHeader className="pb-4">
                                 <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
                                 <CardDescription>
                                     {result.total} {result.total === 1 ? 'response' : 'responses'}
                                 </CardDescription>
                             </CardHeader>
+                            {result.question.enableScoring && result.averageScore !== undefined && (
+                                <CardContent className="border-t pt-4">
+                                    <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
+                                    <div className="flex gap-8">
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Total Score</p>
+                                            <p className="text-2xl font-bold">{result.totalScore}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Average Score</p>
+                                            <p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            )}
                             <CardContent className="pt-2">
                                 {result.type === 'chart' && <ChartResult result={result} />}
                                 {result.type === 'rating' && <RatingResult result={result} />}

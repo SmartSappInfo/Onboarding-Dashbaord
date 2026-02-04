@@ -216,7 +216,11 @@
           "placeholder": { "type": "string", "description": "Placeholder text for text-based inputs." },
           "defaultValue": { "description": "The default value for the question." },
           "minLength": { "type": "number", "description": "Minimum character length for text-based answers." },
-          "maxLength": { "type": "number", "description": "Maximum character length for text-based answers." }
+          "maxLength": { "type": "number", "description": "Maximum character length for text-based answers." },
+          "enableScoring": { "type": "boolean", "description": "Whether scoring is enabled for this question." },
+          "optionScores": { "type": "array", "items": { "type": "number" }, "description": "Scores corresponding to each option for multiple-choice, checkbox, or dropdown questions." },
+          "yesScore": { "type": "number", "description": "The score for a 'Yes' answer." },
+          "noScore": { "type": "number", "description": "The score for a 'No' answer." }
         },
         "required": ["id", "title", "type", "isRequired"]
     },

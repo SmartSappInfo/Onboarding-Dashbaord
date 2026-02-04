@@ -23,6 +23,10 @@ const questionSchema = z.object({
   defaultValue: z.any().optional(),
   minLength: z.number().optional(),
   maxLength: z.number().optional(),
+  enableScoring: z.boolean().optional(),
+  optionScores: z.array(z.number()).optional(),
+  yesScore: z.number().optional(),
+  noScore: z.number().optional(),
 });
 
 const layoutBlockSchema = z.object({
