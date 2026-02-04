@@ -291,7 +291,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading || areResponsesLoading) {
         return (
-            <div>
+            <div className="max-w-6xl mx-auto">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -317,7 +317,7 @@ export default function SurveyResultsPage() {
 
     return (
         <>
-            <div>
+            <div className="max-w-6xl mx-auto">
                 <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
                     <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
                         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -328,9 +328,9 @@ export default function SurveyResultsPage() {
                         {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
                     </RainbowButton>
                 </div>
-                <h1 className="text-3xl font-bold tracking-tight">{survey.title}</h1>
-                <p className="text-muted-foreground mb-2">Results & Analytics</p>
-                <Card className="mb-8 w-fit">
+                <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
+                <p className="text-muted-foreground mb-4">Results & Analytics</p>
+                <Card className="mb-10 w-fit rounded-xl shadow-md">
                     <CardHeader>
                         <CardTitle>Total Responses</CardTitle>
                     </CardHeader>
@@ -339,16 +339,16 @@ export default function SurveyResultsPage() {
                     </CardContent>
                 </Card>
 
-                <div className="space-y-8">
+                <div className="space-y-10">
                     {analyzedResults.map((result, index) => (
-                        <Card key={result.question.id}>
-                            <CardHeader>
+                        <Card key={result.question.id} className="rounded-xl shadow-md">
+                            <CardHeader className="pb-4">
                                 <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
                                 <CardDescription>
                                     {result.total} {result.total === 1 ? 'response' : 'responses'}
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent className="pt-2">
                                 {result.type === 'chart' && <ChartResult result={result} />}
                                 {result.type === 'rating' && <RatingResult result={result} />}
                                 {result.type === 'checkbox' && <CheckboxResult result={result} />}
