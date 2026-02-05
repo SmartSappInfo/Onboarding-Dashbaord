@@ -56,59 +56,61 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   React.useEffect(() => {
-    // If the user state is still loading from Firebase, just wait.
-    // The loader is already showing the "checking" state.
+    // If the Firebase SDK is still determining the initial auth state,
+    // we just show the 'checking' loader and wait. The effect will re-run
+    // once `isUserLoading` becomes false.
     if (isUserLoading) {
-      setLoaderStatus('checking');
       return;
     }
 
-    // If there is no user, fail authorization and redirect.
-    if (!user) {
-      setLoaderStatus('failed');
-      setTimeout(() => {
-        router.push('/login');
-      }, 1000); // Wait 1s to show message
-      return;
-    }
-
-    // If there is a user, check their authorization status in Firestore.
-    const userDocRef = doc(firestore, 'users', user.uid);
-    getDoc(userDocRef).then(docSnap => {
-      if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-        // User is authorized. Show success and then the dashboard.
-        setLoaderStatus('success');
-        setTimeout(() => {
-          setIsReady(true); // Render the dashboard
-        }, 1000); // Wait 1s to show message
-      } else {
-        // User is not authorized. Show failure, sign out, and redirect.
-        setLoaderStatus('failed');
-        toast({
-          variant: "destructive",
-          title: 'Authorization Required',
-          description: 'Your account is not authorized to access this area.',
+    // Once `isUserLoading` is false, the `user` object is definitive.
+    if (user) {
+      // A user is authenticated. Now, check their authorization in Firestore.
+      const userDocRef = doc(firestore, 'users', user.uid);
+      getDoc(userDocRef)
+        .then(docSnap => {
+          if (docSnap.exists() && docSnap.data().isAuthorized === true) {
+            // SUCCESS: User is authenticated and authorized.
+            setLoaderStatus('success');
+            setTimeout(() => {
+              setIsReady(true); // Render the dashboard UI
+            }, 1000);
+          } else {
+            // FAILURE: User is authenticated but not authorized in our database.
+            setLoaderStatus('failed');
+            toast({
+              variant: "destructive",
+              title: 'Authorization Required',
+              description: 'Your account is not authorized to access this area.',
+            });
+            setTimeout(() => {
+              auth.signOut();
+              router.push('/login');
+            }, 1200);
+          }
+        })
+        .catch(error => {
+          // FAILURE: An error occurred checking Firestore.
+          console.error("Authorization check failed:", error);
+          setLoaderStatus('failed');
+          toast({
+            variant: "destructive",
+            title: 'Error',
+            description: 'Failed to check your authorization status.',
+          });
+          setTimeout(() => {
+            auth.signOut();
+            router.push('/login');
+          }, 1200);
         });
-        setTimeout(() => {
-          auth.signOut();
-          router.push('/login');
-        }, 1200); // Wait a bit longer to show message
-      }
-    }).catch(error => {
-      // Error fetching Firestore document. Fail authorization.
-      console.error("Authorization check failed:", error);
+    } else {
+      // FAILURE: isUserLoading is false and there is no user object.
+      // This is a definitive "not logged in" state.
       setLoaderStatus('failed');
-       toast({
-        variant: "destructive",
-        title: 'Error',
-        description: 'Failed to check your authorization status.',
-      });
       setTimeout(() => {
-        auth.signOut();
         router.push('/login');
-      }, 1200);
-    });
-
+      }, 1000);
+    }
   }, [isUserLoading, user, router, firestore, auth, toast]);
 
   // The main conditional rendering logic.
