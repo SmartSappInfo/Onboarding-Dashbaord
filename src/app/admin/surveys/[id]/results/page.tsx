@@ -186,7 +186,7 @@ export default function SurveyResultsPage() {
                     </div>
                 </div>
 
-                <TabsContent value="responses" className="mt-4 flex-grow overflow-auto rounded-lg border bg-card text-card-foreground shadow-sm">
+                <TabsContent value="responses" className="mt-4 flex-grow overflow-y-auto rounded-lg border bg-card text-card-foreground shadow-sm">
                     <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
                 </TabsContent>
                 <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">

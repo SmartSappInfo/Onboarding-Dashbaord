@@ -166,7 +166,7 @@ export default function SurveysPage() {
             </Button>
           </div>
           
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+          <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
             <Table>
               <TableHeader>
                 <TableRow>
