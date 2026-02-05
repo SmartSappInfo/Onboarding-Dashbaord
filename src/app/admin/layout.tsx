@@ -19,14 +19,13 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
-import { useUser, useAuth, useFirestore, useFirebaseApp } from '@/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { ThemeProvider } from '@/components/theme-provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { getAuth } from 'firebase/auth';
+import AuthorizationLoader from './components/authorization-loader';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -36,33 +35,6 @@ const navItems = [
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
 ];
 
-function AdminDashboardSkeleton() {
-  return (
-    <div className="flex min-h-screen w-full bg-background">
-        <div className="hidden md:flex flex-col gap-4 border-r bg-background p-2 w-72">
-            <div className="p-2 h-14 flex items-center justify-center">
-                <Skeleton className="h-8 w-32" />
-            </div>
-            <div className="flex flex-col gap-2 p-2">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-            </div>
-        </div>
-        <div className="flex-1">
-             <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-card px-4">
-                <Skeleton className="h-8 w-8" />
-            </header>
-            <main className="flex-1 p-4 sm:p-6 md:p-8">
-                <Skeleton className="h-screen w-full" />
-            </main>
-        </div>
-    </div>
-  );
-}
-
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -71,7 +43,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const [isAuthorizing, setIsAuthorizing] = React.useState(true);
+  
+  const [isReady, setIsReady] = React.useState(false);
+  const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
 
   const pageTitle = React.useMemo(() => {
     if (pathname.startsWith('/admin/settings')) return 'Settings';
@@ -82,50 +56,65 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   React.useEffect(() => {
+    // If the user state is still loading from Firebase, just wait.
+    // The loader is already showing the "checking" state.
     if (isUserLoading) {
-      // Still waiting for Firebase to check the auth state.
-      // Do nothing, the skeleton loader is active because isAuthorizing is still true.
+      setLoaderStatus('checking');
       return;
     }
 
+    // If there is no user, fail authorization and redirect.
     if (!user) {
-      // No user found, redirect to login. isAuthorizing remains true,
-      // so the skeleton loader will persist until navigation completes, preventing a flicker.
-      router.push('/login');
+      setLoaderStatus('failed');
+      setTimeout(() => {
+        router.push('/login');
+      }, 1000); // Wait 1s to show message
       return;
     }
 
-    // User is authenticated, now check if they are authorized in Firestore.
+    // If there is a user, check their authorization status in Firestore.
     const userDocRef = doc(firestore, 'users', user.uid);
     getDoc(userDocRef).then(docSnap => {
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-        // User is authorized. Stop showing the loader.
-        setIsAuthorizing(false);
+        // User is authorized. Show success and then the dashboard.
+        setLoaderStatus('success');
+        setTimeout(() => {
+          setIsReady(true); // Render the dashboard
+        }, 1000); // Wait 1s to show message
       } else {
-        // User is not authorized, sign them out and redirect.
-        auth.signOut();
-        router.push('/login');
+        // User is not authorized. Show failure, sign out, and redirect.
+        setLoaderStatus('failed');
         toast({
           variant: "destructive",
           title: 'Authorization Required',
           description: 'Your account is not authorized to access this area.',
         });
+        setTimeout(() => {
+          auth.signOut();
+          router.push('/login');
+        }, 1200); // Wait a bit longer to show message
       }
     }).catch(error => {
+      // Error fetching Firestore document. Fail authorization.
       console.error("Authorization check failed:", error);
-      auth.signOut();
-      router.push('/login');
-      toast({
+      setLoaderStatus('failed');
+       toast({
         variant: "destructive",
         title: 'Error',
         description: 'Failed to check your authorization status.',
       });
+      setTimeout(() => {
+        auth.signOut();
+        router.push('/login');
+      }, 1200);
     });
 
   }, [isUserLoading, user, router, firestore, auth, toast]);
 
-  if (isUserLoading || isAuthorizing) {
-    return <AdminDashboardSkeleton />;
+  // The main conditional rendering logic.
+  // If not ready, show the loader. Otherwise, show the full admin dashboard.
+  if (!isReady) {
+    return <AuthorizationLoader status={loaderStatus} />;
   }
 
   return (
