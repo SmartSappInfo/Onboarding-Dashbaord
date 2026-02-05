@@ -51,51 +51,6 @@ export default function LoginPage() {
       password: '',
     },
   });
-  
-  const [isClearing, setIsClearing] = React.useState(false);
-
-
-  const handleClearData = async () => {
-    setIsClearing(true);
-    try {
-        // Clear local storage and session storage
-        localStorage.clear();
-        sessionStorage.clear();
-
-        // Delete all cookies
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i];
-            const eqPos = cookie.indexOf('=');
-            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
-        }
-
-        // Clear cache storage
-        if ('caches' in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(key => caches.delete(key)));
-        }
-        
-        toast({
-            title: "Cache Cleared",
-            description: "All site data has been cleared. The page will now reload.",
-        });
-
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
-
-    } catch (e) {
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "Could not clear all site data.",
-        });
-        setIsClearing(false);
-    }
-  };
-
 
   React.useEffect(() => {
     document.title = 'Login - Onboarding Workspace';
@@ -275,11 +230,6 @@ export default function LoginPage() {
               </div>
             </form>
           </Form>
-        </div>
-        <div className="absolute bottom-6 left-6">
-          <Button variant="destructive" onClick={handleClearData} disabled={isClearing}>
-            {isClearing ? 'Clearing...' : 'Clear Site Data & Reload'}
-          </Button>
         </div>
       </main>
       <aside className="relative hidden bg-primary lg:block rounded-bl-2xl">
