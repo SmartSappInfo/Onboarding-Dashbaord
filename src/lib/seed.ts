@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile } from '@/lib/types';
 
 // --- SEED DATA ---
 
@@ -324,4 +324,25 @@ export async function seedSurveys(firestore: Firestore): Promise<number> {
   
   await batch.commit();
   return surveyData.length;
+}
+
+export async function seedUserAvatars(firestore: Firestore): Promise<number> {
+  const usersCollection = collection(firestore, 'users');
+  const querySnapshot = await getDocs(usersCollection);
+  const batch = writeBatch(firestore);
+  let updatedCount = 0;
+
+  querySnapshot.forEach((docSnap) => {
+    const user = docSnap.data() as UserProfile;
+    // Only update if photoURL is missing
+    if (!user.photoURL) {
+      const seed = user.name ? user.name.replace(/\s+/g, '-').toLowerCase() : docSnap.id;
+      const photoURL = `https://i.pravatar.cc/150?u=${seed}`;
+      batch.update(docSnap.ref, { photoURL: photoURL });
+      updatedCount++;
+    }
+  });
+
+  await batch.commit();
+  return updatedCount;
 }

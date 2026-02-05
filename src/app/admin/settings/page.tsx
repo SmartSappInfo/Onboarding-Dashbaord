@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys } from '@/lib/seed';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users';
 
 export default function SettingsPage() {
   const firestore = useFirestore();
@@ -19,6 +19,7 @@ export default function SettingsPage() {
     schools: 'idle',
     meetings: 'idle',
     surveys: 'idle',
+    users: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -36,6 +37,9 @@ export default function SettingsPage() {
     try {
       let count = 0;
       let name = '';
+      let action = 'seeded';
+      let entity = 'items';
+
       if (seeder === 'media') {
         count = await seedMedia(firestore);
         name = 'Media Assets';
@@ -48,23 +52,36 @@ export default function SettingsPage() {
       } else if (seeder === 'surveys') {
         count = await seedSurveys(firestore);
         name = 'Surveys';
+      } else if (seeder === 'users') {
+        count = await seedUserAvatars(firestore);
+        name = 'User profiles';
+        action = 'updated';
+        entity = 'profiles';
       }
       
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
-      toast({
-        title: 'Seeding Successful',
-        description: `${count} ${name} seeded into the database.`,
-      });
+
+      if (seeder === 'users') {
+          toast({
+            title: 'Update Complete',
+            description: count > 0 ? `${count} user ${entity} updated with new avatars.` : 'All users already have avatars.',
+          });
+      } else {
+        toast({
+            title: 'Seeding Successful',
+            description: `${count} ${name} ${action} into the database.`,
+        });
+      }
       
       setTimeout(() => setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' })), 3000);
 
     } catch (error: any) {
-      console.error(`Error seeding ${seeder}:`, error);
+      console.error(`Error processing ${seeder}:`, error);
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'error' }));
       toast({
         variant: 'destructive',
-        title: 'Seeding Failed',
-        description: `Could not seed ${seeder}. Check the console for details.`,
+        title: 'Operation Failed',
+        description: `Could not process ${seeder}. Check the console for details.`,
       });
     }
   };
@@ -85,15 +102,27 @@ export default function SettingsPage() {
       <CardHeader>
         <CardTitle>Data Seeding</CardTitle>
         <CardDescription>
-          Use these actions to populate your Firestore database with sample data. 
-          This will clear any existing data in the respective collections.
+          Use these actions to manage sample data in your Firestore database.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col sm:flex-row gap-4">
-        <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
-        <SeedingButton seeder="schools">Seed Schools</SeedingButton>
-        <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
-        <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
+      <CardContent className="space-y-6">
+        <div>
+            <h3 className="text-base font-semibold mb-2">Destructive Actions</h3>
+            <p className="text-sm text-muted-foreground mb-4">These actions will first delete all existing data in the respective collections before adding the sample data.</p>
+            <div className="flex flex-wrap gap-4">
+                <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
+                <SeedingButton seeder="schools">Seed Schools</SeedingButton>
+                <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
+                <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
+            </div>
+        </div>
+        <div>
+            <h3 className="text-base font-semibold mb-2">Non-Destructive Actions</h3>
+            <p className="text-sm text-muted-foreground mb-4">These actions will update existing data without deleting it.</p>
+            <div className="flex flex-wrap gap-4">
+                <SeedingButton seeder="users">Update User Avatars</SeedingButton>
+            </div>
+        </div>
       </CardContent>
     </Card>
   );
