@@ -126,7 +126,7 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
-            <div>
+            <div className="w-full lg:w-4/5 mx-auto">
                 <Skeleton className="h-8 w-48 mb-2" />
                 <Skeleton className="h-10 w-96 mb-8" />
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -151,55 +151,57 @@ export default function SurveyResultsPage() {
     }
 
     return (
-        <div className="flex h-full w-full flex-col">
-            {/* Header */}
-            <div className="flex-shrink-0">
-                <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-                    <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Surveys
-                    </Button>
-                </div>
-                <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
-                <p className="text-muted-foreground mb-4">Results & Analytics</p>
-            </div>
-
-            <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex-grow flex flex-col min-h-0">
+        <div className="w-full lg:w-4/5 mx-auto">
+            <div className="flex h-full w-full flex-col">
+                {/* Header */}
                 <div className="flex-shrink-0">
-                    <div className="flex justify-between items-center">
-                        <TabsList>
-                            <TabsTrigger value="responses">All Responses</TabsTrigger>
-                            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                            <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
-                        </TabsList>
-                        {activeTab === 'responses' ? (
-                            <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
-                                <Download className="mr-2 h-4 w-4" />
-                                Export as CSV
-                            </Button>
-                        ) : (
-                             <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
-                                {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
-                            </RainbowButton>
-                        )}
+                    <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+                        <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Surveys
+                        </Button>
                     </div>
+                    <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
+                    <p className="text-muted-foreground mb-4">Results & Analytics</p>
                 </div>
 
-                <TabsContent value="responses" className="mt-4 flex-grow overflow-auto rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
-                </TabsContent>
-                <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">
-                     <AnalyticsView survey={survey} responses={responses || []} />
-                </TabsContent>
-                 <TabsContent value="ai-summaries" className="mt-4 flex-grow overflow-y-auto">
-                    {responses ? (
-                        <AISummariesView survey={survey} responses={responses} />
-                    ) : (
-                        <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
-                    )}
-                </TabsContent>
-            </Tabs>
+                <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex-grow flex flex-col min-h-0">
+                    <div className="flex-shrink-0">
+                        <div className="flex justify-between items-center">
+                            <TabsList>
+                                <TabsTrigger value="responses">All Responses</TabsTrigger>
+                                <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                                <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
+                            </TabsList>
+                            {activeTab === 'responses' ? (
+                                <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
+                                    <Download className="mr-2 h-4 w-4" />
+                                    Export as CSV
+                                </Button>
+                            ) : (
+                                <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                                    {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                    {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
+                                </RainbowButton>
+                            )}
+                        </div>
+                    </div>
+
+                    <TabsContent value="responses" className="mt-4 flex-grow overflow-auto rounded-lg border bg-card text-card-foreground shadow-sm">
+                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
+                    </TabsContent>
+                    <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">
+                        <AnalyticsView survey={survey} responses={responses || []} />
+                    </TabsContent>
+                    <TabsContent value="ai-summaries" className="mt-4 flex-grow overflow-y-auto">
+                        {responses ? (
+                            <AISummariesView survey={survey} responses={responses} />
+                        ) : (
+                            <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
         </div>
     );
 }
