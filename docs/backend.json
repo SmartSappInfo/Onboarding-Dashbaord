@@ -19,6 +19,11 @@
           "type": "string",
           "description": "The user's phone number."
         },
+        "photoURL": {
+            "type": "string",
+            "description": "URL of the user's profile picture.",
+            "format": "uri"
+        },
         "isAuthorized": {
           "type": "boolean",
           "description": "Whether the user is authorized to access the admin dashboard.",
@@ -400,7 +405,7 @@
           "schema": {
             "$ref": "#/entities/Survey"
           },
-          "description": "Stores individual surveys, including their questions and configuration."
+          "description": "Stores individual surveys, including their configuration."
         }
       },
       {

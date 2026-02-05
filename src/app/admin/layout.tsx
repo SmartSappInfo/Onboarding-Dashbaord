@@ -17,7 +17,7 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users, LogOut, User as UserIcon } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -26,6 +26,16 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -34,6 +44,8 @@ const navItems = [
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
 ];
+
+const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -50,33 +62,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pageTitle = React.useMemo(() => {
     if (pathname.startsWith('/admin/settings')) return 'Settings';
     if (pathname.startsWith('/admin/users')) return 'Users';
+    if (pathname.startsWith('/admin/profile')) return 'Profile';
     
     const activeItem = [...navItems].reverse().find(item => pathname.startsWith(item.href));
     return activeItem?.label || 'Dashboard';
   }, [pathname]);
 
   React.useEffect(() => {
-    // If the Firebase SDK is still determining the initial auth state,
-    // we just show the 'checking' loader and wait. The effect will re-run
-    // once `isUserLoading` becomes false.
     if (isUserLoading) {
       return;
     }
 
-    // Once `isUserLoading` is false, the `user` object is definitive.
     if (user) {
-      // A user is authenticated. Now, check their authorization in Firestore.
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef)
         .then(docSnap => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-            // SUCCESS: User is authenticated and authorized.
             setLoaderStatus('success');
             setTimeout(() => {
-              setIsReady(true); // Render the dashboard UI
+              setIsReady(true);
             }, 1000);
           } else {
-            // FAILURE: User is authenticated but not authorized in our database.
             setLoaderStatus('failed');
             toast({
               variant: "destructive",
@@ -90,7 +96,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           }
         })
         .catch(error => {
-          // FAILURE: An error occurred checking Firestore.
           console.error("Authorization check failed:", error);
           setLoaderStatus('failed');
           toast({
@@ -104,8 +109,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           }, 1200);
         });
     } else {
-      // FAILURE: isUserLoading is false and there is no user object.
-      // This is a definitive "not logged in" state.
       setLoaderStatus('failed');
       setTimeout(() => {
         router.push('/login');
@@ -113,8 +116,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     }
   }, [isUserLoading, user, router, firestore, auth, toast]);
 
-  // The main conditional rendering logic.
-  // If not ready, show the loader. Otherwise, show the full admin dashboard.
   if (!isReady) {
     return <AuthorizationLoader status={loaderStatus} />;
   }
@@ -165,30 +166,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <SidebarFooter>
                 <SidebarMenu>
                     <SidebarMenuItem>
-                        <SidebarMenuButton 
-                            asChild
-                            isActive={pathname.startsWith('/admin/users')}
-                            tooltip="Users"
-                        >
-                            <Link href="/admin/users">
-                                <Users/>
-                                <span>Users</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton 
-                            asChild
-                            isActive={pathname.startsWith('/admin/settings')}
-                            tooltip="Settings"
-                        >
-                            <Link href="/admin/settings">
-                                <Settings/>
-                                <span>Settings</span>
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
                         <SidebarMenuButton asChild tooltip="Go to public site">
                             <Link href="/" target="_blank">
                                 <ExternalLink/>
@@ -201,12 +178,45 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Sidebar>
           
           <SidebarInset>
-            <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-card px-4">
+            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4">
               <SidebarTrigger className="md:hidden" />
               <div className="w-full flex-1">
                 <h1 className="text-lg font-semibold">{pageTitle}</h1>
               </div>
               <ThemeToggle />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.photoURL || ''} alt={user?.displayName || 'User'} />
+                      <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">{user?.displayName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => auth.signOut()}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </header>
     
             <main className="flex-1 p-4 sm:p-6 md:p-8">

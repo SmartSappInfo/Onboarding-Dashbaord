@@ -1,9 +1,11 @@
 
+
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
   phone: string;
+  photoURL?: string;
   isAuthorized: boolean;
   createdAt: string; // ISO string
 }
