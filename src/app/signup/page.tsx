@@ -250,7 +250,7 @@ export default function SignupPage() {
           </Form>
         </div>
       </main>
-      <aside className="relative hidden bg-primary lg:block rounded-bl-2xl">
+      <aside className="relative hidden bg-primary lg:block rounded-bl-[150px]">
          <Image
             src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1280&q=80"
             alt="Abstract background gradient"
