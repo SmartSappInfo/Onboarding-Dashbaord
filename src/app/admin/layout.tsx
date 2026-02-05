@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -171,8 +170,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </SidebarGroup>
             </SidebarContent>
             <SidebarFooter>
-               <SidebarGroup>
-                <SidebarGroupLabel>Settings</SidebarGroupLabel>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton 
@@ -195,7 +192,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-               </SidebarGroup>
             </SidebarFooter>
           </Sidebar>
           
@@ -217,5 +213,3 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     </ThemeProvider>
   );
 }
-
-    
