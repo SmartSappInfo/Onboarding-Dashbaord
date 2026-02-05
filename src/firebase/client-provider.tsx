@@ -24,16 +24,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     return initializeFirebase();
   }, []);
 
-  // This useEffect hook sets the auth persistence to 'session' to keep the user signed in for the current session.
-  useEffect(() => {
-    if (firebaseServices.auth) {
-        setPersistence(firebaseServices.auth, browserSessionPersistence)
-          .catch((error) => {
-              console.error("Firebase Auth Persistence Error:", error);
-          });
-    }
-  }, [firebaseServices.auth]);
-
   // This useEffect hook will create a default admin user for development purposes.
   useEffect(() => {
     const seedAdminUser = async () => {
