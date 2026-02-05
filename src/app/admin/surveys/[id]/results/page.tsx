@@ -189,21 +189,27 @@ export default function SurveyResultsPage() {
                     </div>
                 </div>
 
-                <TabsContent value="responses" className="mt-4 flex-grow overflow-y-auto">
-                    <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
+                <TabsContent value="responses" className="mt-4 flex-grow relative">
+                    <div className="absolute inset-0">
+                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
+                    </div>
                 </TabsContent>
-                <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">
-                     <div className="pr-4">
-                        <AnalyticsView survey={survey} responses={responses || []} />
+                <TabsContent value="analytics" className="mt-4 flex-grow relative">
+                     <div className="absolute inset-0">
+                        <ScrollArea className="h-full pr-4">
+                            <AnalyticsView survey={survey} responses={responses || []} />
+                        </ScrollArea>
                      </div>
                 </TabsContent>
-                 <TabsContent value="ai-summaries" className="mt-4 flex-grow overflow-y-auto">
-                    <div className="pr-4">
+                 <TabsContent value="ai-summaries" className="mt-4 flex-grow relative">
+                    <div className="absolute inset-0">
+                        <ScrollArea className="h-full pr-4">
                         {responses ? (
                             <AISummariesView survey={survey} responses={responses} />
                         ) : (
                             <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
                         )}
+                        </ScrollArea>
                     </div>
                 </TabsContent>
             </Tabs>

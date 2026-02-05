@@ -6,6 +6,7 @@ import type { Survey, SurveyResponse, SurveyQuestion } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, responses: SurveyResponse[], isLoading: boolean }) {
     const router = useRouter();
@@ -31,13 +32,13 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     }
     
     return (
-         <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <ScrollArea className="h-full w-full rounded-lg border bg-card text-card-foreground shadow-sm">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-primary z-20 w-[200px]">Submitted</TableHead>
+                <TableHead className="sticky left-0 bg-primary z-10 w-[200px]">Submitted</TableHead>
                  {questions.map(q => (
-                    <TableHead key={q.id} className="sticky top-0 bg-primary z-10 min-w-[200px]">{q.title}</TableHead>
+                    <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
                 ))}
               </TableRow>
             </TableHeader>
@@ -77,7 +78,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
               )}
             </TableBody>
           </Table>
-        </div>
+        </ScrollArea>
     )
 }
 
