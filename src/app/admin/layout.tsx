@@ -30,7 +30,6 @@ import { getAuth } from 'firebase/auth';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/users', icon: Users, label: 'Users' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/media', icon: Film, label: 'Media' },
@@ -171,6 +170,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </SidebarContent>
             <SidebarFooter>
                 <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton 
+                            asChild
+                            isActive={pathname.startsWith('/admin/users')}
+                            tooltip="Users"
+                        >
+                            <Link href="/admin/users">
+                                <Users/>
+                                <span>Users</span>
+                            </Link>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <SidebarMenuButton 
                             asChild
