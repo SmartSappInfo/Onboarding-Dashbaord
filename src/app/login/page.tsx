@@ -11,7 +11,6 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -26,7 +25,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo, GoogleIcon } from '@/components/icons';
@@ -34,7 +32,6 @@ import { SmartSappLogo, GoogleIcon } from '@/components/icons';
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  rememberMe: z.boolean().default(false),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -50,15 +47,13 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: false,
     },
   });
 
   const onSubmit = (data: FormData) => {
     form.control.disabled = true;
-    const persistence = data.rememberMe ? browserLocalPersistence : browserSessionPersistence;
     
-    setPersistence(auth, persistence)
+    setPersistence(auth, browserLocalPersistence)
       .then(() => {
         return signInWithEmailAndPassword(auth, data.email, data.password);
       })
@@ -108,10 +103,7 @@ export default function LoginPage() {
       return;
     }
     
-    const rememberMe = form.getValues('rememberMe');
-    const persistence = rememberMe ? browserLocalPersistence : browserSessionPersistence;
-
-    setPersistence(auth, persistence)
+    setPersistence(auth, browserLocalPersistence)
       .then(() => {
         const provider = new GoogleAuthProvider();
         return signInWithPopup(auth, provider);
@@ -200,23 +192,6 @@ export default function LoginPage() {
                       <Input type="password" placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 pt-2 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <FormLabel className="font-normal">
-                      Remember me
-                    </FormLabel>
                   </FormItem>
                 )}
               />

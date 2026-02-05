@@ -83,13 +83,14 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   React.useEffect(() => {
     if (isUserLoading) {
-      // Still waiting for Firebase to check the auth state
+      // Still waiting for Firebase to check the auth state.
+      // Do nothing, the skeleton loader is active because isAuthorizing is still true.
       return;
     }
 
     if (!user) {
       // No user found, redirect to login. isAuthorizing remains true,
-      // so the skeleton loader will persist until navigation completes.
+      // so the skeleton loader will persist until navigation completes, preventing a flicker.
       router.push('/login');
       return;
     }
@@ -98,7 +99,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     const userDocRef = doc(firestore, 'users', user.uid);
     getDoc(userDocRef).then(docSnap => {
       if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-        // User is authorized.
+        // User is authorized. Stop showing the loader.
         setIsAuthorizing(false);
       } else {
         // User is not authorized, sign them out and redirect.
