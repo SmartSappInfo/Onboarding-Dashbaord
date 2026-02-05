@@ -12,7 +12,6 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
-  browserSessionPersistence,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -27,7 +26,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { GoogleIcon, SmartSappIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
@@ -36,7 +34,6 @@ import Image from 'next/image';
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
-  rememberMe: z.boolean().default(false).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -52,9 +49,53 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
-      rememberMe: true,
     },
   });
+  
+  const [isClearing, setIsClearing] = React.useState(false);
+
+
+  const handleClearData = async () => {
+    setIsClearing(true);
+    try {
+        // Clear local storage and session storage
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Delete all cookies
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i];
+            const eqPos = cookie.indexOf('=');
+            const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+            document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+        }
+
+        // Clear cache storage
+        if ('caches' in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map(key => caches.delete(key)));
+        }
+        
+        toast({
+            title: "Cache Cleared",
+            description: "All site data has been cleared. The page will now reload.",
+        });
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+
+    } catch (e) {
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not clear all site data.",
+        });
+        setIsClearing(false);
+    }
+  };
+
 
   React.useEffect(() => {
     document.title = 'Login - Onboarding Workspace';
@@ -63,9 +104,7 @@ export default function LoginPage() {
   const onSubmit = (data: FormData) => {
     form.control.disabled = true;
     
-    const persistence = data.rememberMe ? browserLocalPersistence : browserSessionPersistence;
-    
-    setPersistence(auth, persistence)
+    setPersistence(auth, browserLocalPersistence)
       .then(() => {
         return signInWithEmailAndPassword(auth, data.email, data.password);
       })
@@ -115,9 +154,7 @@ export default function LoginPage() {
       return;
     }
     
-    const persistence = form.getValues('rememberMe') ? browserLocalPersistence : browserSessionPersistence;
-    
-    setPersistence(auth, persistence)
+    setPersistence(auth, browserLocalPersistence)
       .then(() => {
         const provider = new GoogleAuthProvider();
         return signInWithPopup(auth, provider);
@@ -202,7 +239,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>Email*</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="mail@simmmple.com" {...field} />
+                      <Input type="email" placeholder="first.last@smartsapp.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -221,24 +258,7 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
-              <div className="flex items-center justify-between">
-                  <FormField
-                      control={form.control}
-                      name="rememberMe"
-                      render={({ field }) => (
-                          <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                              <FormControl>
-                                  <Checkbox
-                                  checked={field.value}
-                                  onCheckedChange={field.onChange}
-                                  />
-                              </FormControl>
-                              <FormLabel className="font-normal">
-                                  Keep me logged in
-                              </FormLabel>
-                          </FormItem>
-                      )}
-                  />
+              <div className="flex items-center justify-end">
                   <Link href="#" className="text-sm font-medium text-primary hover:underline">
                       Forgot password?
                   </Link>
@@ -255,6 +275,11 @@ export default function LoginPage() {
               </div>
             </form>
           </Form>
+        </div>
+        <div className="absolute bottom-6 left-6">
+          <Button variant="destructive" onClick={handleClearData} disabled={isClearing}>
+            {isClearing ? 'Clearing...' : 'Clear Site Data & Reload'}
+          </Button>
         </div>
       </main>
       <aside className="relative hidden bg-primary lg:block rounded-bl-2xl">
