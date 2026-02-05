@@ -69,6 +69,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }, [pathname]);
 
   React.useEffect(() => {
+    if (pageTitle) {
+      document.title = `Onboarding Workspace - ${pageTitle}`;
+    }
+  }, [pageTitle]);
+
+  React.useEffect(() => {
     if (isUserLoading) {
       return;
     }
