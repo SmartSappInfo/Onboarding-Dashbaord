@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -28,6 +29,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { SmartSappLogo, GoogleIcon } from '@/components/icons';
+import { Trash2 } from 'lucide-react';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -156,6 +158,42 @@ export default function LoginPage() {
       });
   };
 
+  const handleClearCache = () => {
+    // Clear Local Storage
+    localStorage.clear();
+
+    // Clear Session Storage
+    sessionStorage.clear();
+
+    // Clear Cookies
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i];
+        const eqPos = cookie.indexOf("=");
+        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+    }
+
+    // Clear Cache Storage API
+    if ('caches' in window) {
+        caches.keys().then(function(names) {
+            for (let name of names)
+                caches.delete(name);
+        });
+    }
+
+    toast({
+      title: 'Site Data Cleared',
+      description: 'All application storage has been cleared. The page will now reload.',
+    });
+    
+    // Reload the page to apply changes
+    setTimeout(() => {
+        window.location.reload();
+    }, 1500);
+  };
+
+
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8">
@@ -225,6 +263,12 @@ export default function LoginPage() {
           </div>
         </CardContent>
       </Card>
+      <div className="mt-6">
+        <Button variant="outline" onClick={handleClearCache}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Clear Site Data & Reload
+        </Button>
+      </div>
     </div>
   );
 }
