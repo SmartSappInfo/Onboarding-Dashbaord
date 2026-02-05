@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -36,7 +37,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-primary z-10 w-[200px]">Submitted</TableHead>
+                <TableHead className="sticky left-0 bg-primary z-10 w-[200px] whitespace-nowrap">Submitted</TableHead>
                  {questions.map(q => (
                     <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
                 ))}
@@ -83,3 +84,4 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
 }
 
 export default ResponsesListView;
+    

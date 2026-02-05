@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -231,7 +232,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     }, [survey, responses]);
 
     return (
-        <div className="space-y-10">
+        <div className="space-y-10 pr-4">
             <Card className="w-fit rounded-xl shadow-md">
                 <CardHeader className="p-5">
                     <CardTitle className="text-base">Total Responses</CardTitle>
@@ -267,3 +268,4 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         </div>
     );
 }
+      

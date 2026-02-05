@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -7,10 +8,7 @@ import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveySumma
 import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Sparkles, Loader2, Download } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
@@ -19,7 +17,6 @@ import { format } from 'date-fns';
 import ResponsesListView from "./components/responses-list-view";
 import AISummariesView from "./components/ai-summaries-view";
 import AnalyticsView from "./components/analytics-view";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 
 // ============================================================================
@@ -167,7 +164,7 @@ export default function SurveyResultsPage() {
                 <p className="text-muted-foreground mb-4">Results & Analytics</p>
             </div>
 
-            <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex-grow flex flex-col">
+            <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex-grow flex flex-col min-h-0">
                 <div className="flex-shrink-0">
                     <div className="flex justify-between items-center">
                         <TabsList>
@@ -189,30 +186,21 @@ export default function SurveyResultsPage() {
                     </div>
                 </div>
 
-                <TabsContent value="responses" className="mt-4 flex-grow relative">
-                    <div className="absolute inset-0">
-                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
-                    </div>
+                <TabsContent value="responses" className="mt-4 flex-grow overflow-hidden">
+                    <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
                 </TabsContent>
-                <TabsContent value="analytics" className="mt-4 flex-grow relative">
-                     <div className="absolute inset-0">
-                        <ScrollArea className="h-full pr-4">
-                            <AnalyticsView survey={survey} responses={responses || []} />
-                        </ScrollArea>
-                     </div>
+                <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">
+                     <AnalyticsView survey={survey} responses={responses || []} />
                 </TabsContent>
-                 <TabsContent value="ai-summaries" className="mt-4 flex-grow relative">
-                    <div className="absolute inset-0">
-                        <ScrollArea className="h-full pr-4">
-                        {responses ? (
-                            <AISummariesView survey={survey} responses={responses} />
-                        ) : (
-                            <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
-                        )}
-                        </ScrollArea>
-                    </div>
+                 <TabsContent value="ai-summaries" className="mt-4 flex-grow overflow-y-auto">
+                    {responses ? (
+                        <AISummariesView survey={survey} responses={responses} />
+                    ) : (
+                        <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
+    

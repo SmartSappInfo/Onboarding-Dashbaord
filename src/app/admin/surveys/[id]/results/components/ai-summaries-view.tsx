@@ -135,7 +135,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
     
     return (
         <AlertDialog open={!!summaryToDelete} onOpenChange={(open) => !open && setSummaryToDelete(null)}>
-            <div className="mt-6 space-y-8">
+            <div className="mt-6 space-y-8 pr-4">
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2"><BrainCircuit /> Interactive AI Analysis</CardTitle>
@@ -259,3 +259,4 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
         </AlertDialog>
     );
 }
+      
