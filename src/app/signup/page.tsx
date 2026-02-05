@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { useAuth, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useAuth, useFirestore } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -20,16 +20,16 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { SmartSappLogo, GoogleIcon } from '@/components/icons';
+import { GoogleIcon, SmartSappIcon } from '@/components/icons';
+import { ThemeToggle } from '@/components/theme-toggle';
+import Image from 'next/image';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
   email: z.string().email({ message: 'Please enter a valid email.' }),
-  phone: z.string().min(10, { message: "Please enter a valid phone number." }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
-  confirmPassword: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
+  confirmPassword: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -48,14 +48,13 @@ export default function SignupPage() {
     defaultValues: {
       name: '',
       email: '',
-      phone: '',
       password: '',
       confirmPassword: '',
     },
   });
 
   React.useEffect(() => {
-    document.title = 'Signin - Onboarding Workspace';
+    document.title = 'Sign Up - Onboarding Workspace';
   }, []);
 
   const onSubmit = (data: FormData) => {
@@ -67,32 +66,23 @@ export default function SignupPage() {
         const userProfile = {
           name: data.name,
           email: data.email,
-          phone: data.phone,
+          phone: '',
           isAuthorized: false,
           createdAt: new Date().toISOString(),
         };
 
         const userDocRef = doc(firestore, 'users', user.uid);
         
-        try {
-          await setDoc(userDocRef, userProfile);
-          await auth.signOut();
+        await setDoc(userDocRef, userProfile);
+        await auth.signOut();
 
-          toast({
-            title: 'Account Created',
-            description: 'Your account has been created and is now awaiting authorization.',
-            duration: 5000,
-          });
-          router.push('/login');
+        toast({
+          title: 'Account Created',
+          description: 'Your account has been created and is now awaiting authorization.',
+          duration: 5000,
+        });
+        router.push('/login');
 
-        } catch (dbError: any) {
-          toast({
-            variant: "destructive",
-            title: 'Database Error',
-            description: "Could not save your user profile. Please try again."
-          });
-          await user.delete();
-        }
       })
       .catch((error) => {
         const errorCode = error.code;
@@ -132,7 +122,6 @@ export default function SignupPage() {
         const docSnap = await getDoc(userDocRef);
 
         if (docSnap.exists()) {
-          // User already exists, so just sign out and prompt to log in.
           await auth.signOut();
           toast({
             title: 'Account Exists',
@@ -140,7 +129,6 @@ export default function SignupPage() {
           });
           router.push('/login');
         } else {
-          // New user signing up via Google
           const userProfile = {
             name: user.displayName,
             email: user.email,
@@ -171,24 +159,38 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="mb-8">
-        <SmartSappLogo className="h-12" />
-      </div>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">Create an Admin Account</CardTitle>
-          <CardDescription>Fill out the form to request access to the dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      <main className="flex flex-col items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-sm">
+           <div className="mb-10 text-left">
+            <h1 className="text-4xl font-bold">Create Account</h1>
+            <p className="mt-2 text-muted-foreground">
+              Enter your details to create an account
+            </p>
+          </div>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            <GoogleIcon className="mr-2 h-5 w-5" />
+            Sign up with Google
+          </Button>
+
+           <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or
+              </span>
+            </div>
+          </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Full Name*</FormLabel>
                     <FormControl>
                       <Input placeholder="Jane Doe" {...field} />
                     </FormControl>
@@ -201,22 +203,9 @@ export default function SignupPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email*</FormLabel>
                     <FormControl>
                       <Input type="email" placeholder="admin@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="+233 55 123 4567" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -227,9 +216,9 @@ export default function SignupPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Password*</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="Min. 8 characters" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -240,44 +229,53 @@ export default function SignupPage() {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>Confirm Password*</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="Min. 8 characters" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Creating Account...' : 'Sign Up'}
+                {form.formState.isSubmitting ? 'Creating Account...' : 'Create Account'}
               </Button>
+               <div className="mt-4 text-center text-sm text-muted-foreground">
+                Already have an account?{' '}
+                <Link href="/login" className="font-semibold text-primary hover:underline">
+                  Log In
+                </Link>
+              </div>
             </form>
           </Form>
-
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+        </div>
+      </main>
+      <aside className="relative hidden bg-primary lg:block">
+         <Image
+            src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1280&q=80"
+            alt="Abstract background gradient"
+            fill
+            className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/70 via-primary to-blue-700/80 opacity-90" />
+        <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-primary-foreground p-8">
+            <div className="bg-white/20 rounded-full p-2 backdrop-blur-sm">
+              <div className="bg-white rounded-full h-32 w-32 flex items-center justify-center">
+                <SmartSappIcon className="h-20 w-20 text-primary" />
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-            <GoogleIcon className="mr-2 h-4 w-4" />
-            Continue with Google
-          </Button>
-          
-          <div className="mt-4 text-center text-sm">
-            Already have an account?{' '}
-            <Link href="/login" className="underline">
-              Log in
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+            <h2 className="mt-8 text-4xl font-bold">SmartSapp</h2>
+            <p className="mt-2 max-w-sm text-lg text-primary-foreground/80">
+              The ultimate school management and parent engagement platform.
+            </p>
+        </div>
+        <div className="absolute bottom-6 right-6 z-20">
+          <ThemeToggle />
+        </div>
+        <div className="absolute bottom-6 left-6 z-20 text-xs text-primary-foreground/50">
+            © {new Date().getFullYear()} SmartSapp. All Rights Reserved.
+        </div>
+      </aside>
     </div>
   );
 }

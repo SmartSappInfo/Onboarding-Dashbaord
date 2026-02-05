@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -13,6 +12,7 @@ import {
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
@@ -27,14 +27,16 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { SmartSappLogo, GoogleIcon } from '@/components/icons';
-import { Trash2 } from 'lucide-react';
+import { GoogleIcon, SmartSappIcon } from '@/components/icons';
+import { ThemeToggle } from '@/components/theme-toggle';
+import Image from 'next/image';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
-  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
+  rememberMe: z.boolean().default(false).optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -50,6 +52,7 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
+      rememberMe: true,
     },
   });
 
@@ -60,7 +63,9 @@ export default function LoginPage() {
   const onSubmit = (data: FormData) => {
     form.control.disabled = true;
     
-    setPersistence(auth, browserLocalPersistence)
+    const persistence = data.rememberMe ? browserLocalPersistence : browserSessionPersistence;
+    
+    setPersistence(auth, persistence)
       .then(() => {
         return signInWithEmailAndPassword(auth, data.email, data.password);
       })
@@ -110,7 +115,9 @@ export default function LoginPage() {
       return;
     }
     
-    setPersistence(auth, browserLocalPersistence)
+    const persistence = form.getValues('rememberMe') ? browserLocalPersistence : browserSessionPersistence;
+    
+    setPersistence(auth, persistence)
       .then(() => {
         const provider = new GoogleAuthProvider();
         return signInWithPopup(auth, provider);
@@ -134,7 +141,6 @@ export default function LoginPage() {
             });
           }
         } else {
-          // New user signing up via Google
           const userProfile = {
             name: user.displayName,
             email: user.email,
@@ -163,63 +169,40 @@ export default function LoginPage() {
       });
   };
 
-  const handleClearCache = () => {
-    // Clear Local Storage
-    localStorage.clear();
-
-    // Clear Session Storage
-    sessionStorage.clear();
-
-    // Clear Cookies
-    const cookies = document.cookie.split(";");
-    for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i];
-        const eqPos = cookie.indexOf("=");
-        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-        document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-    }
-
-    // Clear Cache Storage API
-    if ('caches' in window) {
-        caches.keys().then(function(names) {
-            for (let name of names)
-                caches.delete(name);
-        });
-    }
-
-    toast({
-      title: 'Site Data Cleared',
-      description: 'All application storage has been cleared. The page will now reload.',
-    });
-    
-    // Reload the page to apply changes
-    setTimeout(() => {
-        window.location.reload();
-    }, 1500);
-  };
-
-
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="mb-8">
-        <SmartSappLogo className="h-12" />
-      </div>
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">Admin Login</CardTitle>
-          <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
+      <main className="flex flex-col items-center justify-center p-6 md:p-12">
+        <div className="w-full max-w-sm">
+          <div className="mb-10 text-left">
+            <h1 className="text-4xl font-bold">Sign In</h1>
+            <p className="mt-2 text-muted-foreground">
+              Enter your email and password to sign in!
+            </p>
+          </div>
+          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            <GoogleIcon className="mr-2 h-5 w-5" />
+            Sign in with Google
+          </Button>
+          <div className="relative my-8">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Or
+              </span>
+            </div>
+          </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email*</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="admin@smartsapp.com" {...field} />
+                      <Input type="email" placeholder="mail@simmmple.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -230,50 +213,76 @@ export default function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>Password*</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="Min. 8 characters" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="flex items-center justify-between">
+                  <FormField
+                      control={form.control}
+                      name="rememberMe"
+                      render={({ field }) => (
+                          <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                              <FormControl>
+                                  <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                  />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                  Keep me logged in
+                              </FormLabel>
+                          </FormItem>
+                      )}
+                  />
+                  <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                      Forgot password?
+                  </Link>
+              </div>
+
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
+                {form.formState.isSubmitting ? 'Signing In...' : 'Sign In'}
               </Button>
+              <div className="mt-4 text-center text-sm text-muted-foreground">
+                Not registered yet?{' '}
+                <Link href="/signup" className="font-semibold text-primary hover:underline">
+                  Create an Account
+                </Link>
+              </div>
             </form>
           </Form>
-
-           <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
+        </div>
+      </main>
+      <aside className="relative hidden bg-primary lg:block">
+        <Image
+            src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1280&q=80"
+            alt="Abstract background gradient"
+            fill
+            className="object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/70 via-primary to-blue-700/80 opacity-90" />
+        <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-primary-foreground p-8">
+            <div className="bg-white/20 rounded-full p-2 backdrop-blur-sm">
+              <div className="bg-white rounded-full h-32 w-32 flex items-center justify-center">
+                <SmartSappIcon className="h-20 w-20 text-primary" />
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-          
-          <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-            <GoogleIcon className="mr-2 h-4 w-4" />
-            Continue with Google
-          </Button>
-
-          <div className="mt-4 text-center text-sm">
-            Don&apos;t have an account?{' '}
-            <Link href="/signup" className="underline">
-              Sign up
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-      <div className="mt-6">
-        <Button variant="outline" onClick={handleClearCache}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          Clear Site Data & Reload
-        </Button>
-      </div>
+            <h2 className="mt-8 text-4xl font-bold">SmartSapp</h2>
+            <p className="mt-2 max-w-sm text-lg text-primary-foreground/80">
+              The ultimate school management and parent engagement platform.
+            </p>
+        </div>
+        <div className="absolute bottom-6 right-6 z-20">
+          <ThemeToggle />
+        </div>
+        <div className="absolute bottom-6 left-6 z-20 text-xs text-primary-foreground/50">
+            © {new Date().getFullYear()} SmartSapp. All Rights Reserved.
+        </div>
+      </aside>
     </div>
   );
 }
