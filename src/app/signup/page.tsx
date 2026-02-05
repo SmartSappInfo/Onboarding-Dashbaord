@@ -250,7 +250,7 @@ export default function SignupPage() {
           </Form>
         </div>
       </main>
-      <aside className="relative hidden bg-primary lg:block">
+      <aside className="relative hidden bg-primary lg:block rounded-bl-2xl">
          <Image
             src="https://images.unsplash.com/photo-1557682250-33bd709cbe85?w=1280&q=80"
             alt="Abstract background gradient"
@@ -259,20 +259,21 @@ export default function SignupPage() {
         />
         <div className="absolute inset-0 bg-gradient-to-br from-primary/70 via-primary to-blue-700/80 opacity-90" />
         <div className="relative z-10 flex h-full flex-col items-center justify-center text-center text-primary-foreground p-8">
-            <div className="bg-white/20 rounded-full p-2 backdrop-blur-sm">
-              <div className="bg-white rounded-full h-32 w-32 flex items-center justify-center">
-                <SmartSappIcon className="h-20 w-20 text-primary" />
-              </div>
+            <div className="relative bg-white/20 rounded-full p-2 backdrop-blur-sm">
+                <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-fade"></div>
+                <div className="relative bg-white rounded-full h-32 w-32 flex items-center justify-center">
+                    <SmartSappIcon className="h-20 w-20 text-primary" />
+                </div>
             </div>
-            <h2 className="mt-8 text-4xl font-bold">SmartSapp</h2>
+            <h2 className="mt-8 text-4xl font-bold">SmartSapp Onboarding</h2>
             <p className="mt-2 max-w-sm text-lg text-primary-foreground/80">
-              The ultimate school management and parent engagement platform.
+              Automating SmartSapp Onboarding Experience
             </p>
         </div>
         <div className="absolute bottom-6 right-6 z-20">
           <ThemeToggle />
         </div>
-        <div className="absolute bottom-6 left-6 z-20 text-xs text-primary-foreground/50">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 text-xs text-primary-foreground/50">
             © {new Date().getFullYear()} SmartSapp. All Rights Reserved.
         </div>
       </aside>
