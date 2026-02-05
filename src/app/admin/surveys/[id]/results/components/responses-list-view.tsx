@@ -7,7 +7,6 @@ import type { Survey, SurveyResponse, SurveyQuestion } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, responses: SurveyResponse[], isLoading: boolean }) {
     const router = useRouter();
@@ -33,8 +32,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     }
     
     return (
-        <ScrollArea className="h-full w-full rounded-lg border bg-card text-card-foreground shadow-sm">
-          <Table>
+        <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="sticky left-0 bg-primary z-10 w-[200px] whitespace-nowrap">Submitted</TableHead>
@@ -78,8 +76,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                 </TableRow>
               )}
             </TableBody>
-          </Table>
-        </ScrollArea>
+        </Table>
     )
 }
 
