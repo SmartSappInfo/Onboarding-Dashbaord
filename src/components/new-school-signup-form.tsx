@@ -27,7 +27,7 @@ import { Calendar } from "./ui/calendar";
 import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
-import { useFirestore } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -170,7 +170,8 @@ export default function NewSchoolSignupForm() {
     };
 
     try {
-      await addDoc(collection(firestore, 'schools'), schoolData);
+      const schoolsCollection = collection(firestore, 'schools');
+      await addDoc(schoolsCollection, schoolData);
       
       toast({
         title: "Registration Successful!",
@@ -179,11 +180,18 @@ export default function NewSchoolSignupForm() {
       form.reset();
 
     } catch (error: any) {
-      console.error("Error adding document to Firestore: ", error);
+      const schoolsCollection = collection(firestore, 'schools');
+      const permissionError = new FirestorePermissionError({
+          path: schoolsCollection.path,
+          operation: 'create',
+          requestResourceData: schoolData,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+
       toast({
         variant: "destructive",
-        title: "Submission Saved, but Firestore Failed",
-        description: "Webhook sent, but failed to save the school record. Please check the admin dashboard.",
+        title: "Registration Failed",
+        description: "Could not save the new school record to the database. Please check your permissions or contact support.",
       });
     }
   };

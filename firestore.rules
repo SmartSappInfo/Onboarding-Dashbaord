@@ -44,6 +44,7 @@ service cloud.firestore {
     // LIST is not allowed to prevent scraping all data.
     match /schools/{schoolId} {
       allow get: if true;
+      allow create: if true;
     }
     match /meetings/{meetingId} {
       allow get: if true;
