@@ -7,7 +7,7 @@ const Header = () => {
   return (
     <header className="fixed top-0 z-50 w-full py-4">
       <div className="container">
-        <div className="flex items-center justify-between rounded-lg bg-black/20 backdrop-blur-sm border border-white/10 py-2 px-4">
+        <div className="flex items-center justify-between rounded-full bg-black/20 backdrop-blur-sm border border-white/10 py-1 px-4">
           <Link href="/" aria-label="Back to homepage">
             <Logo className="h-8" variant="white" />
           </Link>
