@@ -108,6 +108,7 @@ export default function NewSchoolSignupForm() {
 
       const webhookData: Record<string, any> = { ...data };
       
+      webhookData.implementationDate = format(data.implementationDate, 'yyyy-MM-dd');
       webhookData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
       webhookData.notifySchoolEmails = [...new Set(schoolEmails)].join(',');
       webhookData.notifySchoolSmsNumbers = [...new Set(schoolSmsNumbers)].join(',');
