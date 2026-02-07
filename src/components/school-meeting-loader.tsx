@@ -20,7 +20,7 @@ import JoinMeetingButton from './join-meeting-button';
 
 function MeetingPageSkeleton() {
   return (
-    <div className="container grid grid-cols-1 items-center gap-12 py-10 md:grid-cols-2 md:py-20 lg:gap-20">
+    <div className="container grid grid-cols-1 items-center gap-12 py-10 md:py-20 lg:gap-20">
         <div className="flex flex-col items-center text-center md:items-start md:text-left">
             <div className="mb-6 flex items-center gap-4">
                 <Skeleton className="h-16 w-16 rounded-full" />
@@ -78,10 +78,10 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
 
 const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <section className="py-20 md:py-32">
+    <section className="py-20 md:py-28">
       <div className="container text-center">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">Welcome to Your School Kickoff</h1>
-        <p className="text-xl text-muted-foreground mb-12">{school.name}</p>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Welcome to Your School Kickoff</h1>
+        <p className="text-lg md:text-xl text-muted-foreground mb-12">{school.name}</p>
         
         <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
             <Card><CardHeader><CardTitle>What This Kickoff Covers</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">An overview of the onboarding process, timelines, and key milestones.</p></CardContent></Card>
@@ -100,10 +100,10 @@ const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }
 
 const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <section className="py-20 md:py-32">
+    <section className="py-20 md:py-28">
       <div className="container text-center">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">Staff Training Session</h1>
-        <p className="text-xl text-muted-foreground mb-12">{school.name}</p>
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Staff Training Session</h1>
+        <p className="text-lg md:text-xl text-muted-foreground mb-12">{school.name}</p>
 
         <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
             <Card><CardHeader><CardTitle>Learning Objectives</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Master the core features of the SmartSapp admin dashboard and mobile app.</p></CardContent></Card>

@@ -44,11 +44,11 @@ const CountdownTimer = ({ targetDate }: CountdownTimerProps) => {
   }, [targetDate]);
 
   const TimeBlock = ({ value, label }: { value: number, label: string }) => (
-    <div className="flex flex-col items-center justify-center rounded-lg bg-white/10 p-4 backdrop-blur-sm w-24">
-      <span className="font-mono text-4xl font-bold text-white sm:text-5xl">
+    <div className="flex flex-col items-center justify-center rounded-lg bg-white/10 p-2 sm:p-4 backdrop-blur-sm w-full">
+      <span className="font-mono text-3xl sm:text-5xl font-bold text-white">
         {String(value).padStart(2, '0')}
       </span>
-      <span className="text-sm uppercase text-white/80">{label}</span>
+      <span className="text-xs sm:text-sm uppercase text-white/80">{label}</span>
     </div>
   );
 
