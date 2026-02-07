@@ -8,7 +8,7 @@ import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, ExternalLink, Edit, Trash2, MapPin, Phone, MessageSquare } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,11 +33,17 @@ import { useToast } from '@/hooks/use-toast';
 import SchoolDetailsModal from './components/school-details-modal';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const formatPhoneNumberForLink = (phone?: string) => {
     if (!phone) return '';
     return phone.replace(/[\s-()]/g, '');
 };
+
+const getInitials = (name?: string) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
 
 
 export default function SchoolsPage() {
@@ -131,29 +137,37 @@ export default function SchoolsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[80px]"></TableHead>
                 <TableHead>School Name</TableHead>
                 <TableHead>Location</TableHead>
                 <TableHead>Implementation Date</TableHead>
                 <TableHead>Modules</TableHead>
                 <TableHead>Contact</TableHead>
-                <TableHead className="w-[50px] text-right">Actions</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
+                    <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : schools && schools.length > 0 ? (
                 schools.map((school) => (
                   <TableRow key={school.id}>
+                    <TableCell>
+                      <Avatar>
+                        <AvatarImage src={school.logoUrl} alt={school.name} />
+                        <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
                     <TableCell className="font-medium">
                       <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
                         {school.name}
@@ -213,7 +227,7 @@ export default function SchoolsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center">
+                  <TableCell colSpan={7} className="h-24 text-center">
                     No schools found. Create one to get started.
                   </TableCell>
                 </TableRow>
@@ -230,10 +244,18 @@ export default function SchoolsPage() {
                 schools.map(school => (
                     <Card key={school.id} className="w-full">
                         <CardHeader>
-                            <CardTitle className="cursor-pointer hover:underline" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
-                            <CardDescription>
-                                Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
-                            </CardDescription>
+                            <div className="flex items-center gap-4">
+                                <Avatar>
+                                    <AvatarImage src={school.logoUrl} alt={school.name} />
+                                    <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                    <CardTitle className="cursor-pointer hover:underline" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
+                                    <CardDescription>
+                                        Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
+                                    </CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div>
