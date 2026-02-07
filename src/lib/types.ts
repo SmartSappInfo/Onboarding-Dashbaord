@@ -47,6 +47,7 @@ export interface Meeting {
 export interface MediaAsset {
   id: string;
   name: string;
+  originalName?: string;
   url: string;
   fullPath?: string;
   type: 'image' | 'video' | 'audio' | 'document' | 'link';
@@ -54,6 +55,7 @@ export interface MediaAsset {
   size?: number;
   width?: number;
   height?: number;
+  format?: 'jpeg' | 'png' | 'webp';
   uploadedBy: string;
   createdAt: string; // ISO string
   linkTitle?: string;

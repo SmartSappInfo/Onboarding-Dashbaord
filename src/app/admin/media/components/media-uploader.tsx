@@ -1,549 +1,343 @@
-
 'use client';
-
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, Trash2, Edit, CheckSquare, Ratio, Crop, ImageIcon, Percent, TextCursorInput, Loader2 } from 'lucide-react';
-import Cropper, { type Area } from 'react-easy-crop';
-
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { getImageDimensions, processImage } from '@/lib/image-processing';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Slider } from '@/components/ui/slider';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useDebounce } from '@/hooks/use-debounce';
+import { Progress } from '@/components/ui/progress';
+import { File as FileIcon, X, CheckCircle, Upload, Loader2, Pencil } from 'lucide-react';
+import type { MediaAsset } from '@/lib/types';
+import { z } from 'zod';
+import { cn } from '@/lib/utils';
+import { ImageEditor, type ImageEditingState } from './ImageEditor';
+import { processImage } from '@/lib/image-utils';
 
-
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
-const ACCEPTED_MIME_TYPES = [
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'video/mp4', 'video/webm', 'video/quicktime',
-  'audio/mpeg', 'audio/wav', 'audio/ogg',
-  'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
+// For now, only images can be edited. Other types will be uploaded directly.
+const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/flac'];
+const ALLOWED_DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv',
 ];
+const MAX_FILE_SIZE_MB = 50;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
-const getMediaType = (mimeType: string): 'image' | 'video' | 'audio' | 'document' => {
-    if (mimeType.startsWith('image/')) return 'image';
-    if (mimeType.startsWith('video/')) return 'video';
-    if (mimeType.startsWith('audio/')) return 'audio';
-    return 'document';
-};
+const mediaAssetTypeEnum = z.enum(['image', 'video', 'audio', 'document']);
 
-export interface StagedFile {
+interface FileState {
   file: File;
+  status: 'pending' | 'editing' | 'processing' | 'completed' | 'error';
   progress: number;
-  status: 'pending' | 'uploading' | 'success' | 'error';
-  error?: string;
-  id: string;
-  isImage?: boolean;
-  originalDataUrl?: string;
-  originalWidth?: number;
-  originalHeight?: number;
-  edits?: {
-    name: string;
-    crop: { x: number; y: number };
-    croppedAreaPixels: Area;
-    zoom: number;
-    aspect: number;
-    targetWidth: number;
-    quality: number;
-  };
+  editingState?: ImageEditingState;
+  dimensions?: { width: number; height: number };
 }
 
-const aspectRatios = [
-    { label: "Original", value: "none" },
-    { label: "1:1", value: "1/1" },
-    { label: "4:3", value: "4/3" },
-    { label: "3:2", value: "3/2" },
-    { label: "16:9", value: "16/9" },
-    { label: "2:1", value: "2/1" },
-    { label: "4:2", value: "4/2" },
-];
+interface MediaUploaderProps {
+  onUploadSuccess: () => void;
+  onUploadComplete?: (asset: MediaAsset) => void;
+  acceptedFileTypes?: ('image' | 'video' | 'audio' | 'document')[];
+}
 
-export default function MediaUploader({ closeSheet }: { closeSheet: () => void }) {
-  const [stagedFiles, setStagedFiles] = useState<StagedFile[]>([]);
+export default function MediaUploader({ onUploadSuccess, onUploadComplete, acceptedFileTypes = ['image', 'video', 'audio', 'document'] }: MediaUploaderProps) {
+  const [stagedFiles, setStagedFiles] = useState<FileState[]>([]);
+  const [activeFileIndex, setActiveFileIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isDragActive, setIsDragActive] = useState(false);
-  const { user } = useUser();
+  const [dragActive, setDragActive] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const storage = getStorage();
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
 
-  const [selectedFile, setSelectedFile] = useState<StagedFile | null>(null);
-
-  // Editor State
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [aspectString, setAspectString] = useState('16/9');
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
-  const [name, setName] = useState('');
-  const [targetWidth, setTargetWidth] = useState(1280);
-  const [quality, setQuality] = useState(80);
-  
-  const [estimatedSize, setEstimatedSize] = useState<string | null>(null);
-  const [isEstimating, setIsEstimating] = useState(false);
-
-  const debouncedCrop = useDebounce(croppedAreaPixels, 500);
-  const debouncedWidth = useDebounce(targetWidth, 500);
-  const debouncedQuality = useDebounce(quality, 500);
-
-  const updateSelectedFileEdits = (newEdits: Partial<StagedFile['edits']>) => {
-    if (!selectedFile) return;
-    setStagedFiles(prev => prev.map(sf => {
-      if (sf.id !== selectedFile.id) return sf;
-      const updatedEdits = { ...sf.edits, ...newEdits } as StagedFile['edits'];
-      // A bit of a hack to ensure croppedAreaPixels is always present if other edits are
-      if (!updatedEdits.croppedAreaPixels && selectedFile.originalWidth && selectedFile.originalHeight) {
-          updatedEdits.croppedAreaPixels = { x: 0, y: 0, width: selectedFile.originalWidth, height: selectedFile.originalHeight };
-      }
-      return { ...sf, edits: updatedEdits };
-    }));
-  };
-
-  useEffect(() => {
-    if (selectedFile?.isImage) {
-      if (selectedFile.edits) {
-        const { edits } = selectedFile;
-        setCrop(edits.crop);
-        setZoom(edits.zoom);
-        const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - edits.aspect) < 0.01);
-        setAspectString(foundRatio ? foundRatio.value : 'none');
-        setName(edits.name);
-        setTargetWidth(edits.targetWidth);
-        setQuality(edits.quality);
-      } else {
-        const initialAspect = selectedFile.originalWidth! / selectedFile.originalHeight!;
-        const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - initialAspect) < 0.01);
-        const defaultAspect = foundRatio ? foundRatio.value : '16/9';
-        
-        const newEdits = {
-            name: selectedFile.file.name.split('.').slice(0, -1).join('.'),
-            crop: { x: 0, y: 0 },
-            zoom: 1,
-            aspect: eval(defaultAspect),
-            targetWidth: selectedFile.originalWidth!,
-            quality: 80,
-            croppedAreaPixels: { x: 0, y: 0, width: selectedFile.originalWidth!, height: selectedFile.originalHeight! },
-        };
-        updateSelectedFileEdits(newEdits);
-      }
-    }
-  }, [selectedFile]);
-
-  useEffect(() => {
-    if (!selectedFile?.originalDataUrl || !debouncedCrop) return;
-
-    const estimate = async () => {
-        setIsEstimating(true);
-        try {
-            const { blob } = await processImage(
-                selectedFile.originalDataUrl!,
-                debouncedCrop,
-                debouncedWidth,
-                debouncedQuality,
-                'estimate'
-            );
-            setEstimatedSize(formatBytes(blob.size));
-        } catch (e) {
-            console.error("Estimation failed", e);
-            setEstimatedSize("N/A");
-        } finally {
-            setIsEstimating(false);
-        }
-    };
-
-    estimate();
-  }, [debouncedCrop, debouncedWidth, debouncedQuality, selectedFile?.originalDataUrl]);
-
-
-  const handleFileSelection = useCallback(async (files: FileList | null) => {
-    if (!files) return;
-
-    const newFilesPromises = Array.from(files).map(async file => {
-        if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
-          toast({ variant: 'destructive', title: 'Invalid File Type', description: `${file.name} is not a supported file type.` });
-          return null;
-        }
-        if (file.size > MAX_FILE_SIZE) {
-          toast({ variant: 'destructive', title: 'File Too Large', description: `${file.name} exceeds the 50MB size limit.` });
-          return null;
-        }
-
-        const isImage = file.type.startsWith('image/');
-        let imageDetails: Partial<StagedFile> = {};
-        if (isImage) {
-            try {
-                const { width, height, dataUrl } = await getImageDimensions(file);
-                imageDetails = {
-                    isImage,
-                    originalDataUrl: dataUrl,
-                    originalWidth: width,
-                    originalHeight: height,
-                };
-            } catch (error) {
-                toast({ variant: 'destructive', title: 'Could not read image', description: file.name });
-                return null;
-            }
-        }
-        
-        return {
-            file,
-            progress: 0,
-            status: 'pending' as const,
-            id: `${file.name}-${file.size}-${file.lastModified}`,
-            ...imageDetails
-        };
-    });
-
-    const newFiles = (await Promise.all(newFilesPromises)).filter(Boolean) as StagedFile[];
+  const getMediaType = (file: File): z.infer<typeof mediaAssetTypeEnum> | null => {
+    const mimeType = file.type;
+    if (ALLOWED_IMAGE_TYPES.includes(mimeType)) return 'image';
+    if (ALLOWED_VIDEO_TYPES.includes(mimeType)) return 'video';
+    if (ALLOWED_AUDIO_TYPES.includes(mimeType)) return 'audio';
+    if (ALLOWED_DOCUMENT_TYPES.includes(mimeType)) return 'document';
     
-    setStagedFiles(prev => {
-        const existingIds = new Set(prev.map(f => f.id));
-        const trulyNewFiles = newFiles.filter(f => !existingIds.has(f.id));
-        const updatedList = [...prev, ...trulyNewFiles];
-        if (!selectedFile && trulyNewFiles.length > 0) {
-            setSelectedFile(trulyNewFiles.find(f => f.isImage) || trulyNewFiles[0]);
-        }
-        return updatedList;
+    const extension = file.name.split('.').pop()?.toLowerCase();
+    if (extension) {
+        if (['jpg', 'jpeg', 'png', 'webp', 'svg', 'gif'].includes(extension)) return 'image';
+        if (['mp4', 'webm', 'mov', 'avi', 'mkv'].includes(extension)) return 'video';
+        if (['mp3', 'wav', 'ogg', 'm4a', 'flac'].includes(extension)) return 'audio';
+        if (['pdf', 'doc', 'docx', 'txt', 'ppt', 'pptx', 'xls', 'xlsx', 'csv'].includes(extension)) return 'document';
+    }
+    return null;
+  }
+  
+  const validateFile = (file: File): boolean => {
+    const mediaType = getMediaType(file);
+    if (!mediaType) {
+        toast({ variant: 'destructive', title: 'Unsupported File Format', description: `The format of ${file.name} is not supported.` });
+        return false;
+    }
+    if (!acceptedFileTypes.includes(mediaType)) {
+      toast({ variant: 'destructive', title: 'Invalid File Type', description: `This uploader only accepts ${acceptedFileTypes.join(', ')} files.` });
+      return false;
+    }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      toast({ variant: 'destructive', title: 'File Too Large', description: `${file.name} exceeds the ${MAX_FILE_SIZE_MB}MB size limit.` });
+      return false;
+    }
+    return true;
+  }
+  
+  const handleFiles = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+    const validatedFiles = Array.from(newFiles).filter(validateFile);
+    
+    validatedFiles.forEach(file => {
+      const mediaType = getMediaType(file);
+      if (mediaType === 'image') {
+        const image = new Image();
+        image.src = URL.createObjectURL(file);
+        image.onload = () => {
+          setStagedFiles(currentFiles => [...currentFiles, {
+            file,
+            status: 'pending',
+            progress: 0,
+            dimensions: { width: image.width, height: image.height },
+          }]);
+          URL.revokeObjectURL(image.src);
+        };
+      } else {
+         setStagedFiles(currentFiles => [...currentFiles, { file, status: 'pending', progress: 0 }]);
+      }
     });
-  }, [toast, selectedFile]);
+  };
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragActive(false);
-    if (event.dataTransfer.files) {
-        handleFileSelection(event.dataTransfer.files);
+  useEffect(() => {
+    // Automatically select the first file for editing if none is active
+    if (stagedFiles.length > 0 && activeFileIndex === null) {
+      setActiveFileIndex(0);
+    }
+    if (stagedFiles.length === 0) {
+      setActiveFileIndex(null);
+    }
+  }, [stagedFiles, activeFileIndex]);
+  
+  const removeFile = (e: React.MouseEvent, indexToRemove: number) => {
+    e.stopPropagation();
+    setStagedFiles(files => files.filter((_, index) => index !== indexToRemove));
+    if(activeFileIndex === indexToRemove) {
+      setActiveFileIndex(null);
+    } else if (activeFileIndex && indexToRemove < activeFileIndex) {
+      setActiveFileIndex(activeFileIndex - 1);
     }
   };
 
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragActive(true);
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (isUploading) return;
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
   };
 
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragActive(false);
-  };
-
-  const removeFile = (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
-    setStagedFiles(prev => {
-        const newList = prev.filter(sf => sf.id !== id);
-        if (selectedFile?.id === id) {
-            const firstImage = newList.find(f => f.isImage);
-            setSelectedFile(firstImage || newList[0] || null);
-        }
-        return newList;
-    });
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragActive(false);
+    if (isUploading) return;
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFiles(e.dataTransfer.files);
   };
 
   const handleUpload = async () => {
-    if (!user || !firestore) {
-      toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload files.' });
-      return;
-    }
-    const pendingFiles = stagedFiles.filter(f => f.status === 'pending');
-    if (pendingFiles.length === 0) {
-        toast({ title: "No new files to upload." });
+    if (stagedFiles.length === 0 || !user) {
+        if(!user) toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
     }
-    
     setIsUploading(true);
 
-    const uploadPromises = pendingFiles.map(async (stagedFile) => {
-        setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'uploading', progress: 5 } : sf));
+    const uploadPromises = stagedFiles.map(async (fileState, index) => {
+      try {
+        setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'processing' } : fs));
+        
+        let blobToUpload: Blob;
+        let finalFilename: string;
+        let finalWidth: number | undefined;
+        let finalHeight: number | undefined;
+        let finalMimeType: string;
 
-        try {
-            let fileToUpload: File;
-            let finalWidth: number | undefined;
-            let finalHeight: number | undefined;
-            let finalName: string;
+        const mediaType = getMediaType(fileState.file);
+        if (!mediaType) throw new Error("Invalid file type");
 
-            if (stagedFile.isImage && stagedFile.edits && stagedFile.originalDataUrl) {
-                const { name, croppedAreaPixels, targetWidth, quality } = stagedFile.edits;
-                finalName = name;
-                const { file, width, height } = await processImage(stagedFile.originalDataUrl, croppedAreaPixels, targetWidth, quality, name);
-                fileToUpload = file;
-                finalWidth = width;
-                finalHeight = height;
-            } else {
-                fileToUpload = stagedFile.file;
-                finalName = fileToUpload.name.split('.').slice(0, -1).join('.').replace(/\s/g, '_');
-                if(stagedFile.isImage) {
-                    finalWidth = stagedFile.originalWidth;
-                    finalHeight = stagedFile.originalHeight;
-                }
-            }
-            
-            const mediaType = getMediaType(fileToUpload.type);
-            const storagePath = `media/${mediaType}/${Date.now()}-${finalName}`;
-            const storage = getStorage();
-            const storageRef = ref(storage, storagePath);
-            const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
-
-            return new Promise<void>((resolve, reject) => {
-                uploadTask.on('state_changed',
-                    (snapshot) => {
-                        const progress = 5 + (snapshot.bytesTransferred / snapshot.totalBytes) * 95;
-                        setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, progress } : sf));
-                    },
-                    (error) => {
-                        setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: error.message } : sf));
-                        reject(error);
-                    },
-                    async () => {
-                        try {
-                            const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                            
-                            const mediaCollection = collection(firestore, 'media');
-                            const mediaDocData = {
-                                name: finalName,
-                                url: downloadURL,
-                                fullPath: storagePath,
-                                type: mediaType,
-                                mimeType: fileToUpload.type,
-                                size: fileToUpload.size,
-                                width: finalWidth,
-                                height: finalHeight,
-                                uploadedBy: user.uid,
-                                createdAt: new Date().toISOString(),
-                            };
-
-                            addDoc(mediaCollection, mediaDocData)
-                                .then(() => {
-                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'success' } : sf));
-                                    resolve();
-                                })
-                                .catch((firestoreError) => {
-                                    const permissionError = new FirestorePermissionError({
-                                        path: mediaCollection.path,
-                                        operation: 'create',
-                                        requestResourceData: mediaDocData,
-                                    });
-                                    errorEmitter.emit('permission-error', permissionError);
-                                    setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: firestoreError.message || 'Failed to save to database.' } : sf));
-                                    reject(firestoreError);
-                                });
-                            
-                        } catch (storageError: any) {
-                             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: storageError.message || 'Failed to retrieve file URL.' } : sf));
-                            reject(storageError);
-                        }
-                    }
-                );
-            });
-        } catch (processError: any) {
-             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: processError.message || 'Failed to process image.' } : sf));
+        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels) {
+          const { editingState } = fileState;
+          const { blob, width, height } = await processImage(fileState.file, {
+            crop: editingState.croppedAreaPixels,
+            resize: editingState.resize,
+            quality: editingState.quality,
+            format: editingState.format,
+          });
+          blobToUpload = blob;
+          finalWidth = width;
+          finalHeight = height;
+          finalMimeType = blob.type;
+          const extension = editingState.format === 'jpeg' ? 'jpg' : editingState.format;
+          finalFilename = `${editingState.filename}.${extension}`;
+        } else {
+          blobToUpload = fileState.file;
+          finalMimeType = fileState.file.type;
+          finalFilename = fileState.editingState?.filename 
+            ? `${fileState.editingState.filename}.${fileState.file.name.split('.').pop()}` 
+            : fileState.file.name;
         }
+
+        const storagePath = `media/${mediaType}/${Date.now()}-${finalFilename}`;
+        const storageRef = ref(storage, storagePath);
+        const uploadTask = uploadBytesResumable(storageRef, blobToUpload);
+        
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => {
+              const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+              setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, progress } : fs));
+            },
+            reject,
+            async () => {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              
+              const newAssetData: Omit<MediaAsset, 'id' | 'createdAt'> = {
+                name: finalFilename,
+                originalName: fileState.file.name,
+                url: downloadURL,
+                fullPath: storagePath,
+                type: mediaType,
+                mimeType: finalMimeType,
+                size: blobToUpload.size,
+                width: finalWidth,
+                height: finalHeight,
+                format: mediaType === 'image' && fileState.editingState ? fileState.editingState.format : undefined,
+                uploadedBy: user.uid,
+              };
+
+              const docRef = await addDoc(collection(firestore, 'media'), {
+                  ...newAssetData,
+                  createdAt: serverTimestamp()
+              });
+
+              if (onUploadComplete) {
+                const docSnap = { id: docRef.id, ...newAssetData, createdAt: new Date().toISOString() }
+                onUploadComplete(docSnap as MediaAsset);
+              }
+              setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'completed' } : fs));
+              resolve();
+            }
+          );
+        });
+      } catch (error) {
+        console.error(`Upload failed for ${fileState.file.name}:`, error);
+        setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'error' } : fs));
+        if (error instanceof Error) {
+          const permissionError = new FirestorePermissionError({
+            path: 'media',
+            operation: 'create',
+          });
+          errorEmitter.emit('permission-error', permissionError);
+        }
+      }
     });
 
-    try {
-        await Promise.all(uploadPromises);
-        toast({ title: 'Upload Complete', description: 'All pending files have been processed and uploaded.' });
-        
-        setTimeout(() => {
-            const hasErrors = stagedFiles.some(f => f.status === 'error');
-            if (!hasErrors) {
-                closeSheet();
-            } else {
-                 setStagedFiles(prev => prev.filter(sf => sf.status !== 'success'));
-            }
-        }, 2000);
-
-    } catch (error) {
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Some files could not be uploaded.' });
-    } finally {
-        setIsUploading(false);
+    await Promise.allSettled(uploadPromises);
+    const allSucceeded = stagedFiles.every(fs => fs.status === 'completed');
+    if (allSucceeded) {
+      toast({ title: "Success", description: "All files uploaded." });
+      setStagedFiles([]);
+      onUploadSuccess();
+    } else {
+      toast({ variant: "destructive", title: "Upload Incomplete", description: "Some files failed to upload." });
     }
+    setIsUploading(false);
   };
   
-  const formatBytes = (bytes: number, decimals = 2) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const dm = decimals < 0 ? 0 : decimals;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-  }
+  const activeFileState = activeFileIndex !== null ? stagedFiles[activeFileIndex] : null;
+  const isImageActive = activeFileState && getMediaType(activeFileState.file) === 'image';
   
-  const aspectNumber = useMemo(() => {
-    if (aspectString === 'none') return undefined;
-    try {
-        return eval(aspectString);
-    } catch {
-        return undefined;
-    }
-  }, [aspectString]);
-
-  const targetHeight = aspectNumber && targetWidth > 0 ? Math.round(targetWidth / aspectNumber) : 0;
+  const handleStateChange = useCallback((newState: ImageEditingState) => {
+    setStagedFiles(prev => prev.map((fs, i) => i === activeFileIndex ? { ...fs, editingState: newState } : fs));
+  }, [activeFileIndex]);
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 h-full overflow-y-auto pr-2">
-        
-        {/* Left Column / Mobile File List */}
-        <div className="md:col-span-1 h-full flex flex-col gap-4 order-2 md:order-1">
-          <div
-              onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
-              className={cn(
-                "flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer text-center transition-colors",
-                isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
-                stagedFiles.length > 0 ? "hidden md:flex" : "flex"
-              )}
-              onClick={() => document.getElementById('file-input')?.click()}
-          >
-              <UploadCloud className="w-8 h-8 text-muted-foreground" />
-              <p className="mt-2 font-semibold text-sm">Click or drag and drop</p>
-              <input id="file-input" type="file" multiple className="hidden" onChange={(e) => handleFileSelection(e.target.files)} accept={ACCEPTED_MIME_TYPES.join(',')} />
-          </div>
+    <div className="space-y-4">
+      {!activeFileState && (
+        <form onSubmit={e => e.preventDefault()} onDragEnter={handleDrag} className="relative">
+          <Input ref={inputRef} id="file-upload" type="file" multiple onChange={e => handleFiles(e.target.files)} className="hidden" disabled={isUploading} />
+          <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-muted/50", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
+            <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium">Drag & drop files here or browse</p>
+            <p className="text-xs text-muted-foreground mt-2">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
+          </label>
+          {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
+        </form>
+      )}
 
-          <div className="flex-grow relative">
-              {stagedFiles.length > 0 ? (
-                  <ScrollArea className="absolute inset-0 pr-4">
-                      <div className="space-y-4">
-                      {stagedFiles.map(sf => (
-                          <div 
-                              key={sf.id} role="button" tabIndex={0}
-                              onClick={() => setSelectedFile(sf)}
-                              onKeyDown={(e) => e.key === "Enter" && setSelectedFile(sf)}
-                              className={cn(
-                                  "flex items-center gap-4 p-3 rounded-lg border bg-card transition-colors cursor-pointer hover:bg-muted/50",
-                                  selectedFile?.id === sf.id && 'ring-2 ring-primary border-primary'
-                              )}
-                          >
-                              <FileIcon className="w-8 h-8 text-muted-foreground shrink-0" />
-                              <div className="flex-1 overflow-hidden">
-                                  <p className="text-sm font-medium truncate">{sf.file.name}</p>
-                                  <p className="text-xs text-muted-foreground">{formatBytes(sf.file.size)}</p>
-                                  {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
-                                  {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
-                              </div>
-                              <div className="flex items-center shrink-0">
-                                  {sf.isImage && sf.edits && sf.status === 'pending' && <CheckSquare className="w-5 h-5 text-primary" />}
-                                  {sf.status === 'pending' && !isUploading && (
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={(e) => removeFile(e, sf.id)}>
-                                          <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                  )}
-                                  {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
-                                  {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                  {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
-                              </div>
-                          </div>
-                      ))}
-                      </div>
-                  </ScrollArea>
-              ) : (
-              <div className="hidden md:flex items-center justify-center h-full text-muted-foreground">
-                  No files selected yet.
+      {activeFileState && isImageActive && activeFileState.dimensions && (
+        <ImageEditor 
+          file={activeFileState.file}
+          imageDimensions={activeFileState.dimensions}
+          initialState={activeFileState.editingState}
+          onStateChange={handleStateChange}
+        />
+      )}
+      
+      {activeFileState && !isImageActive && (
+          <div className="flex items-center justify-center h-48 bg-muted rounded-lg flex-col gap-2 text-muted-foreground">
+            <FileIcon className="h-12 w-12"/>
+            <p className="font-medium">{activeFileState.file.name}</p>
+            <p className="text-sm">This file type cannot be edited.</p>
+          </div>
+      )}
+
+      {stagedFiles.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="font-medium">Staged Files ({stagedFiles.length})</h4>
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2">
+            {stagedFiles.map((fileState, index) => (
+              <div 
+                key={index} 
+                className={cn("flex items-center gap-2 p-2 border rounded-lg bg-background cursor-pointer", activeFileIndex === index && "ring-2 ring-primary")}
+                role="button"
+                tabIndex={0}
+                onClick={() => setActiveFileIndex(index)}
+                onKeyDown={(e) => e.key === 'Enter' && setActiveFileIndex(index)}
+              >
+                <FileIcon className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{fileState.file.name}</p>
+                  {fileState.status === 'pending' && <p className="text-xs text-muted-foreground">{(fileState.file.size / 1024).toFixed(2)} KB</p>}
+                  {fileState.status === 'processing' && <Progress value={fileState.progress} className="h-2 mt-1" />}
+                  {fileState.status === 'completed' && <div className="flex items-center gap-1 text-sm text-green-600"><CheckCircle className="h-4 w-4" /><span>Completed</span></div>}
+                  {fileState.status === 'error' && <p className="text-xs text-destructive">Upload failed</p>}
+                </div>
+                {!isUploading && (
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => removeFile(e, index)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
-              )}
+            ))}
           </div>
         </div>
-        
-        {/* Right Column / Mobile Editor */}
-        <div className="md:col-span-2 h-full flex flex-col gap-4 order-1 md:order-2">
-          <div className="flex-grow relative bg-muted rounded-md min-h-[250px] md:min-h-[300px]">
-              {selectedFile?.isImage && selectedFile.originalDataUrl ? (
-                  <Cropper
-                    image={selectedFile.originalDataUrl}
-                    crop={crop}
-                    zoom={zoom}
-                    aspect={aspectNumber}
-                    onCropChange={setCrop}
-                    onZoomChange={(val) => { setZoom(val); updateSelectedFileEdits({ zoom: val }); }}
-                    onCropComplete={(_, croppedAreaPixels) => {
-                      setCroppedAreaPixels(croppedAreaPixels);
-                      updateSelectedFileEdits({ croppedAreaPixels });
-                    }}
-                  />
-              ) : (
-                  <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4 text-center">
-                      <p>{selectedFile ? 'Editing not available for this file type.' : 'Select a file to begin'}</p>
-                  </div>
-              )}
-          </div>
-          
-          {selectedFile?.isImage && (
-              <ScrollArea className="h-full max-h-[280px] shrink-0">
-                  <div className="space-y-6 p-1 pr-4">
-                      <div className="space-y-2">
-                          <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
-                          <Input id="filename" value={name} onChange={(e) => {setName(e.target.value); updateSelectedFileEdits({ name: e.target.value })}} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
-                        <div className="flex items-center gap-2">
-                            <Input id="width" type="number" value={targetWidth} onChange={(e) => {const val = parseInt(e.target.value, 10) || 0; setTargetWidth(val); updateSelectedFileEdits({targetWidth: val})}} />
-                            <span className="text-muted-foreground">x</span>
-                            <Input id="height" type="number" value={targetHeight} disabled />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
-                        <Select value={aspectString} onValueChange={setAspectString}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select aspect ratio" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {aspectRatios.map(ratio => (
-                                    <SelectItem key={ratio.value} value={ratio.value}>{ratio.label}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                          <Label htmlFor="zoom" className="flex items-center gap-2"><Crop/> Zoom ({zoom.toFixed(2)}x)</Label>
-                          <Slider id="zoom" value={[zoom]} onValueChange={([val]) => {setZoom(val); updateSelectedFileEdits({ zoom: val })}} min={1} max={3} step={0.1} />
-                      </div>
-
-                      <div className="space-y-2">
-                          <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality ({quality}%)</Label>
-                          <Slider id="quality" value={[quality]} onValueChange={([val]) => {setQuality(val); updateSelectedFileEdits({ quality: val })}} min={10} max={100} step={5} />
-                      </div>
-                      <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
-                          <p className="font-semibold text-foreground">Original:</p>
-                          <div className="flex justify-between"><span>Dimensions:</span> <span>{selectedFile.originalWidth} x {selectedFile.originalHeight}</span></div>
-                          <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(selectedFile.file.size)}</span></div>
-                          <div className="border-t pt-2 mt-2">
-                              <p className="font-semibold text-foreground">Estimated Output:</p>
-                              <div className="flex justify-between"><span>Dimensions:</span> <span>{targetWidth} x {targetHeight}</span></div>
-                              <div className="flex justify-between items-center">
-                                  <span>File Size:</span>
-                                  <span className="font-mono text-foreground flex items-center">
-                                    {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
-                                    {isEstimating ? '...' : estimatedSize || 'N/A'}
-                                  </span>
-                                </div>
-                          </div>
-                      </div>
-                  </div>
-              </ScrollArea>
-          )}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-4 shrink-0 pt-4 border-t">
-          <Button variant="outline" onClick={closeSheet} disabled={isUploading}>Cancel</Button>
-          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.filter(sf => sf.status === 'pending').length === 0}>
-          {isUploading ? 'Uploading...' : `Upload ${stagedFiles.filter(f => f.status === 'pending').length} File(s)`}
+      )}
+      
+      {stagedFiles.length > 0 && (
+        <div className="flex justify-end pt-4">
+          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.length === 0} className="w-full sm:w-auto">
+            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+            {isUploading ? 'Uploading...' : `Upload ${stagedFiles.length} file(s)`}
           </Button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }
-
-    
