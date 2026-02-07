@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { AspectRatio, Crop, FileJson, Image as ImageIcon, Percent, TextCursorInput } from 'lucide-react';
+import { Ratio, Crop, FileJson, Image as ImageIcon, Percent, TextCursorInput } from 'lucide-react';
 import { StagedFile } from './media-uploader';
 
 interface ImageEditorDialogProps {
@@ -126,7 +126,7 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
                   </div>
               </div>
               <div className="space-y-2">
-                <Label className="flex items-center gap-2"><AspectRatio /> Aspect Ratio</Label>
+                <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
                 <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
                         <Label htmlFor="lock-aspect">Lock Aspect Ratio</Label>
