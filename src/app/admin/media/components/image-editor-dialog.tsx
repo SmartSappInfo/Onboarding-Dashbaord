@@ -15,9 +15,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
-import { Ratio, Crop, FileJson, Image as ImageIcon, Percent, TextCursorInput } from 'lucide-react';
+import { Ratio, Crop, FileJson, Image as ImageIcon, Percent, TextCursorInput, Loader2 } from 'lucide-react';
 import { StagedFile } from './media-uploader';
+import { useDebounce } from '@/hooks/use-debounce';
+import { processImage } from '@/lib/image-processing';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface ImageEditorDialogProps {
   file: StagedFile | null;
@@ -26,29 +28,49 @@ interface ImageEditorDialogProps {
   onSave: (fileId: string, edits: StagedFile['edits']) => void;
 }
 
+const aspectRatios = [
+    { label: "Freeform", value: "none" },
+    { label: "1:1", value: "1/1" },
+    { label: "4:3", value: "4/3" },
+    { label: "3:2", value: "3/2" },
+    { label: "16:9", value: "16/9" },
+    { label: "2:1", value: "2/1" },
+];
+
+
 export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: ImageEditorDialogProps) {
   const [crop, setCrop] = React.useState({ x: 0, y: 0 });
   const [zoom, setZoom] = React.useState(1);
-  const [aspect, setAspect] = React.useState(16 / 9);
-  const [lockAspect, setLockAspect] = React.useState(true);
+  const [aspectString, setAspectString] = React.useState('16/9');
   const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<Area | null>(null);
 
   const [name, setName] = React.useState('');
   const [targetWidth, setTargetWidth] = React.useState(1280);
   const [quality, setQuality] = React.useState(80);
+  
+  const [estimatedSize, setEstimatedSize] = React.useState<string | null>(null);
+  const [isEstimating, setIsEstimating] = React.useState(false);
+  
+  const debouncedCrop = useDebounce(croppedAreaPixels, 500);
+  const debouncedWidth = useDebounce(targetWidth, 500);
+  const debouncedQuality = useDebounce(quality, 500);
+
 
   React.useEffect(() => {
     if (file?.edits) {
       const { edits } = file;
       setCrop(edits.crop);
       setZoom(edits.zoom);
-      setAspect(edits.aspect);
+      const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - edits.aspect) < 0.01);
+      setAspectString(foundRatio ? foundRatio.value : 'none');
       setName(edits.name);
       setTargetWidth(edits.targetWidth);
       setQuality(edits.quality);
     } else if (file) {
       // Set defaults from original file
-      setAspect(file.originalWidth! / file.originalHeight!);
+      const initialAspect = file.originalWidth! / file.originalHeight!;
+      const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - initialAspect) < 0.01);
+      setAspectString(foundRatio ? foundRatio.value : '16/9');
       setName(file.file.name.split('.').slice(0, -1).join('.'));
       setTargetWidth(file.originalWidth!);
       setZoom(1);
@@ -56,6 +78,32 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
       setQuality(80);
     }
   }, [file]);
+  
+  React.useEffect(() => {
+    if (!file?.originalDataUrl || !debouncedCrop || !open) return;
+
+    const estimate = async () => {
+        setIsEstimating(true);
+        try {
+            const { blob } = await processImage(
+                file.originalDataUrl!,
+                debouncedCrop,
+                debouncedWidth,
+                debouncedQuality,
+                'estimate'
+            );
+            setEstimatedSize(formatBytes(blob.size));
+        } catch (e) {
+            console.error("Estimation failed", e);
+            setEstimatedSize("N/A");
+        } finally {
+            setIsEstimating(false);
+        }
+    };
+
+    estimate();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedCrop, debouncedWidth, debouncedQuality, file?.originalDataUrl, open]);
 
   const onCropComplete = React.useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
     setCroppedAreaPixels(croppedAreaPixels);
@@ -63,12 +111,13 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
 
   const handleSave = () => {
     if (file && croppedAreaPixels) {
+      const finalAspect = aspectNumber ?? (croppedAreaPixels.width / croppedAreaPixels.height);
       onSave(file.id, {
         name,
         crop,
         croppedAreaPixels,
         zoom,
-        aspect,
+        aspect: finalAspect,
         targetWidth,
         quality,
       });
@@ -76,7 +125,16 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
     }
   };
   
-  const targetHeight = lockAspect ? Math.round(targetWidth / aspect) : targetWidth;
+  const aspectNumber = React.useMemo(() => {
+    if (aspectString === 'none') return undefined;
+    try {
+        return eval(aspectString);
+    } catch {
+        return undefined;
+    }
+  }, [aspectString]);
+
+  const targetHeight = aspectNumber ? Math.round(targetWidth / aspectNumber) : Math.round(targetWidth / (16/9));
 
   const formatBytes = (bytes: number, decimals = 2) => {
     if (bytes === 0) return '0 Bytes';
@@ -99,20 +157,20 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
         </DialogHeader>
 
         <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
-          <div className="md:col-span-2 relative bg-muted rounded-md overflow-hidden">
+          <div className="md:col-span-2 relative bg-muted rounded-md h-64 md:h-full">
             {file.originalDataUrl && (
               <Cropper
                 image={file.originalDataUrl}
                 crop={crop}
                 zoom={zoom}
-                aspect={lockAspect ? aspect : undefined}
+                aspect={aspectNumber}
                 onCropChange={setCrop}
                 onZoomChange={setZoom}
                 onCropComplete={onCropComplete}
               />
             )}
           </div>
-          <div className="space-y-6 overflow-y-auto pr-2">
+          <div className="space-y-6 overflow-y-auto pr-2 pb-4">
               <div className="space-y-2">
                   <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
                   <Input id="filename" value={name} onChange={(e) => setName(e.target.value)} />
@@ -127,12 +185,16 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
               </div>
               <div className="space-y-2">
                 <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                    <div className="space-y-0.5">
-                        <Label htmlFor="lock-aspect">Lock Aspect Ratio</Label>
-                    </div>
-                    <Switch id="lock-aspect" checked={lockAspect} onCheckedChange={setLockAspect} />
-                </div>
+                 <Select value={aspectString} onValueChange={setAspectString}>
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select aspect ratio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {aspectRatios.map(ratio => (
+                            <SelectItem key={ratio.value} value={ratio.value}>{ratio.label}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
               </div>
 
                <div className="space-y-2">
@@ -144,10 +206,20 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
                   <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality</Label>
                   <Slider id="quality" value={[quality]} onValueChange={([val]) => setQuality(val)} min={10} max={100} step={5} />
               </div>
-               <div className="space-y-2 text-sm text-muted-foreground rounded-lg border p-3">
+               <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
                    <p className="font-semibold text-foreground">Original:</p>
                    <div className="flex justify-between"><span>Dimensions:</span> <span>{file.originalWidth} x {file.originalHeight}</span></div>
                    <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(file.file.size)}</span></div>
+                   <div className="border-t pt-2 mt-2">
+                       <p className="font-semibold text-foreground">Estimated Output:</p>
+                       <div className="flex justify-between items-center">
+                           <span>Size:</span>
+                           <span className="font-mono text-foreground flex items-center">
+                             {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                             {isEstimating ? 'Calculating...' : estimatedSize || 'N/A'}
+                           </span>
+                        </div>
+                   </div>
                </div>
           </div>
         </div>
