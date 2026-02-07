@@ -1,171 +1,72 @@
-
-
-'use client';
-
-import { useParams } from 'next/navigation';
-import { useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
-import * as React from 'react';
+import { collection, query, where, getDocs, limit, getFirestore } from 'firebase/firestore';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { firebaseConfig } from '@/firebase/config';
+import type { Metadata, ResolvingMetadata } from 'next';
 import type { Survey } from '@/lib/types';
-import { Skeleton } from '@/components/ui/skeleton';
-import Image from 'next/image';
-import SurveyForm from './components/survey-form';
-import { SmartSappLogo } from '@/components/icons';
+import SurveyDisplay from './components/survey-display';
+import { notFound } from 'next/navigation';
 
-function SurveyPageSkeleton() {
-    return (
-        <div className="max-w-2xl mx-auto py-12 px-4">
-            <Skeleton className="h-40 w-full rounded-lg mb-8" />
-            <Skeleton className="h-10 w-3/4 mb-4" />
-            <Skeleton className="h-5 w-full mb-2" />
-            <Skeleton className="h-5 w-5/6 mb-8" />
+// Server-side Firebase initialization. Avoids using the client-side module.
+function getDb() {
+  if (!getApps().length) {
+    initializeApp(firebaseConfig);
+  }
+  return getFirestore(getApp());
+}
 
-            <div className="space-y-6 mt-8">
-                <div className="space-y-2">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-                <div className="space-y-2">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-10 w-full" />
-                </div>
-                 <div className="space-y-2">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-24 w-full" />
-                </div>
-            </div>
-        </div>
+async function getSurveyBySlug(slug: string): Promise<Survey | null> {
+    const db = getDb();
+    const surveysCollection = collection(db, 'surveys');
+    const q = query(
+        surveysCollection,
+        where('slug', '==', slug),
+        where('status', '==', 'published'),
+        limit(1)
     );
+    const querySnapshot = await getDocs(q);
+
+    if (querySnapshot.empty) {
+        return null;
+    }
+    
+    const surveyDoc = querySnapshot.docs[0];
+    return { ...surveyDoc.data(), id: surveyDoc.id } as Survey;
+}
+
+type Props = {
+  params: { slug: string }
+}
+
+export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
+  const slug = params.slug;
+  const survey = await getSurveyBySlug(slug);
+
+  if (!survey) {
+    return {
+      title: 'Survey Not Found',
+    };
+  }
+  
+  const previousImages = (await parent).openGraph?.images || [];
+
+  return {
+    title: survey.title,
+    description: survey.description,
+    openGraph: {
+      title: survey.title,
+      description: survey.description,
+      images: survey.bannerImageUrl ? [survey.bannerImageUrl, ...previousImages] : previousImages,
+    },
+  };
 }
 
 
-export default function PublicSurveyPage() {
-    const params = useParams();
-    const slug = params.slug as string;
-    const firestore = useFirestore();
-
-    const [survey, setSurvey] = React.useState<Survey | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
-    const [error, setError] = React.useState<string | null>(null);
-    const [isSubmitted, setIsSubmitted] = React.useState(false);
-
-    React.useEffect(() => {
-        if (!firestore || !slug) return;
-        
-        const fetchSurvey = async () => {
-            setIsLoading(true);
-            setError(null);
-            try {
-                const surveysCollection = collection(firestore, 'surveys');
-                const q = query(
-                    surveysCollection,
-                    where('slug', '==', slug),
-                    where('status', '==', 'published'),
-                    limit(1)
-                );
-                const querySnapshot = await getDocs(q);
-
-                if (querySnapshot.empty) {
-                    setError('Survey not found or is not currently active.');
-                } else {
-                    const surveyDoc = querySnapshot.docs[0];
-                    setSurvey({ ...surveyDoc.data(), id: surveyDoc.id } as Survey);
-                }
-            } catch (e: any) {
-                console.error(e);
-                setError('Failed to load survey. Please try again later.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchSurvey();
-
-    }, [firestore, slug]);
-    
-    if (isLoading) {
-        return (
-            <div className="bg-background min-h-screen">
-                <SurveyPageSkeleton />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="bg-background min-h-screen flex items-center justify-center">
-                <div className="text-center p-8">
-                    <h1 className="text-2xl font-bold mb-4">An Error Occurred</h1>
-                    <p className="text-destructive">{error}</p>
-                </div>
-            </div>
-        );
-    }
+export default async function PublicSurveyPage({ params }: Props) {
+    const survey = await getSurveyBySlug(params.slug);
 
     if (!survey) {
-        return (
-             <div className="bg-background min-h-screen flex items-center justify-center">
-                <div className="text-center p-8">
-                    <h1 className="text-2xl font-bold mb-4">Survey Not Found</h1>
-                    <p className="text-muted-foreground">The survey you are looking for could not be found.</p>
-                </div>
-            </div>
-        );
+        notFound();
     }
     
-    if (isSubmitted) {
-        return (
-            <div className="bg-background min-h-screen flex flex-col">
-                 <main className="flex-grow flex items-center justify-center p-4">
-                    <div className="max-w-2xl w-full mx-auto text-center">
-                        <div className="flex justify-center">
-                          <SmartSappLogo className="h-12 mb-8" />
-                        </div>
-                        {survey.bannerImageUrl && (
-                            <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
-                                <Image 
-                                    src={survey.bannerImageUrl} 
-                                    alt={survey.title || 'Survey thank you banner'} 
-                                    fill
-                                    className="object-cover"
-                                />
-                            </div>
-                        )}
-                        <h1 className="text-3xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been submitted successfully.'}</p>
-                    </div>
-                </main>
-                 <footer className="py-8 text-center text-sm text-muted-foreground">
-                    <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                    <p>&copy; 2026 SmartSapp</p>
-                </footer>
-            </div>
-        )
-    }
-
-    return (
-        <div className="bg-background min-h-screen flex flex-col">
-            <main className="flex-grow">
-                <div className="max-w-2xl mx-auto py-12 px-4">
-                    <div className="flex justify-center">
-                      <SmartSappLogo className="h-12 mb-8" />
-                    </div>
-                    {survey.bannerImageUrl && (
-                        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
-                            <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" />
-                        </div>
-                    )}
-                    <h1 className="text-3xl md:text-4xl font-bold mb-2">{survey.title}</h1>
-                    <p className="text-muted-foreground mb-8">{survey.description}</p>
-
-                    <SurveyForm survey={survey} onSubmitted={() => setIsSubmitted(true)} />
-                </div>
-            </main>
-            <footer className="py-8 text-center text-sm text-muted-foreground">
-                <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                <p>&copy; 2026 SmartSapp</p>
-            </footer>
-        </div>
-    );
+    return <SurveyDisplay survey={survey} />;
 }
-
