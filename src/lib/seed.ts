@@ -1,8 +1,9 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
 
 // --- SEED DATA ---
 
@@ -45,6 +46,7 @@ const schoolData: Omit<School, 'id'>[] = [
     implementationDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks from now
     referee: 'SmartSapp Team',
     includeDroneFootage: true,
+    stage: { id: 'welcome', name: 'Welcome', order: 1 },
   },
 ];
 
@@ -251,6 +253,18 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
   },
 ];
 
+const defaultStages: Omit<OnboardingStage, 'id'>[] = [
+    { name: 'Welcome', order: 1 },
+    { name: 'Data Collection', order: 2 },
+    { name: 'Setup', order: 3 },
+    { name: 'Training', order: 4 },
+    { name: 'Pre-Onboarding', order: 5 },
+    { name: 'Parent Engagement', order: 6 },
+    { name: 'Pre-Go-Live', order: 7 },
+    { name: 'Go-Live', order: 8 },
+    { name: 'Support', order: 9 },
+];
+
 // --- SEEDING FUNCTIONS ---
 
 async function clearCollection(firestore: Firestore, collectionPath: string) {
@@ -345,4 +359,22 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
 
   await batch.commit();
   return updatedCount;
+}
+
+export async function seedOnboardingStages(firestore: Firestore): Promise<number> {
+    const stagesCollection = collection(firestore, 'onboardingStages');
+    const snapshot = await getDocs(stagesCollection);
+    if (!snapshot.empty) {
+        // If stages already exist, don't re-seed
+        return 0;
+    }
+
+    const batch = writeBatch(firestore);
+    defaultStages.forEach((stage) => {
+        const id = stage.name.toLowerCase().replace(/\s+/g, '-');
+        const docRef = doc(stagesCollection, id);
+        batch.set(docRef, stage);
+    });
+    await batch.commit();
+    return defaultStages.length;
 }

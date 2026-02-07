@@ -1,5 +1,6 @@
 
 
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -8,6 +9,12 @@ export interface UserProfile {
   photoURL?: string;
   isAuthorized: boolean;
   createdAt: string; // ISO string
+}
+
+export interface OnboardingStage {
+  id: string;
+  name: string;
+  order: number;
 }
 
 export interface School {
@@ -30,6 +37,11 @@ export interface School {
     userId: string | null;
     name: string | null;
     email: string | null;
+  };
+  stage?: {
+    id: string;
+    name: string;
+    order: number;
   };
 }
 

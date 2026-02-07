@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,11 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars } from '@/lib/seed';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages';
 
 export default function SettingsPage() {
   const firestore = useFirestore();
@@ -20,6 +21,7 @@ export default function SettingsPage() {
     meetings: 'idle',
     surveys: 'idle',
     users: 'idle',
+    stages: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -57,6 +59,17 @@ export default function SettingsPage() {
         name = 'User profiles';
         action = 'updated';
         entity = 'profiles';
+      } else if (seeder === 'stages') {
+        count = await seedOnboardingStages(firestore);
+        name = 'Onboarding Stages';
+        if (count === 0) {
+            toast({
+                title: 'No Action Needed',
+                description: 'Default onboarding stages already exist.',
+            });
+            setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' }));
+            return;
+        }
       }
       
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
@@ -118,9 +131,10 @@ export default function SettingsPage() {
         </div>
         <div>
             <h3 className="text-base font-semibold mb-2">Non-Destructive Actions</h3>
-            <p className="text-sm text-muted-foreground mb-4">These actions will update existing data without deleting it.</p>
+            <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add default configurations without deleting anything.</p>
             <div className="flex flex-wrap gap-4">
                 <SeedingButton seeder="users">Update User Avatars</SeedingButton>
+                <SeedingButton seeder="stages">Seed Default Stages</SeedingButton>
             </div>
         </div>
       </CardContent>

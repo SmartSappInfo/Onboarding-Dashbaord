@@ -111,6 +111,15 @@
                 "name": { "type": ["string", "null"] },
                 "email": { "type": ["string", "null"], "format": "email" }
             }
+        },
+        "stage": {
+          "type": "object",
+          "description": "The current onboarding stage of the school.",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "order": { "type": "number" }
+          }
         }
       },
       "required": [
@@ -357,6 +366,22 @@
         }
       },
       "required": ["summary", "createdAt"]
+    },
+    "OnboardingStage": {
+      "title": "Onboarding Stage",
+      "type": "object",
+      "description": "Represents a single stage in the school onboarding pipeline.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the stage."
+        },
+        "order": {
+          "type": "number",
+          "description": "The numerical order of the stage in the pipeline."
+        }
+      },
+      "required": ["name", "order"]
     }
   },
   "auth": {
@@ -435,6 +460,16 @@
             "$ref": "#/entities/SurveySummary"
           },
           "description": "Stores AI-generated summaries for a specific survey."
+        }
+      },
+      {
+        "path": "/onboardingStages/{stageId}",
+        "definition": {
+          "entityName": "OnboardingStage",
+          "schema": {
+            "$ref": "#/entities/OnboardingStage"
+          },
+          "description": "Stores the stages for the school onboarding pipeline."
         }
       }
     ]

@@ -28,6 +28,9 @@ service cloud.firestore {
     match /media/{document=**} {
       allow read, write: if isAuthorized();
     }
+    match /onboardingStages/{stageId} {
+      allow read, write: if isAuthorized();
+    }
     
     // --- User Management Rules ---
     match /users/{userId} {

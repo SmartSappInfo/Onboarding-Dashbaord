@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -91,6 +92,7 @@ export default function NewSchoolPage() {
       ...data,
       slug,
       implementationDate: data.implementationDate?.toISOString(),
+      stage: { id: 'welcome', name: 'Welcome', order: 1 },
     };
 
     const schoolsCollection = collection(firestore, 'schools');
