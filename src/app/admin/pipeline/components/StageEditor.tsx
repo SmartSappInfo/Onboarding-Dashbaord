@@ -71,8 +71,8 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
       
       <Popover>
         <PopoverTrigger asChild>
-            <Button variant="outline" className="w-10 h-10 p-0 border-2" style={{ borderColor: stage.color || '#ccc' }}>
-                <div className="w-full h-full" style={{ backgroundColor: stage.color || '#FFFFFF' }} />
+            <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: stage.color || '#ccc' }}>
+                <div className="w-full h-full rounded-sm" style={{ backgroundColor: stage.color || '#FFFFFF' }} />
             </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-2">
@@ -80,7 +80,7 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
                 {ONBOARDING_STAGE_COLORS.map((color) => (
                     <button
                         key={color}
-                        className={cn("w-7 h-7 rounded-md border transition-transform hover:scale-110", color === stage.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+                        className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === stage.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
                         style={{ backgroundColor: color }}
                         onClick={() => onColorChange(stage.id, color)}
                     />

@@ -5,16 +5,14 @@
 import * as React from 'react';
 import {
   DndContext,
-  closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
   DragOverlay,
   type DragStartEvent,
   type DragEndEvent,
-  type DragOverEvent,
 } from '@dnd-kit/core';
-import { SortableContext, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, arrayMove, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   collection,
@@ -22,8 +20,6 @@ import {
   query,
   doc,
   writeBatch,
-  where,
-  getDocs,
   updateDoc,
 } from 'firebase/firestore';
 
@@ -35,8 +31,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { User, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
@@ -85,24 +82,40 @@ function SchoolCard({ school }: { school: School }) {
   );
 }
 
-function StageColumn({ stage, schools }: { stage: OnboardingStage; schools: School[] }) {
-    const { setNodeRef } = useSortable({ id: stage.id, data: { type: 'COLUMN', stage }});
+function StageColumn({ stage, schools, isOverlay }: { stage: OnboardingStage; schools: School[], isOverlay?: boolean }) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: stage.id, data: { type: 'COLUMN', stage } });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging && !isOverlay ? 0.5 : 1,
+    };
 
     return (
-        <div ref={setNodeRef} className="h-full w-72 flex-shrink-0">
+        <div ref={setNodeRef} style={style} className="h-full w-72 flex-shrink-0">
             <Card 
-                className="h-full flex flex-col bg-muted/50 border-t-4"
+                className="h-full flex flex-col bg-card border-t-4"
                 style={{ borderTopColor: stage.color || 'hsl(var(--border))' }}
             >
-                <CardHeader className="p-3 border-b">
-                    <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <span>{stage.name}</span>
-                        <Badge variant="secondary">{schools.length}</Badge>
-                    </CardTitle>
+                <CardHeader className="p-3 border-b flex flex-row items-center justify-between">
+                     <div className="flex items-center gap-2">
+                        <Button variant="ghost" {...attributes} {...listeners} className="cursor-grab h-8 w-8 p-0">
+                           <GripVertical className="h-5 w-5 text-muted-foreground" />
+                        </Button>
+                        <CardTitle className="text-sm font-medium">{stage.name}</CardTitle>
+                    </div>
+                    <Badge variant="secondary">{schools.length}</Badge>
                 </CardHeader>
                 <ScrollArea className="flex-grow">
                     <CardContent className="p-3">
-                         <SortableContext items={schools.map(s => s.id)}>
+                         <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
                             {schools.map(school => (
                                 <SchoolCard key={school.id} school={school} />
                             ))}
@@ -133,7 +146,14 @@ export default function KanbanBoard() {
   }, [firestore]);
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
   
-  const [activeSchool, setActiveSchool] = React.useState<School | null>(null);
+  const [activeElement, setActiveElement] = React.useState<School | OnboardingStage | null>(null);
+  const [orderedStages, setOrderedStages] = React.useState<OnboardingStage[]>([]);
+
+  React.useEffect(() => {
+      if (stages) {
+          setOrderedStages(stages);
+      }
+  }, [stages]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -145,40 +165,66 @@ export default function KanbanBoard() {
 
   const schoolsByStage = React.useMemo(() => {
     const grouped: Record<string, School[]> = {};
-    if (stages) {
-      stages.forEach(stage => {
+    if (orderedStages) {
+      orderedStages.forEach(stage => {
         grouped[stage.id] = [];
       });
     }
     if (schools) {
       schools.forEach(school => {
-        const stageId = school.stage?.id || 'welcome';
-        if (grouped[stageId]) {
+        const stageId = school.stage?.id || orderedStages[0]?.id;
+        if (stageId && grouped[stageId]) {
           grouped[stageId].push(school);
-        } else if (grouped['welcome']) {
-           grouped['welcome'].push(school);
+        } else if (orderedStages.length > 0 && grouped[orderedStages[0].id]) {
+           grouped[orderedStages[0].id].push(school);
         }
       });
     }
     return grouped;
-  }, [stages, schools]);
+  }, [orderedStages, schools]);
   
   const handleDragStart = (event: DragStartEvent) => {
-    if (event.active.data.current?.type === 'SCHOOL') {
-      setActiveSchool(event.active.data.current.school);
+    const { active } = event;
+    if (active.data.current?.type === 'SCHOOL') {
+      setActiveElement(active.data.current.school);
+    }
+    if (active.data.current?.type === 'COLUMN') {
+      setActiveElement(active.data.current.stage);
     }
   };
   
   const handleDragEnd = async (event: DragEndEvent) => {
-    setActiveSchool(null);
+    setActiveElement(null);
     const { active, over } = event;
 
-    if (!over || active.id === over.id || !active.data.current || !over.data.current) return;
+    if (!over || active.id === over.id) return;
+    
+    const activeType = active.data.current?.type;
 
-    const isSchoolDrag = active.data.current.type === 'SCHOOL';
-    const isOverColumn = over.data.current.type === 'COLUMN';
+    if (activeType === 'COLUMN' && over.data.current?.type === 'COLUMN') {
+        const oldIndex = orderedStages.findIndex((s) => s.id === active.id);
+        const newIndex = orderedStages.findIndex((s) => s.id === over.id);
 
-    if (isSchoolDrag && isOverColumn) {
+        if (oldIndex !== newIndex) {
+            const reordered = arrayMove(orderedStages, oldIndex, newIndex);
+            setOrderedStages(reordered);
+
+            const batch = writeBatch(firestore);
+            reordered.forEach((stage, index) => {
+                const stageRef = doc(firestore, 'onboardingStages', stage.id);
+                batch.update(stageRef, { order: index + 1 });
+            });
+            try {
+                await batch.commit();
+                toast({ title: 'Stages Reordered' });
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Error', description: 'Failed to reorder stages.' });
+                setOrderedStages(stages || []); // Revert on failure
+            }
+        }
+    }
+
+    if (activeType === 'SCHOOL' && over.data.current?.type === 'COLUMN') {
         const schoolId = active.id as string;
         const newStage = over.data.current.stage as OnboardingStage;
         
@@ -210,7 +256,7 @@ export default function KanbanBoard() {
     );
   }
   
-  if (!stages || stages.length === 0) {
+  if (!orderedStages || orderedStages.length === 0) {
       return (
           <div className="text-center p-8">
               <p className="text-muted-foreground">No onboarding stages have been configured.</p>
@@ -224,7 +270,7 @@ export default function KanbanBoard() {
     return (
       <ScrollArea className="h-full">
         <div className="p-4 space-y-8">
-          {stages.map(stage => (
+          {orderedStages.map(stage => (
             <div key={stage.id}>
               <h2 className="font-bold mb-3">{stage.name} <Badge variant="secondary">{schoolsByStage[stage.id]?.length || 0}</Badge></h2>
               <div className="space-y-3">
@@ -238,6 +284,8 @@ export default function KanbanBoard() {
       </ScrollArea>
     );
   }
+  
+  const activeIsColumn = activeElement && 'order' in activeElement;
 
   // Desktop Kanban View
   return (
@@ -245,12 +293,12 @@ export default function KanbanBoard() {
       sensors={sensors}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveSchool(null)}
+      onDragCancel={() => setActiveElement(null)}
     >
       <ScrollArea className="h-full whitespace-nowrap">
         <div className="flex h-full gap-4 p-4">
-          <SortableContext items={stages.map(s => s.id)}>
-              {stages.map(stage => (
+          <SortableContext items={orderedStages.map(s => s.id)} strategy={horizontalListSortingStrategy}>
+              {orderedStages.map(stage => (
                 <StageColumn
                   key={stage.id}
                   stage={stage}
@@ -262,7 +310,13 @@ export default function KanbanBoard() {
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
       <DragOverlay>
-        {activeSchool ? <SchoolCard school={activeSchool} /> : null}
+        {activeElement ? (
+            activeIsColumn ? (
+                <StageColumn stage={activeElement as OnboardingStage} schools={schoolsByStage[(activeElement as OnboardingStage).id] || []} isOverlay />
+            ) : (
+                <SchoolCard school={activeElement as School} />
+            )
+        ) : null}
       </DragOverlay>
     </DndContext>
   );
