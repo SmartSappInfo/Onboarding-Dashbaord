@@ -44,7 +44,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     
     if (isSubmitted) {
         return (
-            <div className="bg-background min-h-screen flex flex-col relative isolate">
+            <div className="light bg-background min-h-screen flex flex-col relative isolate">
                  <div className="absolute inset-0 z-[-1]">
                     <FloatingLines
                         linesGradient={["#454cb0","#4361db","#d270ff"]}
@@ -85,7 +85,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     }
 
     return (
-        <div className="bg-background min-h-screen flex flex-col relative isolate">
+        <div className="light bg-background min-h-screen flex flex-col relative isolate">
             <div className="absolute inset-0 z-[-1]">
                 <FloatingLines
                     linesGradient={["#454cb0","#4361db","#d270ff"]}
