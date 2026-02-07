@@ -6,7 +6,6 @@ import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { SmartSappLogo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
-import FloatingLines from '@/components/FloatingLines';
 
 interface SurveyDisplayProps {
     survey: Survey;
@@ -44,19 +43,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     
     if (isSubmitted) {
         return (
-            <div className="light min-h-screen flex flex-col relative isolate" style={{ backgroundColor: '#ced1fd' }}>
-                 <div className="absolute inset-0 z-[-1]">
-                    <FloatingLines
-                        linesGradient={["#454cb0","#4361db","#d270ff"]}
-                        animationSpeed={1}
-                        interactive
-                        bendRadius={8}
-                        bendStrength={-0.4}
-                        mouseDamping={0.05}
-                        parallax
-                        parallaxStrength={0.2}
-                    />
-                </div>
+            <div className="light min-h-screen flex flex-col bg-slate-100">
                  <main className="flex-grow flex items-center justify-center p-4">
                     <div className="max-w-2xl w-full mx-auto text-center">
                         <div className="flex justify-center">
@@ -85,19 +72,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     }
 
     return (
-        <div className="light min-h-screen flex flex-col relative isolate" style={{ backgroundColor: '#ced1fd' }}>
-            <div className="absolute inset-0 z-[-1]">
-                <FloatingLines
-                    linesGradient={["#454cb0","#4361db","#d270ff"]}
-                    animationSpeed={1}
-                    interactive
-                    bendRadius={8}
-                    bendStrength={-0.4}
-                    mouseDamping={0.05}
-                    parallax
-                    parallaxStrength={0.2}
-                />
-            </div>
+        <div className="light min-h-screen flex flex-col bg-slate-100">
             <main className="flex-grow">
                 <div className="max-w-2xl mx-auto py-12 px-4">
                     <div className="flex justify-center">
