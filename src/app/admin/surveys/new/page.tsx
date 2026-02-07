@@ -364,12 +364,12 @@ export default function NewSurveyPage() {
                                     render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Survey URL</FormLabel>
-                                        <div className="flex items-center gap-0">
-                                            <span className="flex h-10 items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm text-muted-foreground">
+                                        <div className="flex flex-col sm:flex-row">
+                                            <span className="flex h-10 items-center justify-center whitespace-nowrap rounded-t-md border border-b-0 bg-muted px-3 text-sm text-muted-foreground sm:w-auto sm:justify-start sm:rounded-l-md sm:rounded-t-none sm:border-b sm:border-r-0">
                                                 {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
                                             </span>
                                             <FormControl>
-                                                <Input {...field} className="rounded-l-none" />
+                                                <Input {...field} className="rounded-b-md rounded-t-none sm:rounded-l-none sm:rounded-b-none" />
                                             </FormControl>
                                         </div>
                                         <FormDescription>This is the unique last part of your survey URL.</FormDescription>
