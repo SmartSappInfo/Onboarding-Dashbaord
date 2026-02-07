@@ -382,7 +382,7 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
     const schoolsCollection = collection(firestore, 'schools');
     const schoolsSnapshot = await getDocs(schoolsCollection);
     let schoolsUpdated = 0;
-    const welcomeStage = defaultStages.find(s => s.order === 1) || { id: 'welcome', name: 'Welcome', order: 1 };
+    const welcomeStage = { id: 'welcome', name: 'Welcome', order: 1 };
 
     schoolsSnapshot.forEach(schoolDoc => {
         const school = schoolDoc.data() as School;
