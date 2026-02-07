@@ -136,7 +136,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <SidebarProvider>
-        <div className="flex min-h-screen w-full bg-background">
+        <div className="flex h-screen w-full bg-background">
           <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg">
             <SidebarHeader className="p-2">
                <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
@@ -186,7 +186,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </Sidebar>
           
           <SidebarInset>
-            <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card px-4">
+            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4">
               <SidebarTrigger className="md:hidden" />
               <div className="w-full flex-1">
                 <h1 className="text-lg font-semibold">{pageTitle}</h1>
@@ -227,9 +227,9 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               </DropdownMenu>
             </header>
     
-            <main className="flex-1 p-4 sm:p-6 md:p-8">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
               {children}
-            </main>
+            </div>
           </SidebarInset>
         </div>
       </SidebarProvider>
