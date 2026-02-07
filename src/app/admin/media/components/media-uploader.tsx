@@ -133,13 +133,20 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
     setIsDragActive(false);
   };
 
-  const removeFile = (id: string) => {
+  const removeFile = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     setStagedFiles(prev => prev.filter(sf => sf.id !== id));
   };
   
   const handleEditSave = (fileId: string, edits: StagedFile['edits']) => {
       setStagedFiles(prev => prev.map(sf => sf.id === fileId ? { ...sf, edits } : sf));
   };
+
+  const handleEditOpen = (e: React.MouseEvent | React.KeyboardEvent, file: StagedFile) => {
+    if (file.isImage && file.status === 'pending' && !isUploading) {
+        setEditingFile(file);
+    }
+  }
 
   const handleUpload = async () => {
     if (!user || !firestore) {
@@ -172,7 +179,7 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                 finalHeight = height;
             } else {
                 fileToUpload = stagedFile.file;
-                finalName = fileToUpload.name.split('.').slice(0, -1).join('.');
+                finalName = fileToUpload.name.split('.').slice(0, -1).join('.').replace(/\s/g, '_');
                 if(stagedFile.isImage) {
                     finalWidth = stagedFile.originalWidth;
                     finalHeight = stagedFile.originalHeight;
@@ -180,7 +187,7 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
             }
             
             const mediaType = getMediaType(fileToUpload.type);
-            const storagePath = `media/${mediaType}/${Date.now()}-${finalName.replace(/\s/g, '_')}`;
+            const storagePath = `media/${mediaType}/${Date.now()}-${finalName}`;
             const storage = getStorage();
             const storageRef = ref(storage, storagePath);
             const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
@@ -301,30 +308,49 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
             <ScrollArea className="absolute inset-0 pr-4">
                 <div className="space-y-4">
                 {stagedFiles.map(sf => (
-                    <div key={sf.id} className="flex items-center gap-4 p-3 rounded-lg border bg-card">
-                    <FileIcon className="w-8 h-8 text-muted-foreground shrink-0" />
-                    <div className="flex-1 overflow-hidden">
-                        <p className="text-sm font-medium truncate">{sf.file.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatBytes(sf.file.size)}</p>
-                        {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
-                        {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
-                    </div>
-                    <div className="flex items-center shrink-0">
-                         {sf.isImage && sf.status === 'pending' && !isUploading && (
-                           <Button variant="outline" size="sm" className="h-8 mr-2" onClick={() => setEditingFile(sf)}>
-                               {sf.edits ? <CheckSquare className="w-4 h-4 text-primary" /> : <Edit className="w-4 h-4" />}
-                               <span className="ml-2">{sf.edits ? 'Edited' : 'Edit'}</span>
-                            </Button>
-                         )}
-                        {sf.status === 'pending' && !isUploading && (
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFile(sf.id)}>
-                                <Trash2 className="w-4 h-4" />
-                            </Button>
+                    <div 
+                        key={sf.id} 
+                        role={sf.isImage ? "button" : undefined}
+                        tabIndex={sf.isImage ? 0 : -1}
+                        onClick={(e) => handleEditOpen(e, sf)}
+                        onKeyDown={(e) => e.key === "Enter" && handleEditOpen(e, sf)}
+                        className={cn(
+                            "flex items-center gap-4 p-3 rounded-lg border bg-card transition-colors",
+                            sf.isImage && sf.status === 'pending' && !isUploading && "cursor-pointer hover:bg-muted/50"
                         )}
-                        {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
-                        {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                        {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
-                    </div>
+                    >
+                        <FileIcon className="w-8 h-8 text-muted-foreground shrink-0" />
+                        <div className="flex-1 overflow-hidden">
+                            <p className="text-sm font-medium truncate">{sf.file.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatBytes(sf.file.size)}</p>
+                            {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
+                            {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
+                        </div>
+                        <div className="flex items-center shrink-0">
+                            {sf.isImage && sf.status === 'pending' && !isUploading && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    {sf.edits ? (
+                                        <>
+                                            <CheckSquare className="w-4 h-4 text-primary" />
+                                            <span>Edited</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Edit className="w-4 h-4" />
+                                            <span>Edit</span>
+                                        </>
+                                    )}
+                                </div>
+                            )}
+                            {sf.status === 'pending' && !isUploading && (
+                                <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={(e) => removeFile(e, sf.id)}>
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
+                            )}
+                            {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
+                            {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                            {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
+                        </div>
                     </div>
                 ))}
                 </div>
