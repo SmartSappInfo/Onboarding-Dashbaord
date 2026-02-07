@@ -100,6 +100,10 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
     setStagedFiles(prev => prev.map(sf => {
       if (sf.id !== selectedFile.id) return sf;
       const updatedEdits = { ...sf.edits, ...newEdits } as StagedFile['edits'];
+      // A bit of a hack to ensure croppedAreaPixels is always present if other edits are
+      if (!updatedEdits.croppedAreaPixels && selectedFile.originalWidth && selectedFile.originalHeight) {
+          updatedEdits.croppedAreaPixels = { x: 0, y: 0, width: selectedFile.originalWidth, height: selectedFile.originalHeight };
+      }
       return { ...sf, edits: updatedEdits };
     }));
   };
@@ -386,152 +390,160 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
   const targetHeight = aspectNumber && targetWidth > 0 ? Math.round(targetWidth / aspectNumber) : 0;
 
   return (
-    <div className="grid md:grid-cols-3 gap-6 h-full">
-      <div className="md:col-span-1 h-full flex flex-col gap-4">
-        <div
-            onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
-            className={cn(
-            "flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer text-center transition-colors",
-            isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-            )}
-            onClick={() => document.getElementById('file-input')?.click()}
-        >
-            <UploadCloud className="w-8 h-8 text-muted-foreground" />
-            <p className="mt-2 font-semibold text-sm">Click or drag and drop</p>
-            <input id="file-input" type="file" multiple className="hidden" onChange={(e) => handleFileSelection(e.target.files)} accept={ACCEPTED_MIME_TYPES.join(',')} />
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-6 h-full overflow-y-auto pr-2">
+        
+        {/* Left Column / Mobile File List */}
+        <div className="md:col-span-1 h-full flex flex-col gap-4 order-2 md:order-1">
+          <div
+              onDrop={handleDrop} onDragOver={handleDragOver} onDragLeave={handleDragLeave}
+              className={cn(
+                "flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer text-center transition-colors",
+                isDragActive ? "border-primary bg-primary/10" : "border-border hover:border-primary/50",
+                stagedFiles.length > 0 ? "hidden md:flex" : "flex"
+              )}
+              onClick={() => document.getElementById('file-input')?.click()}
+          >
+              <UploadCloud className="w-8 h-8 text-muted-foreground" />
+              <p className="mt-2 font-semibold text-sm">Click or drag and drop</p>
+              <input id="file-input" type="file" multiple className="hidden" onChange={(e) => handleFileSelection(e.target.files)} accept={ACCEPTED_MIME_TYPES.join(',')} />
+          </div>
 
-        <div className="flex-grow relative">
-            {stagedFiles.length > 0 ? (
-                <ScrollArea className="absolute inset-0 pr-4">
-                    <div className="space-y-4">
-                    {stagedFiles.map(sf => (
-                        <div 
-                            key={sf.id} role="button" tabIndex={0}
-                            onClick={() => setSelectedFile(sf)}
-                            onKeyDown={(e) => e.key === "Enter" && setSelectedFile(sf)}
-                            className={cn(
-                                "flex items-center gap-4 p-3 rounded-lg border bg-card transition-colors cursor-pointer hover:bg-muted/50",
-                                selectedFile?.id === sf.id && 'ring-2 ring-primary border-primary'
-                            )}
-                        >
-                            <FileIcon className="w-8 h-8 text-muted-foreground shrink-0" />
-                            <div className="flex-1 overflow-hidden">
-                                <p className="text-sm font-medium truncate">{sf.file.name}</p>
-                                <p className="text-xs text-muted-foreground">{formatBytes(sf.file.size)}</p>
-                                {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
-                                {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
-                            </div>
-                            <div className="flex items-center shrink-0">
-                                {sf.isImage && sf.edits && sf.status === 'pending' && <CheckSquare className="w-5 h-5 text-primary" />}
-                                {sf.status === 'pending' && !isUploading && (
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={(e) => removeFile(e, sf.id)}>
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                )}
-                                {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
-                                {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                                {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
-                            </div>
-                        </div>
-                    ))}
-                    </div>
-                </ScrollArea>
-            ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-                No files selected yet.
-            </div>
-            )}
-        </div>
-        <div className="flex justify-end gap-4 shrink-0 pt-4 border-t">
-            <Button variant="outline" onClick={closeSheet} disabled={isUploading}>Cancel</Button>
-            <Button onClick={handleUpload} disabled={isUploading || stagedFiles.filter(sf => sf.status === 'pending').length === 0}>
-            {isUploading ? 'Uploading...' : `Upload ${stagedFiles.filter(f => f.status === 'pending').length} File(s)`}
-            </Button>
-      </div>
-      </div>
-      
-      <div className="md:col-span-2 h-full flex flex-col gap-4">
-        <div className="flex-grow relative bg-muted rounded-md min-h-[300px]">
-            {selectedFile?.isImage && selectedFile.originalDataUrl && (
-                <Cropper
-                  image={selectedFile.originalDataUrl}
-                  crop={crop}
-                  zoom={zoom}
-                  aspect={aspectNumber}
-                  onCropChange={setCrop}
-                  onZoomChange={(val) => { setZoom(val); updateSelectedFileEdits({ zoom: val }); }}
-                  onCropComplete={(_, croppedAreaPixels) => {
-                    setCroppedAreaPixels(croppedAreaPixels);
-                    updateSelectedFileEdits({ croppedAreaPixels });
-                  }}
-                />
-            )}
-            {!selectedFile?.isImage && (
-                <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                    <p>{selectedFile ? 'Editing not available for this file type.' : 'Select a file to begin'}</p>
-                </div>
-            )}
+          <div className="flex-grow relative">
+              {stagedFiles.length > 0 ? (
+                  <ScrollArea className="absolute inset-0 pr-4">
+                      <div className="space-y-4">
+                      {stagedFiles.map(sf => (
+                          <div 
+                              key={sf.id} role="button" tabIndex={0}
+                              onClick={() => setSelectedFile(sf)}
+                              onKeyDown={(e) => e.key === "Enter" && setSelectedFile(sf)}
+                              className={cn(
+                                  "flex items-center gap-4 p-3 rounded-lg border bg-card transition-colors cursor-pointer hover:bg-muted/50",
+                                  selectedFile?.id === sf.id && 'ring-2 ring-primary border-primary'
+                              )}
+                          >
+                              <FileIcon className="w-8 h-8 text-muted-foreground shrink-0" />
+                              <div className="flex-1 overflow-hidden">
+                                  <p className="text-sm font-medium truncate">{sf.file.name}</p>
+                                  <p className="text-xs text-muted-foreground">{formatBytes(sf.file.size)}</p>
+                                  {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
+                                  {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
+                              </div>
+                              <div className="flex items-center shrink-0">
+                                  {sf.isImage && sf.edits && sf.status === 'pending' && <CheckSquare className="w-5 h-5 text-primary" />}
+                                  {sf.status === 'pending' && !isUploading && (
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 ml-2" onClick={(e) => removeFile(e, sf.id)}>
+                                          <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                  )}
+                                  {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
+                                  {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
+                                  {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
+                              </div>
+                          </div>
+                      ))}
+                      </div>
+                  </ScrollArea>
+              ) : (
+              <div className="hidden md:flex items-center justify-center h-full text-muted-foreground">
+                  No files selected yet.
+              </div>
+              )}
+          </div>
         </div>
         
-        {selectedFile?.isImage && (
-            <ScrollArea className="h-full max-h-[280px] shrink-0">
-                <div className="space-y-6 p-1 pr-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
-                        <Input id="filename" value={name} onChange={(e) => {setName(e.target.value); updateSelectedFileEdits({ name: e.target.value })}} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
-                      <div className="flex items-center gap-2">
-                          <Input id="width" type="number" value={targetWidth} onChange={(e) => {const val = parseInt(e.target.value, 10) || 0; setTargetWidth(val); updateSelectedFileEdits({targetWidth: val})}} />
-                          <span className="text-muted-foreground">x</span>
-                          <Input id="height" type="number" value={targetHeight} disabled />
+        {/* Right Column / Mobile Editor */}
+        <div className="md:col-span-2 h-full flex flex-col gap-4 order-1 md:order-2">
+          <div className="flex-grow relative bg-muted rounded-md min-h-[250px] md:min-h-[300px]">
+              {selectedFile?.isImage && selectedFile.originalDataUrl ? (
+                  <Cropper
+                    image={selectedFile.originalDataUrl}
+                    crop={crop}
+                    zoom={zoom}
+                    aspect={aspectNumber}
+                    onCropChange={setCrop}
+                    onZoomChange={(val) => { setZoom(val); updateSelectedFileEdits({ zoom: val }); }}
+                    onCropComplete={(_, croppedAreaPixels) => {
+                      setCroppedAreaPixels(croppedAreaPixels);
+                      updateSelectedFileEdits({ croppedAreaPixels });
+                    }}
+                  />
+              ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground p-4 text-center">
+                      <p>{selectedFile ? 'Editing not available for this file type.' : 'Select a file to begin'}</p>
+                  </div>
+              )}
+          </div>
+          
+          {selectedFile?.isImage && (
+              <ScrollArea className="h-full max-h-[280px] shrink-0">
+                  <div className="space-y-6 p-1 pr-4">
+                      <div className="space-y-2">
+                          <Label htmlFor="filename" className="flex items-center gap-2"><TextCursorInput/> File Name (.webp)</Label>
+                          <Input id="filename" value={name} onChange={(e) => {setName(e.target.value); updateSelectedFileEdits({ name: e.target.value })}} />
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
-                      <Select value={aspectString} onValueChange={setAspectString}>
-                          <SelectTrigger>
-                              <SelectValue placeholder="Select aspect ratio" />
-                          </SelectTrigger>
-                          <SelectContent>
-                              {aspectRatios.map(ratio => (
-                                  <SelectItem key={ratio.value} value={ratio.value}>{ratio.label}</SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="zoom" className="flex items-center gap-2"><Crop/> Zoom ({zoom.toFixed(2)}x)</Label>
-                        <Slider id="zoom" value={[zoom]} onValueChange={([val]) => {setZoom(val); updateSelectedFileEdits({ zoom: val })}} min={1} max={3} step={0.1} />
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality ({quality}%)</Label>
-                        <Slider id="quality" value={[quality]} onValueChange={([val]) => {setQuality(val); updateSelectedFileEdits({ quality: val })}} min={10} max={100} step={5} />
-                    </div>
-                    <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
-                        <p className="font-semibold text-foreground">Original:</p>
-                        <div className="flex justify-between"><span>Dimensions:</span> <span>{selectedFile.originalWidth} x {selectedFile.originalHeight}</span></div>
-                        <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(selectedFile.file.size)}</span></div>
-                        <div className="border-t pt-2 mt-2">
-                            <p className="font-semibold text-foreground">Estimated Output:</p>
-                            <div className="flex justify-between"><span>Dimensions:</span> <span>{targetWidth} x {targetHeight}</span></div>
-                            <div className="flex justify-between items-center">
-                                <span>File Size:</span>
-                                <span className="font-mono text-foreground flex items-center">
-                                  {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
-                                  {isEstimating ? '...' : estimatedSize || 'N/A'}
-                                </span>
-                              </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
+                        <div className="flex items-center gap-2">
+                            <Input id="width" type="number" value={targetWidth} onChange={(e) => {const val = parseInt(e.target.value, 10) || 0; setTargetWidth(val); updateSelectedFileEdits({targetWidth: val})}} />
+                            <span className="text-muted-foreground">x</span>
+                            <Input id="height" type="number" value={targetHeight} disabled />
                         </div>
-                    </div>
-                </div>
-            </ScrollArea>
-        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><Ratio /> Aspect Ratio</Label>
+                        <Select value={aspectString} onValueChange={setAspectString}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select aspect ratio" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {aspectRatios.map(ratio => (
+                                    <SelectItem key={ratio.value} value={ratio.value}>{ratio.label}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                          <Label htmlFor="zoom" className="flex items-center gap-2"><Crop/> Zoom ({zoom.toFixed(2)}x)</Label>
+                          <Slider id="zoom" value={[zoom]} onValueChange={([val]) => {setZoom(val); updateSelectedFileEdits({ zoom: val })}} min={1} max={3} step={0.1} />
+                      </div>
+
+                      <div className="space-y-2">
+                          <Label htmlFor="quality" className="flex items-center gap-2"><Percent /> Quality ({quality}%)</Label>
+                          <Slider id="quality" value={[quality]} onValueChange={([val]) => {setQuality(val); updateSelectedFileEdits({ quality: val })}} min={10} max={100} step={5} />
+                      </div>
+                      <div className="space-y-4 text-sm text-muted-foreground rounded-lg border p-3">
+                          <p className="font-semibold text-foreground">Original:</p>
+                          <div className="flex justify-between"><span>Dimensions:</span> <span>{selectedFile.originalWidth} x {selectedFile.originalHeight}</span></div>
+                          <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(selectedFile.file.size)}</span></div>
+                          <div className="border-t pt-2 mt-2">
+                              <p className="font-semibold text-foreground">Estimated Output:</p>
+                              <div className="flex justify-between"><span>Dimensions:</span> <span>{targetWidth} x {targetHeight}</span></div>
+                              <div className="flex justify-between items-center">
+                                  <span>File Size:</span>
+                                  <span className="font-mono text-foreground flex items-center">
+                                    {isEstimating && <Loader2 className="w-4 h-4 mr-2 animate-spin"/>}
+                                    {isEstimating ? '...' : estimatedSize || 'N/A'}
+                                  </span>
+                                </div>
+                          </div>
+                      </div>
+                  </div>
+              </ScrollArea>
+          )}
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-4 shrink-0 pt-4 border-t">
+          <Button variant="outline" onClick={closeSheet} disabled={isUploading}>Cancel</Button>
+          <Button onClick={handleUpload} disabled={isUploading || stagedFiles.filter(sf => sf.status === 'pending').length === 0}>
+          {isUploading ? 'Uploading...' : `Upload ${stagedFiles.filter(f => f.status === 'pending').length} File(s)`}
+          </Button>
       </div>
     </div>
   );
 }
+
+    
