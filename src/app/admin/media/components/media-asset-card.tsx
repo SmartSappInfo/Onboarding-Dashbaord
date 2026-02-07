@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -139,7 +140,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
           </div>
           <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/70 to-transparent p-2 text-white">
             <p className="text-xs font-medium truncate">{asset.name}</p>
-            <p className="text-xs text-gray-300">{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
+            <p className="text-xs text-gray-300">{asset.width && asset.height ? `${asset.width}x${asset.height} - ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
           </div>
           <div className="absolute top-1 right-1">
             <DropdownMenu>

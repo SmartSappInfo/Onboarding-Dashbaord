@@ -47,6 +47,8 @@ export interface MediaAsset {
   type: 'image' | 'video' | 'audio' | 'document' | 'link';
   mimeType?: string;
   size?: number;
+  width?: number;
+  height?: number;
   uploadedBy: string;
   createdAt: string; // ISO string
   linkTitle?: string;

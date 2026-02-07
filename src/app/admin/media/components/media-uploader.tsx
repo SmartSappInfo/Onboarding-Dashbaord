@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -6,11 +7,14 @@ import { collection, addDoc } from 'firebase/firestore';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, Trash2 } from 'lucide-react';
+import { UploadCloud, File as FileIcon, X, CheckCircle, AlertCircle, Trash2, Edit, CheckSquare } from 'lucide-react';
+import { Area } from 'react-easy-crop';
 
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import ImageEditorDialog from './image-editor-dialog';
+import { getImageDimensions, processImage } from '@/lib/image-processing';
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ACCEPTED_MIME_TYPES = [
@@ -29,12 +33,25 @@ const getMediaType = (mimeType: string): 'image' | 'video' | 'audio' | 'document
     return 'document';
 };
 
-interface StagedFile {
+export interface StagedFile {
   file: File;
   progress: number;
   status: 'pending' | 'uploading' | 'success' | 'error';
   error?: string;
   id: string;
+  isImage?: boolean;
+  originalDataUrl?: string;
+  originalWidth?: number;
+  originalHeight?: number;
+  edits?: {
+    name: string;
+    crop: { x: number; y: number };
+    croppedAreaPixels: Area;
+    zoom: number;
+    aspect: number;
+    targetWidth: number;
+    quality: number;
+  };
 }
 
 export default function MediaUploader({ closeSheet }: { closeSheet: () => void }) {
@@ -45,27 +62,48 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const handleFileSelection = useCallback((files: FileList | null) => {
+  const [editingFile, setEditingFile] = useState<StagedFile | null>(null);
+
+  const handleFileSelection = useCallback(async (files: FileList | null) => {
     if (!files) return;
 
-    const newFiles: StagedFile[] = Array.from(files)
-      .map(file => ({
-        file,
-        progress: 0,
-        status: 'pending' as const,
-        id: `${file.name}-${file.size}-${file.lastModified}`,
-      }))
-      .filter(sf => {
-        if (!ACCEPTED_MIME_TYPES.includes(sf.file.type)) {
-          toast({ variant: 'destructive', title: 'Invalid File Type', description: `${sf.file.name} is not a supported file type.` });
-          return false;
+    const newFilesPromises = Array.from(files).map(async file => {
+        if (!ACCEPTED_MIME_TYPES.includes(file.type)) {
+          toast({ variant: 'destructive', title: 'Invalid File Type', description: `${file.name} is not a supported file type.` });
+          return null;
         }
-        if (sf.file.size > MAX_FILE_SIZE) {
-          toast({ variant: 'destructive', title: 'File Too Large', description: `${sf.file.name} exceeds the 50MB size limit.` });
-          return false;
+        if (file.size > MAX_FILE_SIZE) {
+          toast({ variant: 'destructive', title: 'File Too Large', description: `${file.name} exceeds the 50MB size limit.` });
+          return null;
         }
-        return true;
-      });
+
+        const isImage = file.type.startsWith('image/');
+        let imageDetails: Partial<StagedFile> = {};
+        if (isImage) {
+            try {
+                const { width, height, dataUrl } = await getImageDimensions(file);
+                imageDetails = {
+                    isImage,
+                    originalDataUrl: dataUrl,
+                    originalWidth: width,
+                    originalHeight: height,
+                };
+            } catch (error) {
+                toast({ variant: 'destructive', title: 'Could not read image', description: file.name });
+                return null;
+            }
+        }
+        
+        return {
+            file,
+            progress: 0,
+            status: 'pending' as const,
+            id: `${file.name}-${file.size}-${file.lastModified}`,
+            ...imageDetails
+        };
+    });
+
+    const newFiles = (await Promise.all(newFilesPromises)).filter(Boolean) as StagedFile[];
 
     setStagedFiles(prev => {
         const existingIds = new Set(prev.map(f => f.id));
@@ -99,6 +137,10 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
     setStagedFiles(prev => prev.filter(sf => sf.id !== id));
   };
   
+  const handleEditSave = (fileId: string, edits: StagedFile['edits']) => {
+      setStagedFiles(prev => prev.map(sf => sf.id === fileId ? { ...sf, edits } : sf));
+  };
+
   const handleUpload = async () => {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in to upload files.' });
@@ -113,18 +155,40 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
     setIsUploading(true);
 
     const uploadPromises = pendingFiles.map(async (stagedFile) => {
-            setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'uploading' } : sf));
+        setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'uploading', progress: 5 } : sf));
 
-            const mediaType = getMediaType(stagedFile.file.type);
-            const storagePath = `media/${mediaType}/${Date.now()}-${stagedFile.file.name}`;
+        try {
+            let fileToUpload: File;
+            let finalWidth: number | undefined;
+            let finalHeight: number | undefined;
+            let finalName: string;
+
+            if (stagedFile.isImage && stagedFile.edits && stagedFile.originalDataUrl) {
+                const { name, croppedAreaPixels, targetWidth, quality } = stagedFile.edits;
+                finalName = name;
+                const { file, width, height } = await processImage(stagedFile.originalDataUrl, croppedAreaPixels, targetWidth, quality, name);
+                fileToUpload = file;
+                finalWidth = width;
+                finalHeight = height;
+            } else {
+                fileToUpload = stagedFile.file;
+                finalName = fileToUpload.name.split('.').slice(0, -1).join('.');
+                if(stagedFile.isImage) {
+                    finalWidth = stagedFile.originalWidth;
+                    finalHeight = stagedFile.originalHeight;
+                }
+            }
+            
+            const mediaType = getMediaType(fileToUpload.type);
+            const storagePath = `media/${mediaType}/${Date.now()}-${finalName.replace(/\s/g, '_')}`;
             const storage = getStorage();
             const storageRef = ref(storage, storagePath);
-            const uploadTask = uploadBytesResumable(storageRef, stagedFile.file);
+            const uploadTask = uploadBytesResumable(storageRef, fileToUpload);
 
             return new Promise<void>((resolve, reject) => {
                 uploadTask.on('state_changed',
                     (snapshot) => {
-                        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                        const progress = 5 + (snapshot.bytesTransferred / snapshot.totalBytes) * 95;
                         setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, progress } : sf));
                     },
                     (error) => {
@@ -137,12 +201,14 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                             
                             const mediaCollection = collection(firestore, 'media');
                             const mediaDocData = {
-                                name: stagedFile.file.name,
+                                name: finalName,
                                 url: downloadURL,
                                 fullPath: storagePath,
                                 type: mediaType,
-                                mimeType: stagedFile.file.type,
-                                size: stagedFile.file.size,
+                                mimeType: fileToUpload.type,
+                                size: fileToUpload.size,
+                                width: finalWidth,
+                                height: finalHeight,
                                 uploadedBy: user.uid,
                                 createdAt: new Date().toISOString(),
                             };
@@ -170,16 +236,21 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                     }
                 );
             });
-        });
+        } catch (processError: any) {
+             setStagedFiles(prev => prev.map(sf => sf.id === stagedFile.id ? { ...sf, status: 'error', error: processError.message || 'Failed to process image.' } : sf));
+        }
+    });
 
     try {
         await Promise.all(uploadPromises);
-        toast({ title: 'Upload Complete', description: 'All pending files have been uploaded.' });
+        toast({ title: 'Upload Complete', description: 'All pending files have been processed and uploaded.' });
         
         setTimeout(() => {
-            setStagedFiles(prev => prev.filter(sf => sf.status !== 'success'));
-            if (stagedFiles.every(f => f.status === 'success' || f.status === 'error')) {
+            const hasErrors = stagedFiles.some(f => f.status === 'error');
+            if (!hasErrors) {
                 closeSheet();
+            } else {
+                 setStagedFiles(prev => prev.filter(sf => sf.status !== 'success'));
             }
         }, 2000);
 
@@ -200,6 +271,7 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
   }
 
   return (
+    <>
     <div className="flex flex-col h-full gap-4">
       <div
         onDrop={handleDrop}
@@ -237,12 +309,19 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
                         {sf.status === 'uploading' && <Progress value={sf.progress} className="h-1.5 mt-1.5" />}
                         {sf.status === 'error' && <p className="text-xs text-destructive mt-1 truncate">{sf.error}</p>}
                     </div>
-                    <div className="shrink-0">
+                    <div className="flex items-center shrink-0">
+                         {sf.isImage && sf.status === 'pending' && !isUploading && (
+                           <Button variant="outline" size="sm" className="h-8 mr-2" onClick={() => setEditingFile(sf)}>
+                               {sf.edits ? <CheckSquare className="w-4 h-4 text-primary" /> : <Edit className="w-4 h-4" />}
+                               <span className="ml-2">{sf.edits ? 'Edited' : 'Edit'}</span>
+                            </Button>
+                         )}
                         {sf.status === 'pending' && !isUploading && (
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeFile(sf.id)}>
                                 <Trash2 className="w-4 h-4" />
                             </Button>
                         )}
+                        {sf.status === 'uploading' && <span className="text-xs text-muted-foreground">{Math.round(sf.progress)}%</span>}
                         {sf.status === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
                         {sf.status === 'error' && <AlertCircle className="w-5 h-5 text-destructive" />}
                     </div>
@@ -264,5 +343,12 @@ export default function MediaUploader({ closeSheet }: { closeSheet: () => void }
         </Button>
       </div>
     </div>
+    <ImageEditorDialog 
+        file={editingFile}
+        open={!!editingFile}
+        onOpenChange={(open) => !open && setEditingFile(null)}
+        onSave={handleEditSave}
+    />
+    </>
   );
 }
