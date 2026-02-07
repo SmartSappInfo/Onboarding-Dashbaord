@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -185,8 +184,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </SidebarFooter>
           </Sidebar>
           
-          <SidebarInset>
-            <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4">
+          <SidebarInset className="min-h-0 flex-1 flex flex-col">
+            <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-card px-4">
               <SidebarTrigger className="md:hidden" />
               <div className="w-full flex-1">
                 <h1 className="text-lg font-semibold">{pageTitle}</h1>
