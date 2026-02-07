@@ -108,6 +108,7 @@ export default function NewSchoolSignupForm() {
 
       const webhookData: Record<string, any> = { ...data };
       
+      webhookData.submissionDate = new Date().toISOString();
       webhookData.implementationDate = format(data.implementationDate, 'yyyy-MM-dd');
       webhookData.includeDroneFootage = data.includeDroneFootage ? "Yes" : "No";
       webhookData.notifySchoolEmails = [...new Set(schoolEmails)].join(',');
@@ -115,10 +116,10 @@ export default function NewSchoolSignupForm() {
       webhookData.notifySmartSappEmails = data.notifySmartSapp ? "team@minex360.com" : "";
       webhookData.notifyOnboardingEmails = data.notifyOnboarding ? "joseph.aidoo@smartsapp.com, onboarding@minex360.com, sitso.aglago@smartsapp.com, finance@smartsapp.com" : "";
 
-      delete webhookData.notifySchool;
-      delete webhookData.notifySmartSapp;
-      delete webhookData.notifyOnboarding;
-      delete webhookData.notifySchoolBySms;
+      webhookData.notifySchool = data.notifySchool ? "Yes" : "No";
+      webhookData.notifySmartSapp = data.notifySmartSapp ? "Yes" : "No";
+      webhookData.notifyOnboarding = data.notifyOnboarding ? "Yes" : "No";
+      webhookData.notifySchoolBySms = data.notifySchoolBySms ? "Yes" : "No";
 
       const response = await fetch("https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc", {
         method: 'POST',
