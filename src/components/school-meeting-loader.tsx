@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
-import type { School, Meeting } from '@/lib/types';
+import type { School, Meeting, MeetingType } from '@/lib/types';
+import { MEETING_TYPES } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppDownloadSection from '@/components/app-download-section';
@@ -13,6 +14,9 @@ import BrochureDownloadSection from './brochure-download-section';
 import SetupProfileSection from './setup-profile-section';
 import TestimonialsSection from './testimonials-section';
 import WelcomeSection from './welcome-section';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import CountdownTimer from './countdown-timer';
+import JoinMeetingButton from './join-meeting-button';
 
 function MeetingPageSkeleton() {
   return (
@@ -47,26 +51,98 @@ function MeetingPageSkeleton() {
   )
 }
 
-interface SchoolMeetingLoaderProps {
-    slug: string;
+const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+  const helpVideos = [
+      'https://youtu.be/4zchas6SKtE',
+      'https://youtu.be/1p5ICDnyzjk',
+      'https://youtu.be/XuixxYGw02g',
+      'https://youtu.be/qlK8TVipyDs',
+      'https://youtu.be/akt0jFWqqPs',
+      'https://youtu.be/XmP7rNPSRDc',
+      'https://youtu.be/ORUNmDdXMZQ',
+      'https://youtu.be/BNJ8jAw3MRE',
+      'https://youtu.be/Ft7ViVtzX3U',
+    ];
+  return (
+    <>
+      <MeetingHero school={school} meeting={meeting} />
+      <WelcomeSection />
+      <AppDownloadSection />
+      <SetupProfileSection />
+      {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
+      <HelpSection helpVideos={helpVideos} />
+      <TestimonialsSection />
+    </>
+  )
 }
 
-export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) {
+const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+  return (
+    <section className="py-20 md:py-32">
+      <div className="container text-center">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">Welcome to Your School Kickoff</h1>
+        <p className="text-xl text-muted-foreground mb-12">{school.name}</p>
+        
+        <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
+            <Card><CardHeader><CardTitle>What This Kickoff Covers</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">An overview of the onboarding process, timelines, and key milestones.</p></CardContent></Card>
+            <Card><CardHeader><CardTitle>Who Should Attend</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">School administrators, IT staff, and project leads for the SmartSapp implementation.</p></CardContent></Card>
+            <Card><CardHeader><CardTitle>What You'll Get</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">A clear action plan, access to resources, and answers to all your initial questions.</p></CardContent></Card>
+        </div>
+
+        <div className="my-10">
+            <CountdownTimer targetDate={meeting.meetingTime} />
+        </div>
+        <JoinMeetingButton meetingTime={meeting.meetingTime} meetingLink={meeting.meetingLink} />
+      </div>
+    </section>
+  )
+}
+
+const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
+  return (
+    <section className="py-20 md:py-32">
+      <div className="container text-center">
+        <h1 className="text-4xl font-bold tracking-tight mb-4">Staff Training Session</h1>
+        <p className="text-xl text-muted-foreground mb-12">{school.name}</p>
+
+        <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
+            <Card><CardHeader><CardTitle>Learning Objectives</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Master the core features of the SmartSapp admin dashboard and mobile app.</p></CardContent></Card>
+            <Card><CardHeader><CardTitle>Training Resources</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Access to live guides, video tutorials, and our support documentation.</p></CardContent></Card>
+            <Card><CardHeader><CardTitle>Agenda</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Session will cover student management, parent communication, and financial tools.</p></CardContent></Card>
+        </div>
+
+        <div className="my-10">
+            <CountdownTimer targetDate={meeting.meetingTime} />
+        </div>
+        <JoinMeetingButton meetingTime={meeting.meetingTime} meetingLink={meeting.meetingLink} />
+      </div>
+    </section>
+  )
+}
+
+interface SchoolMeetingLoaderProps {
+    schoolSlug: string;
+    typeSlug: string;
+}
+
+export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeetingLoaderProps) {
     const firestore = useFirestore();
     const [school, setSchool] = useState<School | null>(null);
     const [meeting, setMeeting] = useState<Meeting | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const meetingType = MEETING_TYPES.find(t => t.slug === typeSlug);
 
     useEffect(() => {
-        if (school) {
-          document.title = `${school.name} | Onboarding Meeting`;
+        if (school && meetingType) {
+          document.title = `${meetingType.name}: ${school.name} | Onboarding Meeting`;
         }
-    }, [school]);
+    }, [school, meetingType]);
 
     useEffect(() => {
-        if (!firestore || !slug) {
+        if (!firestore || !schoolSlug || !typeSlug) {
             setIsLoading(false);
+            setError("Required information is missing.");
             return;
         };
 
@@ -79,7 +155,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
           try {
             // 1. Fetch the school by slug
             const schoolsCollection = collection(firestore, 'schools');
-            const schoolQuery = query(schoolsCollection, where('slug', '==', slug));
+            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug));
             const schoolSnapshot = await getDocs(schoolQuery);
 
             if (schoolSnapshot.empty) {
@@ -91,18 +167,20 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
             const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
             setSchool(foundSchool);
 
-            // 2. Fetch the latest meeting for that school
+            // 2. Fetch the latest meeting for that school and type
             const meetingsCollection = collection(firestore, 'meetings');
             const meetingQuery = query(
               meetingsCollection, 
-              where('schoolSlug', '==', slug),
-              orderBy('meetingTime', 'desc'),
+              where('schoolSlug', '==', schoolSlug),
+              where('type.slug', '==', typeSlug),
+              where('meetingTime', '>=', new Date().toISOString()),
+              orderBy('meetingTime', 'asc'),
               limit(1)
             );
             const meetingSnapshot = await getDocs(meetingQuery);
 
             if (meetingSnapshot.empty) {
-              setError("No upcoming meeting found for this school.");
+              setError(`No upcoming ${meetingType?.name || 'meeting'} found for this school.`);
             } else {
               const foundMeeting = { ...meetingSnapshot.docs[0].data(), id: meetingSnapshot.docs[0].id } as Meeting;
               setMeeting(foundMeeting);
@@ -117,7 +195,7 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
         };
 
         fetchSchoolAndMeeting();
-    }, [firestore, slug]);
+    }, [firestore, schoolSlug, typeSlug, meetingType]);
       
     if (isLoading) {
         return (
@@ -140,33 +218,14 @@ export default function SchoolMeetingLoader({ slug }: SchoolMeetingLoaderProps) 
         )
     }
 
-    const helpVideos = [
-      'https://youtu.be/4zchas6SKtE',
-      'https://youtu.be/1p5ICDnyzjk',
-      'https://youtu.be/XuixxYGw02g',
-      'https://youtu.be/qlK8TVipyDs',
-      'https://youtu.be/akt0jFWqqPs',
-      'https://youtu.be/XmP7rNPSRDc',
-      'https://youtu.be/ORUNmDdXMZQ',
-      'https://youtu.be/BNJ8jAw3MRE',
-      'https://youtu.be/Ft7ViVtzX3U',
-    ];
-
-    return (
-        <>
-            <MeetingHero school={school} meeting={meeting} />
-            
-            <WelcomeSection />
-            
-            <AppDownloadSection />
-
-            <SetupProfileSection />
-
-            {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
-
-            <HelpSection helpVideos={helpVideos} />
-
-            <TestimonialsSection />
-        </>
-    );
+    switch(typeSlug) {
+      case 'parent-engagement':
+        return <ParentEngagementLayout school={school} meeting={meeting} />;
+      case 'kickoff':
+        return <KickoffLayout school={school} meeting={meeting} />;
+      case 'training':
+        return <TrainingLayout school={school} meeting={meeting} />;
+      default:
+        return <div className="container py-20 text-center text-destructive">Invalid meeting type.</div>;
+    }
 }

@@ -5,8 +5,11 @@ import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { Meeting } from '@/lib/types';
+import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2 } from 'lucide-react';
 import {
   AlertDialog,
@@ -36,6 +39,7 @@ export default function MeetingsPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
+  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const meetingsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -48,6 +52,12 @@ export default function MeetingsPage() {
   }, [meetingsCol]);
 
   const { data: meetings, isLoading, error } = useCollection<Meeting>(meetingsQuery);
+
+  const filteredMeetings = useMemo(() => {
+    if (!meetings) return [];
+    if (typeFilter === 'all') return meetings;
+    return meetings.filter(m => m.type?.id === typeFilter);
+  }, [meetings, typeFilter]);
 
   const handleDeleteMeeting = () => {
     if (!firestore || !meetingToDelete) return;
@@ -83,7 +93,20 @@ export default function MeetingsPage() {
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-end mb-8">
+        <div className="flex items-center justify-between mb-8">
+          <div className="w-full max-w-xs">
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder="Filter by type..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Meeting Types</SelectItem>
+                {MEETING_TYPES.map(type => (
+                  <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button asChild>
             <Link href="/admin/meetings/new">Add New Meeting</Link>
           </Button>
@@ -94,6 +117,7 @@ export default function MeetingsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>School Name</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead className="w-[250px]">Meeting Time</TableHead>
                 <TableHead>Meeting Page</TableHead>
                 <TableHead className="w-[50px] text-right">Actions</TableHead>
@@ -104,77 +128,82 @@ export default function MeetingsPage() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : meetings && meetings.length > 0 ? (
-                meetings.map((meeting) => (
-                  <TableRow key={meeting.id}>
-                    <TableCell className="font-medium">{meeting.schoolName}</TableCell>
-                    <TableCell>
-                      {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <a href={`/meetings/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer" className="hover:underline text-muted-foreground truncate">
-                            {`/meetings/${meeting.schoolSlug}`}
-                        </a>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-7 w-7 shrink-0"
-                            onClick={() => {
-                                const url = `${window.location.origin}/meetings/${meeting.schoolSlug}`;
-                                navigator.clipboard.writeText(url);
-                                toast({ title: 'Link Copied!', description: 'Meeting page URL copied.' });
-                            }}
-                        >
-                            <span className="sr-only">Copy link</span>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
+              ) : filteredMeetings && filteredMeetings.length > 0 ? (
+                filteredMeetings.map((meeting) => {
+                  const type = meeting.type || MEETING_TYPES[0];
+                  return (
+                    <TableRow key={meeting.id}>
+                      <TableCell className="font-medium">{meeting.schoolName}</TableCell>
+                      <TableCell><Badge variant="secondary">{type.name}</Badge></TableCell>
+                      <TableCell>
+                        {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <a href={`/meetings/${type.slug}/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer" className="hover:underline text-muted-foreground truncate">
+                              {`/meetings/${type.slug}/${meeting.schoolSlug}`}
+                          </a>
+                          <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 shrink-0"
+                              onClick={() => {
+                                  const url = `${window.location.origin}/meetings/${type.slug}/${meeting.schoolSlug}`;
+                                  navigator.clipboard.writeText(url);
+                                  toast({ title: 'Link Copied!', description: 'Meeting page URL copied.' });
+                              }}
+                          >
+                              <span className="sr-only">Copy link</span>
+                              <Copy className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            <span>Edit Meeting</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <a href={`/meetings/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-2 h-4 w-4" />
-                              <span>View Meeting Page</span>
-                            </a>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem 
-                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onSelect={(e) => e.preventDefault()} // prevent menu from closing
-                              onClick={() => setMeetingToDelete(meeting)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete Meeting</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit Meeting</span>
                             </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
+                            <DropdownMenuItem asChild>
+                              <a href={`/meetings/${type.slug}/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                <span>View Meeting Page</span>
+                              </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                                onSelect={(e) => e.preventDefault()} // prevent menu from closing
+                                onClick={() => setMeetingToDelete(meeting)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete Meeting</span>
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-24 text-center">
+                  <TableCell colSpan={5} className="h-24 text-center">
                     No meetings found. Create one to get started.
                   </TableCell>
                 </TableRow>

@@ -155,6 +155,25 @@
           "description": "URL for joining the meeting.",
           "format": "uri"
         },
+        "type": {
+          "type": "object",
+          "description": "The type of meeting.",
+          "properties": {
+            "id": {
+              "type": "string",
+              "enum": ["parent", "kickoff", "training"]
+            },
+            "name": {
+              "type": "string",
+              "enum": ["Parent Engagement", "Kickoff", "Training"]
+            },
+            "slug": {
+              "type": "string",
+              "enum": ["parent-engagement", "kickoff", "training"]
+            }
+          },
+          "required": ["id", "name", "slug"]
+        },
         "recordingUrl": {
           "type": "string",
           "description": "URL of the meeting recording (e.g., YouTube).",
@@ -166,7 +185,7 @@
           "format": "uri"
         }
       },
-      "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink"]
+      "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink", "type"]
     },
     "MediaAsset": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -476,5 +495,4 @@
   }
 }
     
-
     

@@ -7,7 +7,8 @@ import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, addDoc } from 'firebase/firestore';
 
-import type { School } from '@/lib/types';
+import type { School, MeetingType } from '@/lib/types';
+import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -31,6 +32,7 @@ const formSchema = z.object({
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
+  type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -57,6 +59,7 @@ export default function NewMeetingPage() {
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
+      type: MEETING_TYPES[0], // Default to Parent Engagement
     },
   });
 
@@ -87,6 +90,7 @@ export default function NewMeetingPage() {
         schoolSlug: data.school.slug,
         meetingTime: data.meetingTime.toISOString(),
         meetingLink: data.meetingLink,
+        type: data.type,
         recordingUrl: data.recordingUrl || '',
         brochureUrl: data.brochureUrl || '',
     };
@@ -157,6 +161,37 @@ export default function NewMeetingPage() {
                           </SelectContent>
                         </Select>
                        )}
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="type"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Meeting Type</FormLabel>
+                      <Select
+                        onValueChange={(typeId: string) => {
+                          const type = MEETING_TYPES.find(t => t.id === typeId);
+                          field.onChange(type);
+                        }}
+                        value={field.value?.id}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a meeting type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {MEETING_TYPES.map((type) => (
+                            <SelectItem key={type.id} value={type.id}>
+                              {type.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}

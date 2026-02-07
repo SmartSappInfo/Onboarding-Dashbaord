@@ -1,6 +1,15 @@
 
 
 
+export const MEETING_TYPES = [
+  { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
+  { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
+  { id: 'training', name: 'Training', slug: 'training' },
+] as const;
+
+export type MeetingType = typeof MEETING_TYPES[number];
+
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -52,6 +61,7 @@ export interface Meeting {
   schoolSlug: string;
   meetingTime: string; // ISO string
   meetingLink: string;
+  type: MeetingType;
   recordingUrl?: string;
   brochureUrl?: string;
 }

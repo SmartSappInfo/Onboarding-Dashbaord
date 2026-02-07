@@ -3,14 +3,18 @@ import Header from '@/components/header';
 import Footer from '@/components/footer';
 import SchoolMeetingLoader from '@/components/school-meeting-loader';
 
-export default function SchoolMeetingPage() {
-  const schoolSlug = 'ghana-international-school';
-  
+interface PageProps {
+  params: {
+    schoolSlug: string;
+  }
+}
+
+export default function KickoffMeetingPage({ params }: PageProps) {
   return (
     <>
       <Header />
       <main className="flex-grow">
-        <SchoolMeetingLoader slug={schoolSlug} />
+        <SchoolMeetingLoader schoolSlug={params.schoolSlug} typeSlug="kickoff" />
       </main>
       <Footer />
     </>
