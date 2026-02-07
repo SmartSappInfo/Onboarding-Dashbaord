@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,8 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import AssignUserModal from './components/AssignUserModal';
 import UserFilterSelect from './components/UserFilterSelect';
 import { Input } from '@/components/ui/input';
+import ChangeStageModal from './components/ChangeStageModal';
+
 
 const formatPhoneNumberForLink = (phone?: string) => {
     if (!phone) return '';
@@ -59,6 +62,7 @@ export default function SchoolsPage() {
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [viewingSchool, setViewingSchool] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
+  const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
   // State for filtering
   const [userFilter, setUserFilter] = useState<string | null>(null);
@@ -195,6 +199,7 @@ export default function SchoolsPage() {
                 <TableRow>
                   <TableHead className="w-[80px]"></TableHead>
                   <TableHead>School Name</TableHead>
+                  <TableHead>Stage</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Implementation Date</TableHead>
                   <TableHead>Modules</TableHead>
@@ -207,6 +212,7 @@ export default function SchoolsPage() {
                     <TableRow key={i}>
                       <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                       <TableCell><Skeleton className="h-5 w-48" /></TableCell>
@@ -226,6 +232,9 @@ export default function SchoolsPage() {
                         <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
                           {school.name}
                         </button>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{school.stage?.name || 'Welcome'}</Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
                         {school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}
@@ -254,6 +263,10 @@ export default function SchoolsPage() {
                                 <UserPlus className="mr-2 h-4 w-4" />
                                 <span>Assign to User</span>
                               </DropdownMenuItem>
+                               <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                                <Workflow className="mr-2 h-4 w-4" />
+                                <span>Change Stage</span>
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 <span>Edit School</span>
@@ -281,7 +294,7 @@ export default function SchoolsPage() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center">
+                    <TableCell colSpan={7} className="h-24 text-center">
                       No schools found.
                     </TableCell>
                   </TableRow>
@@ -323,6 +336,10 @@ export default function SchoolsPage() {
                                             <UserPlus className="mr-2 h-4 w-4" />
                                             <span>Assign to User</span>
                                           </DropdownMenuItem>
+                                           <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                                            <Workflow className="mr-2 h-4 w-4" />
+                                            <span>Change Stage</span>
+                                          </DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
                                             <Edit className="mr-2 h-4 w-4" />
                                             <span>Edit School</span>
@@ -347,6 +364,10 @@ export default function SchoolsPage() {
                               </div>
                           </CardHeader>
                           <CardContent className="space-y-3">
+                               <div>
+                                  <p className="text-xs font-medium text-muted-foreground">Stage</p>
+                                  <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
+                              </div>
                               <div>
                                   <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
                                   <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
@@ -410,6 +431,8 @@ export default function SchoolsPage() {
       <SchoolDetailsModal school={viewingSchool} open={!!viewingSchool} onOpenChange={(open) => !open && setViewingSchool(null)} />
       
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
+      
+      <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
 
     </AlertDialog>
   );

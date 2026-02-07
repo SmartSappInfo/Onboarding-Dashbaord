@@ -93,6 +93,7 @@ export default function NewSchoolPage() {
       slug,
       implementationDate: data.implementationDate?.toISOString(),
       stage: { id: 'welcome', name: 'Welcome', order: 1 },
+      assignedTo: { userId: null, name: null, email: null },
     };
 
     const schoolsCollection = collection(firestore, 'schools');
