@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -245,10 +244,10 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                     </Label>
                     <div className="mt-4">
                         {question.type === 'text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} placeholder={question.placeholder} className="text-base" />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base" />} />
                         )}
                         {question.type === 'long-text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} placeholder={question.placeholder} className="text-base"/>} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base"/>} />
                         )}
                         {question.type === 'yes-no' && (
                             <Controller
@@ -365,7 +364,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                             <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
                         )}
                         {question.type === 'time' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} value={field.value || ''} />} />
                         )}
                         {question.type === 'file-upload' && (
                             <Controller
@@ -718,3 +717,5 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         </form>
     );
 }
+
+    
