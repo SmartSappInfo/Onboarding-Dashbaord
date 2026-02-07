@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState } from 'react';
@@ -76,26 +77,9 @@ export default function SettingsPage() {
           });
       } else if (seeder === 'stages') {
         const { stagesCreated, schoolsUpdated } = await seedOnboardingStages(firestore);
-        if (stagesCreated === 0 && schoolsUpdated === 0) {
-            toast({
-                title: 'No Action Needed',
-                description: 'Default onboarding stages already exist and all schools have a stage assigned.',
-            });
-            setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' }));
-            return;
-        }
-
-        let description = '';
-        if (stagesCreated > 0) {
-            description += `${stagesCreated} stages created. `;
-        }
-        if (schoolsUpdated > 0) {
-            description += `${schoolsUpdated} schools were assigned a default stage.`;
-        }
-        
         toast({
-            title: 'Seeding Complete',
-            description: description.trim(),
+            title: 'Pipeline Stages Updated',
+            description: `${stagesCreated} default stages were created/reset. ${schoolsUpdated} schools were updated.`,
         });
       }
       
@@ -144,11 +128,11 @@ export default function SettingsPage() {
             </div>
         </div>
         <div>
-            <h3 className="text-base font-semibold mb-2">Non-Destructive Actions</h3>
-            <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add default configurations without deleting anything.</p>
+            <h3 className="text-base font-semibold mb-2">Non-Destructive & Update Actions</h3>
+            <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add/reset default configurations.</p>
             <div className="flex flex-wrap gap-4">
                 <SeedingButton seeder="users">Update User Avatars</SeedingButton>
-                <SeedingButton seeder="stages">Seed Default Stages & Assign</SeedingButton>
+                <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
             </div>
         </div>
       </CardContent>

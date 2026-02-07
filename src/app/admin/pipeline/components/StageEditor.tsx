@@ -40,6 +40,9 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GripVertical, Plus, Trash2, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
+import { cn } from '@/lib/utils';
 
 
 function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameChange, newName, saveRename, onColorChange }: {
@@ -65,13 +68,37 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
       <Button variant="ghost" size="icon" className="cursor-grab h-8 w-8" {...attributes} {...listeners}>
         <GripVertical className="h-5 w-5" />
       </Button>
-      <Input
-        type="color"
-        value={stage.color || '#FFFFFF'}
-        onChange={(e) => onColorChange(stage.id, e.target.value)}
-        className="w-10 h-10 p-1"
-        aria-label="Stage Color"
-      />
+      
+      <Popover>
+        <PopoverTrigger asChild>
+            <Button variant="outline" className="w-10 h-10 p-0 border-2" style={{ borderColor: stage.color || '#ccc' }}>
+                <div className="w-full h-full" style={{ backgroundColor: stage.color || '#FFFFFF' }} />
+            </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-2">
+            <div className="grid grid-cols-6 gap-1 mb-2">
+                {ONBOARDING_STAGE_COLORS.map((color) => (
+                    <button
+                        key={color}
+                        className={cn("w-7 h-7 rounded-md border transition-transform hover:scale-110", color === stage.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+                        style={{ backgroundColor: color }}
+                        onClick={() => onColorChange(stage.id, color)}
+                    />
+                ))}
+            </div>
+             <div className="flex items-center gap-2 border-t pt-2">
+              <label htmlFor={`color-picker-${stage.id}`} className="text-sm font-medium">Custom</label>
+              <Input
+                id={`color-picker-${stage.id}`}
+                type="color"
+                value={stage.color || '#FFFFFF'}
+                onChange={(e) => onColorChange(stage.id, e.target.value)}
+                className="w-10 h-10 p-1"
+              />
+            </div>
+        </PopoverContent>
+      </Popover>
+
       {isEditing ? (
         <Input
           value={newName}

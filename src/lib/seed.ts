@@ -5,6 +5,7 @@
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
+import { ONBOARDING_STAGE_COLORS } from './colors';
 
 // --- SEED DATA ---
 
@@ -47,7 +48,7 @@ const schoolData: Omit<School, 'id'>[] = [
     implementationDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks from now
     referee: 'SmartSapp Team',
     includeDroneFootage: true,
-    stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' },
+    stage: { id: 'welcome', name: 'Welcome', order: 1, color: ONBOARDING_STAGE_COLORS[0] },
   },
 ];
 
@@ -256,15 +257,15 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
 ];
 
 const defaultStages: Omit<OnboardingStage, 'id'>[] = [
-    { name: 'Welcome', order: 1, color: '#8E44AD' },
-    { name: 'Data Collection', order: 2, color: '#2980B9' },
-    { name: 'Setup', order: 3, color: '#27AE60' },
-    { name: 'Training', order: 4, color: '#16A085' },
-    { name: 'Pre-Onboarding', order: 5, color: '#F1C40F' },
-    { name: 'Parent Engagement', order: 6, color: '#E67E22' },
-    { name: 'Pre-Go-Live', order: 7, color: '#D35400' },
-    { name: 'Go-Live', order: 8, color: '#C0392B' },
-    { name: 'Support', order: 9, color: '#7F8C8D' },
+    { name: 'Welcome', order: 1, color: ONBOARDING_STAGE_COLORS[0] },
+    { name: 'Data Collection', order: 2, color: ONBOARDING_STAGE_COLORS[1] },
+    { name: 'Setup', order: 3, color: ONBOARDING_STAGE_COLORS[2] },
+    { name: 'Training', order: 4, color: ONBOARDING_STAGE_COLORS[3] },
+    { name: 'Pre-Onboarding', order: 5, color: ONBOARDING_STAGE_COLORS[4] },
+    { name: 'Parent Engagement', order: 6, color: ONBOARDING_STAGE_COLORS[5] },
+    { name: 'Pre-Go-Live', order: 7, color: ONBOARDING_STAGE_COLORS[6] },
+    { name: 'Go-Live', order: 8, color: ONBOARDING_STAGE_COLORS[7] },
+    { name: 'Support', order: 9, color: ONBOARDING_STAGE_COLORS[8] },
 ];
 
 // --- SEEDING FUNCTIONS ---
@@ -367,35 +368,59 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
 
 export async function seedOnboardingStages(firestore: Firestore): Promise<{ stagesCreated: number, schoolsUpdated: number }> {
     const stagesCollection = collection(firestore, 'onboardingStages');
-    const stagesSnapshot = await getDocs(stagesCollection);
-    const batch = writeBatch(firestore);
-    let stagesCreated = 0;
-
-    if (stagesSnapshot.empty) {
-        defaultStages.forEach((stage) => {
-            const id = stage.name.toLowerCase().replace(/\s+/g, '-');
-            const docRef = doc(stagesCollection, id);
-            batch.set(docRef, stage);
-        });
-        stagesCreated = defaultStages.length;
-    }
-
     const schoolsCollection = collection(firestore, 'schools');
+    const batch = writeBatch(firestore);
+
+    // 1. Clear existing stages
+    const oldStagesSnapshot = await getDocs(stagesCollection);
+    oldStagesSnapshot.forEach((doc) => batch.delete(doc.ref));
+
+    // 2. Create new stages from default data
+    const newStagesMap = new Map<string, OnboardingStage>();
+    defaultStages.forEach((stageData) => {
+        const id = stageData.name.toLowerCase().replace(/\s+/g, '-');
+        const docRef = doc(stagesCollection, id);
+        const newStage: OnboardingStage = { id, ...stageData };
+        batch.set(docRef, stageData);
+        newStagesMap.set(id, newStage);
+    });
+    
+    // 3. Update schools with new stage data or move to Welcome
     const schoolsSnapshot = await getDocs(schoolsCollection);
     let schoolsUpdated = 0;
-    const welcomeStage = { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' };
+    const welcomeStage = newStagesMap.get('welcome');
+
+    if (!welcomeStage) {
+        throw new Error("Welcome stage not found in default seed data.");
+    }
 
     schoolsSnapshot.forEach(schoolDoc => {
         const school = schoolDoc.data() as School;
-        if (!school.stage) {
-            batch.update(schoolDoc.ref, { stage: { id: welcomeStage.id, name: welcomeStage.name, order: welcomeStage.order, color: welcomeStage.color } });
+        const currentStageId = school.stage?.id;
+        
+        let newStageData;
+
+        if (currentStageId && newStagesMap.has(currentStageId)) {
+            // Stage still exists, update the school's copy of it
+            newStageData = newStagesMap.get(currentStageId);
+        } else {
+            // Stage was deleted or never existed, assign to Welcome
+            newStageData = welcomeStage;
+        }
+
+        if (
+            !school.stage ||
+            school.stage.id !== newStageData!.id ||
+            school.stage.name !== newStageData!.name ||
+            school.stage.order !== newStageData!.order ||
+            school.stage.color !== newStageData!.color
+        ) {
+            batch.update(schoolDoc.ref, { stage: { id: newStageData!.id, name: newStageData!.name, order: newStageData!.order, color: newStageData!.color } });
             schoolsUpdated++;
         }
     });
     
-    if (stagesCreated > 0 || schoolsUpdated > 0) {
-        await batch.commit();
-    }
+    await batch.commit();
 
-    return { stagesCreated, schoolsUpdated };
+    return { stagesCreated: defaultStages.length, schoolsUpdated };
 }
