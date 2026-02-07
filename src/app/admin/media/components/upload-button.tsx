@@ -23,14 +23,14 @@ export default function UploadButton() {
         Upload Media
       </Button>
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-        <SheetContent className="w-full max-w-5xl sm:max-w-5xl p-0 flex flex-col">
+        <SheetContent className="w-full sm:max-w-5xl p-0 flex flex-col h-full">
           <SheetHeader className="px-6 pt-6 pb-4 border-b">
             <SheetTitle>Upload Media</SheetTitle>
             <SheetDescription>
-              Drag and drop files here or click to browse. Max 50MB per file.
+              Drag and drop files, edit, and upload. Max 50MB per file.
             </SheetDescription>
           </SheetHeader>
-          <div className="flex-grow p-6 overflow-hidden">
+          <div className="flex-grow p-6 overflow-y-auto">
             <MediaUploader closeSheet={() => setIsSheetOpen(false)} />
           </div>
         </SheetContent>
