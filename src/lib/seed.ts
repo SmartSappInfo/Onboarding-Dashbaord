@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
@@ -46,7 +47,7 @@ const schoolData: Omit<School, 'id'>[] = [
     implementationDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(), // 2 weeks from now
     referee: 'SmartSapp Team',
     includeDroneFootage: true,
-    stage: { id: 'welcome', name: 'Welcome', order: 1 },
+    stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' },
   },
 ];
 
@@ -255,15 +256,15 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
 ];
 
 const defaultStages: Omit<OnboardingStage, 'id'>[] = [
-    { name: 'Welcome', order: 1 },
-    { name: 'Data Collection', order: 2 },
-    { name: 'Setup', order: 3 },
-    { name: 'Training', order: 4 },
-    { name: 'Pre-Onboarding', order: 5 },
-    { name: 'Parent Engagement', order: 6 },
-    { name: 'Pre-Go-Live', order: 7 },
-    { name: 'Go-Live', order: 8 },
-    { name: 'Support', order: 9 },
+    { name: 'Welcome', order: 1, color: '#8E44AD' },
+    { name: 'Data Collection', order: 2, color: '#2980B9' },
+    { name: 'Setup', order: 3, color: '#27AE60' },
+    { name: 'Training', order: 4, color: '#16A085' },
+    { name: 'Pre-Onboarding', order: 5, color: '#F1C40F' },
+    { name: 'Parent Engagement', order: 6, color: '#E67E22' },
+    { name: 'Pre-Go-Live', order: 7, color: '#D35400' },
+    { name: 'Go-Live', order: 8, color: '#C0392B' },
+    { name: 'Support', order: 9, color: '#7F8C8D' },
 ];
 
 // --- SEEDING FUNCTIONS ---
@@ -382,12 +383,12 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
     const schoolsCollection = collection(firestore, 'schools');
     const schoolsSnapshot = await getDocs(schoolsCollection);
     let schoolsUpdated = 0;
-    const welcomeStage = { id: 'welcome', name: 'Welcome', order: 1 };
+    const welcomeStage = { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' };
 
     schoolsSnapshot.forEach(schoolDoc => {
         const school = schoolDoc.data() as School;
         if (!school.stage) {
-            batch.update(schoolDoc.ref, { stage: { id: welcomeStage.id, name: welcomeStage.name, order: welcomeStage.order } });
+            batch.update(schoolDoc.ref, { stage: { id: welcomeStage.id, name: welcomeStage.name, order: welcomeStage.order, color: welcomeStage.color } });
             schoolsUpdated++;
         }
     });

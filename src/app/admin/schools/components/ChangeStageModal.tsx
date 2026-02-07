@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -34,7 +35,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
     setIsUpdating(true);
 
     const schoolDocRef = doc(firestore, 'schools', school.id);
-    const newStageData = { id: stage.id, name: stage.name, order: stage.order };
+    const newStageData = { id: stage.id, name: stage.name, order: stage.order, color: stage.color };
 
     try {
       await updateDoc(schoolDocRef, { stage: newStageData });
@@ -85,7 +86,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
                   className="w-full text-left flex items-center gap-3 p-2 rounded-md hover:bg-accent transition-colors disabled:opacity-50"
                   disabled={isUpdating || school?.stage?.id === stage.id}
                 >
-                  <Workflow className="h-4 w-4 text-muted-foreground" />
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: stage.color }} />
                   <span className="font-medium">{stage.name}</span>
                   {school?.stage?.id === stage.id && (
                       <span className="ml-auto text-xs text-muted-foreground">Current</span>

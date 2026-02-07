@@ -1,6 +1,5 @@
 
 
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -24,6 +23,7 @@ export interface OnboardingStage {
   id: string;
   name: string;
   order: number;
+  color?: string;
 }
 
 export interface School {
@@ -51,6 +51,7 @@ export interface School {
     id: string;
     name: string;
     order: number;
+    color?: string;
   };
 }
 

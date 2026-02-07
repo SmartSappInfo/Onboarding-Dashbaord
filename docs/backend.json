@@ -118,7 +118,8 @@
           "properties": {
             "id": { "type": "string" },
             "name": { "type": "string" },
-            "order": { "type": "number" }
+            "order": { "type": "number" },
+            "color": { "type": "string" }
           }
         }
       },
@@ -398,6 +399,10 @@
         "order": {
           "type": "number",
           "description": "The numerical order of the stage in the pipeline."
+        },
+        "color": {
+          "type": "string",
+          "description": "A hex color code associated with the stage."
         }
       },
       "required": ["name", "order"]

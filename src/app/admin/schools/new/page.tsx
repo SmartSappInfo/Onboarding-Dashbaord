@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -92,7 +93,7 @@ export default function NewSchoolPage() {
       ...data,
       slug,
       implementationDate: data.implementationDate?.toISOString(),
-      stage: { id: 'welcome', name: 'Welcome', order: 1 },
+      stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' },
       assignedTo: { userId: null, name: null, email: null },
     };
 

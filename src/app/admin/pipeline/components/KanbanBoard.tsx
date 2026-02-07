@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -89,7 +90,10 @@ function StageColumn({ stage, schools }: { stage: OnboardingStage; schools: Scho
 
     return (
         <div ref={setNodeRef} className="h-full w-72 flex-shrink-0">
-            <Card className="h-full flex flex-col bg-muted/50">
+            <Card 
+                className="h-full flex flex-col bg-muted/50 border-t-4"
+                style={{ borderTopColor: stage.color || 'hsl(var(--border))' }}
+            >
                 <CardHeader className="p-3 border-b">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <span>{stage.name}</span>
@@ -181,7 +185,7 @@ export default function KanbanBoard() {
         const schoolRef = doc(firestore, 'schools', schoolId);
         
         try {
-            await updateDoc(schoolRef, { stage: { id: newStage.id, name: newStage.name, order: newStage.order } });
+            await updateDoc(schoolRef, { stage: { id: newStage.id, name: newStage.name, order: newStage.order, color: newStage.color } });
         } catch (error) {
             toast({
                 variant: 'destructive',

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -37,19 +38,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GripVertical, Plus, Trash2, Loader2, Save } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Loader2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
-function SortableStageItem({ stage, onRename, onDelete, isEditing, onToggleEdit, onNameChange, newName, saveRename }: {
+function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameChange, newName, saveRename, onColorChange }: {
   stage: OnboardingStage;
-  onRename: (id: string, newName: string) => void;
   onDelete: (id: string) => void;
   isEditing: boolean;
   onToggleEdit: (id: string) => void;
   onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   newName: string;
   saveRename: () => void;
+  onColorChange: (id: string, color: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: stage.id });
@@ -64,6 +65,13 @@ function SortableStageItem({ stage, onRename, onDelete, isEditing, onToggleEdit,
       <Button variant="ghost" size="icon" className="cursor-grab h-8 w-8" {...attributes} {...listeners}>
         <GripVertical className="h-5 w-5" />
       </Button>
+      <Input
+        type="color"
+        value={stage.color || '#FFFFFF'}
+        onChange={(e) => onColorChange(stage.id, e.target.value)}
+        className="w-10 h-10 p-1"
+        aria-label="Stage Color"
+      />
       {isEditing ? (
         <Input
           value={newName}
@@ -111,12 +119,9 @@ export default function StageEditor() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id || !firestore) return;
     
-    const oldIndex = localStages.findIndex((s) => s.id === active.id);
-    const newIndex = localStages.findIndex((s) => s.id === over.id);
-    const reorderedStages = arrayMove(localStages, oldIndex, newIndex);
-    
+    const reorderedStages = arrayMove(localStages, localStages.findIndex(s => s.id === active.id), localStages.findIndex(s => s.id === over.id));
     setLocalStages(reorderedStages);
 
     const batch = writeBatch(firestore);
@@ -130,7 +135,7 @@ export default function StageEditor() {
       toast({ title: 'Stages Reordered', description: 'The pipeline order has been updated.' });
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to reorder stages.' });
-      setLocalStages(stages || []); // Revert on failure
+      setLocalStages(stages || []);
     }
   };
 
@@ -138,7 +143,7 @@ export default function StageEditor() {
     if (!newStageName.trim() || !firestore) return;
     setIsAdding(true);
     const maxOrder = localStages.reduce((max, s) => Math.max(max, s.order), 0);
-    const newStage = { name: newStageName.trim(), order: maxOrder + 1 };
+    const newStage = { name: newStageName.trim(), order: maxOrder + 1, color: `#${Math.floor(Math.random()*16777215).toString(16)}` };
 
     try {
       await addDoc(collection(firestore, 'onboardingStages'), newStage);
@@ -159,20 +164,15 @@ export default function StageEditor() {
     const q = query(schoolsRef, where('stage.id', '==', stageToDelete.id));
     
     try {
-      // Find all schools in the stage being deleted
       const schoolsToUpdateSnap = await getDocs(q);
-      
-      // Move them to the 'Welcome' stage
-      const welcomeStage = localStages.find(s => s.order === 1) || { id: 'welcome', name: 'Welcome', order: 1 };
+      const welcomeStage = localStages.find(s => s.order === 1) || { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' };
       schoolsToUpdateSnap.forEach(schoolDoc => {
         batch.update(schoolDoc.ref, { stage: welcomeStage });
       });
       
-      // Delete the stage itself
       const stageRef = doc(firestore, 'onboardingStages', stageToDelete.id);
       batch.delete(stageRef);
 
-      // Re-index remaining stages
       const remainingStages = localStages.filter(s => s.id !== stageToDelete.id);
       remainingStages.forEach((stage, index) => {
           if (stage.order !== index + 1) {
@@ -181,7 +181,7 @@ export default function StageEditor() {
       });
       
       await batch.commit();
-      toast({ title: 'Stage Deleted', description: `"${stageToDelete.name}" was deleted and associated schools were moved to "Welcome".`});
+      toast({ title: 'Stage Deleted', description: `"${stageToDelete.name}" was deleted and associated schools were moved to "${welcomeStage.name}".`});
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete stage.' });
     } finally {
@@ -204,11 +204,9 @@ export default function StageEditor() {
     const newName = editingStageName.trim();
     const batch = writeBatch(firestore);
 
-    // Update the stage document itself
     const stageRef = doc(firestore, 'onboardingStages', editingStageId);
     batch.update(stageRef, { name: newName });
     
-    // Update all schools with the old stage name
     const schoolsRef = collection(firestore, 'schools');
     const q = query(schoolsRef, where('stage.id', '==', editingStageId));
     
@@ -228,6 +226,16 @@ export default function StageEditor() {
         setEditingStageId(null);
     }
   };
+  
+  const handleColorChange = async (id: string, color: string) => {
+      if (!firestore) return;
+      const stageRef = doc(firestore, 'onboardingStages', id);
+      try {
+          await updateDoc(stageRef, { color });
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update stage color.' });
+      }
+  };
 
   return (
     <AlertDialog>
@@ -241,9 +249,9 @@ export default function StageEditor() {
             <CardContent className="space-y-4">
                 {isLoading ? (
                 <div className="space-y-2">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                    <Skeleton className="h-12 w-full" />
                 </div>
                 ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -261,7 +269,7 @@ export default function StageEditor() {
                                 }}
                                 onNameChange={(e) => setEditingStageName(e.target.value)}
                                 saveRename={handleRename}
-                                onRename={handleRename}
+                                onColorChange={handleColorChange}
                                 onDelete={() => setStageToDelete(stage)}
                             />
                         ))}
