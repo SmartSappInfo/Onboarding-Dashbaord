@@ -100,6 +100,7 @@ const formSchema = z.object({
   thankYouDescription: z.string().optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
+  slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -155,6 +156,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             thankYouDescription: "Your response has been recorded.",
             bannerImageUrl: "",
             status: "draft",
+            slug: "",
         }
     });
 
@@ -168,6 +170,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 thankYouDescription: survey.thankYouDescription || 'Your response has been recorded.',
                 bannerImageUrl: survey.bannerImageUrl || '',
                 status: survey.status,
+                slug: survey.slug,
             });
         }
     }, [survey, form]);
@@ -376,15 +379,25 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                                 </FormItem>
                                 )}
                             />
-                            {survey && (
+                            <FormField
+                                control={form.control}
+                                name="slug"
+                                render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Survey URL</FormLabel>
-                                    <p className="text-sm text-muted-foreground">Once published, your survey will be available at:</p>
-                                    <Link href={`/surveys/${survey.slug}`} target="_blank" className="text-primary hover:underline break-all">
-                                        {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}` : `/surveys/${survey.slug}`}
-                                    </Link>
+                                    <div className="flex items-center gap-0">
+                                        <span className="flex h-10 items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm text-muted-foreground">
+                                            {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                        </span>
+                                        <FormControl>
+                                            <Input {...field} className="rounded-l-none" />
+                                        </FormControl>
+                                    </div>
+                                    <FormDescription>This is the unique last part of your survey URL.</FormDescription>
+                                    <FormMessage />
                                 </FormItem>
-                            )}
+                                )}
+                            />
                         </div>
                     </CardContent>
                 </Card>

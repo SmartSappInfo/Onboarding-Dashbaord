@@ -15,6 +15,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -99,6 +100,7 @@ const formSchema = z.object({
   thankYouDescription: z.string().optional(),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
+  slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -155,6 +157,7 @@ export default function NewSurveyPage() {
             thankYouTitle: 'Thank You!',
             thankYouDescription: 'Your response has been recorded.',
             bannerImageUrl: '',
+            slug: '',
         },
     });
 
@@ -167,11 +170,8 @@ export default function NewSurveyPage() {
             return;
         }
 
-        const slug = data.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-
         const surveyData = {
             ...data,
-            slug,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
@@ -212,6 +212,11 @@ export default function NewSurveyPage() {
         let isValid = false;
         if (step === 1) {
             isValid = await form.trigger(['title', 'description']);
+             if (isValid) {
+                const title = form.getValues('title');
+                const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                form.setValue('slug', slug, { shouldValidate: true });
+            }
         } else if (step === 2) {
             isValid = await form.trigger(['elements']);
         } else { // No validation needed for step 3 to 4
@@ -223,8 +228,6 @@ export default function NewSurveyPage() {
         }
     };
     
-    const slug = (form.watch('title') || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-
     return (
         <div className="w-full md:w-[70%] mx-auto">
             <FormProvider {...form}>
@@ -355,15 +358,25 @@ export default function NewSurveyPage() {
                                     </FormItem>
                                     )}
                                 />
-                                {slug && (
+                                <FormField
+                                    control={form.control}
+                                    name="slug"
+                                    render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Survey URL</FormLabel>
-                                        <p className="text-sm text-muted-foreground">Once published, your survey will be available at this URL. The URL is generated from the survey title.</p>
-                                        <Link href={`/surveys/${slug}`} target="_blank" className="text-primary hover:underline break-all">
-                                            {typeof window !== 'undefined' ? `${window.location.origin}/surveys/${slug}` : `/surveys/${slug}`}
-                                        </Link>
+                                        <div className="flex items-center gap-0">
+                                            <span className="flex h-10 items-center rounded-l-md border border-r-0 bg-muted px-3 text-sm text-muted-foreground">
+                                                {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                            </span>
+                                            <FormControl>
+                                                <Input {...field} className="rounded-l-none" />
+                                            </FormControl>
+                                        </div>
+                                        <FormDescription>This is the unique last part of your survey URL.</FormDescription>
+                                        <FormMessage />
                                     </FormItem>
-                                )}
+                                    )}
+                                />
                             </div>
                         </CardContent>
                     </Card>
