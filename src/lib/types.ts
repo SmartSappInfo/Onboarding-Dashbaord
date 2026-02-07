@@ -26,6 +26,11 @@ export interface School {
   implementationDate?: string; // ISO string
   referee?: string;
   includeDroneFootage?: boolean;
+  assignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  };
 }
 
 export interface Meeting {
