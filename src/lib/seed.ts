@@ -57,6 +57,7 @@ const meetingData: Omit<Meeting, 'id'>[] = [
     schoolSlug: 'ghana-international-school',
     meetingTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
     meetingLink: 'https://meet.google.com/foo-bar-baz',
+    type: { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
     recordingUrl: 'https://youtu.be/dQw4w9WgXcQ',
   },
 ];
@@ -357,24 +358,43 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
     }
   });
 
-  await batch.commit();
+  if (updatedCount > 0) {
+    await batch.commit();
+  }
   return updatedCount;
 }
 
-export async function seedOnboardingStages(firestore: Firestore): Promise<number> {
+export async function seedOnboardingStages(firestore: Firestore): Promise<{ stagesCreated: number, schoolsUpdated: number }> {
     const stagesCollection = collection(firestore, 'onboardingStages');
-    const snapshot = await getDocs(stagesCollection);
-    if (!snapshot.empty) {
-        // If stages already exist, don't re-seed
-        return 0;
+    const stagesSnapshot = await getDocs(stagesCollection);
+    const batch = writeBatch(firestore);
+    let stagesCreated = 0;
+
+    if (stagesSnapshot.empty) {
+        defaultStages.forEach((stage) => {
+            const id = stage.name.toLowerCase().replace(/\s+/g, '-');
+            const docRef = doc(stagesCollection, id);
+            batch.set(docRef, stage);
+        });
+        stagesCreated = defaultStages.length;
     }
 
-    const batch = writeBatch(firestore);
-    defaultStages.forEach((stage) => {
-        const id = stage.name.toLowerCase().replace(/\s+/g, '-');
-        const docRef = doc(stagesCollection, id);
-        batch.set(docRef, stage);
+    const schoolsCollection = collection(firestore, 'schools');
+    const schoolsSnapshot = await getDocs(schoolsCollection);
+    let schoolsUpdated = 0;
+    const welcomeStage = defaultStages.find(s => s.order === 1) || { id: 'welcome', name: 'Welcome', order: 1 };
+
+    schoolsSnapshot.forEach(schoolDoc => {
+        const school = schoolDoc.data() as School;
+        if (!school.stage) {
+            batch.update(schoolDoc.ref, { stage: { id: welcomeStage.id, name: welcomeStage.name, order: welcomeStage.order } });
+            schoolsUpdated++;
+        }
     });
-    await batch.commit();
-    return defaultStages.length;
+    
+    if (stagesCreated > 0 || schoolsUpdated > 0) {
+        await batch.commit();
+    }
+
+    return { stagesCreated, schoolsUpdated };
 }

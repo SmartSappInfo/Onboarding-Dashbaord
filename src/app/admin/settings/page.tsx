@@ -39,53 +39,67 @@ export default function SettingsPage() {
     try {
       let count = 0;
       let name = '';
-      let action = 'seeded';
-      let entity = 'items';
-
+      
       if (seeder === 'media') {
         count = await seedMedia(firestore);
         name = 'Media Assets';
+         toast({
+            title: 'Seeding Successful',
+            description: `${count} ${name} seeded into the database.`,
+        });
       } else if (seeder === 'schools') {
         count = await seedSchools(firestore);
         name = 'Schools';
+         toast({
+            title: 'Seeding Successful',
+            description: `${count} ${name} seeded into the database.`,
+        });
       } else if (seeder === 'meetings') {
         count = await seedMeetings(firestore);
         name = 'Meetings';
+         toast({
+            title: 'Seeding Successful',
+            description: `${count} ${name} seeded into the database.`,
+        });
       } else if (seeder === 'surveys') {
         count = await seedSurveys(firestore);
         name = 'Surveys';
+         toast({
+            title: 'Seeding Successful',
+            description: `${count} ${name} seeded into the database.`,
+        });
       } else if (seeder === 'users') {
         count = await seedUserAvatars(firestore);
-        name = 'User profiles';
-        action = 'updated';
-        entity = 'profiles';
+        toast({
+            title: 'Update Complete',
+            description: count > 0 ? `${count} user profiles updated with new avatars.` : 'All users already have avatars.',
+          });
       } else if (seeder === 'stages') {
-        count = await seedOnboardingStages(firestore);
-        name = 'Onboarding Stages';
-        if (count === 0) {
+        const { stagesCreated, schoolsUpdated } = await seedOnboardingStages(firestore);
+        if (stagesCreated === 0 && schoolsUpdated === 0) {
             toast({
                 title: 'No Action Needed',
-                description: 'Default onboarding stages already exist.',
+                description: 'Default onboarding stages already exist and all schools have a stage assigned.',
             });
             setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' }));
             return;
         }
-      }
-      
-      setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
 
-      if (seeder === 'users') {
-          toast({
-            title: 'Update Complete',
-            description: count > 0 ? `${count} user ${entity} updated with new avatars.` : 'All users already have avatars.',
-          });
-      } else {
+        let description = '';
+        if (stagesCreated > 0) {
+            description += `${stagesCreated} stages created. `;
+        }
+        if (schoolsUpdated > 0) {
+            description += `${schoolsUpdated} schools were assigned a default stage.`;
+        }
+        
         toast({
-            title: 'Seeding Successful',
-            description: `${count} ${name} ${action} into the database.`,
+            title: 'Seeding Complete',
+            description: description.trim(),
         });
       }
       
+      setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
       setTimeout(() => setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' })), 3000);
 
     } catch (error: any) {
@@ -134,7 +148,7 @@ export default function SettingsPage() {
             <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add default configurations without deleting anything.</p>
             <div className="flex flex-wrap gap-4">
                 <SeedingButton seeder="users">Update User Avatars</SeedingButton>
-                <SeedingButton seeder="stages">Seed Default Stages</SeedingButton>
+                <SeedingButton seeder="stages">Seed Default Stages & Assign</SeedingButton>
             </div>
         </div>
       </CardContent>
