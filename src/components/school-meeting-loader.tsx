@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -14,9 +15,8 @@ import BrochureDownloadSection from './brochure-download-section';
 import SetupProfileSection from './setup-profile-section';
 import TestimonialsSection from './testimonials-section';
 import WelcomeSection from './welcome-section';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import CountdownTimer from './countdown-timer';
-import JoinMeetingButton from './join-meeting-button';
+import KickoffMeetingHero from './kickoff-meeting-hero';
+import TrainingMeetingHero from './training-meeting-hero';
 
 function MeetingPageSkeleton() {
   return (
@@ -78,45 +78,13 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
 
 const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <section className="py-20 md:py-28">
-      <div className="container text-center">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Welcome to Your School Kickoff</h1>
-        <p className="text-lg md:text-xl text-muted-foreground mb-12">{school.name}</p>
-        
-        <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
-            <Card><CardHeader><CardTitle>What This Kickoff Covers</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">An overview of the onboarding process, timelines, and key milestones.</p></CardContent></Card>
-            <Card><CardHeader><CardTitle>Who Should Attend</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">School administrators, IT staff, and project leads for the SmartSapp implementation.</p></CardContent></Card>
-            <Card><CardHeader><CardTitle>What You'll Get</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">A clear action plan, access to resources, and answers to all your initial questions.</p></CardContent></Card>
-        </div>
-
-        <div className="my-10">
-            <CountdownTimer targetDate={meeting.meetingTime} />
-        </div>
-        <JoinMeetingButton meetingTime={meeting.meetingTime} meetingLink={meeting.meetingLink} />
-      </div>
-    </section>
+    <KickoffMeetingHero school={school} meeting={meeting} />
   )
 }
 
 const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <section className="py-20 md:py-28">
-      <div className="container text-center">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">Staff Training Session</h1>
-        <p className="text-lg md:text-xl text-muted-foreground mb-12">{school.name}</p>
-
-        <div className="grid md:grid-cols-3 gap-8 text-left mb-12">
-            <Card><CardHeader><CardTitle>Learning Objectives</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Master the core features of the SmartSapp admin dashboard and mobile app.</p></CardContent></Card>
-            <Card><CardHeader><CardTitle>Training Resources</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Access to live guides, video tutorials, and our support documentation.</p></CardContent></Card>
-            <Card><CardHeader><CardTitle>Agenda</CardTitle></CardHeader><CardContent><p className="text-muted-foreground">Session will cover student management, parent communication, and financial tools.</p></CardContent></Card>
-        </div>
-
-        <div className="my-10">
-            <CountdownTimer targetDate={meeting.meetingTime} />
-        </div>
-        <JoinMeetingButton meetingTime={meeting.meetingTime} meetingLink={meeting.meetingLink} />
-      </div>
-    </section>
+    <TrainingMeetingHero school={school} meeting={meeting} />
   )
 }
 
