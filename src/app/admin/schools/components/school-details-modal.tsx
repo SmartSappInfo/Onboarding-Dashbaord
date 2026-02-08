@@ -64,7 +64,10 @@ function MeetingList({ schoolId }: { schoolId: string }) {
         <li key={meeting.id} className="flex items-start gap-4 rounded-md border p-3">
           <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
           <div className="flex-grow">
-            <p className="font-semibold">{format(new Date(meeting.meetingTime), 'PPP p')}</p>
+            <div className="flex justify-between items-center">
+              <p className="font-semibold">{meeting.type.name}</p>
+              <Badge variant="outline">{format(new Date(meeting.meetingTime), 'PPP p')}</Badge>
+            </div>
             <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
               {meeting.meetingLink}
             </a>

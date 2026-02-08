@@ -5,6 +5,7 @@
 import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
+import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 
 // --- SEED DATA ---
@@ -49,6 +50,7 @@ const schoolData: Omit<School, 'id'>[] = [
     referee: 'SmartSapp Team',
     includeDroneFootage: true,
     stage: { id: 'welcome', name: 'Welcome', order: 1, color: ONBOARDING_STAGE_COLORS[0] },
+    assignedTo: { userId: null, name: null, email: null },
   },
 ];
 
@@ -59,8 +61,9 @@ const meetingData: Omit<Meeting, 'id'>[] = [
     schoolSlug: 'ghana-international-school',
     meetingTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
     meetingLink: 'https://meet.google.com/foo-bar-baz',
-    type: { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
+    type: MEETING_TYPES[0], // Parent Engagement
     recordingUrl: 'https://youtu.be/dQw4w9WgXcQ',
+    brochureUrl: 'https://smartsapp.com/downloads/brochure.pdf',
   },
 ];
 
