@@ -1,10 +1,11 @@
+
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { Meeting } from '@/lib/types';
+import type { Meeting, School } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -34,6 +35,12 @@ import {
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
+const getInitials = (name?: string) => {
+    if (!name) return '?';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+}
 
 export default function MeetingsPage() {
   const firestore = useFirestore();
@@ -52,7 +59,20 @@ export default function MeetingsPage() {
     return query(meetingsCol, orderBy('meetingTime', 'desc'));
   }, [meetingsCol]);
 
-  const { data: meetings, isLoading, error } = useCollection<Meeting>(meetingsQuery);
+  const schoolsCol = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'schools');
+  }, [firestore]);
+
+  const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
+  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+
+  const isLoading = isLoadingMeetings || isLoadingSchools;
+
+  const schoolLogoMap = useMemo(() => {
+    if (!schools) return new Map<string, string | undefined>();
+    return new Map(schools.map(s => [s.id, s.logoUrl]));
+  }, [schools]);
 
   const filteredMeetings = useMemo(() => {
     if (!meetings) return [];
@@ -156,6 +176,7 @@ export default function MeetingsPage() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[80px]"></TableHead>
                 <TableHead>School Name</TableHead>
                 <TableHead>Type</TableHead>
                 <TableHead className="w-[250px]">Meeting Time</TableHead>
@@ -167,6 +188,7 @@ export default function MeetingsPage() {
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
+                    <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-full" /></TableCell>
@@ -177,8 +199,15 @@ export default function MeetingsPage() {
               ) : filteredMeetings && filteredMeetings.length > 0 ? (
                 filteredMeetings.map((meeting) => {
                   const type = meeting.type || MEETING_TYPES[0];
+                  const logoUrl = schoolLogoMap.get(meeting.schoolId);
                   return (
                     <TableRow key={meeting.id}>
+                      <TableCell>
+                        <Avatar>
+                          <AvatarImage src={logoUrl} alt={meeting.schoolName} />
+                          <AvatarFallback>{getInitials(meeting.schoolName)}</AvatarFallback>
+                        </Avatar>
+                      </TableCell>
                       <TableCell className="font-medium">{meeting.schoolName}</TableCell>
                       <TableCell><Badge variant="secondary">{type.name}</Badge></TableCell>
                       <TableCell>
@@ -212,7 +241,7 @@ export default function MeetingsPage() {
                 })
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+                  <TableCell colSpan={6} className="h-24 text-center">
                     No meetings found. Create one to get started.
                   </TableCell>
                 </TableRow>
@@ -228,13 +257,20 @@ export default function MeetingsPage() {
             ) : filteredMeetings && filteredMeetings.length > 0 ? (
                 filteredMeetings.map((meeting) => {
                     const type = meeting.type || MEETING_TYPES[0];
+                    const logoUrl = schoolLogoMap.get(meeting.schoolId);
                     return (
                         <Card key={meeting.id}>
                             <CardHeader>
                                 <div className="flex items-start justify-between">
-                                    <div>
-                                        <CardTitle>{meeting.schoolName}</CardTitle>
-                                        <CardDescription>{meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}</CardDescription>
+                                    <div className="flex items-center gap-3">
+                                      <Avatar>
+                                        <AvatarImage src={logoUrl} alt={meeting.schoolName} />
+                                        <AvatarFallback>{getInitials(meeting.schoolName)}</AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                          <CardTitle>{meeting.schoolName}</CardTitle>
+                                          <CardDescription>{meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}</CardDescription>
+                                      </div>
                                     </div>
                                     {renderDropdown(meeting)}
                                 </div>

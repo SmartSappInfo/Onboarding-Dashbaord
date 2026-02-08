@@ -61,8 +61,12 @@ function SchoolCard({ school }: { school: School }) {
       {...listeners}
       className="mb-3 touch-manipulation"
     >
-      <CardHeader className="p-4">
-        <CardTitle className="text-sm font-medium">{school.name}</CardTitle>
+      <CardHeader className="p-4 flex flex-row items-center gap-3 space-y-0">
+        <Avatar className="h-8 w-8">
+            <AvatarImage src={school.logoUrl} alt={school.name} />
+            <AvatarFallback className="text-xs">{getInitials(school.name)}</AvatarFallback>
+        </Avatar>
+        <CardTitle className="text-sm font-medium flex-1">{school.name}</CardTitle>
       </CardHeader>
       <CardContent className="p-4 pt-0">
         <div className="flex justify-between items-center">
