@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,10 +91,48 @@ export default function MeetingsPage() {
     return <div className="text-destructive">Error loading meetings: {error.message}</div>;
   }
 
+  const renderDropdown = (meeting: Meeting) => {
+    const type = meeting.type || MEETING_TYPES[0];
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+            </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
+                <Edit className="mr-2 h-4 w-4" />
+                <span>Edit Meeting</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+                <a href={`/meetings/${type.slug}/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-4 w-4" />
+                <span>View Meeting Page</span>
+                </a>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <AlertDialogTrigger asChild>
+                <DropdownMenuItem 
+                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                onSelect={(e) => e.preventDefault()} // prevent menu from closing
+                onClick={() => setMeetingToDelete(meeting)}
+                >
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Delete Meeting</span>
+                </DropdownMenuItem>
+            </AlertDialogTrigger>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+  }
+
   return (
     <AlertDialog>
       <div>
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div className="w-full max-w-xs">
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger>
@@ -112,7 +151,8 @@ export default function MeetingsPage() {
           </Button>
         </div>
         
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -165,38 +205,7 @@ export default function MeetingsPage() {
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              <span>Edit Meeting</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a href={`/meetings/${type.slug}/${meeting.schoolSlug}`} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                <span>View Meeting Page</span>
-                              </a>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <AlertDialogTrigger asChild>
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                onSelect={(e) => e.preventDefault()} // prevent menu from closing
-                                onClick={() => setMeetingToDelete(meeting)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete Meeting</span>
-                              </DropdownMenuItem>
-                            </AlertDialogTrigger>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {renderDropdown(meeting)}
                       </TableCell>
                     </TableRow>
                   )
@@ -211,7 +220,54 @@ export default function MeetingsPage() {
             </TableBody>
           </Table>
         </div>
+        
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+            ) : filteredMeetings && filteredMeetings.length > 0 ? (
+                filteredMeetings.map((meeting) => {
+                    const type = meeting.type || MEETING_TYPES[0];
+                    return (
+                        <Card key={meeting.id}>
+                            <CardHeader>
+                                <div className="flex items-start justify-between">
+                                    <div>
+                                        <CardTitle>{meeting.schoolName}</CardTitle>
+                                        <CardDescription>{meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP p") : 'Not set'}</CardDescription>
+                                    </div>
+                                    {renderDropdown(meeting)}
+                                </div>
+                            </CardHeader>
+                            <CardContent>
+                                <Badge variant="secondary">{type.name}</Badge>
+                            </CardContent>
+                            <CardFooter>
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="w-full"
+                                    onClick={() => {
+                                        const url = `${window.location.origin}/meetings/${type.slug}/${meeting.schoolSlug}`;
+                                        navigator.clipboard.writeText(url);
+                                        toast({ title: 'Link Copied!', description: 'Meeting page URL copied.' });
+                                    }}
+                                >
+                                    <Copy className="mr-2 h-4 w-4" />
+                                    Copy Public Link
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    );
+                })
+            ) : (
+                <div className="text-center text-muted-foreground py-10">
+                    No meetings found. Create one to get started.
+                </div>
+            )}
+        </div>
       </div>
+
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
