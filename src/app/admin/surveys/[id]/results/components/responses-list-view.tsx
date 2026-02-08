@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -11,7 +12,7 @@ import { format } from 'date-fns';
 function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, responses: SurveyResponse[], isLoading: boolean }) {
     const router = useRouter();
 
-    const questions = React.useMemo(() => survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el), [survey.elements]);
+    const questions = React.useMemo(() => survey ? survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el) : [], [survey]);
 
     const getAnswerForQuestion = (response: SurveyResponse, questionId: string) => {
         return response.answers.find(a => a.questionId === questionId)?.value;
@@ -31,12 +32,21 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
         return String(value);
     }
     
+    if (!survey) {
+        return (
+             <div className="p-4">
+                <Skeleton className="h-12 w-full mb-2" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        );
+    }
+    
     return (
         <div className="relative h-full">
             <Table>
                 <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
                     <TableRow>
-                        <TableHead className="w-[200px] whitespace-nowrap">Submitted</TableHead>
+                        <TableHead className="sticky left-0 bg-background z-20 w-[200px] whitespace-nowrap">Submitted</TableHead>
                         {questions.map(q => (
                             <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
                         ))}
@@ -46,7 +56,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                 {isLoading ? (
                     Array.from({ length: 10 }).map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell className="sticky left-0 bg-card"><Skeleton className="h-5 w-3/4" /></TableCell>
                         {questions.map(q => (
                             <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
                         ))}
@@ -55,7 +65,7 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
                 ) : responses && responses.length > 0 ? (
                     responses.map((response) => (
                     <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
-                        <TableCell className="font-medium whitespace-nowrap">
+                        <TableCell className="sticky left-0 bg-card font-medium whitespace-nowrap">
                             {format(new Date(response.submittedAt), "PPP p")}
                         </TableCell>
                         {questions.map(q => {
