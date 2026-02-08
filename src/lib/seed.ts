@@ -2,7 +2,7 @@
 
 'use client';
 
-import { collection, writeBatch, getDocs, doc } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -54,18 +54,36 @@ const schoolData: Omit<School, 'id'>[] = [
   },
 ];
 
-const meetingData: Omit<Meeting, 'id'>[] = [
+const meetingData: Omit<Meeting, 'id' | 'schoolId'>[] = [
   {
-    schoolId: 'ghana-international-school',
     schoolName: 'Ghana International School',
     schoolSlug: 'ghana-international-school',
     meetingTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 1 week from now
     meetingLink: 'https://meet.google.com/foo-bar-baz',
-    type: MEETING_TYPES[0], // Parent Engagement
+    type: MEETING_TYPES.find(t => t.id === 'parent')!,
+    recordingUrl: 'https://youtu.be/dQw4w9WgXcQ',
+    brochureUrl: 'https://smartsapp.com/downloads/brochure.pdf',
+  },
+  {
+    schoolName: 'Ghana International School',
+    schoolSlug: 'ghana-international-school',
+    meetingTime: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days from now
+    meetingLink: 'https://meet.google.com/qux-qwe-rty',
+    type: MEETING_TYPES.find(t => t.id === 'kickoff')!,
+    recordingUrl: '',
+    brochureUrl: '',
+  },
+  {
+    schoolName: 'Ghana International School',
+    schoolSlug: 'ghana-international-school',
+    meetingTime: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
+    meetingLink: 'https://meet.google.com/uio-pas-dfg',
+    type: MEETING_TYPES.find(t => t.id === 'training')!,
     recordingUrl: 'https://youtu.be/dQw4w9WgXcQ',
     brochureUrl: 'https://smartsapp.com/downloads/brochure.pdf',
   },
 ];
+
 
 const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
   {
@@ -315,7 +333,18 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
   const batch = writeBatch(firestore);
   const meetingsCollection = collection(firestore, 'meetings');
   
-  const updatedMeetingData = meetingData.map(m => ({ ...m, schoolId: m.schoolSlug }));
+  // Find the seeded school to get its actual ID
+  const schoolsCollection = collection(firestore, 'schools');
+  const schoolQuery = query(schoolsCollection, where('slug', '==', 'ghana-international-school'), limit(1));
+  const schoolSnapshot = await getDocs(schoolQuery);
+  
+  if (schoolSnapshot.empty) {
+      console.error("Seeding meetings failed: Could not find school 'ghana-international-school'. Please seed schools first.");
+      return 0;
+  }
+  const schoolId = schoolSnapshot.docs[0].id;
+
+  const updatedMeetingData = meetingData.map(m => ({ ...m, schoolId: schoolId }));
 
   updatedMeetingData.forEach((meeting) => {
     const docRef = doc(meetingsCollection);

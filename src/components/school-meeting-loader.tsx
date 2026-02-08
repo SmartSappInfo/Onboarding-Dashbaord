@@ -155,7 +155,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
           try {
             // 1. Fetch the school by slug
             const schoolsCollection = collection(firestore, 'schools');
-            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug));
+            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug), limit(1));
             const schoolSnapshot = await getDocs(schoolQuery);
 
             if (schoolSnapshot.empty) {
@@ -169,7 +169,9 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
 
             // 2. Fetch the latest meeting for that school and type
             const meetingsCollection = collection(firestore, 'meetings');
-            const meetingQuery = query(
+            
+            // First, try to find an upcoming meeting
+            const upcomingMeetingQuery = query(
               meetingsCollection, 
               where('schoolSlug', '==', schoolSlug),
               where('type.slug', '==', typeSlug),
@@ -177,13 +179,28 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
               orderBy('meetingTime', 'asc'),
               limit(1)
             );
-            const meetingSnapshot = await getDocs(meetingQuery);
+            const upcomingMeetingSnapshot = await getDocs(upcomingMeetingQuery);
 
-            if (meetingSnapshot.empty) {
-              setError(`No upcoming ${meetingType?.name || 'meeting'} found for this school.`);
-            } else {
-              const foundMeeting = { ...meetingSnapshot.docs[0].data(), id: meetingSnapshot.docs[0].id } as Meeting;
+            if (!upcomingMeetingSnapshot.empty) {
+              const foundMeeting = { ...upcomingMeetingSnapshot.docs[0].data(), id: upcomingMeetingSnapshot.docs[0].id } as Meeting;
               setMeeting(foundMeeting);
+            } else {
+              // If no upcoming meeting, find the most recent past one
+              const pastMeetingQuery = query(
+                meetingsCollection,
+                where('schoolSlug', '==', schoolSlug),
+                where('type.slug', '==', typeSlug),
+                orderBy('meetingTime', 'desc'),
+                limit(1)
+              );
+              const pastMeetingSnapshot = await getDocs(pastMeetingQuery);
+
+              if (pastMeetingSnapshot.empty) {
+                  setError(`No ${meetingType?.name || 'meeting'} found for this school.`);
+              } else {
+                  const foundMeeting = { ...pastMeetingSnapshot.docs[0].data(), id: pastMeetingSnapshot.docs[0].id } as Meeting;
+                  setMeeting(foundMeeting);
+              }
             }
 
           } catch (e: any) {
