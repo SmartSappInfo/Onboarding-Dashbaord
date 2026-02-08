@@ -2,19 +2,17 @@
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import SchoolMeetingLoader from '@/components/school-meeting-loader';
+import { useParams } from 'next/navigation';
 
-interface PageProps {
-  params: {
-    schoolSlug: string;
-  }
-}
+export default function KickoffMeetingPage() {
+  const params = useParams();
+  const schoolSlug = params.schoolSlug as string;
 
-export default function KickoffMeetingPage({ params }: PageProps) {
   return (
     <>
       <Header />
       <main className="flex-grow">
-        <SchoolMeetingLoader schoolSlug={params.schoolSlug} typeSlug="kickoff" />
+        <SchoolMeetingLoader schoolSlug={schoolSlug} typeSlug="kickoff" />
       </main>
       <Footer />
     </>
