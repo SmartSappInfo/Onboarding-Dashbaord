@@ -13,12 +13,6 @@ import { querySurveyData } from '@/ai/flows/query-survey-data-flow';
 import { format } from 'date-fns';
 
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -36,7 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -135,112 +129,123 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
     
     return (
         <AlertDialog open={!!summaryToDelete} onOpenChange={(open) => !open && setSummaryToDelete(null)}>
-            <div className="mt-6 space-y-8 pr-4">
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><BrainCircuit /> Interactive AI Analysis</CardTitle>
-                        <CardDescription>Ask a specific question about the survey responses.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="prompt"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Your Question</FormLabel>
-                                            <FormControl>
-                                                <Textarea
-                                                    placeholder="e.g., 'How many people mentioned pricing?' or 'Summarize the feedback from dissatisfied users.'"
-                                                    className="min-h-[100px]"
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <div className="flex justify-end">
-                                    <RainbowButton type="submit" disabled={isQuerying}>
-                                        {isQuerying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                        {isQuerying ? 'Thinking...' : 'Ask AI'}
-                                    </RainbowButton>
-                                </div>
-                            </form>
-                        </Form>
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start p-1">
+                {/* Left Pane (AI Query Form) */}
+                <div className="lg:col-span-2 lg:sticky top-6">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><BrainCircuit /> Interactive AI Analysis</CardTitle>
+                            <CardDescription>Ask a specific question about the survey responses.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="prompt"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Your Question</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        placeholder="e.g., 'How many people mentioned pricing?' or 'Summarize the feedback from dissatisfied users.'"
+                                                        className="min-h-[120px]"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="flex justify-end">
+                                        <RainbowButton type="submit" disabled={isQuerying}>
+                                            {isQuerying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                                            {isQuerying ? 'Thinking...' : 'Ask AI'}
+                                        </RainbowButton>
+                                    </div>
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
+                </div>
 
-                        {isQuerying && (
-                            <div className="mt-6 space-y-4">
-                                <Skeleton className="h-6 w-1/3" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-full" />
-                                <Skeleton className="h-4 w-3/4" />
+                {/* Right Pane (Summary History) */}
+                <div className="lg:col-span-3">
+                    <div className="space-y-4">
+                        <h3 className="text-xl font-semibold">Generated Summary History</h3>
+                        {isLoading && (
+                            <div className="space-y-4">
+                                <Skeleton className="h-40 w-full" />
+                                <Skeleton className="h-40 w-full" />
                             </div>
                         )}
-                    </CardContent>
-                </Card>
-                
-                <div className="space-y-4">
-                    <h3 className="text-xl font-semibold">Generated Summary History</h3>
-                    {isLoading && (
-                        <div className="space-y-4">
-                            <Skeleton className="h-14 w-full" />
-                            <Skeleton className="h-14 w-full" />
-                        </div>
-                    )}
-                    {!isLoading && (!summaries || summaries.length === 0) && (
-                        <p className="text-muted-foreground text-center py-8">No AI summaries have been generated for this survey yet.</p>
-                    )}
-                    {summaries && summaries.length > 0 && (
-                        <Accordion type="single" collapsible className="w-full">
-                            {summaries.map(summary => (
-                                <AccordionItem key={summary.id} value={summary.id}>
-                                    <div className="flex items-center group">
-                                        <AccordionTrigger className="flex-1 font-normal text-base hover:no-underline text-left gap-4">
-                                            <span className="truncate">
-                                                {summary.prompt ? summary.prompt : 'AI Generated Summary'}
-                                            </span>
-                                            <span className="text-sm text-muted-foreground font-mono shrink-0">{format(new Date(summary.createdAt), "MMM d, p")}</span>
-                                        </AccordionTrigger>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-50 group-hover:opacity-100">
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                 <DropdownMenuItem onClick={() => handleUseAsContext(summary)}>
-                                                    <MessageSquareQuote className="mr-2 h-4 w-4" />
-                                                    <span>Use as Context</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleCopy(summary)}>
-                                                    <Copy className="mr-2 h-4 w-4" />
-                                                    <span>Copy Text</span>
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onSelect={() => setSummaryToDelete(summary)} className="text-destructive">
-                                                    <Trash2 className="mr-2 h-4 w-4" />
-                                                    <span>Delete</span>
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
-                                    <AccordionContent className="pt-2">
-                                        {summary.prompt && (
-                                            <div className="px-4 pb-4">
-                                                <h4 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Question</h4>
-                                                <p className="text-base text-foreground mt-1 italic">"{summary.prompt}"</p>
+                        {!isLoading && (!summaries || summaries.length === 0) && (
+                            <div className="text-center py-16 border-2 border-dashed rounded-lg">
+                                <p className="text-muted-foreground">No AI summaries have been generated yet.</p>
+                                <p className="text-sm text-muted-foreground mt-1">Ask a question to get started.</p>
+                            </div>
+                        )}
+                        {summaries && summaries.length > 0 && (
+                            <div className="space-y-6">
+                                {isQuerying && (
+                                     <Card>
+                                        <CardHeader>
+                                            <CardTitle><Skeleton className="h-5 w-3/4" /></CardTitle>
+                                            <CardDescription><Skeleton className="h-4 w-1/4" /></CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-2">
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-full" />
+                                            <Skeleton className="h-4 w-5/6" />
+                                        </CardContent>
+                                    </Card>
+                                )}
+                                {summaries.map(summary => (
+                                    <Card key={summary.id} className="shadow-sm">
+                                        <CardHeader>
+                                            <div className="flex justify-between items-start gap-4">
+                                                <div className="flex-1">
+                                                    <CardTitle className="text-base font-semibold leading-snug">
+                                                        {summary.prompt || 'AI Generated Summary'}
+                                                    </CardTitle>
+                                                    <CardDescription className="text-xs mt-1">
+                                                        {format(new Date(summary.createdAt), "MMM d, yyyy 'at' p")}
+                                                    </CardDescription>
+                                                </div>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => handleCopy(summary)}>
+                                                            <Copy className="mr-2 h-4 w-4" />
+                                                            <span>Copy Text</span>
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onSelect={() => setSummaryToDelete(summary)} className="text-destructive">
+                                                            <Trash2 className="mr-2 h-4 w-4" />
+                                                            <span>Delete</span>
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
-                                        )}
-                                        <div
-                                            className="prose prose-sm dark:prose-invert max-w-none p-4 border-t"
+                                        </CardHeader>
+                                        <CardContent 
+                                            className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-3 [&>ul]:pl-4"
                                             dangerouslySetInnerHTML={{ __html: summary.summary }}
                                         />
-                                    </AccordionContent>
-                                </AccordionItem>
-                            ))}
-                        </Accordion>
-                    )}
+                                        <CardFooter>
+                                             <Button variant="outline" size="sm" onClick={() => handleUseAsContext(summary)}>
+                                                <MessageSquareQuote className="mr-2 h-4 w-4" />
+                                                Use as Context for Next Question
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
@@ -260,3 +265,5 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
     );
 }
       
+
+  
