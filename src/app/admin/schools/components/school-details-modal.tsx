@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { School, Meeting } from '@/lib/types';
@@ -19,7 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, Building, PenSquare, Edit } from 'lucide-react';
+import { Globe, Calendar, Mail, Phone, Users, MapPin, Building, PenSquare, Edit, Workflow, User } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -117,6 +118,21 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
             
             {/* Left Column */}
             <div className="space-y-6">
+              <DetailItem icon={User} label="Assigned To" value={school.assignedTo?.name || 'Unassigned'} />
+              <div className="flex items-start gap-3">
+                <Workflow className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Onboarding Stage</p>
+                  {school.stage?.name ? (
+                    <Badge style={{ backgroundColor: school.stage.color }} className="text-primary-foreground">
+                      {school.stage.name}
+                    </Badge>
+                  ) : (
+                    <p className="text-base text-foreground">N/A</p>
+                  )}
+                </div>
+              </div>
+              <Separator />
               <DetailItem icon={Globe} label="Website Slug" value={school.slug} />
               <DetailItem icon={Building} label="Location" value={school.location} />
               <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll} />
