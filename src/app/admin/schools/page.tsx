@@ -184,7 +184,6 @@ export default function SchoolsPage() {
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="w-full max-w-xs"
                 />
-                <UserFilterSelect value={userFilter} onValueChange={setUserFilter} />
               </div>
               <div className="flex items-center gap-2">
                   <Button asChild>

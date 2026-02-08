@@ -38,6 +38,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
+import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
@@ -193,6 +194,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <div className="w-full flex-1">
                   <h1 className="text-lg font-semibold">{pageTitle}</h1>
                 </div>
+                <AssignedUserGlobalFilter />
                 <ThemeToggle />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
