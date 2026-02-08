@@ -3,25 +3,22 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
-import { useDoc, useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveySummary } from "@/lib/types";
+import { useDoc, useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import type { Survey, SurveyResponse, SurveyQuestion } from "@/lib/types";
 import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, Loader2, Download } from "lucide-react";
+import { ArrowLeft, Sparkles, Loader2, Download, BarChart3, FileText, Brain } from "lucide-react";
 import { RainbowButton } from "@/components/ui/rainbow-button";
 import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+
 import ResponsesListView from "./components/responses-list-view";
-import AISummariesView from "./components/ai-summaries-view";
 import AnalyticsView from "./components/analytics-view";
+import AISummariesView from "./components/ai-summaries-view";
 
-
-// ============================================================================
-// MAIN PAGE COMPONENT
-// ============================================================================
 export default function SurveyResultsPage() {
     const params = useParams();
     const router = useRouter();
@@ -31,17 +28,16 @@ export default function SurveyResultsPage() {
     const { toast } = useToast();
 
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
-    
-    const activeTab = searchParams.get('view') || 'responses';
+    const activeTab = searchParams.get("view") || "responses";
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
-        return doc(firestore, 'surveys', surveyId as string);
+        return doc(firestore, "surveys", surveyId as string);
     }, [firestore, surveyId]);
 
     const responsesColRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
-        return query(collection(firestore, `surveys/${surveyId}/responses`), orderBy('submittedAt', 'desc'));
+        return query(collection(firestore, `surveys/${surveyId}/responses`), orderBy("submittedAt", "desc"));
     }, [firestore, surveyId]);
 
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
@@ -126,83 +122,106 @@ export default function SurveyResultsPage() {
 
     if (isSurveyLoading) {
         return (
-            <div className="w-full lg:w-4/5 mx-auto">
-                <Skeleton className="h-8 w-48 mb-2" />
-                <Skeleton className="h-10 w-96 mb-8" />
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i}><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-1/4" /><Skeleton className="h-48 w-full" /></div>
-                    ))}
-                </div>
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
-    
+
     if (!survey) {
         return (
-            <div className="text-center py-20">
-                <p>Survey not found.</p>
-                 <Button variant="outline" onClick={() => router.push('/admin/surveys')} className="mt-4">
+            <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+                <p className="text-lg font-medium">Survey not found.</p>
+                <Button variant="outline" onClick={() => router.push('/admin/surveys')}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Surveys
+                    Back to All Surveys
                 </Button>
             </div>
         );
     }
-
+    
     return (
-        <div className="w-full lg:w-4/5 mx-auto">
-            <div className="flex h-full w-full flex-col">
-                {/* Header */}
-                <div className="flex-shrink-0">
-                    <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
-                        <Button variant="ghost" onClick={() => router.push('/admin/surveys')}>
+        <div className="flex h-[calc(100vh_-_6rem)] flex-col bg-muted/30 p-4 sm:p-6 md:p-8">
+            {/* Sticky Header */}
+            <header className="flex-shrink-0 rounded-t-lg border bg-background shadow-sm">
+                <div className="flex items-center justify-between p-4">
+                    <div>
+                        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Surveys
+                            Back
                         </Button>
+                        <h1 className="text-2xl font-semibold mt-1">{survey.title}</h1>
+                        <p className="text-sm text-muted-foreground">Results & Analytics</p>
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight mb-2">{survey.title}</h1>
-                    <p className="text-muted-foreground mb-4">Results & Analytics</p>
+                    <div className="flex items-center gap-2">
+                        {activeTab === "responses" ? (
+                            <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
+                                <Download className="mr-2 h-4 w-4" />
+                                Export CSV
+                            </Button>
+                        ) : (
+                            <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                                {isGeneratingSummary ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                )}
+                                {isGeneratingSummary ? 'Analyzing...' : 'Generate AI Summary'}
+                            </RainbowButton>
+                        )}
+                    </div>
                 </div>
 
-                <Tabs value={activeTab} onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)} className="w-full flex-grow flex flex-col min-h-0">
-                    <div className="flex-shrink-0">
-                        <div className="flex justify-between items-center">
-                            <TabsList>
-                                <TabsTrigger value="responses">All Responses</TabsTrigger>
-                                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-                                <TabsTrigger value="ai-summaries">AI Summaries</TabsTrigger>
-                            </TabsList>
-                            {activeTab === 'responses' ? (
-                                <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
-                                    <Download className="mr-2 h-4 w-4" />
-                                    Export as CSV
-                                </Button>
+                {/* Sticky Tabs */}
+                <Tabs
+                    value={activeTab}
+                    onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
+                    className="w-full"
+                >
+                    <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-t bg-background p-0">
+                        <TabsTrigger value="responses" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
+                            <FileText className="h-4 w-4" /> Responses
+                        </TabsTrigger>
+                        <TabsTrigger value="analytics" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
+                            <BarChart3 className="h-4 w-4" /> Analytics
+                        </TabsTrigger>
+                        <TabsTrigger value="ai-summaries" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
+                            <Brain className="h-4 w-4" /> AI Summaries
+                        </TabsTrigger>
+                    </TabsList>
+                </Tabs>
+            </header>
+
+            {/* Single Scrollable Content Area */}
+            <main className="flex-1 overflow-y-auto rounded-b-lg border border-t-0 bg-background shadow-sm">
+                <Tabs value={activeTab}>
+                    <TabsContent value="responses" className="mt-0 h-full">
+                        <ResponsesListView
+                            survey={survey}
+                            responses={responses || []}
+                            isLoading={areResponsesLoading}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="analytics" className="mt-0 h-full">
+                         <div className="p-4 sm:p-6 lg:p-8">
+                            <AnalyticsView survey={survey} responses={responses || []} />
+                         </div>
+                    </TabsContent>
+
+                    <TabsContent value="ai-summaries" className="mt-0 h-full">
+                        <div className="p-4 sm:p-6 lg:p-8">
+                            {responses ? (
+                                <AISummariesView survey={survey} responses={responses} />
                             ) : (
-                                <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
-                                    {isGeneratingSummary ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                    {isGeneratingSummary ? 'Analyzing...' : 'Generate New AI Summary'}
-                                </RainbowButton>
+                                <div className="flex h-64 items-center justify-center">
+                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                                </div>
                             )}
                         </div>
-                    </div>
-
-                    <TabsContent value="responses" className="mt-4 flex-grow overflow-auto rounded-lg border bg-card text-card-foreground shadow-sm">
-                        <ResponsesListView survey={survey} responses={responses || []} isLoading={areResponsesLoading} />
-                    </TabsContent>
-                    <TabsContent value="analytics" className="mt-4 flex-grow overflow-y-auto">
-                        <AnalyticsView survey={survey} responses={responses || []} />
-                    </TabsContent>
-                    <TabsContent value="ai-summaries" className="mt-4 flex-grow overflow-y-auto">
-                        {responses ? (
-                            <AISummariesView survey={survey} responses={responses} />
-                        ) : (
-                            <div className="text-center py-20 text-muted-foreground">Loading responses...</div>
-                        )}
                     </TabsContent>
                 </Tabs>
-            </div>
+            </main>
         </div>
     );
 }
-    

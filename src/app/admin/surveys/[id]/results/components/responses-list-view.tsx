@@ -32,53 +32,54 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     }
     
     return (
-        <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="sticky left-0 bg-primary z-10 w-[200px] whitespace-nowrap">Submitted</TableHead>
-                 {questions.map(q => (
-                    <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="sticky left-0 bg-card z-10"><Skeleton className="h-5 w-3/4" /></TableCell>
-                     {questions.map(q => (
-                        <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : responses && responses.length > 0 ? (
-                responses.map((response) => (
-                  <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
-                    <TableCell className="sticky left-0 bg-card z-10 font-medium whitespace-nowrap">
-                        {format(new Date(response.submittedAt), "PPP p")}
+        <div className="relative h-full">
+            <Table>
+                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                    <TableRow>
+                        <TableHead className="w-[200px] whitespace-nowrap">Submitted</TableHead>
+                        {questions.map(q => (
+                            <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                        {questions.map(q => (
+                            <TableCell key={q.id}><Skeleton className="h-5 w-full" /></TableCell>
+                        ))}
+                    </TableRow>
+                    ))
+                ) : responses && responses.length > 0 ? (
+                    responses.map((response) => (
+                    <TableRow key={response.id} className="cursor-pointer" onClick={() => router.push(`/admin/surveys/${survey.id}/results/${response.id}`)}>
+                        <TableCell className="font-medium whitespace-nowrap">
+                            {format(new Date(response.submittedAt), "PPP p")}
+                        </TableCell>
+                        {questions.map(q => {
+                            const answer = getAnswerForQuestion(response, q.id);
+                            const formattedAnswer = formatAnswer(answer);
+                            return (
+                                <TableCell key={q.id} title={formattedAnswer} className="max-w-[250px] truncate">
+                                    {formattedAnswer}
+                                </TableCell>
+                            )
+                        })}
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                    <TableCell colSpan={questions.length + 1} className="h-48 text-center">
+                        No responses yet.
                     </TableCell>
-                    {questions.map(q => {
-                        const answer = getAnswerForQuestion(response, q.id);
-                        const formattedAnswer = formatAnswer(answer);
-                        return (
-                             <TableCell key={q.id} title={formattedAnswer} className="max-w-[250px] truncate">
-                                {formattedAnswer}
-                            </TableCell>
-                        )
-                    })}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={questions.length + 1} className="h-24 text-center">
-                    No responses yet.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-        </Table>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+        </div>
     )
 }
 
 export default ResponsesListView;
-    
