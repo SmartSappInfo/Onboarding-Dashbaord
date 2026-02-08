@@ -35,7 +35,6 @@ const generateInsight = (result: Omit<AnalyzedResult, 'insight'>): string => {
         const sorted = [...result.data].sort((a, b) => b.value - a.value);
         const mostPopular = sorted[0];
         if (mostPopular.value === result.total && result.total > 0) return `All respondents selected "${mostPopular.name}".`;
-        if (mostPopular.percentage > 50) return `Most respondents selected "${mostPopular.name}".`;
         if (result.total > 0) return `The most common answer was "${mostPopular.name}".`;
     }
     if (result.type === 'rating' && result.total > 0) {
@@ -72,11 +71,11 @@ function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'char
     if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
     
     return (
-        <div className="h-48 w-full -ml-4">
+        <div className="h-48 w-full">
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={result.data} layout="vertical" margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
+                <BarChart data={result.data} layout="vertical" margin={{ top: 5, right: 50, left: -20, bottom: 5 }}>
                     <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 12 }} dx={-5} />
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
                     <Tooltip
                         cursor={{ fill: 'hsl(var(--accent))' }}
                         content={({ active, payload, label }) => {
