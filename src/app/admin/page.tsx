@@ -7,6 +7,7 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import type { School as SchoolType, Meeting, UserProfile, OnboardingStage } from '@/lib/types';
 import * as React from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 function StatCard({ title, value, icon: Icon, description, isLoading }: { title: string, value: string | number, icon: React.ElementType, description?: string, isLoading: boolean }) {
     return (
@@ -35,25 +36,43 @@ function StatCard({ title, value, icon: Icon, description, isLoading }: { title:
 
 export default function AdminDashboardPage() {
     const firestore = useFirestore();
+    const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
 
     const schoolsQuery = useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]);
     const meetingsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore]);
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const stagesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
 
-    const { data: schools, isLoading: isLoadingSchools } = useCollection<SchoolType>(schoolsQuery);
-    const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
+    const { data: allSchools, isLoading: isLoadingSchools } = useCollection<SchoolType>(schoolsQuery);
+    const { data: allMeetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
     const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
     const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesQuery);
 
-    const isLoading = isLoadingSchools || isLoadingMeetings || isLoadingUsers || isLoadingStages;
+    const isLoading = isLoadingSchools || isLoadingMeetings || isLoadingUsers || isLoadingStages || isLoadingFilter;
+
+    const filteredSchools = React.useMemo(() => {
+        if (!allSchools) return [];
+        if (!assignedUserId) return allSchools;
+        if (assignedUserId === 'unassigned') {
+            return allSchools.filter(school => !school.assignedTo?.userId);
+        }
+        return allSchools.filter(school => school.assignedTo?.userId === assignedUserId);
+    }, [allSchools, assignedUserId]);
+
+    const filteredMeetings = React.useMemo(() => {
+        if (!allMeetings || !filteredSchools) return [];
+        if (!assignedUserId) return allMeetings;
+
+        const filteredSchoolIds = new Set(filteredSchools.map(s => s.id));
+        return allMeetings.filter(meeting => filteredSchoolIds.has(meeting.schoolId));
+    }, [allMeetings, filteredSchools, assignedUserId]);
 
     const stats = React.useMemo(() => {
-        const totalSchools = schools?.length ?? 0;
+        const totalSchools = filteredSchools?.length ?? 0;
 
         const sevenDaysFromNow = new Date();
         sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-        const upcomingMeetings = meetings?.filter(m => {
+        const upcomingMeetings = filteredMeetings?.filter(m => {
             const meetingDate = new Date(m.meetingTime);
             return meetingDate > new Date() && meetingDate <= sevenDaysFromNow;
         }).length ?? 0;
@@ -61,15 +80,15 @@ export default function AdminDashboardPage() {
         const activeAdmins = users?.filter(u => u.isAuthorized).length ?? 0;
 
         return { totalSchools, upcomingMeetings, activeAdmins };
-    }, [schools, meetings, users]);
+    }, [filteredSchools, filteredMeetings, users]);
 
     const pipelineStats = React.useMemo(() => {
-        if (!stages || !schools) return [];
+        if (!stages || !filteredSchools) return [];
         return stages.map(stage => {
-            const count = schools.filter(school => school.stage?.id === stage.id).length;
+            const count = filteredSchools.filter(school => school.stage?.id === stage.id).length;
             return { name: stage.name, count };
         });
-    }, [stages, schools]);
+    }, [stages, filteredSchools]);
 
 
     return (

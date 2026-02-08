@@ -36,6 +36,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -48,6 +49,7 @@ export default function MeetingsPage() {
   const { toast } = useToast();
   const [meetingToDelete, setMeetingToDelete] = useState<Meeting | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
 
   const meetingsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -67,7 +69,7 @@ export default function MeetingsPage() {
   const { data: meetings, isLoading: isLoadingMeetings, error } = useCollection<Meeting>(meetingsQuery);
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
 
-  const isLoading = isLoadingMeetings || isLoadingSchools;
+  const isLoading = isLoadingMeetings || isLoadingSchools || isLoadingFilter;
 
   const schoolLogoMap = useMemo(() => {
     if (!schools) return new Map<string, string | undefined>();
@@ -75,10 +77,26 @@ export default function MeetingsPage() {
   }, [schools]);
 
   const filteredMeetings = useMemo(() => {
-    if (!meetings) return [];
-    if (typeFilter === 'all') return meetings;
-    return meetings.filter(m => m.type?.id === typeFilter);
-  }, [meetings, typeFilter]);
+    if (!meetings || !schools) return [];
+    
+    // Filter by assigned user first
+    let userFilteredMeetings = meetings;
+    if (assignedUserId) {
+        const filteredSchoolIds = new Set(
+            schools.filter(school => {
+                if (assignedUserId === 'unassigned') {
+                    return !school.assignedTo?.userId;
+                }
+                return school.assignedTo?.userId === assignedUserId;
+            }).map(s => s.id)
+        );
+        userFilteredMeetings = meetings.filter(m => filteredSchoolIds.has(m.schoolId));
+    }
+
+    // Then filter by type
+    if (typeFilter === 'all') return userFilteredMeetings;
+    return userFilteredMeetings.filter(m => m.type?.id === typeFilter);
+  }, [meetings, schools, typeFilter, assignedUserId]);
 
   const handleDeleteMeeting = () => {
     if (!firestore || !meetingToDelete) return;

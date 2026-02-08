@@ -38,9 +38,9 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import AssignUserModal from './components/AssignUserModal';
-import UserFilterSelect from './components/UserFilterSelect';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 
 const formatPhoneNumberForLink = (phone?: string) => {
@@ -66,7 +66,7 @@ export default function SchoolsPage() {
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
   // State for filtering
-  const [userFilter, setUserFilter] = useState<string | null>(null);
+  const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
 
   const schoolsCol = useMemoFirebase(() => {
@@ -74,18 +74,20 @@ export default function SchoolsPage() {
     return collection(firestore, 'schools');
   }, [firestore]);
   
-  const { data: schools, isLoading, error } = useCollection<School>(schoolsCol);
+  const { data: schools, isLoading: isLoadingSchools, error } = useCollection<School>(schoolsCol);
+
+  const isLoading = isLoadingSchools || isLoadingFilter;
 
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
     let tempSchools = schools;
     
     // Filter by assigned user
-    if (userFilter) {
-      if (userFilter === 'unassigned') {
+    if (assignedUserId) {
+      if (assignedUserId === 'unassigned') {
         tempSchools = tempSchools.filter(school => !school.assignedTo?.userId);
       } else {
-        tempSchools = tempSchools.filter(school => school.assignedTo?.userId === userFilter);
+        tempSchools = tempSchools.filter(school => school.assignedTo?.userId === assignedUserId);
       }
     }
 
@@ -95,7 +97,7 @@ export default function SchoolsPage() {
     }
     
     return tempSchools;
-  }, [schools, userFilter, searchTerm]);
+  }, [schools, assignedUserId, searchTerm]);
 
   const handleDeleteSchool = () => {
     if (!firestore || !schoolToDelete) return;

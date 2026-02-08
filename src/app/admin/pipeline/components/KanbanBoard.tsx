@@ -34,6 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
@@ -136,6 +137,7 @@ export default function KanbanBoard() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
 
   // Data fetching
   const stagesQuery = useMemoFirebase(() => {
@@ -148,7 +150,7 @@ export default function KanbanBoard() {
     if (!firestore) return null;
     return collection(firestore, 'schools');
   }, [firestore]);
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: allSchools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
   
   const [activeElement, setActiveElement] = React.useState<School | OnboardingStage | null>(null);
   const [orderedStages, setOrderedStages] = React.useState<OnboardingStage[]>([]);
@@ -158,6 +160,15 @@ export default function KanbanBoard() {
           setOrderedStages(stages);
       }
   }, [stages]);
+
+  const filteredSchools = React.useMemo(() => {
+    if (!allSchools) return [];
+    if (!assignedUserId) return allSchools;
+    if (assignedUserId === 'unassigned') {
+        return allSchools.filter(school => !school.assignedTo?.userId);
+    }
+    return allSchools.filter(school => school.assignedTo?.userId === assignedUserId);
+  }, [allSchools, assignedUserId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -174,8 +185,8 @@ export default function KanbanBoard() {
         grouped[stage.id] = [];
       });
     }
-    if (schools) {
-      schools.forEach(school => {
+    if (filteredSchools) {
+      filteredSchools.forEach(school => {
         const stageId = school.stage?.id || orderedStages[0]?.id;
         if (stageId && grouped[stageId]) {
           grouped[stageId].push(school);
@@ -185,7 +196,7 @@ export default function KanbanBoard() {
       });
     }
     return grouped;
-  }, [orderedStages, schools]);
+  }, [orderedStages, filteredSchools]);
   
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
@@ -246,7 +257,7 @@ export default function KanbanBoard() {
     }
   };
 
-  if (isLoadingSchools || isLoadingStages) {
+  if (isLoadingSchools || isLoadingStages || isLoadingFilter) {
     return (
       <div className="flex h-full gap-4 px-4">
         {Array.from({ length: 4 }).map((_, i) => (
