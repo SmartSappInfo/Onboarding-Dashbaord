@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -232,39 +233,44 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
     }, [survey, responses]);
 
     return (
-        <div className="space-y-10 pr-4">
-            <Card className="w-fit rounded-xl shadow-md">
-                <CardHeader className="p-5">
-                    <CardTitle className="text-base">Total Responses</CardTitle>
+        <div className="space-y-6">
+            <Card className="w-fit">
+                <CardHeader className="p-4">
+                    <CardTitle className="text-sm font-medium">Total Responses</CardTitle>
                 </CardHeader>
-                <CardContent className="p-5 pt-0">
-                    <p className="text-4xl font-bold">{responses?.length ?? 0}</p>
+                <CardContent className="p-4 pt-0">
+                    <p className="text-3xl font-bold">{responses?.length ?? 0}</p>
                 </CardContent>
             </Card>
-            {analyzedResults.map((result) => (
-                <Card key={result.question.id} className="rounded-xl shadow-md overflow-hidden">
-                    <CardHeader className="pb-4">
-                        <CardTitle>{survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}</CardTitle>
-                        <CardDescription>{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
-                    </CardHeader>
-                    {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
-                        <CardContent className="border-t pt-4">
-                            <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
-                            <div className="flex gap-8">
-                                <div><p className="text-sm text-muted-foreground">Total Score</p><p className="text-2xl font-bold">{result.totalScore}</p></div>
-                                <div><p className="text-sm text-muted-foreground">Average Score</p><p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p></div>
-                            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {analyzedResults.map((result) => (
+                    <Card key={result.question.id} className="flex flex-col">
+                        <CardHeader>
+                            <CardTitle className="text-base">
+                                {survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}
+                            </CardTitle>
+                            <CardDescription>{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
+                        </CardHeader>
+                        {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
+                            <CardContent className="border-t pt-4">
+                                <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
+                                <div className="flex gap-8">
+                                    <div><p className="text-sm text-muted-foreground">Total Score</p><p className="text-2xl font-bold">{result.totalScore}</p></div>
+                                    <div><p className="text-sm text-muted-foreground">Average Score</p><p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p></div>
+                                </div>
+                            </CardContent>
+                        )}
+                        <CardContent className="pt-4 flex-grow flex flex-col justify-center">
+                            {result.type === 'chart' && <ChartResult result={result} />}
+                            {result.type === 'rating' && <RatingResult result={result} />}
+                            {result.type === 'checkbox' && <CheckboxResult result={result} />}
+                            {result.type === 'text' && <TextResult result={result} />}
+                            {result.type === 'unknown' && <p className="text-center text-muted-foreground py-4">This question type is not supported for analysis.</p>}
                         </CardContent>
-                    )}
-                    <CardContent className="pt-2">
-                        {result.type === 'chart' && <ChartResult result={result} />}
-                        {result.type === 'rating' && <RatingResult result={result} />}
-                        {result.type === 'checkbox' && <CheckboxResult result={result} />}
-                        {result.type === 'text' && <TextResult result={result} />}
-                        {result.type === 'unknown' && <p>This question type is not supported for analysis.</p>}
-                    </CardContent>
-                </Card>
-            ))}
+                    </Card>
+                ))}
+            </div>
         </div>
     );
 }
