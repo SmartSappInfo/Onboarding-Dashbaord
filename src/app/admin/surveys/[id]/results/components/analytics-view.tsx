@@ -5,9 +5,9 @@
 import * as React from 'react';
 import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
+import { cn } from '@/lib/utils';
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -19,6 +19,7 @@ const CHART_COLORS = [
 
 type AnalyzedResult = {
     question: SurveyQuestion;
+    insight: string;
     totalScore?: number;
     averageScore?: number;
 } & (
@@ -29,59 +30,75 @@ type AnalyzedResult = {
     | { type: 'unknown'; data: any[] }
 );
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
+const generateInsight = (result: Omit<AnalyzedResult, 'insight'>): string => {
+    if (result.type === 'chart' && result.data.length > 0) {
+        const sorted = [...result.data].sort((a, b) => b.value - a.value);
+        const mostPopular = sorted[0];
+        if (mostPopular.value === result.total && result.total > 0) return `All respondents selected "${mostPopular.name}".`;
+        if (mostPopular.percentage > 50) return `Most respondents selected "${mostPopular.name}".`;
+        if (result.total > 0) return `The most common answer was "${mostPopular.name}".`;
+    }
+    if (result.type === 'rating' && result.total > 0) {
+        if (result.average > 4) return `The average rating of ${result.average.toFixed(1)} stars indicates a highly positive response.`;
+        if (result.average > 2.5) return `The average rating was ${result.average.toFixed(1)} stars.`;
+        return `The average rating of ${result.average.toFixed(1)} stars indicates room for improvement.`;
+    }
+    if (result.type === 'checkbox' && result.data.length > 0) {
+        const sorted = [...result.data].sort((a, b) => b.value - a.value);
+        const mostPopular = sorted[0];
+        if (mostPopular.percentage > 50) return `"${mostPopular.name}" was the most frequently selected option.`;
+    }
+    return '';
+}
+
+const CustomizedBarLabel = (props: any) => {
+    const { x, y, width, value, percentage } = props;
+    const isInside = width > 80;
+    
     return (
-      <div className="rounded-lg border bg-background p-2 shadow-sm">
-        <p className="text-sm font-medium">{`${label}`}</p>
-        <p className="text-sm text-muted-foreground">{`Count: ${data.value} (${data.percentage.toFixed(1)}%)`}</p>
-      </div>
+        <text 
+            x={isInside ? x + width - 5 : x + width + 5} 
+            y={y + 16} // Center align with bar (height is approx 32)
+            fill={isInside ? "hsl(var(--primary-foreground))" : "hsl(var(--foreground))"} 
+            textAnchor={isInside ? "end" : "start"} 
+            className="text-xs font-semibold"
+        >
+            {`${percentage.toFixed(0)}% (${value})`}
+        </text>
     );
-  }
-  return null;
 };
 
-function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'chart' }> }) {
+function ChartResult({ result }: { result: Extract<AnalyzedResult, { type: 'chart' | 'rating' }> }) {
     if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
     
     return (
-        <div className="h-64 w-full">
+        <div className="h-48 w-full -ml-4">
             <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={result.data} layout="vertical" margin={{ left: 20, right: 30 }}>
+                <BarChart data={result.data} layout="vertical" margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
                     <XAxis type="number" hide />
-                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent))' }}/>
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                        {result.data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
+                    <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={100} tick={{ fontSize: 12 }} dx={-5} />
+                    <Tooltip
+                        cursor={{ fill: 'hsl(var(--accent))' }}
+                        content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                                return (
+                                <div className="rounded-lg border bg-background p-2 shadow-sm">
+                                    <p className="text-sm font-medium">{label}</p>
+                                    <p className="text-sm text-muted-foreground">{`Count: ${payload[0].value}`}</p>
+                                </div>
+                                );
+                            }
+                            return null;
+                        }}
+                    />
+                    <Bar dataKey="value" barSize={32} radius={[0, 4, 4, 0]}>
+                       <LabelList dataKey="value" content={(props) => <CustomizedBarLabel {...props} percentage={result.data[props.index as number].percentage} />} />
+                       {result.data.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                       ))}
                     </Bar>
                 </BarChart>
             </ResponsiveContainer>
-        </div>
-    );
-}
-
-function RatingResult({ result }: { result: Extract<AnalyzedResult, { type: 'rating' }> }) {
-    if (result.total === 0) return <p className="text-sm text-muted-foreground text-center py-8">No responses for this question yet.</p>;
-    
-    return (
-        <div>
-            <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={result.data} layout="vertical" margin={{ left: 20, right: 30 }}>
-                        <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={80} tick={{ fontSize: 12 }} />
-                        <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsl(var(--accent))' }}/>
-                        <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                            {result.data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
         </div>
     );
 }
@@ -95,9 +112,16 @@ function CheckboxResult({ result }: { result: Extract<AnalyzedResult, { type: 'c
                 <div key={index}>
                     <div className="flex justify-between text-sm mb-1">
                         <span className="font-medium">{item.name}</span>
-                        <span className="text-muted-foreground">{item.value} response(s) ({item.percentage.toFixed(1)}%)</span>
+                        <span className="text-muted-foreground">{item.value} ({item.percentage.toFixed(0)}%)</span>
                     </div>
-                    <Progress value={item.percentage} />
+                    <div className="relative h-6 w-full overflow-hidden rounded-full bg-secondary">
+                        <div 
+                            className="h-full flex-1 bg-primary transition-all flex items-center justify-end px-2 text-primary-foreground text-xs font-bold"
+                            style={{ width: `${item.percentage}%` }}
+                        >
+                           {item.percentage > 15 && `${item.percentage.toFixed(0)}%`}
+                        </div>
+                    </div>
                 </div>
             ))}
             {result.otherText.length > 0 && (
@@ -137,60 +161,19 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         if (!survey || !responses) return [];
         const questions = survey.elements.filter(isQuestion);
         return questions.map(question => {
-            const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null);
+            const questionResponses = responses.map(res => res.answers.find(a => a.questionId === question.id)?.value).filter(v => v !== undefined && v !== null && v !== '');
             let scoreData: { totalScore?: number, averageScore?: number } = {};
-            if (question.enableScoring || question.type === 'rating') {
-                let totalScore = 0;
-                let scoredResponses = 0;
-                questionResponses.forEach(value => {
-                    let responseScore = 0;
-                    let hasScore = false;
-                    if (question.type === 'yes-no' && question.enableScoring) {
-                        if (value === 'Yes') { responseScore = question.yesScore ?? 0; hasScore = true; }
-                        if (value === 'No') { responseScore = question.noScore ?? 0; hasScore = true; }
-                    } else if ((question.type === 'multiple-choice' || question.type === 'dropdown') && question.enableScoring) {
-                        if (question.options && question.optionScores) {
-                            const optionIndex = question.options.indexOf(value as string);
-                            if (optionIndex > -1 && question.optionScores[optionIndex] !== undefined) {
-                                responseScore = question.optionScores[optionIndex];
-                                hasScore = true;
-                            }
-                        }
-                    } else if (question.type === 'checkboxes' && question.enableScoring) {
-                        const selectedOptions = (value as any)?.options || value as string[];
-                        if (Array.isArray(selectedOptions)) {
-                            hasScore = true;
-                            selectedOptions.forEach(optionLabel => {
-                                const optionIndex = (question.options || []).indexOf(optionLabel);
-                                if (optionIndex > -1 && question.optionScores && question.optionScores[optionIndex] !== undefined) {
-                                    responseScore += question.optionScores[optionIndex];
-                                }
-                            });
-                        }
-                    } else if (question.type === 'rating' && typeof value === 'number') {
-                         responseScore = value;
-                         hasScore = true;
-                    }
-    
-                    if (hasScore) {
-                        totalScore += responseScore;
-                        scoredResponses++;
-                    }
-                });
-                scoreData.totalScore = totalScore;
-                scoreData.averageScore = scoredResponses > 0 ? totalScore / scoredResponses : 0;
-            }
-    
+            
+            let tempResult: Omit<AnalyzedResult, 'insight'>;
+
             if (question.type === 'yes-no' || question.type === 'multiple-choice' || question.type === 'dropdown') {
                 const options = question.type === 'yes-no' ? ['Yes', 'No'] : question.options || [];
                 const counts = Object.fromEntries(options.map(opt => [opt, 0]));
                 questionResponses.forEach(value => { if (typeof value === 'string' && value in counts) counts[value]++; });
                 const total = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                return { question, type: 'chart', data, total, ...scoreData };
-            }
-    
-            if (question.type === 'checkboxes') {
+                tempResult = { question, type: 'chart', data, total, ...scoreData };
+            } else if (question.type === 'checkboxes') {
                 const counts = Object.fromEntries((question.options || []).map(opt => [opt, 0]));
                 if (question.allowOther) counts['Other'] = 0;
                 let otherText: string[] = [];
@@ -204,15 +187,11 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                 });
                 const totalRespondents = questionResponses.length;
                 const data = Object.entries(counts).map(([name, value]) => ({ name, value, percentage: totalRespondents > 0 ? (value / totalRespondents) * 100 : 0 }));
-                return { question, type: 'checkbox', data, otherText, total: totalRespondents, ...scoreData };
-            }
-            
-            if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
+                tempResult = { question, type: 'checkbox', data, otherText, total: totalRespondents, ...scoreData };
+            } else if (question.type === 'text' || question.type === 'long-text' || question.type === 'date' || question.type === 'time') {
                 const textResponses = questionResponses.filter(v => typeof v === 'string' && v.trim().length > 0) as string[];
-                return { question, type: 'text', data: textResponses, total: textResponses.length, ...scoreData };
-            }
-    
-            if (question.type === 'rating') {
+                tempResult = { question, type: 'text', data: textResponses, total: textResponses.length, ...scoreData };
+            } else if (question.type === 'rating') {
                 const ratingResponses = questionResponses.filter(v => typeof v === 'number' && v >= 1 && v <= 5) as number[];
                 const counts = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
                 let totalScore = 0;
@@ -224,11 +203,14 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                 });
                 const total = ratingResponses.length;
                 const average = total > 0 ? totalScore / total : 0;
-                const data = Object.entries(counts).map(([name, value]) => ({ name: `${name} Star`, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
-                return { question, type: 'rating', data, total, average, ...scoreData };
+                const data = Object.entries(counts).map(([name, value]) => ({ name: `${name} ★`, value, percentage: total > 0 ? (value / total) * 100 : 0 }));
+                tempResult = { question, type: 'rating', data, total, average, ...scoreData };
+            } else {
+                 tempResult = { question, type: 'unknown', data: [], ...scoreData };
             }
-    
-            return { question, type: 'unknown', data: [], ...scoreData };
+
+            const insight = generateInsight(tempResult);
+            return { ...tempResult, insight };
         });
     }, [survey, responses]);
 
@@ -244,26 +226,30 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
             </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {analyzedResults.map((result) => (
-                    <Card key={result.question.id} className="flex flex-col">
-                        <CardHeader>
-                            <CardTitle className="text-base">
-                                {survey.elements.filter(isQuestion).findIndex(q => q.id === result.question.id) + 1}. {result.question.title}
-                            </CardTitle>
-                            <CardDescription>{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
+                {analyzedResults.map((result, index) => (
+                    <Card key={result.question.id} className="flex flex-col transition-shadow hover:shadow-md">
+                        <CardHeader className="p-4 md:p-6 pb-2">
+                           <div className="flex items-start justify-between gap-4">
+                                <CardTitle className="text-base font-semibold flex-1">
+                                    {index + 1}. {result.question.title}
+                                </CardTitle>
+                                {result.question.enableScoring && result.averageScore !== undefined && (
+                                     <div className="text-right">
+                                        <div className="text-xs text-muted-foreground">Avg. Score</div>
+                                        <div className="text-lg font-bold text-primary">{result.averageScore.toFixed(2)}</div>
+                                    </div>
+                                )}
+                           </div>
+                           <CardDescription className="text-xs">{result.total} {result.total === 1 ? 'response' : 'responses'}</CardDescription>
+                            {result.insight && (
+                                <p className="text-sm text-muted-foreground pt-2 italic">
+                                    &ldquo;{result.insight}&rdquo;
+                                </p>
+                            )}
                         </CardHeader>
-                        {(result.question.enableScoring || result.question.type === 'rating') && result.averageScore !== undefined && (
-                            <CardContent className="border-t pt-4">
-                                <h4 className="font-semibold text-sm mb-2 text-muted-foreground">Score Summary</h4>
-                                <div className="flex gap-8">
-                                    <div><p className="text-sm text-muted-foreground">Total Score</p><p className="text-2xl font-bold">{result.totalScore}</p></div>
-                                    <div><p className="text-sm text-muted-foreground">Average Score</p><p className="text-2xl font-bold">{result.averageScore.toFixed(2)}</p></div>
-                                </div>
-                            </CardContent>
-                        )}
-                        <CardContent className="pt-4 flex-grow flex flex-col justify-center">
+                        <CardContent className="p-4 md:p-6 pt-2 flex-grow flex flex-col justify-center">
                             {result.type === 'chart' && <ChartResult result={result} />}
-                            {result.type === 'rating' && <RatingResult result={result} />}
+                            {result.type === 'rating' && <ChartResult result={result} />}
                             {result.type === 'checkbox' && <CheckboxResult result={result} />}
                             {result.type === 'text' && <TextResult result={result} />}
                             {result.type === 'unknown' && <p className="text-center text-muted-foreground py-4">This question type is not supported for analysis.</p>}
@@ -274,4 +260,4 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         </div>
     );
 }
-      
+
