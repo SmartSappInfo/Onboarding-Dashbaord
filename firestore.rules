@@ -9,7 +9,9 @@ service cloud.firestore {
 
     function isAuthorized() {
       // Check if the user is an admin by looking at their profile.
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
+      // This is now safer and checks for the document's existence first.
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return isSignedIn() && userDoc != null && userDoc.data.isAuthorized == true;
     }
 
     // By default, deny all reads and writes.
@@ -28,7 +30,7 @@ service cloud.firestore {
     match /media/{document=**} {
       allow read, write: if isAuthorized();
     }
-    match /onboardingStages/{stageId} {
+    match /onboardingStages/{document=**} {
       allow read, write: if isAuthorized();
     }
     
