@@ -14,7 +14,7 @@ interface MeetingHeroProps {
 export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
 
   return (
-    <section className="relative w-full bg-background text-foreground pt-28 pb-16 md:pt-40 md:pb-24 min-h-screen flex items-center overflow-hidden">
+    <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 min-h-screen flex items-center overflow-hidden">
         <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
@@ -37,7 +37,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
           <div className="flex flex-col justify-center items-center text-center md:items-start md:text-left">
             
             {school.logoUrl && (
-              <div className="mb-12 md:mb-20 flex items-center gap-4">
+              <div className="mb-8 md:mb-16 flex items-center gap-4">
                 <div className="relative w-16 h-16">
                   <Image
                     src={school.logoUrl}
@@ -53,14 +53,14 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
               </div>
             )}
 
-            <h1 className="font-headline text-4xl font-black tracking-tighter sm:text-5xl md:text-6xl">
+            <h1 className="font-headline text-3xl font-black tracking-tighter sm:text-5xl md:text-6xl">
               {school.name} is digitalizing to serve you better
             </h1>
             <p className="mt-4 text-lg leading-relaxed text-foreground/80">
               Join us for a short onboarding session where we’ll show you how SmartSapp improves communication, payments, and school engagement for parents.
             </p>
 
-            <div className="my-10 w-full">
+            <div className="my-8 w-full">
               <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
             </div>
             
@@ -71,7 +71,7 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
           </div>
 
           {/* Right Column */}
-          <div className="relative flex items-center justify-center min-h-[300px] sm:min-h-[400px] w-full order-first md:order-last">
+          <div className="relative flex items-center justify-center min-h-[280px] md:min-h-[400px] w-full order-first md:order-last">
               <div className="relative flex items-center justify-center">
                   {school.heroImageUrl ? (
                       <Image
