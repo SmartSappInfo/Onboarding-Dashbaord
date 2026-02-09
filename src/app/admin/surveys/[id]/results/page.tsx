@@ -141,10 +141,10 @@ export default function SurveyResultsPage() {
     }
     
     return (
-        <div className="flex h-full flex-col -m-4 sm:-m-6 md:-m-8">
+        <div>
             {/* Sticky Header */}
-            <header className="flex-shrink-0 rounded-t-lg border-b bg-background shadow-sm">
-                <div className="flex items-center justify-between gap-4 p-4">
+            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm">
+                <div className="flex items-center justify-between gap-4 p-4 border-b">
                     <div className="min-w-0 flex-1">
                         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -178,7 +178,7 @@ export default function SurveyResultsPage() {
                     onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-3 rounded-none border-t bg-background p-0">
+                    <TabsList className="grid w-full grid-cols-3 rounded-none border-b bg-background p-0">
                         <TabsTrigger value="responses" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
                             <FileText className="h-4 w-4" /> Responses
                         </TabsTrigger>
@@ -192,10 +192,10 @@ export default function SurveyResultsPage() {
                 </Tabs>
             </header>
 
-            {/* Single Scrollable Content Area */}
-            <main className="flex-1 overflow-y-auto bg-muted/30">
+            {/* Scrollable Content Area */}
+            <main>
                 <Tabs value={activeTab}>
-                    <TabsContent value="responses" className="mt-0 h-full">
+                    <TabsContent value="responses" className="mt-0">
                          <div className="bg-background border-t">
                             <ResponsesListView
                                 survey={survey}
@@ -205,13 +205,13 @@ export default function SurveyResultsPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="analytics" className="mt-0 h-full">
+                    <TabsContent value="analytics" className="mt-0">
                          <div className="p-4 sm:p-6 lg:p-8">
                             <AnalyticsView survey={survey} responses={responses || []} />
                          </div>
                     </TabsContent>
 
-                    <TabsContent value="ai-summaries" className="mt-0 h-full">
+                    <TabsContent value="ai-summaries" className="mt-0">
                         <div className="p-4 sm:p-6 lg:p-8">
                             {responses ? (
                                 <AISummariesView survey={survey} responses={responses} />
