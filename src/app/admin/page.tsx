@@ -2,7 +2,6 @@
 import { Suspense } from "react";
 import { 
     QuickActions,
-    MetricsRow,
     LatestSurveys,
     RecentActivity,
     UpcomingMeetings,
@@ -16,12 +15,11 @@ import { Card } from "@/components/ui/card";
 
 function DashboardSkeleton() {
     return (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {/* Row 1: Quick Actions & Metrics */}
-             <div className="md:col-span-2 lg:col-span-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="lg:col-span-2">
                 <Card className="p-4 space-y-2 h-full">
                     <Skeleton className="h-5 w-1/4 mb-4" />
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 gap-3">
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
                         <Skeleton className="h-10 w-full" />
@@ -29,14 +27,14 @@ function DashboardSkeleton() {
                     </div>
                 </Card>
             </div>
-            {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="p-4 space-y-2">
-                    <Skeleton className="h-5 w-2/3" />
-                    <Skeleton className="h-8 w-1/3" />
+            
+            <div className="lg:col-span-2 lg:row-span-2">
+                <Card className="p-4 flex flex-col items-center justify-center min-h-[400px]">
+                    <Skeleton className="h-5 w-1/3 mb-4" />
+                    <Skeleton className="w-64 h-64 rounded-full" />
                 </Card>
-            ))}
+            </div>
 
-            {/* Row 2: Lists */}
             <div className="lg:col-span-2">
                 <Card className="p-4 space-y-3 h-full">
                     <Skeleton className="h-5 w-1/4 mb-4" />
@@ -51,7 +49,8 @@ function DashboardSkeleton() {
                     ))}
                 </Card>
             </div>
-             <div className="lg:col-span-2">
+
+            <div className="lg:col-span-2">
                  <Card className="p-4 space-y-3 h-full">
                     <Skeleton className="h-5 w-1/4 mb-4" />
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -65,6 +64,14 @@ function DashboardSkeleton() {
                     ))}
                 </Card>
             </div>
+
+             <div className="lg:col-span-2">
+                <Card className="p-4 flex flex-col items-center justify-center min-h-[300px]">
+                    <Skeleton className="h-5 w-1/3 mb-4" />
+                    <Skeleton className="w-full h-64" />
+                </Card>
+            </div>
+
             <div className="lg:col-span-4">
                  <Card className="p-4 space-y-3 h-full">
                     <Skeleton className="h-5 w-1/4 mb-4" />
@@ -77,22 +84,6 @@ function DashboardSkeleton() {
                 </Card>
             </div>
 
-
-            {/* Row 3: Charts */}
-            <div className="lg:col-span-2">
-                <Card className="p-4 flex flex-col items-center justify-center min-h-[300px]">
-                    <Skeleton className="h-5 w-1/3 mb-4" />
-                    <Skeleton className="w-48 h-48 rounded-full" />
-                </Card>
-            </div>
-             <div className="lg:col-span-2">
-                <Card className="p-4 flex flex-col items-center justify-center min-h-[300px]">
-                    <Skeleton className="h-5 w-1/3 mb-4" />
-                    <Skeleton className="w-full h-64" />
-                </Card>
-            </div>
-            
-            {/* Row 4: User Assignments */}
             <div className="lg:col-span-4">
                 <Card className="p-4 space-y-4">
                     <Skeleton className="h-5 w-1/4 mb-4" />
@@ -114,34 +105,31 @@ async function DashboardData() {
   const data = await getDashboardData();
 
   return (
-    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
-        {/* Row 1: Quick Actions & Metrics */}
-        <div className="md:col-span-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-2">
             <QuickActions />
         </div>
-        <MetricsRow data={data.metrics} />
+        
+        <div className="lg:col-span-2 lg:row-span-2">
+            <PipelinePieChart stages={data.pipelineCounts} />
+        </div>
 
-        {/* Row 2: Lists */}
         <div className="lg:col-span-2">
             <LatestSurveys surveys={data.latestSurveys} />
         </div>
+        
         <div className="lg:col-span-2">
             <UpcomingMeetings meetings={data.upcomingMeetings} />
         </div>
-        <div className="lg:col-span-4">
-            <RecentActivity schools={data.recentSchools} />
-        </div>
-        
-        
-        {/* Row 3: Charts */}
-        <div className="lg:col-span-2">
-            <PipelinePieChart stages={data.pipelineCounts} />
-        </div>
+
         <div className="lg:col-span-2">
            <MonthlySchoolsChart data={data.monthlySchools} />
         </div>
         
-        {/* Row 4: User Assignments */}
+        <div className="lg:col-span-4">
+            <RecentActivity schools={data.recentSchools} />
+        </div>
+        
         <div className="lg:col-span-4">
             <UserAssignments data={data.userAssignments} totalSchools={data.metrics.totalSchools} />
         </div>
