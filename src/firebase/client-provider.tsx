@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useEffect, type ReactNode } from 'react';
@@ -30,16 +29,23 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       // Ensure this only runs in a browser environment in development mode.
       if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const { auth, firestore } = firebaseServices;
+
+        // As a safeguard, don't run seeder if a user is already logged in.
+        // Note: This might not catch the user on initial hard refresh, but will on navigations.
+        if (auth.currentUser) {
+          return;
+        }
+
         const email = 'admin@smartsapp.com';
         const password = 'SecurePassword123!';
 
         try {
-          // Check if user exists by trying to sign in first
+          // Check if user exists by trying to sign in first.
+          // This will sign in the admin user if they exist.
           await signInWithEmailAndPassword(auth, email, password);
-          await auth.signOut();
         } catch (error: any) {
           if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-            // User does not exist, create them
+            // User does not exist, create and sign them in.
             try {
               const userCredential = await createUserWithEmailAndPassword(auth, email, password);
               const user = userCredential.user;
@@ -53,12 +59,11 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
                 createdAt: new Date().toISOString(),
               });
               console.log("Default admin user created and authorized.");
-              await auth.signOut(); // Sign out after seeding
             } catch (creationError) {
               console.error("Failed to create default admin user:", creationError);
             }
           } else {
-            // Other sign-in error
+            // Other sign-in errors can be ignored in this dev script.
           }
         }
       }
