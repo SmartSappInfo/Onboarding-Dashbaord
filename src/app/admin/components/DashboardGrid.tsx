@@ -60,12 +60,12 @@ const componentGridConfig: Record<string, string> = {
 };
 
 const DEFAULT_LAYOUT = [
+    'userAssignments',
     'pipelinePieChart',
     'quickActions',
     'latestSurveys',
     'upcomingMeetings',
     'monthlySchoolsChart',
-    'userAssignments',
     'recentActivity',
 ];
 
