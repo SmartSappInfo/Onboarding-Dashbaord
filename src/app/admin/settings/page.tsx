@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -107,33 +108,35 @@ export default function SettingsPage() {
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Data Seeding</CardTitle>
-        <CardDescription>
-          Use these actions to manage sample data in your Firestore database.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-            <h3 className="text-base font-semibold mb-2">Destructive Actions</h3>
-            <p className="text-sm text-muted-foreground mb-4">These actions will first delete all existing data in the respective collections before adding the sample data.</p>
-            <div className="flex flex-wrap gap-4">
-                <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
-                <SeedingButton seeder="schools">Seed Schools</SeedingButton>
-                <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
-                <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
-            </div>
-        </div>
-        <div>
-            <h3 className="text-base font-semibold mb-2">Non-Destructive & Update Actions</h3>
-            <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add/reset default configurations.</p>
-            <div className="flex flex-wrap gap-4">
-                <SeedingButton seeder="users">Update User Avatars</SeedingButton>
-                <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
-            </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Data Seeding</CardTitle>
+          <CardDescription>
+            Use these actions to manage sample data in your Firestore database.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div>
+              <h3 className="text-base font-semibold mb-2">Destructive Actions</h3>
+              <p className="text-sm text-muted-foreground mb-4">These actions will first delete all existing data in the respective collections before adding the sample data.</p>
+              <div className="flex flex-wrap gap-4">
+                  <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
+                  <SeedingButton seeder="schools">Seed Schools</SeedingButton>
+                  <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
+                  <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
+              </div>
+          </div>
+          <div>
+              <h3 className="text-base font-semibold mb-2">Non-Destructive & Update Actions</h3>
+              <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add/reset default configurations.</p>
+              <div className="flex flex-wrap gap-4">
+                  <SeedingButton seeder="users">Update User Avatars</SeedingButton>
+                  <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
+              </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

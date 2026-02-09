@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -92,50 +93,52 @@ export default function AdminDashboardPage() {
 
 
     return (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <StatCard
-                title="Total Schools"
-                value={stats.totalSchools}
-                icon={School}
-                isLoading={isLoading}
-            />
-            <StatCard
-                title="Upcoming Meetings"
-                value={stats.upcomingMeetings}
-                icon={Calendar}
-                description="in the next 7 days"
-                isLoading={isLoading}
-            />
-            <StatCard
-                title="Active Admins"
-                value={stats.activeAdmins}
-                icon={Users}
-                isLoading={isLoading}
-            />
-             <Card className="xl:col-span-1">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Onboarding Pipeline</CardTitle>
-                    <Workflow className="h-5 w-5 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="space-y-2 mt-1">
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-2/3" />
-                        </div>
-                    ) : (
-                        <div className="space-y-2">
-                            {pipelineStats.length > 0 ? pipelineStats.map(stat => (
-                                <div key={stat.name} className="flex justify-between items-center text-sm">
-                                    <span className="text-muted-foreground">{stat.name}</span>
-                                    <span className="font-bold">{stat.count}</span>
-                                </div>
-                            )) : <p className="text-xs text-muted-foreground text-center py-4">No pipeline stages found. Seed them in settings.</p>}
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <StatCard
+                    title="Total Schools"
+                    value={stats.totalSchools}
+                    icon={School}
+                    isLoading={isLoading}
+                />
+                <StatCard
+                    title="Upcoming Meetings"
+                    value={stats.upcomingMeetings}
+                    icon={Calendar}
+                    description="in the next 7 days"
+                    isLoading={isLoading}
+                />
+                <StatCard
+                    title="Active Admins"
+                    value={stats.activeAdmins}
+                    icon={Users}
+                    isLoading={isLoading}
+                />
+                <Card className="xl:col-span-1">
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Onboarding Pipeline</CardTitle>
+                        <Workflow className="h-5 w-5 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        {isLoading ? (
+                            <div className="space-y-2 mt-1">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-2/3" />
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {pipelineStats.length > 0 ? pipelineStats.map(stat => (
+                                    <div key={stat.name} className="flex justify-between items-center text-sm">
+                                        <span className="text-muted-foreground">{stat.name}</span>
+                                        <span className="font-bold">{stat.count}</span>
+                                    </div>
+                                )) : <p className="text-xs text-muted-foreground text-center py-4">No pipeline stages found. Seed them in settings.</p>}
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }

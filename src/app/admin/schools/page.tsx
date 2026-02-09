@@ -174,7 +174,7 @@ export default function SchoolsPage() {
 
   return (
     <TooltipProvider>
-      <div>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="flex flex-wrap gap-2 items-center justify-between mb-8">
             <div className="flex flex-wrap gap-2 w-full md:w-auto">
                <Input

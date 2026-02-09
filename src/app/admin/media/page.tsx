@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -53,7 +54,7 @@ export default function MediaLibraryPage() {
   }, [assets, activeTab, searchTerm]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
       <div className="flex items-center justify-between gap-4">
         <div className="w-full max-w-sm">
             <Input
@@ -68,7 +69,7 @@ export default function MediaLibraryPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full mt-4">
         <TabsList className="relative grid w-full grid-cols-5 border-b-2 border-primary bg-transparent p-0">
             {TABS.map(tab => (
               <TabsTrigger 

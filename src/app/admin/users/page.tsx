@@ -64,7 +64,7 @@ export default function UsersPage() {
   }
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
         <Table>
           <TableHeader>
@@ -131,5 +131,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-    

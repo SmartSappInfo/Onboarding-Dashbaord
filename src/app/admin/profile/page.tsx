@@ -122,24 +122,27 @@ export default function ProfilePage() {
 
   if (isUserLoading || isLoadingProfile) {
     return (
-        <Card className="max-w-2xl mx-auto">
-            <CardHeader>
-                <CardTitle>Your Profile</CardTitle>
-                <CardDescription>Update your personal information.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-                <div className="flex justify-center">
-                    <Skeleton className="w-32 h-32 rounded-full" />
-                </div>
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-            </CardContent>
-        </Card>
+        <div className="p-4 sm:p-6 md:p-8">
+            <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                    <CardTitle>Your Profile</CardTitle>
+                    <CardDescription>Update your personal information.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                    <div className="flex justify-center">
+                        <Skeleton className="w-32 h-32 rounded-full" />
+                    </div>
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </CardContent>
+            </Card>
+        </div>
     )
   }
 
   return (
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
      <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Your Profile</CardTitle>
@@ -222,5 +225,6 @@ export default function ProfilePage() {
         </Form>
       </CardContent>
     </Card>
+    </div>
   )
 }

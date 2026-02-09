@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -371,7 +372,7 @@ export default function EditSchoolPage() {
     const schoolId = params.id as string;
 
     return (
-        <div>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
             <h1 className="text-4xl font-bold tracking-tight mb-8">Edit School</h1>
             {schoolId ? <EditSchoolForm schoolId={schoolId} /> : <p>School ID not found.</p>}
         </div>

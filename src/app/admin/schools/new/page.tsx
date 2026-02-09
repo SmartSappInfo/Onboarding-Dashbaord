@@ -127,7 +127,7 @@ export default function NewSchoolPage() {
   };
 
   return (
-    <div>
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
       <Button asChild variant="ghost" className="mb-4 -ml-4">
         <Link href="/admin/schools">
           <ArrowLeft className="mr-2 h-4 w-4" />

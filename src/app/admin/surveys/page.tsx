@@ -149,7 +149,7 @@ export default function SurveysPage() {
 
   return (
     <TooltipProvider>
-      <div>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-end mb-8 gap-2">
           <RainbowButton asChild>
             <Link href="/admin/surveys/new/ai">
