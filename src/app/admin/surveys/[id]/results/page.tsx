@@ -144,16 +144,16 @@ export default function SurveyResultsPage() {
         <div className="flex h-[calc(100vh_-_6rem)] flex-col bg-muted/30 p-4 sm:p-6 md:p-8">
             {/* Sticky Header */}
             <header className="flex-shrink-0 rounded-t-lg border bg-background shadow-sm">
-                <div className="flex items-center justify-between p-4">
-                    <div>
+                <div className="flex items-center justify-between gap-4 p-4">
+                    <div className="min-w-0 flex-1">
                         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
                             Back
                         </Button>
-                        <h1 className="text-2xl font-semibold mt-1">{survey.title}</h1>
-                        <p className="text-sm text-muted-foreground">Results & Analytics</p>
+                        <h1 className="truncate text-2xl font-semibold mt-1">{survey.title}</h1>
+                        <p className="truncate text-sm text-muted-foreground">Results & Analytics</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex shrink-0 items-center gap-2">
                         {activeTab === "responses" ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
                                 <Download className="mr-2 h-4 w-4" />
