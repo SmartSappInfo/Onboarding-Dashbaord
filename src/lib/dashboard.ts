@@ -1,3 +1,4 @@
+
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -110,20 +111,29 @@ export async function getDashboardData() {
   const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map(user => {
       const assignedSchools = schools.filter(s => s.assignedTo?.userId === user.id);
+      const totalAssigned = assignedSchools.length;
+      const totalStudents = assignedSchools.reduce((acc, school) => acc + (school.nominalRoll || 0), 0);
+
       return {
           user,
-          totalAssigned: assignedSchools.length,
-          assignmentPercentage: totalSchools > 0 ? (assignedSchools.length / totalSchools) * 100 : 0,
+          totalAssigned,
+          totalStudents,
+          assignmentPercentage: totalSchools > 0 ? (totalAssigned / totalSchools) * 100 : 0,
       };
   });
 
   const monthlySchools = schools.reduce((acc, school) => {
     if (school.implementationDate) {
-        const month = format(new Date(school.implementationDate), 'MMM');
-        acc[month] = (acc[month] || 0) + 1;
+        try {
+            const month = format(new Date(school.implementationDate), 'MMM');
+            acc[month] = (acc[month] || 0) + 1;
+        } catch (e) {
+            // Ignore invalid dates
+        }
     }
     return acc;
   }, {} as Record<string, number>);
+
   const monthlySchoolsData = Object.entries(monthlySchools).map(([name, total]) => ({ name, total }));
   
   return {
