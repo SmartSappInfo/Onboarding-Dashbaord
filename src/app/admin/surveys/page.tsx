@@ -264,7 +264,7 @@ export default function SurveysPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onClick={() => setSurveyToDelete(survey)}
+                              onSelect={(e) => { e.preventDefault(); setSurveyToDelete(survey); }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete Survey</span>

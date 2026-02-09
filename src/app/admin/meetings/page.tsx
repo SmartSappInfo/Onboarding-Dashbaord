@@ -153,7 +153,7 @@ export default function MeetingsPage() {
             <DropdownMenuSeparator />
             <DropdownMenuItem 
               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-              onClick={() => setMeetingToDelete(meeting)}
+              onSelect={(e) => { e.preventDefault(); setMeetingToDelete(meeting); }}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               <span>Delete Meeting</span>

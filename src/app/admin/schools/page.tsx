@@ -1,5 +1,4 @@
 
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -259,11 +258,11 @@ export default function SchoolsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
+                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAssigningSchool(school); }}>
                               <UserPlus className="mr-2 h-4 w-4" />
                               <span>Assign to User</span>
                             </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                             <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setChangingStageSchool(school); }}>
                               <Workflow className="mr-2 h-4 w-4" />
                               <span>Change Stage</span>
                             </DropdownMenuItem>
@@ -278,7 +277,7 @@ export default function SchoolsPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onClick={() => setSchoolToDelete(school)}
+                              onSelect={(e) => { e.preventDefault(); setSchoolToDelete(school); }}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete School</span>
@@ -329,11 +328,11 @@ export default function SchoolsPage() {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
+                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAssigningSchool(school); }}>
                                           <UserPlus className="mr-2 h-4 w-4" />
                                           <span>Assign to User</span>
                                         </DropdownMenuItem>
-                                         <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                                         <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setChangingStageSchool(school); }}>
                                           <Workflow className="mr-2 h-4 w-4" />
                                           <span>Change Stage</span>
                                         </DropdownMenuItem>
@@ -348,7 +347,7 @@ export default function SchoolsPage() {
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                           className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                          onClick={() => setSchoolToDelete(school)}
+                                          onSelect={(e) => { e.preventDefault(); setSchoolToDelete(school); }}
                                         >
                                           <Trash2 className="mr-2 h-4 w-4" />
                                           <span>Delete School</span>

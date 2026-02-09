@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -223,7 +224,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                                             <Copy className="mr-2 h-4 w-4" />
                                                             <span>Copy Text</span>
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => setSummaryToDelete(summary)} className="text-destructive">
+                                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSummaryToDelete(summary); }} className="text-destructive">
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             <span>Delete</span>
                                                         </DropdownMenuItem>
