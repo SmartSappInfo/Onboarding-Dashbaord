@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -141,10 +140,13 @@ export default function SurveyResultsPage() {
     }
     
     return (
-        <div className="flex h-full flex-col">
-            {/* Page Header */}
-            <header className="sticky top-0 z-30 shrink-0 border-b bg-background/95 backdrop-blur-sm">
-                <div className="flex items-start justify-between gap-4 p-4 sm:p-6">
+        <Tabs
+            value={activeTab}
+            onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
+            className="flex h-full flex-col"
+        >
+            <header className="sticky top-0 z-40 shrink-0 border-b bg-background/95 backdrop-blur-sm p-4 sm:p-6">
+                 <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
                             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -171,59 +173,46 @@ export default function SurveyResultsPage() {
                         )}
                     </div>
                 </div>
-                 <Tabs
-                    value={activeTab}
-                    onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
-                    className="w-full"
-                >
-                    <TabsList className="grid w-full grid-cols-3 rounded-none bg-transparent p-0 border-b px-4 sm:px-6">
-                        <TabsTrigger value="responses" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
-                            <FileText className="h-4 w-4" /> Responses
-                        </TabsTrigger>
-                        <TabsTrigger value="analytics" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
-                            <BarChart3 className="h-4 w-4" /> Analytics
-                        </TabsTrigger>
-                        <TabsTrigger value="ai-summaries" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
-                            <Brain className="h-4 w-4" /> AI Summaries
-                        </TabsTrigger>
-                    </TabsList>
-                </Tabs>
+                 <TabsList className="mt-4">
+                    <TabsTrigger value="responses">
+                        <FileText className="mr-2 h-4 w-4" /> Responses
+                    </TabsTrigger>
+                    <TabsTrigger value="analytics">
+                        <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                    </TabsTrigger>
+                    <TabsTrigger value="ai-summaries">
+                        <Brain className="mr-2 h-4 w-4" /> AI Summaries
+                    </TabsTrigger>
+                </TabsList>
             </header>
 
-            {/* Tab Content */}
-            <div className="flex-1 overflow-hidden">
-                 <Tabs
-                    value={activeTab}
-                    onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
-                    className="h-full"
-                >
-                    <TabsContent value="responses" className="h-full overflow-auto">
+            <div className="flex-1 overflow-auto">
+                <TabsContent value="responses" className="m-0 h-full overflow-auto">
                       <ResponsesListView
                           survey={survey}
                           responses={responses || []}
                           isLoading={areResponsesLoading}
                       />
-                    </TabsContent>
+                </TabsContent>
 
-                    <TabsContent value="analytics" className="h-full overflow-y-auto">
-                        <div className="p-4 sm:p-6 lg:p-8">
-                            <AnalyticsView survey={survey} responses={responses || []} />
-                        </div>
-                    </TabsContent>
+                <TabsContent value="analytics" className="m-0">
+                    <div className="p-4 sm:p-6 lg:p-8">
+                        <AnalyticsView survey={survey} responses={responses || []} />
+                    </div>
+                </TabsContent>
 
-                    <TabsContent value="ai-summaries" className="h-full overflow-y-auto">
-                        <div className="p-4 sm:p-6 lg:p-8">
-                            {responses ? (
-                                <AISummariesView survey={survey} responses={responses} />
-                            ) : (
-                                <div className="flex h-64 items-center justify-center">
-                                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                                </div>
-                            )}
-                        </div>
-                    </TabsContent>
-                </Tabs>
+                <TabsContent value="ai-summaries" className="m-0">
+                    <div className="p-4 sm:p-6 lg:p-8">
+                        {responses ? (
+                            <AISummariesView survey={survey} responses={responses} />
+                        ) : (
+                            <div className="flex h-64 items-center justify-center">
+                                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            </div>
+                        )}
+                    </div>
+                </TabsContent>
             </div>
-        </div>
+        </Tabs>
     );
 }
