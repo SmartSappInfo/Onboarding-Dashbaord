@@ -1,15 +1,54 @@
 
 'use client';
-import DashboardCard from "./DashboardCard";
-import { Skeleton } from "@/components/ui/skeleton";
 
-export function MonthlySchoolsChart({ data }: { data: any[] }) {
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import DashboardCard from "./DashboardCard";
+
+const monthOrder = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+export function MonthlySchoolsChart({ data }: { data: { name: string, total: number }[] }) {
+
+    const chartData = monthOrder.map(month => {
+        const monthData = data.find(d => d.name === month);
+        return {
+            name: month,
+            total: monthData ? monthData.total : 0,
+        };
+    });
+
+    const hasData = data.some(d => d.total > 0);
+
     return (
         <DashboardCard title="Schools Added Per Month">
-            <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
-                 <p className="mb-4">Bar chart will be implemented in a future phase.</p>
-                 <Skeleton className="w-full h-48" />
+             <div className="w-full h-72">
+                {hasData ? (
+                    <ResponsiveContainer>
+                        <BarChart
+                            data={chartData}
+                            margin={{ top: 5, right: 20, left: -10, bottom: 5 }}
+                        >
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                            <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                            <Tooltip
+                                contentStyle={{
+                                    background: "hsl(var(--card))",
+                                    borderColor: "hsl(var(--border))",
+                                    borderRadius: "var(--radius)",
+                                    fontSize: "12px"
+                                }}
+                            />
+                            <Bar dataKey="total" name="Schools Added" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                     <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
+                        <p>No schools added this year to display.</p>
+                    </div>
+                )}
             </div>
         </DashboardCard>
     );
 }
+
+    
