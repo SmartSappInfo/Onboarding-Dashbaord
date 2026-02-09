@@ -96,6 +96,7 @@ export default function NewSchoolPage() {
       implementationDate: data.implementationDate?.toISOString(),
       stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' },
       assignedTo: { userId: null, name: null, email: null },
+      createdAt: new Date().toISOString(),
     };
 
     const schoolsCollection = collection(firestore, 'schools');

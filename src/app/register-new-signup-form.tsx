@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import * as React from "react";
@@ -172,6 +173,7 @@ export default function NewSchoolSignupForm() {
       includeDroneFootage: data.includeDroneFootage,
       stage: { id: 'welcome', name: 'Welcome', order: 1 },
       assignedTo: { userId: null, name: null, email: null },
+      createdAt: new Date().toISOString(),
     };
 
     try {

@@ -53,6 +53,7 @@ export interface School {
     order: number;
     color?: string;
   };
+  createdAt: string; // ISO string
 }
 
 export interface Meeting {
