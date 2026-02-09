@@ -12,7 +12,7 @@ import type { MediaAsset } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
-import { processImage } from '@/lib/image-utils';
+import { processImage } from '@/lib/image-processing';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
 // For now, only images can be edited. Other types will be uploaded directly.
@@ -35,6 +35,7 @@ const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 const mediaAssetTypeEnum = z.enum(['image', 'video', 'audio', 'document']);
 
 interface FileState {
+  id: string;
   file: File;
   status: 'pending' | 'editing' | 'processing' | 'completed' | 'error';
   progress: number;
@@ -50,7 +51,7 @@ interface MediaUploaderProps {
 
 export default function MediaUploader({ onUploadSuccess, onUploadComplete, acceptedFileTypes = ['image', 'video', 'audio', 'document'] }: MediaUploaderProps) {
   const [stagedFiles, setStagedFiles] = useState<FileState[]>([]);
-  const [activeFileIndex, setActiveFileIndex] = useState<number | null>(null);
+  const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -99,11 +100,16 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
     
     validatedFiles.forEach(file => {
       const mediaType = getMediaType(file);
+      const fileId = `${file.name}-${file.lastModified}-${file.size}`;
+      
+      if (stagedFiles.some(f => f.id === fileId)) return;
+
       if (mediaType === 'image') {
         const image = new Image();
         image.src = URL.createObjectURL(file);
         image.onload = () => {
           setStagedFiles(currentFiles => [...currentFiles, {
+            id: fileId,
             file,
             status: 'pending',
             progress: 0,
@@ -112,28 +118,26 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
           URL.revokeObjectURL(image.src);
         };
       } else {
-         setStagedFiles(currentFiles => [...currentFiles, { file, status: 'pending', progress: 0 }]);
+         setStagedFiles(currentFiles => [...currentFiles, { id: fileId, file, status: 'pending', progress: 0 }]);
       }
     });
   };
 
   useEffect(() => {
     // Automatically select the first file for editing if none is active
-    if (stagedFiles.length > 0 && activeFileIndex === null) {
-      setActiveFileIndex(0);
+    if (stagedFiles.length > 0 && activeFileId === null) {
+      setActiveFileId(stagedFiles[0].id);
     }
     if (stagedFiles.length === 0) {
-      setActiveFileIndex(null);
+      setActiveFileId(null);
     }
-  }, [stagedFiles, activeFileIndex]);
+  }, [stagedFiles, activeFileId]);
   
-  const removeFile = (e: React.MouseEvent, indexToRemove: number) => {
+  const removeFile = (e: React.MouseEvent, idToRemove: string) => {
     e.stopPropagation();
-    setStagedFiles(files => files.filter((_, index) => index !== indexToRemove));
-    if(activeFileIndex === indexToRemove) {
-      setActiveFileIndex(null);
-    } else if (activeFileIndex && indexToRemove < activeFileIndex) {
-      setActiveFileIndex(activeFileIndex - 1);
+    setStagedFiles(files => files.filter(file => file.id !== idToRemove));
+    if(activeFileId === idToRemove) {
+      setActiveFileId(null);
     }
   };
 
@@ -152,41 +156,45 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
 
   const handleUpload = async () => {
-    if (stagedFiles.length === 0 || !user) {
+    if (stagedFiles.length === 0 || !user || !firestore) {
         if(!user) toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        if(!firestore) toast({ variant: 'destructive', title: 'Database Error', description: 'Cannot connect to the database.' });
         return;
     }
     setIsUploading(true);
 
-    const uploadPromises = stagedFiles.map(async (fileState, index) => {
+    const uploadPromises = stagedFiles.map(async (fileState) => {
       try {
-        setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'processing' } : fs));
+        setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'processing' } : fs));
         
         let blobToUpload: Blob;
         let finalFilename: string;
         let finalWidth: number | undefined;
         let finalHeight: number | undefined;
         let finalMimeType: string;
+        let finalFile: File;
 
         const mediaType = getMediaType(fileState.file);
         if (!mediaType) throw new Error("Invalid file type");
 
         if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels) {
           const { editingState } = fileState;
-          const { blob, width, height } = await processImage(fileState.file, {
-            crop: editingState.croppedAreaPixels,
-            resize: editingState.resize,
-            quality: editingState.quality,
-            format: editingState.format,
-          });
-          blobToUpload = blob;
+          const { file, width, height } = await processImage(
+            fileState.file, 
+            editingState.croppedAreaPixels, 
+            editingState.resize?.width || fileState.dimensions!.width,
+            editingState.quality,
+            editingState.filename
+          );
+          blobToUpload = file;
+          finalFile = file;
           finalWidth = width;
           finalHeight = height;
-          finalMimeType = blob.type;
-          const extension = editingState.format === 'jpeg' ? 'jpg' : editingState.format;
-          finalFilename = `${editingState.filename}.${extension}`;
+          finalMimeType = file.type;
+          finalFilename = file.name;
         } else {
           blobToUpload = fileState.file;
+          finalFile = fileState.file;
           finalMimeType = fileState.file.type;
           finalFilename = fileState.editingState?.filename 
             ? `${fileState.editingState.filename}.${fileState.file.name.split('.').pop()}` 
@@ -195,13 +203,13 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
 
         const storagePath = `media/${mediaType}/${Date.now()}-${finalFilename}`;
         const storageRef = ref(storage, storagePath);
-        const uploadTask = uploadBytesResumable(storageRef, blobToUpload);
+        const uploadTask = uploadBytesResumable(storageRef, finalFile);
         
         await new Promise<void>((resolve, reject) => {
           uploadTask.on('state_changed',
             (snapshot) => {
               const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-              setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, progress } : fs));
+              setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, progress } : fs));
             },
             reject,
             async () => {
@@ -223,21 +231,21 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
 
               const docRef = await addDoc(collection(firestore, 'media'), {
                   ...newAssetData,
-                  createdAt: serverTimestamp()
+                  createdAt: new Date().toISOString()
               });
 
               if (onUploadComplete) {
                 const docSnap = { id: docRef.id, ...newAssetData, createdAt: new Date().toISOString() }
                 onUploadComplete(docSnap as MediaAsset);
               }
-              setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'completed' } : fs));
+              setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'completed' } : fs));
               resolve();
             }
           );
         });
       } catch (error) {
         console.error(`Upload failed for ${fileState.file.name}:`, error);
-        setStagedFiles(prev => prev.map((fs, i) => i === index ? { ...fs, status: 'error' } : fs));
+        setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'error' } : fs));
         if (error instanceof Error) {
           const permissionError = new FirestorePermissionError({
             path: 'media',
@@ -260,12 +268,12 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
     setIsUploading(false);
   };
   
-  const activeFileState = activeFileIndex !== null ? stagedFiles[activeFileIndex] : null;
+  const activeFileState = activeFileId ? stagedFiles.find(f => f.id === activeFileId) : null;
   const isImageActive = activeFileState && getMediaType(activeFileState.file) === 'image';
   
   const handleStateChange = useCallback((newState: ImageEditingState) => {
-    setStagedFiles(prev => prev.map((fs, i) => i === activeFileIndex ? { ...fs, editingState: newState } : fs));
-  }, [activeFileIndex]);
+    setStagedFiles(prev => prev.map((fs) => fs.id === activeFileId ? { ...fs, editingState: newState } : fs));
+  }, [activeFileId]);
 
   return (
     <div className="space-y-4">
@@ -302,14 +310,14 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         <div className="space-y-2">
           <h4 className="font-medium">Staged Files ({stagedFiles.length})</h4>
           <div className="space-y-2 max-h-48 overflow-y-auto pr-2 border rounded-lg p-2">
-            {stagedFiles.map((fileState, index) => (
+            {stagedFiles.map((fileState) => (
               <div 
-                key={index} 
-                className={cn("flex items-center gap-2 p-2 border rounded-lg bg-background cursor-pointer", activeFileIndex === index && "ring-2 ring-primary")}
+                key={fileState.id} 
+                className={cn("flex items-center gap-2 p-2 border rounded-lg bg-background cursor-pointer", activeFileId === fileState.id && "ring-2 ring-primary")}
                 role="button"
                 tabIndex={0}
-                onClick={() => setActiveFileIndex(index)}
-                onKeyDown={(e) => e.key === 'Enter' && setActiveFileIndex(index)}
+                onClick={() => setActiveFileId(fileState.id)}
+                onKeyDown={(e) => e.key === 'Enter' && setActiveFileId(fileState.id)}
               >
                 <FileIcon className="h-5 w-5 text-muted-foreground" />
                 <div className="flex-1 min-w-0">
@@ -320,7 +328,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
                   {fileState.status === 'error' && <p className="text-xs text-destructive">Upload failed</p>}
                 </div>
                 {!isUploading && (
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => removeFile(e, index)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => removeFile(e, fileState.id)}>
                     <X className="h-4 w-4" />
                   </Button>
                 )}

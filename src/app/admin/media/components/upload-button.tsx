@@ -16,6 +16,10 @@ import MediaUploader from './media-uploader';
 export default function UploadButton() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
+  const handleUploadSuccess = () => {
+    setIsSheetOpen(false);
+  }
+
   return (
     <>
       <Button onClick={() => setIsSheetOpen(true)}>
@@ -31,7 +35,7 @@ export default function UploadButton() {
             </SheetDescription>
           </SheetHeader>
           <div className="flex-grow p-6 overflow-y-auto">
-            <MediaUploader closeSheet={() => setIsSheetOpen(false)} />
+            <MediaUploader onUploadSuccess={handleUploadSuccess} />
           </div>
         </SheetContent>
       </Sheet>

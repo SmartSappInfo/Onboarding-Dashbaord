@@ -183,9 +183,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
         </AlertDialogContent>
       </AlertDialog>
 
-      {!onCardClick && (
-        <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
-      )}
+      <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
     </>
   );
 }
