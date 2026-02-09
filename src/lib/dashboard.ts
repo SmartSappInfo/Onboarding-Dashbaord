@@ -2,7 +2,7 @@ import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
 import type { School, Meeting, Survey, OnboardingStage, UserProfile } from '@/lib/types';
-import { format } from 'date-fns';
+import { format, isAfter, startOfToday } from 'date-fns';
 
 function getDb() {
   if (!getApps().length) {
@@ -26,21 +26,40 @@ export async function getDashboardData() {
     getDocs(collection(db, 'surveys')),
     getDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true)))
-  ]);
+  ].map(p => p.catch(e => e))); // Add error catching to prevent Promise.all from failing completely
+
+  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error) {
+      console.error("Failed to fetch one or more dashboard data sources.");
+      // Return a default/empty state to prevent the page from crashing
+      return {
+          metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0 },
+          latestSurveys: [],
+          recentSchools: [],
+          upcomingMeetings: [],
+          pipelineCounts: [],
+          userAssignments: [],
+          monthlySchools: [],
+      };
+  }
+
 
   const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
-  const now = new Date();
+  const now = startOfToday();
   
   // Card 0: Metrics
   const sevenDaysFromNow = new Date();
   sevenDaysFromNow.setDate(now.getDate() + 7);
+  
   const upcomingMeetingsCount = meetingsSnapshot.docs.filter(doc => {
     const meetingTime = new Date(doc.data().meetingTime);
-    return meetingTime >= now && meetingTime <= sevenDaysFromNow;
+    return isAfter(meetingTime, now);
   }).length;
+
   const publishedSurveysCount = surveysSnapshot.docs.filter(doc => doc.data().status === 'published').length;
+  
   const responseCountPromises = surveysSnapshot.docs.map(doc => getDocs(collection(db, 'surveys', doc.id, 'responses')).then(snap => snap.size));
   const totalResponsesCount = (await Promise.all(responseCountPromises)).reduce((sum, count) => sum + count, 0);
+
   const metrics = {
     totalSchools: schoolsSnapshot.size,
     upcomingMeetings: upcomingMeetingsCount,
@@ -50,7 +69,11 @@ export async function getDashboardData() {
 
   // Card 2: Recently Added Schools
   const recentSchools = schools
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    })
     .slice(0, 5);
 
   // Card 3: Latest Surveys
@@ -105,8 +128,10 @@ export async function getDashboardData() {
 
   // Card 8: Monthly School Additions
   const monthlySchools = schools.reduce((acc, school) => {
-    const month = format(new Date(school.createdAt), 'MMM');
-    acc[month] = (acc[month] || 0) + 1;
+    if (school.createdAt) {
+        const month = format(new Date(school.createdAt), 'MMM');
+        acc[month] = (acc[month] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
   const monthlySchoolsData = Object.entries(monthlySchools).map(([name, total]) => ({ name, total }));
