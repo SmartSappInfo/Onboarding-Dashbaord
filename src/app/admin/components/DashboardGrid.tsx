@@ -56,17 +56,17 @@ const componentGridConfig: Record<string, string> = {
   latestSurveys: 'lg:col-span-2',
   upcomingMeetings: 'lg:col-span-2',
   monthlySchoolsChart: 'lg:col-span-4',
-  recentActivity: 'lg:col-span-4',
+  recentActivity: 'lg:col-span-2',
 };
 
 const DEFAULT_LAYOUT = [
     'userAssignments',
     'pipelinePieChart',
     'quickActions',
-    'latestSurveys',
     'upcomingMeetings',
-    'monthlySchoolsChart',
+    'latestSurveys',
     'recentActivity',
+    'monthlySchoolsChart',
 ];
 
 export default function DashboardGrid({ initialData }: { initialData: any }) {

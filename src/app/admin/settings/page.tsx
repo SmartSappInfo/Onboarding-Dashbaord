@@ -14,8 +14,8 @@ type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout';
 
 const DEFAULT_LAYOUT = [
-    'userAssignments', 'pipelinePieChart', 'quickActions', 'latestSurveys', 
-    'upcomingMeetings', 'monthlySchoolsChart', 'recentActivity'
+    'userAssignments', 'pipelinePieChart', 'quickActions', 'upcomingMeetings', 
+    'latestSurveys', 'recentActivity', 'monthlySchoolsChart'
 ];
 
 export default function SettingsPage() {
