@@ -1,13 +1,21 @@
-
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import DashboardCard from "./DashboardCard";
 
 const COLORS = [
-    '#f72585', '#b5179e', '#7209b7', '#560bad', 
-    '#480ca8', '#3f37c9', '#4361ee', '#4895ef', 
-    '#4cc9f0', '#d00000', '#e85d04', '#ffba08'
+    '#7209b7', // Purple
+    '#A8E063', // Lemon Green
+    '#FFBA08', // Yellow
+    '#4361ee',
+    '#f72585',
+    '#b5179e',
+    '#560bad',
+    '#480ca8',
+    '#3f37c9',
+    '#4895ef',
+    '#4cc9f0',
+    '#d00000',
 ];
 
 export function PipelinePieChart({ stages }: { stages: { name: string; count: number; color?: string }[] }) {
@@ -26,7 +34,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
   
   return (
     <DashboardCard title="Onboarding Pipeline">
-        <div className="w-full h-72">
+        <div className="w-full h-80">
             <ResponsiveContainer>
                 <PieChart>
                     <Pie
@@ -34,7 +42,10 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        outerRadius={80}
+                        outerRadius={110}
+                        innerRadius={80}
+                        cornerRadius={8}
+                        paddingAngle={2}
                         fill="#8884d8"
                         dataKey="count"
                         nameKey="name"
@@ -44,7 +55,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                             const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
                             if (percent < 0.05) return null; // Don't render label for small slices
                             return (
-                                <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="12">
+                                <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="12" fontWeight="bold">
                                     {`${(percent * 100).toFixed(0)}%`}
                                 </text>
                             );
@@ -68,5 +79,3 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
     </DashboardCard>
   )
 }
-
-    
