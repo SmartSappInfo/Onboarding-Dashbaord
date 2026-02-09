@@ -209,23 +209,14 @@ export default function NewSurveyPage() {
     };
     
     const handleNext = async () => {
-        let isValid = false;
         if (step === 1) {
-            isValid = await form.trigger(['title', 'description']);
-             if (isValid) {
-                const title = form.getValues('title');
+            const title = form.getValues('title');
+            if (title) {
                 const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                form.setValue('slug', slug, { shouldValidate: true });
+                form.setValue('slug', slug, { shouldValidate: false });
             }
-        } else if (step === 2) {
-            isValid = await form.trigger(['elements']);
-        } else { // No validation needed for step 3 to 4
-            isValid = true;
         }
-        
-        if (isValid) {
-            setStep(s => s + 1);
-        }
+        setStep(s => s + 1);
     };
     
     return (

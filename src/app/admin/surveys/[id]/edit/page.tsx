@@ -217,18 +217,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     };
     
     const handleNext = async () => {
-        let isValid = false;
-        if (step === 1) {
-            isValid = await form.trigger(['title', 'description']);
-        } else if (step === 2) {
-            isValid = await form.trigger(['elements']);
-        } else {
-            isValid = true;
-        }
-        
-        if (isValid) {
-            setStep(s => s + 1);
-        }
+        setStep(s => s + 1);
     };
 
     if (isLoading) {
