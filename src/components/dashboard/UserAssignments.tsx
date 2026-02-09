@@ -1,4 +1,3 @@
-
 'use client';
 import DashboardCard from "./DashboardCard";
 
@@ -11,7 +10,7 @@ const CHART_COLORS = [
 export function UserAssignments({ data, totalSchools }: { data: any[], totalSchools: number }) {
     if (!data) {
         return (
-            <DashboardCard title="School Distribution">
+            <DashboardCard title="School Distribution by User">
                 <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
                     <p>No user data available.</p>
                 </div>
@@ -19,16 +18,21 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
         );
     }
     
+    // Filter for users with assigned schools and prepare their data
+    const assignedUsersData = data
+        .filter(d => d.assignmentPercentage > 0)
+        .map(d => ({
+            name: d.user.name.split(' ')[0], // First name
+            percentage: d.assignmentPercentage,
+        }));
+
     const assignedSchools = data.reduce((acc, userData) => acc + userData.totalAssigned, 0);
     const unassignedCount = totalSchools - assignedSchools;
     const unassignedPercentage = totalSchools > 0 ? (unassignedCount / totalSchools) * 100 : 0;
 
-    const displayData = [...data.map(d => ({
-        name: d.user.name.split(' ')[0], // First name
-        percentage: d.assignmentPercentage,
-    }))];
-    
-    if (unassignedCount > 0) {
+    // Combine assigned user data with unassigned data if it exists
+    const displayData = [...assignedUsersData];
+    if (unassignedPercentage > 0) {
         displayData.push({
             name: "Unassigned",
             percentage: unassignedPercentage,
@@ -37,46 +41,46 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
 
     if (displayData.length === 0) {
         return (
-            <DashboardCard title="School Distribution">
+            <DashboardCard title="School Distribution by User">
                 <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
-                    <p>No schools to distribute.</p>
+                    <p>No schools assigned to any users.</p>
                 </div>
             </DashboardCard>
         );
     }
 
     return (
-        <DashboardCard title="School Distribution">
-            <div className="space-y-4">
-                <div>
-                    <h2 className="text-3xl font-bold">{totalSchools}</h2>
-                    <p className="text-sm text-muted-foreground">Total Schools in System</p>
-                </div>
-
-                <div className="flex w-full h-3 rounded-full overflow-hidden bg-muted">
+        <DashboardCard title="School Distribution by User" description="Percentage of total schools assigned to each user.">
+            <div className="space-y-6 pt-2">
+                {/* Segmented Bar */}
+                <div className="flex w-full h-4 gap-1">
                     {displayData.map((item, index) => (
                         <div
                             key={item.name}
-                            className="h-full transition-all duration-300"
+                            className="h-full rounded-full"
                             style={{
                                 width: `${item.percentage}%`,
                                 backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
                             }}
+                            title={`${item.name}: ${item.percentage.toFixed(1)}%`}
                         />
                     ))}
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-6 gap-y-3 pt-2">
+                {/* Legend */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-4">
                     {displayData.map((item, index) => (
-                        <div key={item.name} className="flex items-center gap-2">
-                             <div 
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
-                             />
-                            <div className="flex flex-col">
-                                <p className="text-sm font-medium leading-none">{item.name}</p>
-                                <p className="text-sm text-muted-foreground">{item.percentage.toFixed(1)}%</p>
+                        <div key={item.name} className="space-y-1">
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className="h-2.5 w-2.5 rounded-full"
+                                    style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                                />
+                                <span className="text-sm text-muted-foreground">{item.name}</span>
                             </div>
+                            <p className="text-xl font-semibold text-foreground">
+                                {item.percentage.toFixed(1)}%
+                            </p>
                         </div>
                     ))}
                 </div>
