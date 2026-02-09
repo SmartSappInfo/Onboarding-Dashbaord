@@ -134,11 +134,17 @@
             "order": { "type": "number" },
             "color": { "type": "string" }
           }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the school was created."
         }
       },
       "required": [
         "name",
-        "slug"
+        "slug",
+        "createdAt"
       ]
     },
     "Meeting": {
@@ -211,6 +217,10 @@
           "type": "string",
           "description": "The name of the media asset or link."
         },
+        "originalName": {
+          "type": "string",
+          "description": "The original filename of the uploaded asset."
+        },
         "url": {
           "type": "string",
           "description": "The public URL of the asset or link.",
@@ -231,6 +241,19 @@
         "size": {
           "type": "number",
           "description": "The file size in bytes. Not applicable for links."
+        },
+        "width": {
+          "type": "number",
+          "description": "The width of the image in pixels."
+        },
+        "height": {
+          "type": "number",
+          "description": "The height of the image in pixels."
+        },
+        "format": {
+          "type": "string",
+          "enum": ["jpeg", "png", "webp"],
+          "description": "The format of the processed image file."
         },
         "uploadedBy": {
           "type": "string",
