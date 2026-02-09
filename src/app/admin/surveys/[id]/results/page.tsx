@@ -141,9 +141,9 @@ export default function SurveyResultsPage() {
     }
     
     return (
-        <div className="flex h-[calc(100vh_-_6rem)] flex-col bg-muted/30 p-4 sm:p-6 md:p-8">
+        <div className="flex h-full flex-col -m-4 sm:-m-6 md:-m-8">
             {/* Sticky Header */}
-            <header className="flex-shrink-0 rounded-t-lg border bg-background shadow-sm">
+            <header className="flex-shrink-0 rounded-t-lg border-b bg-background shadow-sm">
                 <div className="flex items-center justify-between gap-4 p-4">
                     <div className="min-w-0 flex-1">
                         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
@@ -178,7 +178,7 @@ export default function SurveyResultsPage() {
                     onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
                     className="w-full"
                 >
-                    <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-t bg-background p-0">
+                    <TabsList className="grid w-full grid-cols-3 rounded-none border-t bg-background p-0">
                         <TabsTrigger value="responses" className="flex gap-2 rounded-none py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-primary data-[state=active]:shadow-none">
                             <FileText className="h-4 w-4" /> Responses
                         </TabsTrigger>
@@ -193,14 +193,16 @@ export default function SurveyResultsPage() {
             </header>
 
             {/* Single Scrollable Content Area */}
-            <main className="flex-1 overflow-y-auto rounded-b-lg border border-t-0 bg-background shadow-sm">
+            <main className="flex-1 overflow-y-auto bg-muted/30">
                 <Tabs value={activeTab}>
                     <TabsContent value="responses" className="mt-0 h-full">
-                        <ResponsesListView
-                            survey={survey}
-                            responses={responses || []}
-                            isLoading={areResponsesLoading}
-                        />
+                         <div className="bg-background border-t">
+                            <ResponsesListView
+                                survey={survey}
+                                responses={responses || []}
+                                isLoading={areResponsesLoading}
+                            />
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="analytics" className="mt-0 h-full">
