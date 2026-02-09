@@ -26,11 +26,10 @@ export async function getDashboardData() {
     getDocs(collection(db, 'surveys')),
     getDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true)))
-  ].map(p => p.catch(e => e))); // Add error catching to prevent Promise.all from failing completely
+  ].map(p => p.catch(e => e))); 
 
   if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
-      // Return a default/empty state to prevent the page from crashing
       return {
           metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0 },
           latestSurveys: [],
@@ -45,14 +44,11 @@ export async function getDashboardData() {
 
   const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
   const now = startOfToday();
-  
-  // Card 0: Metrics
-  const sevenDaysFromNow = new Date();
-  sevenDaysFromNow.setDate(now.getDate() + 7);
+  const totalSchools = schools.length;
   
   const upcomingMeetingsCount = meetingsSnapshot.docs.filter(doc => {
-    const meetingTime = new Date(doc.data().meetingTime);
-    return isAfter(meetingTime, now);
+    const meetingTime = doc.data().meetingTime;
+    return meetingTime && isAfter(new Date(meetingTime), now);
   }).length;
 
   const publishedSurveysCount = surveysSnapshot.docs.filter(doc => doc.data().status === 'published').length;
@@ -61,13 +57,12 @@ export async function getDashboardData() {
   const totalResponsesCount = (await Promise.all(responseCountPromises)).reduce((sum, count) => sum + count, 0);
 
   const metrics = {
-    totalSchools: schoolsSnapshot.size,
+    totalSchools: totalSchools,
     upcomingMeetings: upcomingMeetingsCount,
     publishedSurveys: publishedSurveysCount,
     totalResponses: totalResponsesCount,
   };
 
-  // Card 2: Recently Added Schools
   const recentSchools = schools
     .sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
@@ -76,7 +71,6 @@ export async function getDashboardData() {
     })
     .slice(0, 5);
 
-  // Card 3: Latest Surveys
   const surveyResponseCounts = await Promise.all(surveysSnapshot.docs.map(async (doc) => {
     const responsesSnapshot = await getDocs(collection(db, 'surveys', doc.id, 'responses'));
     return { id: doc.id, responseCount: responsesSnapshot.size };
@@ -84,17 +78,20 @@ export async function getDashboardData() {
   const surveyResponseCountMap = new Map(surveyResponseCounts.map(item => [item.id, item.responseCount]));
   const latestSurveys = surveysSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Survey))
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .sort((a, b) => {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    })
     .slice(0, 3)
     .map(survey => ({
       ...survey,
       responseCount: surveyResponseCountMap.get(survey.id) || 0,
     }));
 
-  // Card 4: Upcoming Meetings
   const upcomingMeetings = meetingsSnapshot.docs
     .map(doc => ({ id: doc.id, ...doc.data() } as Meeting))
-    .filter(meeting => new Date(meeting.meetingTime) >= now)
+    .filter(meeting => meeting.meetingTime && new Date(meeting.meetingTime) >= now)
     .sort((a, b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
     .slice(0, 5)
     .map(meeting => ({
@@ -103,7 +100,6 @@ export async function getDashboardData() {
       status: 'Upcoming',
     }));
 
-  // Card 5: Pipeline Pie Chart
   const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
   const pipelineCounts = stages.map(stage => ({
     name: stage.name,
@@ -111,22 +107,16 @@ export async function getDashboardData() {
     color: stage.color || '#cccccc'
   }));
 
-  // Card 7: User Assignments
   const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map(user => {
       const assignedSchools = schools.filter(s => s.assignedTo?.userId === user.id);
-      const schoolsByStage = stages.map(stage => {
-          const count = assignedSchools.filter(s => s.stage?.id === stage.id).length;
-          return { name: stage.name, count, color: stage.color || '#cccccc' };
-      });
       return {
           user,
           totalAssigned: assignedSchools.length,
-          schoolsByStage
+          assignmentPercentage: totalSchools > 0 ? (assignedSchools.length / totalSchools) * 100 : 0,
       };
   });
 
-  // Card 8: Monthly School Additions
   const monthlySchools = schools.reduce((acc, school) => {
     if (school.createdAt) {
         const month = format(new Date(school.createdAt), 'MMM');

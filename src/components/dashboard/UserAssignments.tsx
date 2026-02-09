@@ -1,9 +1,8 @@
-
 'use client';
 import DashboardCard from "./DashboardCard";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { User } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "../ui/tooltip";
+import { Progress } from "@/components/ui/progress";
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
@@ -20,48 +19,33 @@ export function UserAssignments({ data }: { data: any[] }) {
   
     return (
         <DashboardCard title="Users & Assigned Schools">
-            <TooltipProvider>
-                <div className="space-y-6">
-                {data.map(userData => {
-                    const totalSchools = userData.totalAssigned;
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {data.map((userData: any) => {
+                    const percentage = userData.assignmentPercentage || 0;
                     return (
-                        <div key={userData.user.id}>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="flex items-center gap-2">
-                                    <Avatar className="h-8 w-8">
+                        <div key={userData.user.id} className="p-4 border rounded-lg bg-card shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center gap-3">
+                                    <Avatar className="h-9 w-9">
                                         <AvatarImage src={userData.user.photoURL} alt={userData.user.name} />
                                         <AvatarFallback>{getInitials(userData.user.name)}</AvatarFallback>
                                     </Avatar>
-                                    <span className="font-medium">{userData.user.name}</span>
+                                    <span className="font-medium text-sm">{userData.user.name}</span>
                                 </div>
-                                <span className="text-sm font-semibold">{totalSchools} {totalSchools === 1 ? 'school' : 'schools'}</span>
+                                <span className="text-lg font-bold">
+                                    {userData.totalAssigned}
+                                </span>
                             </div>
-                            <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-                                {totalSchools > 0 && userData.schoolsByStage.map((stage: any, index: number) => {
-                                    if (stage.count === 0) return null;
-                                    const percentage = (stage.count / totalSchools) * 100;
-                                    return (
-                                        <Tooltip key={index}>
-                                            <TooltipTrigger asChild>
-                                                <div
-                                                    className="h-full transition-all"
-                                                    style={{ width: `${percentage}%`, backgroundColor: stage.color }}
-                                                />
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <p>{stage.name}: {stage.count}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    )
-                                })}
+                            <div className="flex items-center gap-2">
+                                <Progress value={percentage} className="w-full h-2" />
+                                <span className="text-xs font-mono text-muted-foreground w-12 text-right">
+                                    {percentage.toFixed(0)}%
+                                </span>
                             </div>
                         </div>
-                    )
+                    );
                 })}
-                </div>
-            </TooltipProvider>
+            </div>
         </DashboardCard>
     );
 }
-
-    
