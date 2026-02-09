@@ -2,7 +2,7 @@
 
 'use client';
 
-import { collection, writeBatch, getDocs, doc, query, where, limit } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, limit, orderBy } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
