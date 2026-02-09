@@ -249,7 +249,7 @@ export default function SchoolsPage() {
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         {renderSchoolActions(school)}
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
@@ -258,11 +258,11 @@ export default function SchoolsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAssigningSchool(school); }}>
+                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
                               <UserPlus className="mr-2 h-4 w-4" />
                               <span>Assign to User</span>
                             </DropdownMenuItem>
-                             <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setChangingStageSchool(school); }}>
+                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
                               <Workflow className="mr-2 h-4 w-4" />
                               <span>Change Stage</span>
                             </DropdownMenuItem>
@@ -277,7 +277,7 @@ export default function SchoolsPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onSelect={(e) => { e.preventDefault(); setSchoolToDelete(school); }}
+                              onClick={() => setSchoolToDelete(school)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete School</span>
@@ -320,7 +320,7 @@ export default function SchoolsPage() {
                                         </CardDescription>
                                     </div>
                                 </div>
-                                <DropdownMenu>
+                                <DropdownMenu modal={false}>
                                     <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" className="h-8 w-8 p-0">
                                           <span className="sr-only">Open menu</span>
@@ -328,11 +328,11 @@ export default function SchoolsPage() {
                                       </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setAssigningSchool(school); }}>
+                                        <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
                                           <UserPlus className="mr-2 h-4 w-4" />
                                           <span>Assign to User</span>
                                         </DropdownMenuItem>
-                                         <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setChangingStageSchool(school); }}>
+                                         <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
                                           <Workflow className="mr-2 h-4 w-4" />
                                           <span>Change Stage</span>
                                         </DropdownMenuItem>
@@ -347,7 +347,7 @@ export default function SchoolsPage() {
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem
                                           className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                          onSelect={(e) => { e.preventDefault(); setSchoolToDelete(school); }}
+                                          onClick={() => setSchoolToDelete(school)}
                                         >
                                           <Trash2 className="mr-2 h-4 w-4" />
                                           <span>Delete School</span>

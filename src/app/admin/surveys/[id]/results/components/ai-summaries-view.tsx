@@ -213,7 +213,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                                         {format(new Date(summary.createdAt), "MMM d, yyyy 'at' p")}
                                                     </CardDescription>
                                                 </div>
-                                                <DropdownMenu>
+                                                <DropdownMenu modal={false}>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
                                                             <MoreVertical className="h-4 w-4" />
@@ -224,7 +224,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                                             <Copy className="mr-2 h-4 w-4" />
                                                             <span>Copy Text</span>
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setSummaryToDelete(summary); }} className="text-destructive">
+                                                        <DropdownMenuItem onClick={() => setSummaryToDelete(summary)} className="text-destructive">
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             <span>Delete</span>
                                                         </DropdownMenuItem>

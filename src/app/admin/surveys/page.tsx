@@ -226,7 +226,7 @@ export default function SurveysPage() {
                             <p>Copy Public Link</p>
                           </TooltipContent>
                         </Tooltip>
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="h-8 w-8 p-0">
                               <span className="sr-only">Open menu</span>
@@ -264,7 +264,7 @@ export default function SurveysPage() {
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onSelect={(e) => { e.preventDefault(); setSurveyToDelete(survey); }}
+                              onClick={() => setSurveyToDelete(survey)}
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
                               <span>Delete Survey</span>

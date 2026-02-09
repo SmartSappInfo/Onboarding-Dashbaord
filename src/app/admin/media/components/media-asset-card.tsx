@@ -143,7 +143,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             <p className="text-xs text-gray-300">{asset.width && asset.height ? `${asset.width}x${asset.height} - ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
           </div>
           <div className="absolute top-1 right-1">
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-white bg-black/30 hover:bg-black/50 hover:text-white">
                   <MoreVertical size={16} />
@@ -157,7 +157,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                  onSelect={(e) => { e.preventDefault(); setIsDeleteDialogOpen(true); }}
+                  onClick={() => setIsDeleteDialogOpen(true)}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   <span>Delete</span>
