@@ -20,7 +20,7 @@ export function RecentActivity({ schools }: { schools: any[] }) {
                             {s.createdAt ? formatDistanceToNow(new Date(s.createdAt), { addSuffix: true }) : null}
                         </p>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    <div className="mt-2 flex flex-col items-start gap-2 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                             <User className="h-3 w-3" />
                             <span>{s.assignedTo?.name || 'Unassigned'}</span>
@@ -29,14 +29,14 @@ export function RecentActivity({ schools }: { schools: any[] }) {
                             <Users className="h-3 w-3" />
                             <span>{s.nominalRoll?.toLocaleString() || 0} students</span>
                         </div>
+                        {s.modules && (
+                            <div className="flex flex-wrap gap-1">
+                                {s.modules.split(',').slice(0, 3).map((mod: string) => (
+                                    <Badge key={mod.trim()} variant="secondary" className="text-xs font-normal">{mod.trim()}</Badge>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                    {s.modules && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                            {s.modules.split(',').slice(0, 3).map((mod: string) => (
-                                <Badge key={mod.trim()} variant="secondary" className="text-xs font-normal">{mod.trim()}</Badge>
-                            ))}
-                        </div>
-                    )}
                 </Link>
             </li>
           ))}
