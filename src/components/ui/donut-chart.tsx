@@ -21,6 +21,8 @@ interface DonutChartProps extends React.HTMLAttributes<HTMLDivElement> {
   animationDelayPerSegment?: number;
   highlightOnHover?: boolean;
   centerContent?: React.ReactNode;
+  /** The currently hovered segment, controlled by the parent. */
+  hoveredSegment: DonutChartSegment | null;
   /** Callback function when a segment is hovered */
   onSegmentHover?: (segment: DonutChartSegment | null) => void;
 }
@@ -36,15 +38,13 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
       animationDelayPerSegment = 0.05,
       highlightOnHover = true,
       centerContent,
+      hoveredSegment,
       onSegmentHover,
       className,
       ...props
     },
     ref
   ) => {
-    const [hoveredSegment, setHoveredSegment] =
-      React.useState<DonutChartSegment | null>(null);
-
     const internalTotalValue = React.useMemo(
       () =>
         propTotalValue || data.reduce((sum, segment) => sum + segment.value, 0),
@@ -55,13 +55,8 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
     const circumference = 2 * Math.PI * radius;
     let cumulativePercentage = 0;
 
-    // Effect to call the onSegmentHover prop when internal state changes
-    React.useEffect(() => {
-      onSegmentHover?.(hoveredSegment);
-    }, [hoveredSegment, onSegmentHover]);
-
     const handleMouseLeave = () => {
-      setHoveredSegment(null);
+      onSegmentHover?.(null);
     };
 
     return (
@@ -141,7 +136,7 @@ const DonutChart = React.forwardRef<HTMLDivElement, DonutChartProps>(
                     transform: isActive ? 'scale(1.03)' : 'scale(1)',
                     transition: "filter 0.2s ease-out, transform 0.2s ease-out",
                   }}
-                  onMouseEnter={() => setHoveredSegment(segment)}
+                  onMouseEnter={() => onSegmentHover?.(segment)}
                 />
               );
             })}

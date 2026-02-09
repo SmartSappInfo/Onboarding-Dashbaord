@@ -64,6 +64,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                     size={280}
                     strokeWidth={30}
                     centerContent={centerContent}
+                    hoveredSegment={hoveredSegment}
                     onSegmentHover={handleSegmentHover}
                 />
                 <div className="w-full max-w-sm mt-6 space-y-2">
@@ -74,7 +75,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                             <div 
                                 key={segment.label}
                                 className={cn(
-                                    "flex justify-between items-center p-2 rounded-md transition-colors",
+                                    "flex justify-between items-center p-2 rounded-md transition-colors cursor-pointer",
                                     isActive && "bg-muted"
                                 )}
                                 onMouseEnter={() => handleSegmentHover(segment)}
