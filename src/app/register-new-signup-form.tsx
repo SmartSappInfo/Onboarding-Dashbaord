@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import * as React from "react";
@@ -24,11 +23,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Calendar } from "./ui/calendar";
-import { Separator } from "./ui/separator";
-import { Switch } from "./ui/switch";
-import { Badge } from "./ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 
 const formSchema = z.object({
