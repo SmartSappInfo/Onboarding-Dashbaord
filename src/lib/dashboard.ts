@@ -118,8 +118,8 @@ export async function getDashboardData() {
   });
 
   const monthlySchools = schools.reduce((acc, school) => {
-    if (school.createdAt) {
-        const month = format(new Date(school.createdAt), 'MMM');
+    if (school.implementationDate) {
+        const month = format(new Date(school.implementationDate), 'MMM');
         acc[month] = (acc[month] || 0) + 1;
     }
     return acc;
