@@ -44,9 +44,9 @@ function ResponsesListView({ survey, responses, isLoading }: { survey: Survey, r
     return (
         <div className="relative h-full">
             <Table>
-                <TableHeader className="sticky top-0 z-10 bg-background shadow-sm">
+                <TableHeader className="sticky top-0 z-10 shadow-sm">
                     <TableRow>
-                        <TableHead className="sticky left-0 bg-background z-20 w-[200px] whitespace-nowrap">Submitted</TableHead>
+                        <TableHead className="sticky left-0 bg-primary z-20 w-[200px] whitespace-nowrap">Submitted</TableHead>
                         {questions.map(q => (
                             <TableHead key={q.id} className="min-w-[200px]">{q.title}</TableHead>
                         ))}
