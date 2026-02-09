@@ -60,13 +60,13 @@ const componentGridConfig: Record<string, string> = {
 };
 
 const DEFAULT_LAYOUT = [
-    'quickActions',
     'pipelinePieChart',
+    'quickActions',
     'latestSurveys',
     'upcomingMeetings',
     'monthlySchoolsChart',
-    'recentActivity',
     'userAssignments',
+    'recentActivity',
 ];
 
 export default function DashboardGrid({ initialData }: { initialData: any }) {
