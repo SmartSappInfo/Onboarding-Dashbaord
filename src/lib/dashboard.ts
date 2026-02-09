@@ -29,11 +29,14 @@ export async function getDashboardData() {
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true)))
   ].map(p => p.catch(e => {
     console.error("Dashboard data fetching error:", e);
+    // In case of an error with one fetch, return it to be handled below
     return e;
   }))); 
 
+  // Gracefully handle cases where one of the fetches might fail
   if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
+      // Return a default, empty state for the dashboard
       return {
           metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0 },
           latestSurveys: [],
@@ -105,11 +108,17 @@ export async function getDashboardData() {
     }));
 
   const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
-  const pipelineCounts = stages.map(stage => ({
-    name: stage.name,
-    count: schools.filter(school => school.stage?.id === stage.id).length,
-    color: stage.color || '#cccccc'
-  }));
+  const pipelineCounts = stages.map(stage => {
+    const schoolsInStage = schools.filter(school => school.stage?.id === stage.id);
+    const schoolCount = schoolsInStage.length;
+    const studentCount = schoolsInStage.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
+    return {
+      name: stage.name,
+      count: schoolCount,
+      students: studentCount,
+      color: stage.color || '#cccccc'
+    };
+  });
 
   const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map(user => {
@@ -139,15 +148,16 @@ export async function getDashboardData() {
   }
 
   const monthlySchools = schools.reduce((acc, school) => {
-    if (school.createdAt) {
+    if (school.implementationDate) {
         try {
-            const date = new Date(school.createdAt);
+            const date = new Date(school.implementationDate);
+            // Check if the date is valid
             if (!isNaN(date.getTime())) {
                 const month = format(date, 'MMM');
                 acc[month] = (acc[month] || 0) + 1;
             }
         } catch (e) {
-            // Ignore invalid dates
+            // Ignore schools with invalid implementationDate
         }
     }
     return acc;

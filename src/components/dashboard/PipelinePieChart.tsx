@@ -1,28 +1,50 @@
 
 'use client';
 
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as React from 'react';
+import { DonutChart, type DonutChartSegment } from "@/components/ui/donut-chart";
 import DashboardCard from "./DashboardCard";
 
-const COLORS = [
-    '#7209b7', // Purple
-    '#A8E063', // Lemon Green
-    '#FFBA08', // Yellow
-    '#4361ee',
-    '#f72585',
-    '#b5179e',
-    '#560bad',
-    '#480ca8',
-    '#3f37c9',
-    '#4895ef',
-    '#4cc9f0',
-    '#d00000',
-];
+export function PipelinePieChart({ stages }: { stages: { name: string; count: number; students: number; color?: string }[] }) {
+    const [hoveredSegment, setHoveredSegment] = React.useState<DonutChartSegment | null>(null);
 
-export function PipelinePieChart({ stages }: { stages: { name: string; count: number; color?: string }[] }) {
-    const chartData = stages.filter(stage => stage.count > 0);
-    const totalSchools = chartData.reduce((acc, curr) => acc + curr.count, 0);
+    const chartData = stages.map(stage => ({
+        value: stage.count,
+        label: stage.name,
+        color: stage.color || '#cccccc',
+        students: stage.students,
+    }));
 
+    const totalSchools = React.useMemo(() => stages.reduce((acc, curr) => acc + curr.count, 0), [stages]);
+    const totalStudents = React.useMemo(() => stages.reduce((acc, curr) => acc + curr.students, 0), [stages]);
+
+    const handleSegmentHover = (segment: DonutChartSegment | null) => {
+        setHoveredSegment(segment);
+    };
+
+    const centerContent = (
+        <div className="text-center">
+            {hoveredSegment ? (
+                <>
+                    <p className="text-sm text-muted-foreground truncate">{hoveredSegment.label}</p>
+                    <p className="text-3xl font-bold">
+                        {totalSchools > 0 ? ((hoveredSegment.value / totalSchools) * 100).toFixed(1) : 0}%
+                    </p>
+                    <p className="text-sm text-muted-foreground">{hoveredSegment.value} School{hoveredSegment.value === 1 ? '' : 's'}</p>
+                    <p className="text-lg font-semibold mt-1">{hoveredSegment.students?.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Students</p>
+                </>
+            ) : (
+                <>
+                    <p className="text-3xl font-bold">{totalSchools}</p>
+                    <p className="text-sm text-muted-foreground">Total Schools</p>
+                    <p className="text-xl font-semibold mt-2">{totalStudents.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Total Students</p>
+                </>
+            )}
+        </div>
+    );
+    
     if (totalSchools === 0) {
         return (
             <DashboardCard title="Onboarding Pipeline">
@@ -35,47 +57,14 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
   
   return (
     <DashboardCard title="Onboarding Pipeline">
-        <div className="w-full h-80">
-            <ResponsiveContainer>
-                <PieChart>
-                    <Pie
-                        data={chartData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        outerRadius={110}
-                        innerRadius={52}
-                        cornerRadius={8}
-                        paddingAngle={2}
-                        fill="#8884d8"
-                        dataKey="count"
-                        nameKey="name"
-                        label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
-                            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
-                            const x = cx + radius * Math.cos(-midAngle * (Math.PI / 180));
-                            const y = cy + radius * Math.sin(-midAngle * (Math.PI / 180));
-                            if (percent < 0.05) return null; // Don't render label for small slices
-                            return (
-                                <text x={x} y={y} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="12" fontWeight="bold">
-                                    {`${(percent * 100).toFixed(0)}%`}
-                                </text>
-                            );
-                        }}
-                    >
-                        {chartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color || COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                    <Tooltip
-                        contentStyle={{
-                            background: "hsl(var(--card))",
-                            borderColor: "hsl(var(--border))",
-                            borderRadius: "var(--radius)",
-                        }}
-                    />
-                    <Legend iconSize={10} wrapperStyle={{fontSize: '12px'}}/>
-                </PieChart>
-            </ResponsiveContainer>
+        <div className="w-full h-80 flex items-center justify-center">
+            <DonutChart
+                data={chartData}
+                size={280}
+                strokeWidth={30}
+                centerContent={centerContent}
+                onSegmentHover={handleSegmentHover}
+            />
         </div>
     </DashboardCard>
   )
