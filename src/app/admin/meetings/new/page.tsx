@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,6 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { collection, addDoc } from 'firebase/firestore';
 
 import type { School, MeetingType } from '@/lib/types';
@@ -26,6 +28,7 @@ import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePe
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
+import { ArrowLeft } from 'lucide-react';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -125,6 +128,12 @@ export default function NewMeetingPage() {
 
   return (
     <div>
+      <Button asChild variant="ghost" className="mb-4 -ml-4">
+        <Link href="/admin/meetings">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Meetings
+        </Link>
+      </Button>
       <h1 className="text-4xl font-bold tracking-tight mb-8">Add New Meeting</h1>
       <Card className="max-w-2xl mx-auto">
         <CardHeader>

@@ -7,8 +7,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { collection, addDoc } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -127,6 +128,12 @@ export default function NewSchoolPage() {
 
   return (
     <div>
+      <Button asChild variant="ghost" className="mb-4 -ml-4">
+        <Link href="/admin/schools">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Schools
+        </Link>
+      </Button>
       <h1 className="text-4xl font-bold tracking-tight mb-8">Add New School</h1>
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
