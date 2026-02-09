@@ -1,6 +1,19 @@
 
 {
   "entities": {
+    "DashboardLayout": {
+      "title": "Dashboard Layout",
+      "type": "object",
+      "description": "Stores a user's preferred dashboard component order.",
+      "properties": {
+        "componentIds": {
+          "type": "array",
+          "description": "An ordered array of dashboard component IDs.",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["componentIds"]
+    },
     "UserProfile": {
       "title": "User Profile",
       "type": "object",
@@ -416,6 +429,16 @@
   },
   "firestore": {
     "structure": [
+      {
+        "path": "/dashboardLayouts/{userId}",
+        "definition": {
+          "entityName": "DashboardLayout",
+          "schema": {
+            "$ref": "#/entities/DashboardLayout"
+          },
+          "description": "Stores user-specific dashboard layouts."
+        }
+      },
       {
         "path": "/users/{userId}",
         "definition": {

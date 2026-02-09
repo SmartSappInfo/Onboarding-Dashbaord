@@ -19,6 +19,10 @@ export interface UserProfile {
   createdAt: string; // ISO string
 }
 
+export interface DashboardLayout {
+  componentIds: string[];
+}
+
 export interface OnboardingStage {
   id: string;
   name: string;

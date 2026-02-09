@@ -34,6 +34,11 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
     
+    // Allow users to manage their own dashboard layout
+    match /dashboardLayouts/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
     // --- User Management Rules ---
     match /users/{userId} {
       // Admins can read/write any user profile to authorize them.

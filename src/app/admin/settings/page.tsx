@@ -4,16 +4,23 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFirestore } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
+import { doc, setDoc } from 'firebase/firestore';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout';
+
+const DEFAULT_LAYOUT = [
+    'quickActions', 'pipelinePieChart', 'latestSurveys', 'upcomingMeetings', 
+    'monthlySchoolsChart', 'recentActivity', 'userAssignments'
+];
 
 export default function SettingsPage() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const [seedingStatus, setSeedingStatus] = useState<Record<Seeder, SeedingState>>({
     media: 'idle',
@@ -22,6 +29,7 @@ export default function SettingsPage() {
     surveys: 'idle',
     users: 'idle',
     stages: 'idle',
+    layout: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -37,49 +45,50 @@ export default function SettingsPage() {
     setSeedingStatus(prev => ({ ...prev, [seeder]: 'seeding' }));
 
     try {
-      let count = 0;
-      let name = '';
-      
-      if (seeder === 'media') {
-        count = await seedMedia(firestore);
-        name = 'Media Assets';
-         toast({
-            title: 'Seeding Successful',
-            description: `${count} ${name} seeded into the database.`,
-        });
-      } else if (seeder === 'schools') {
-        count = await seedSchools(firestore);
-        name = 'Schools';
-         toast({
-            title: 'Seeding Successful',
-            description: `${count} ${name} seeded into the database.`,
-        });
-      } else if (seeder === 'meetings') {
-        count = await seedMeetings(firestore);
-        name = 'Meetings';
-         toast({
-            title: 'Seeding Successful',
-            description: `${count} ${name} seeded into the database.`,
-        });
-      } else if (seeder === 'surveys') {
-        count = await seedSurveys(firestore);
-        name = 'Surveys';
-         toast({
-            title: 'Seeding Successful',
-            description: `${count} ${name} seeded into the database.`,
-        });
-      } else if (seeder === 'users') {
-        count = await seedUserAvatars(firestore);
-        toast({
-            title: 'Update Complete',
-            description: count > 0 ? `${count} user profiles updated with new avatars.` : 'All users already have avatars.',
+      if (seeder === 'layout') {
+          if (!user) {
+            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
+            setSeedingStatus(prev => ({ ...prev, [seeder]: 'error' }));
+            return;
+          }
+          await setDoc(doc(firestore, 'dashboardLayouts', user.uid), { componentIds: DEFAULT_LAYOUT });
+          toast({ title: 'Layout Reset', description: 'Dashboard layout has been reset to default.' });
+      } else {
+        let count = 0;
+        let name = '';
+        
+        if (seeder === 'media') {
+          count = await seedMedia(firestore);
+          name = 'Media Assets';
+        } else if (seeder === 'schools') {
+          count = await seedSchools(firestore);
+          name = 'Schools';
+        } else if (seeder === 'meetings') {
+          count = await seedMeetings(firestore);
+          name = 'Meetings';
+        } else if (seeder === 'surveys') {
+          count = await seedSurveys(firestore);
+          name = 'Surveys';
+        } else if (seeder === 'users') {
+          count = await seedUserAvatars(firestore);
+          toast({
+              title: 'Update Complete',
+              description: count > 0 ? `${count} user profiles updated with new avatars.` : 'All users already have avatars.',
           });
-      } else if (seeder === 'stages') {
-        const { stagesCreated, schoolsUpdated } = await seedOnboardingStages(firestore);
-        toast({
-            title: 'Pipeline Stages Updated',
-            description: `${stagesCreated} default stages were created/reset. ${schoolsUpdated} schools were updated.`,
-        });
+        } else if (seeder === 'stages') {
+          const { stagesCreated, schoolsUpdated } = await seedOnboardingStages(firestore);
+          toast({
+              title: 'Pipeline Stages Updated',
+              description: `${stagesCreated} default stages were created/reset. ${schoolsUpdated} schools were updated.`,
+          });
+        }
+
+        if (name) {
+          toast({
+              title: 'Seeding Successful',
+              description: `${count} ${name} seeded into the database.`,
+          });
+        }
       }
       
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
@@ -133,6 +142,7 @@ export default function SettingsPage() {
               <div className="flex flex-wrap gap-4">
                   <SeedingButton seeder="users">Update User Avatars</SeedingButton>
                   <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
+                  <SeedingButton seeder="layout">Reset Dashboard Layout</SeedingButton>
               </div>
           </div>
         </CardContent>
