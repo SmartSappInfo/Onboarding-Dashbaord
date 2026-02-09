@@ -13,7 +13,7 @@ export function RecentActivity({ schools }: { schools: any[] }) {
                  <Link href={`/admin/schools/${s.id}/edit`} className="flex justify-between items-center p-2 rounded-md hover:bg-muted/50 transition-colors -m-2">
                     <span className="text-sm font-medium">{s.name}</span>
                     <span className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(s.createdAt), { addSuffix: true })}
+                    {s.createdAt ? formatDistanceToNow(new Date(s.createdAt), { addSuffix: true }) : null}
                     </span>
                 </Link>
             </li>
