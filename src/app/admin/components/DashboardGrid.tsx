@@ -27,6 +27,7 @@ import {
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout } from '@/lib/types';
 import { DashboardSkeleton } from './DashboardSkeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const componentMap: Record<string, React.FC<any>> = {
@@ -53,10 +54,10 @@ const componentGridConfig: Record<string, string> = {
   userAssignments: 'lg:col-span-4',
   pipelinePieChart: 'lg:col-span-2 lg:row-span-2',
   quickActions: 'lg:col-span-2',
-  latestSurveys: 'lg:col-span-2',
   upcomingMeetings: 'lg:col-span-2',
-  monthlySchoolsChart: 'lg:col-span-4',
+  latestSurveys: 'lg:col-span-2',
   recentActivity: 'lg:col-span-2',
+  monthlySchoolsChart: 'lg:col-span-4',
 };
 
 const DEFAULT_LAYOUT = [
@@ -74,6 +75,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
     const firestore = useFirestore();
     const [orderedComponents, setOrderedComponents] = useState<string[]>(DEFAULT_LAYOUT);
     const [isLayoutLoaded, setIsLayoutLoaded] = useState(false);
+    const isMobile = useIsMobile();
 
     const layoutDocRef = useMemoFirebase(() => {
         if (!user || !firestore) return null;
@@ -123,6 +125,25 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
 
     if (!isLayoutLoaded) {
         return <DashboardSkeleton />;
+    }
+
+    if (isMobile) {
+        return (
+            <div className="grid grid-cols-1 gap-6">
+                {orderedComponents.map((id) => {
+                    const Component = componentMap[id];
+                    if (!Component) return null;
+
+                    const props = componentPropsMap(initialData)[id];
+
+                    return (
+                        <div key={id}>
+                            <Component {...props} />
+                        </div>
+                    );
+                })}
+            </div>
+        );
     }
 
     return (
