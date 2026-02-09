@@ -204,7 +204,7 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
             schoolName: school.name,
             schoolSlug: school.slug,
             type: type,
-            meetingTime: new Date(Date.now() + (index + 1) * (typeIndex + 1) * 3 * 24 * 60 * 60 * 1000).toISOString(),
+            meetingTime: new Date(Date.now() + ((index * 3) + typeIndex + 1) * 3 * 24 * 60 * 60 * 1000).toISOString(),
             meetingLink: `https://meet.google.com/${school.slug.substring(0,3)}-${type.slug.substring(0,3)}-${Math.random().toString(36).substring(2,5)}`,
             recordingUrl: type.id === 'parent' ? 'https://youtu.be/dQw4w9WgXcQ' : '',
             brochureUrl: type.id === 'parent' ? mediaData.find(m=>m.type==='document')?.url : '',
