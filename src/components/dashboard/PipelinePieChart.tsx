@@ -1,3 +1,4 @@
+
 'use client';
 
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
@@ -43,7 +44,7 @@ export function PipelinePieChart({ stages }: { stages: { name: string; count: nu
                         cy="50%"
                         labelLine={false}
                         outerRadius={110}
-                        innerRadius={80}
+                        innerRadius={52}
                         cornerRadius={8}
                         paddingAngle={2}
                         fill="#8884d8"
