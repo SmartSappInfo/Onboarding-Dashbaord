@@ -50,13 +50,13 @@ const componentPropsMap = (data: any) => ({
 });
 
 const componentGridConfig: Record<string, string> = {
-  quickActions: 'lg:col-span-2',
+  userAssignments: 'lg:col-span-4',
   pipelinePieChart: 'lg:col-span-2 lg:row-span-2',
+  quickActions: 'lg:col-span-2',
   latestSurveys: 'lg:col-span-2',
   upcomingMeetings: 'lg:col-span-2',
-  monthlySchoolsChart: 'lg:col-span-2',
+  monthlySchoolsChart: 'lg:col-span-4',
   recentActivity: 'lg:col-span-4',
-  userAssignments: 'lg:col-span-4',
 };
 
 const DEFAULT_LAYOUT = [
