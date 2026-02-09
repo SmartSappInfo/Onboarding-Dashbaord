@@ -200,13 +200,15 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
     MEETING_TYPES.forEach((type, typeIndex) => {
         const docRef = doc(meetingsCollection);
         const daysInFuture = (index * 7) + (typeIndex * 2) + 1;
-        const meetingTimestamp = Date.now() + daysInFuture * 24 * 60 * 60 * 1000;
+        const meetingDate = new Date();
+        meetingDate.setDate(meetingDate.getDate() + daysInFuture);
+        
         const meeting: Omit<Meeting, 'id'> = {
             schoolId: school.id,
             schoolName: school.name,
             schoolSlug: school.slug,
             type: type,
-            meetingTime: new Date(meetingTimestamp).toISOString(),
+            meetingTime: meetingDate.toISOString(),
             meetingLink: `https://meet.google.com/${school.slug.substring(0,3)}-${type.slug.substring(0,3)}-${Math.random().toString(36).substring(2,5)}`,
             recordingUrl: type.id === 'parent' ? 'https://youtu.be/dQw4w9WgXcQ' : '',
             brochureUrl: type.id === 'parent' ? mediaData.find(m=>m.type==='document')?.url : '',
