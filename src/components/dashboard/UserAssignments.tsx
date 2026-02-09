@@ -1,5 +1,6 @@
 'use client';
 import DashboardCard from "./DashboardCard";
+import { Users } from "lucide-react";
 
 const CHART_COLORS = [
     '#f72585', '#b5179e', '#7209b7', '#560bad', 
@@ -18,31 +19,40 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
         );
     }
     
-    // Filter for users with assigned schools and prepare their data
     const assignedUsersData = data
         .filter(d => d.assignmentPercentage > 0)
-        .map(d => ({
-            name: d.user.name.split(' ')[0], // First name
+        .map((d, index) => ({
+            name: d.user.name.split(' ')[0],
             percentage: d.assignmentPercentage,
+            color: CHART_COLORS[index % CHART_COLORS.length]
         }));
 
     const assignedSchools = data.reduce((acc, userData) => acc + userData.totalAssigned, 0);
     const unassignedCount = totalSchools - assignedSchools;
     const unassignedPercentage = totalSchools > 0 ? (unassignedCount / totalSchools) * 100 : 0;
 
-    // Combine assigned user data with unassigned data if it exists
     const displayData = [...assignedUsersData];
     if (unassignedPercentage > 0) {
         displayData.push({
             name: "Unassigned",
             percentage: unassignedPercentage,
+            color: '#6c757d' // A neutral color for unassigned
         });
     }
 
     if (displayData.length === 0) {
         return (
             <DashboardCard title="School Distribution by User">
-                <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground">
+                 <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                        <p className="text-3xl font-bold">{totalSchools}</p>
+                        <p className="text-sm text-muted-foreground">Total Schools</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground pt-4">
                     <p>No schools assigned to any users.</p>
                 </div>
             </DashboardCard>
@@ -50,35 +60,45 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
     }
 
     return (
-        <DashboardCard title="School Distribution by User" description="Percentage of total schools assigned to each user.">
-            <div className="space-y-6 pt-2">
+        <DashboardCard title="School Distribution by User">
+            <div className="space-y-6">
+                 <div className="flex items-center gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <Users className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                        <p className="text-3xl font-bold">{totalSchools}</p>
+                        <p className="text-sm text-muted-foreground">Total Schools</p>
+                    </div>
+                </div>
+
                 {/* Segmented Bar */}
-                <div className="flex w-full h-4 gap-1">
+                <div className="flex w-full h-3 rounded-full overflow-hidden">
                     {displayData.map((item, index) => (
                         <div
                             key={item.name}
-                            className="h-full rounded-full"
+                            className="h-full"
                             style={{
                                 width: `${item.percentage}%`,
-                                backgroundColor: CHART_COLORS[index % CHART_COLORS.length],
+                                backgroundColor: item.color,
                             }}
                             title={`${item.name}: ${item.percentage.toFixed(1)}%`}
                         />
                     ))}
                 </div>
 
-                {/* Legend */}
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-4">
-                    {displayData.map((item, index) => (
-                        <div key={item.name} className="space-y-1">
+                {/* Labels */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-3">
+                    {displayData.map((item) => (
+                        <div key={item.name}>
                             <div className="flex items-center gap-2">
                                 <span
-                                    className="h-2.5 w-2.5 rounded-full"
-                                    style={{ backgroundColor: CHART_COLORS[index % CHART_COLORS.length] }}
+                                    className="h-2 w-2 rounded-full"
+                                    style={{ backgroundColor: item.color }}
                                 />
-                                <span className="text-sm text-muted-foreground">{item.name}</span>
+                                <span className="text-xs text-muted-foreground">{item.name}</span>
                             </div>
-                            <p className="text-xl font-semibold text-foreground">
+                            <p className="text-sm font-semibold text-foreground mt-0.5">
                                 {item.percentage.toFixed(1)}%
                             </p>
                         </div>
