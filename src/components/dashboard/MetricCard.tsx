@@ -1,5 +1,7 @@
 // components/dashboard/MetricCard.tsx
 import Link from "next/link";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+
 
 export function MetricCard({
   label,
@@ -13,19 +15,18 @@ export function MetricCard({
   icon: React.ElementType
 }) {
   return (
-    <Link
-      href={href}
-      className="block rounded-lg bg-card text-card-foreground shadow-md p-4 hover:shadow-lg transition hover:bg-muted/50"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-semibold">
-            {value}
-          </p>
-        </div>
-        <Icon className="h-6 w-6 text-primary" />
-      </div>
-    </Link>
+    <Card className="hover:shadow-lg transition-shadow">
+       <Link href={href}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+                 <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-2xl font-bold">
+                    {value}
+                </div>
+            </CardContent>
+       </Link>
+    </Card>
   )
 }
