@@ -27,7 +27,10 @@ export async function getDashboardData() {
     getDocs(collection(db, 'surveys')),
     getDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true)))
-  ].map(p => p.catch(e => e))); 
+  ].map(p => p.catch(e => {
+    console.error("Dashboard data fetching error:", e);
+    return e;
+  }))); 
 
   if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
@@ -121,12 +124,28 @@ export async function getDashboardData() {
           assignmentPercentage: totalSchools > 0 ? (totalAssigned / totalSchools) * 100 : 0,
       };
   });
+  
+  // Account for unassigned schools
+  const unassignedSchools = schools.filter(s => !s.assignedTo?.userId);
+  const totalUnassigned = unassignedSchools.length;
+  if (totalUnassigned > 0) {
+      const unassignedStudents = unassignedSchools.reduce((acc, school) => acc + (school.nominalRoll || 0), 0);
+      userAssignments.push({
+          user: { id: 'unassigned', name: 'Unassigned' } as any,
+          totalAssigned: totalUnassigned,
+          totalStudents: unassignedStudents,
+          assignmentPercentage: totalSchools > 0 ? (totalUnassigned / totalSchools) * 100 : 0,
+      });
+  }
 
   const monthlySchools = schools.reduce((acc, school) => {
-    if (school.implementationDate) {
+    if (school.createdAt) {
         try {
-            const month = format(new Date(school.implementationDate), 'MMM');
-            acc[month] = (acc[month] || 0) + 1;
+            const date = new Date(school.createdAt);
+            if (!isNaN(date.getTime())) {
+                const month = format(date, 'MMM');
+                acc[month] = (acc[month] || 0) + 1;
+            }
         } catch (e) {
             // Ignore invalid dates
         }
