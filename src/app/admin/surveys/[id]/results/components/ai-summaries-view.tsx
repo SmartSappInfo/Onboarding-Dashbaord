@@ -128,7 +128,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
     };
     
     return (
-        <AlertDialog open={!!summaryToDelete} onOpenChange={(open) => !open && setSummaryToDelete(null)}>
+        <>
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start p-1">
                 {/* Left Pane (AI Query Form) */}
                 <div className="lg:col-span-2 lg:sticky top-6">
@@ -223,7 +223,7 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                                                             <Copy className="mr-2 h-4 w-4" />
                                                             <span>Copy Text</span>
                                                         </DropdownMenuItem>
-                                                        <DropdownMenuItem onSelect={() => setSummaryToDelete(summary)} className="text-destructive">
+                                                        <DropdownMenuItem onClick={() => setSummaryToDelete(summary)} className="text-destructive">
                                                             <Trash2 className="mr-2 h-4 w-4" />
                                                             <span>Delete</span>
                                                         </DropdownMenuItem>
@@ -249,19 +249,21 @@ export default function AISummariesView({ survey, responses }: { survey: Survey,
                 </div>
             </div>
 
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete this AI-generated summary from your history.
-                </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+            <AlertDialog open={!!summaryToDelete} onOpenChange={(open) => !open && setSummaryToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete this AI-generated summary from your history.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
       

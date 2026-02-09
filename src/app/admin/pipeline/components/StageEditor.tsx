@@ -39,7 +39,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GripVertical, Plus, Trash2, Loader2 } from 'lucide-react';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
@@ -47,7 +47,7 @@ import { cn } from '@/lib/utils';
 
 function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameChange, newName, saveRename, onColorChange }: {
   stage: OnboardingStage;
-  onDelete: (id: string) => void;
+  onDelete: (stage: OnboardingStage) => void;
   isEditing: boolean;
   onToggleEdit: (id: string) => void;
   onNameChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -110,11 +110,9 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
       ) : (
         <span className="flex-grow font-medium" onDoubleClick={() => onToggleEdit(stage.id)}>{stage.name}</span>
       )}
-      <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10">
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </AlertDialogTrigger>
+      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => onDelete(stage)}>
+        <Trash2 className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -265,7 +263,7 @@ export default function StageEditor() {
   };
 
   return (
-    <AlertDialog>
+    <>
         <Card>
             <CardHeader>
                 <CardTitle>Onboarding Stages</CardTitle>
@@ -297,7 +295,7 @@ export default function StageEditor() {
                                 onNameChange={(e) => setEditingStageName(e.target.value)}
                                 saveRename={handleRename}
                                 onColorChange={handleColorChange}
-                                onDelete={() => setStageToDelete(stage)}
+                                onDelete={setStageToDelete}
                             />
                         ))}
                     </div>
@@ -318,18 +316,20 @@ export default function StageEditor() {
                 </div>
             </CardContent>
         </Card>
-        <AlertDialogContent>
-             <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This action will delete the stage "{stageToDelete?.name}". All schools currently in this stage will be moved to "{localStages.find(s=>s.order===1)?.name || 'Welcome'}". This cannot be undone.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setStageToDelete(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteStage}>Delete</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-    </AlertDialog>
+        <AlertDialog open={!!stageToDelete} onOpenChange={(open) => !open && setStageToDelete(null)}>
+          <AlertDialogContent>
+              <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                      This action will delete the stage "{stageToDelete?.name}". All schools currently in this stage will be moved to "{localStages.find(s=>s.order===1)?.name || 'Welcome'}". This cannot be undone.
+                  </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteStage}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+    </>
   );
 }

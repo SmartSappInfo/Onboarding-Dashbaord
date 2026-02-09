@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -20,7 +21,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
@@ -148,161 +148,158 @@ export default function SurveysPage() {
   }
 
   return (
-    <AlertDialog>
-      <TooltipProvider>
-        <div>
-          <div className="flex items-center justify-end mb-8 gap-2">
-            <RainbowButton asChild>
-              <Link href="/admin/surveys/new/ai">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Create With AI
-              </Link>
-            </RainbowButton>
-            <Button asChild>
-              <Link href="/admin/surveys/new">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Create New Survey
-              </Link>
-            </Button>
-          </div>
-          
-          <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[120px] text-center">Responses</TableHead>
-                  <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
-                  <TableHead className="w-[100px] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
-                      <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : surveys && surveys.length > 0 ? (
-                  surveys.map((survey) => (
-                    <TableRow key={survey.id}>
-                      <TableCell className="font-medium">{survey.title}</TableCell>
-                      <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
-                      <TableCell className="text-center">
-                          <Button variant="link" asChild className="font-semibold">
-                              <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
-                                  <SurveyResponseCount surveyId={survey.id} />
-                              </Link>
-                          </Button>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                    if (typeof window !== 'undefined') {
-                                      const url = `${window.location.origin}/surveys/${survey.slug}`;
-                                      navigator.clipboard.writeText(url);
-                                      toast({ title: 'Link Copied!', description: 'Survey page URL copied to clipboard.' });
-                                    }
-                                }}
-                              >
-                                <Copy className="h-4 w-4" />
-                                <span className="sr-only">Copy survey link</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Copy Public Link</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit Survey</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
-                                <BarChart2 className="mr-2 h-4 w-4" />
-                                <span>View Results</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <a href={`/surveys/${survey.slug}`} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="mr-2 h-4 w-4" />
-                                  <span>View Public Page</span>
-                                </a>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              {survey.status === 'published' ? (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(survey, 'draft')}>
-                                      <EyeOff className="mr-2 h-4 w-4" />
-                                      <span>Unpublish (Set to Draft)</span>
-                                  </DropdownMenuItem>
-                              ) : (
-                                  <DropdownMenuItem onClick={() => handleStatusChange(survey, 'published')}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      <span>Publish</span>
-                                  </DropdownMenuItem>
-                              )}
-                              <DropdownMenuSeparator />
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem 
-                                  className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                  onSelect={(e) => e.preventDefault()}
-                                  onClick={() => setSurveyToDelete(survey)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Delete Survey</span>
+    <TooltipProvider>
+      <div>
+        <div className="flex items-center justify-end mb-8 gap-2">
+          <RainbowButton asChild>
+            <Link href="/admin/surveys/new/ai">
+              <Sparkles className="mr-2 h-4 w-4" />
+              Create With AI
+            </Link>
+          </RainbowButton>
+          <Button asChild>
+            <Link href="/admin/surveys/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New Survey
+            </Link>
+          </Button>
+        </div>
+        
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead className="w-[120px]">Status</TableHead>
+                <TableHead className="w-[120px] text-center">Responses</TableHead>
+                <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
+                <TableHead className="w-[100px] text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : surveys && surveys.length > 0 ? (
+                surveys.map((survey) => (
+                  <TableRow key={survey.id}>
+                    <TableCell className="font-medium">{survey.title}</TableCell>
+                    <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
+                    <TableCell className="text-center">
+                        <Button variant="link" asChild className="font-semibold">
+                            <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
+                                <SurveyResponseCount surveyId={survey.id} />
+                            </Link>
+                        </Button>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => {
+                                  if (typeof window !== 'undefined') {
+                                    const url = `${window.location.origin}/surveys/${survey.slug}`;
+                                    navigator.clipboard.writeText(url);
+                                    toast({ title: 'Link Copied!', description: 'Survey page URL copied to clipboard.' });
+                                  }
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                              <span className="sr-only">Copy survey link</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Copy Public Link</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/edit`)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit Survey</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
+                              <BarChart2 className="mr-2 h-4 w-4" />
+                              <span>View Results</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <a href={`/surveys/${survey.slug}`} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                <span>View Public Page</span>
+                              </a>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {survey.status === 'published' ? (
+                                <DropdownMenuItem onClick={() => handleStatusChange(survey, 'draft')}>
+                                    <EyeOff className="mr-2 h-4 w-4" />
+                                    <span>Unpublish (Set to Draft)</span>
                                 </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No surveys found. Create one to get started.
+                            ) : (
+                                <DropdownMenuItem onClick={() => handleStatusChange(survey, 'published')}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    <span>Publish</span>
+                                </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                              onClick={() => setSurveyToDelete(survey)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete Survey</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No surveys found. Create one to get started.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </div>
-      </TooltipProvider>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the survey <span className="font-bold">"{surveyToDelete?.title}"</span> and all its responses.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setSurveyToDelete(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteSurvey}>Continue</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      </div>
+      <AlertDialog open={!!surveyToDelete} onOpenChange={(open) => !open && setSurveyToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the survey <span className="font-bold">"{surveyToDelete?.title}"</span> and all its responses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSurvey}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </TooltipProvider>
   );
 }

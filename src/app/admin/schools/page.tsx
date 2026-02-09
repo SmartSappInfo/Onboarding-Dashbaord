@@ -20,7 +20,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
@@ -175,260 +174,255 @@ export default function SchoolsPage() {
   }
 
   return (
-    <AlertDialog>
-      <TooltipProvider>
-        <div>
-          <div className="flex flex-wrap gap-2 items-center justify-between mb-8">
-              <div className="flex flex-wrap gap-2 w-full md:w-auto">
-                 <Input
-                    placeholder="Search schools..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full max-w-xs"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                  <Button asChild>
-                    <Link href="/admin/schools/new">Add New School</Link>
-                  </Button>
-              </div>
-          </div>
-          
-          {/* Desktop Table View */}
-          <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]"></TableHead>
-                  <TableHead>School Name</TableHead>
-                  <TableHead>Stage</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Implementation Date</TableHead>
-                  <TableHead>Modules</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                      <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                      <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
-                    </TableRow>
-                  ))
-                ) : filteredSchools && filteredSchools.length > 0 ? (
-                  filteredSchools.map((school) => (
-                    <TableRow key={school.id}>
-                      <TableCell>
-                        <Avatar>
-                          <AvatarImage src={school.logoUrl} alt={school.name} />
-                          <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
-                          {school.name}
-                        </button>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="secondary">{school.stage?.name || 'Welcome'}</Badge>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                          {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                          <div className="flex flex-wrap gap-1 max-w-xs">
-                              {school.modules?.split(',').map(m => m.trim()).slice(0, 3).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || 'N/A'}
-                          </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {renderSchoolActions(school)}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
-                                <UserPlus className="mr-2 h-4 w-4" />
-                                <span>Assign to User</span>
-                              </DropdownMenuItem>
-                               <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
-                                <Workflow className="mr-2 h-4 w-4" />
-                                <span>Change Stage</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Edit School</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
-                                <CalendarPlus className="mr-2 h-4 w-4" />
-                                <span>Schedule Meeting</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                               <AlertDialogTrigger asChild>
-                                 <DropdownMenuItem 
-                                  className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                  onSelect={(e) => e.preventDefault()}
-                                  onClick={() => setSchoolToDelete(school)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  <span>Delete School</span>
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+    <TooltipProvider>
+      <div>
+        <div className="flex flex-wrap gap-2 items-center justify-between mb-8">
+            <div className="flex flex-wrap gap-2 w-full md:w-auto">
+               <Input
+                  placeholder="Search schools..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full max-w-xs"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+                <Button asChild>
+                  <Link href="/admin/schools/new">Add New School</Link>
+                </Button>
+            </div>
+        </div>
+        
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[80px]"></TableHead>
+                <TableHead>School Name</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Implementation Date</TableHead>
+                <TableHead>Modules</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
+                  </TableRow>
+                ))
+              ) : filteredSchools && filteredSchools.length > 0 ? (
+                filteredSchools.map((school) => (
+                  <TableRow key={school.id}>
+                    <TableCell>
+                      <Avatar>
+                        <AvatarImage src={school.logoUrl} alt={school.name} />
+                        <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                      </Avatar>
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
+                        {school.name}
+                      </button>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{school.stage?.name || 'Welcome'}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                        {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                        <div className="flex flex-wrap gap-1 max-w-xs">
+                            {school.modules?.split(',').map(m => m.trim()).slice(0, 3).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || 'N/A'}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="h-24 text-center">
-                      No schools found.
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {renderSchoolActions(school)}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <span className="sr-only">Open menu</span>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
+                              <UserPlus className="mr-2 h-4 w-4" />
+                              <span>Assign to User</span>
+                            </DropdownMenuItem>
+                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                              <Workflow className="mr-2 h-4 w-4" />
+                              <span>Change Stage</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              <span>Edit School</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
+                              <CalendarPlus className="mr-2 h-4 w-4" />
+                              <span>Schedule Meeting</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                              onClick={() => setSchoolToDelete(school)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              <span>Delete School</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="grid gap-4 md:hidden">
-              {isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
-              ) : filteredSchools && filteredSchools.length > 0 ? (
-                  filteredSchools.map(school => (
-                      <Card key={school.id} className="w-full">
-                          <CardHeader>
-                              <div className="flex items-start justify-between gap-4">
-                                  <div className="flex items-center gap-3">
-                                      <Avatar>
-                                          <AvatarImage src={school.logoUrl} alt={school.name} />
-                                          <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
-                                      </Avatar>
-                                      <div>
-                                          <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
-                                          <CardDescription>
-                                              Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
-                                          </CardDescription>
-                                      </div>
-                                  </div>
-                                  <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" className="h-8 w-8 p-0">
-                                            <span className="sr-only">Open menu</span>
-                                            <MoreHorizontal className="h-4 w-4" />
-                                        </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
-                                            <UserPlus className="mr-2 h-4 w-4" />
-                                            <span>Assign to User</span>
-                                          </DropdownMenuItem>
-                                           <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
-                                            <Workflow className="mr-2 h-4 w-4" />
-                                            <span>Change Stage</span>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                                            <Edit className="mr-2 h-4 w-4" />
-                                            <span>Edit School</span>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
-                                            <CalendarPlus className="mr-2 h-4 w-4" />
-                                            <span>Schedule Meeting</span>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuSeparator />
-                                          <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem 
-                                                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                                onSelect={(e) => e.preventDefault()}
-                                                onClick={() => setSchoolToDelete(school)}
-                                                >
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Delete School</span>
-                                            </DropdownMenuItem>
-                                          </AlertDialogTrigger>
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
-                              </div>
-                          </CardHeader>
-                          <CardContent className="space-y-3">
-                               <div>
-                                  <p className="text-xs font-medium text-muted-foreground">Stage</p>
-                                  <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
-                              </div>
-                              <div>
-                                  <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
-                                  <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
-                              </div>
-                              <div>
-                                  <p className="text-xs font-medium text-muted-foreground">Location</p>
-                                  <p className="text-sm">{school.location || 'N/A'}</p>
-                              </div>
-                               <div>
-                                  <p className="text-xs font-medium text-muted-foreground">Modules</p>
-                                  <div className="flex flex-wrap gap-1 mt-1">
-                                      {school.modules?.split(',').map(m => m.trim()).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || <p className="text-sm">N/A</p>}
-                                  </div>
-                              </div>
-                          </CardContent>
-                          <CardFooter className="flex-col items-start gap-3">
-                               <div className="flex items-center gap-2 w-full">
-                                    <Button variant="outline" size="sm" asChild className="flex-1">
-                                        <a href={`tel:${formatPhoneNumberForLink(school.phone)}`} aria-label={`Call ${school.name}`}>
-                                            <Phone className="h-4 w-4" />
-                                            <span className="sm:inline ml-2">Call</span>
-                                        </a>
-                                    </Button>
-                                    <Button variant="outline" size="sm" asChild className="flex-1">
-                                        <a href={`https://wa.me/${formatPhoneNumberForLink(school.phone)}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${school.name}`}>
-                                            <MessageSquare className="h-4 w-4" />
-                                            <span className="sm:inline ml-2">WhatsApp</span>
-                                        </a>
-                                    </Button>
-                                    <Button variant="outline" size="sm" asChild className="flex-1">
-                                        <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location || '')}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${school.name} on map`}>
-                                            <MapPin className="h-4 w-4" />
-                                            <span className="sm:inline ml-2">Map</span>
-                                        </a>
-                                    </Button>
-                               </div>
-                          </CardFooter>
-                      </Card>
-                  ))
+                ))
               ) : (
-                  <div className="text-center h-24 text-muted-foreground">
-                      No schools found.
-                  </div>
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center">
+                    No schools found.
+                  </TableCell>
+                </TableRow>
               )}
-          </div>
+            </TableBody>
+          </Table>
         </div>
-      </TooltipProvider>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the school <span className="font-bold">{schoolToDelete?.name}</span> and all associated data.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setSchoolToDelete(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteSchool}>Continue</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
+
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
+            ) : filteredSchools && filteredSchools.length > 0 ? (
+                filteredSchools.map(school => (
+                    <Card key={school.id} className="w-full">
+                        <CardHeader>
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <Avatar>
+                                        <AvatarImage src={school.logoUrl} alt={school.name} />
+                                        <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                                    </Avatar>
+                                    <div>
+                                        <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
+                                        <CardDescription>
+                                            Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" className="h-8 w-8 p-0">
+                                          <span className="sr-only">Open menu</span>
+                                          <MoreHorizontal className="h-4 w-4" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
+                                          <UserPlus className="mr-2 h-4 w-4" />
+                                          <span>Assign to User</span>
+                                        </DropdownMenuItem>
+                                         <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                                          <Workflow className="mr-2 h-4 w-4" />
+                                          <span>Change Stage</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                                          <Edit className="mr-2 h-4 w-4" />
+                                          <span>Edit School</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
+                                          <CalendarPlus className="mr-2 h-4 w-4" />
+                                          <span>Schedule Meeting</span>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                          className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                                          onClick={() => setSchoolToDelete(school)}
+                                        >
+                                          <Trash2 className="mr-2 h-4 w-4" />
+                                          <span>Delete School</span>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                             <div>
+                                <p className="text-xs font-medium text-muted-foreground">Stage</p>
+                                <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
+                                <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">Location</p>
+                                <p className="text-sm">{school.location || 'N/A'}</p>
+                            </div>
+                             <div>
+                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {school.modules?.split(',').map(m => m.trim()).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || <p className="text-sm">N/A</p>}
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex-col items-start gap-3">
+                             <div className="flex items-center gap-2 w-full">
+                                  <Button variant="outline" size="sm" asChild className="flex-1">
+                                      <a href={`tel:${formatPhoneNumberForLink(school.phone)}`} aria-label={`Call ${school.name}`}>
+                                          <Phone className="h-4 w-4" />
+                                          <span className="sm:inline ml-2">Call</span>
+                                      </a>
+                                  </Button>
+                                  <Button variant="outline" size="sm" asChild className="flex-1">
+                                      <a href={`https://wa.me/${formatPhoneNumberForLink(school.phone)}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${school.name}`}>
+                                          <MessageSquare className="h-4 w-4" />
+                                          <span className="sm:inline ml-2">WhatsApp</span>
+                                      </a>
+                                  </Button>
+                                  <Button variant="outline" size="sm" asChild className="flex-1">
+                                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location || '')}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${school.name} on map`}>
+                                          <MapPin className="h-4 w-4" />
+                                          <span className="sm:inline ml-2">Map</span>
+                                      </a>
+                                  </Button>
+                             </div>
+                        </CardFooter>
+                    </Card>
+                ))
+            ) : (
+                <div className="text-center h-24 text-muted-foreground">
+                    No schools found.
+                </div>
+            )}
+        </div>
+      </div>
+      
+      <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the school <span className="font-bold">{schoolToDelete?.name}</span> and all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSchool}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <SchoolDetailsModal school={viewingSchool} open={!!viewingSchool} onOpenChange={(open) => !open && setViewingSchool(null)} />
       
@@ -436,6 +430,6 @@ export default function SchoolsPage() {
       
       <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
 
-    </AlertDialog>
+    </TooltipProvider>
   );
 }

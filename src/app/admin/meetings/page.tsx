@@ -22,7 +22,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   DropdownMenu,
@@ -152,23 +151,20 @@ export default function MeetingsPage() {
                 </a>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <AlertDialogTrigger asChild>
-                <DropdownMenuItem 
-                className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                onSelect={(e) => e.preventDefault()} // prevent menu from closing
-                onClick={() => setMeetingToDelete(meeting)}
-                >
-                <Trash2 className="mr-2 h-4 w-4" />
-                <span>Delete Meeting</span>
-                </DropdownMenuItem>
-            </AlertDialogTrigger>
+            <DropdownMenuItem 
+              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+              onClick={() => setMeetingToDelete(meeting)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Delete Meeting</span>
+            </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     )
   }
 
   return (
-    <AlertDialog>
+    <>
       <div>
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div className="w-full max-w-xs">
@@ -322,18 +318,20 @@ export default function MeetingsPage() {
         </div>
       </div>
 
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete the meeting for <span className="font-bold">{meetingToDelete?.schoolName}</span>.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel onClick={() => setMeetingToDelete(null)}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDeleteMeeting}>Continue</AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      <AlertDialog open={!!meetingToDelete} onOpenChange={(open) => !open && setMeetingToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the meeting for <span className="font-bold">{meetingToDelete?.schoolName}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMeeting}>Continue</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

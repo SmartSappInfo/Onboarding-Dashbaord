@@ -157,7 +157,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
-                  onSelect={() => setIsDeleteDialogOpen(true)}
+                  onClick={() => setIsDeleteDialogOpen(true)}
                 >
                   <Trash2 className="mr-2 h-4 w-4" />
                   <span>Delete</span>
