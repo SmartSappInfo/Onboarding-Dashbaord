@@ -7,7 +7,7 @@ import { Button } from "../ui/button"
 
 export function UpcomingMeetings({ meetings }: { meetings: any[] }) {
   return (
-    <DashboardCard title="Upcoming Meetings" description="Your next 5 meetings in the coming days.">
+    <DashboardCard title="Upcoming Meetings">
       {meetings.length > 0 ? (
         <ul className="space-y-3">
           {meetings.map(m => (

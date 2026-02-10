@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 
 export function RecentActivity({ schools }: { schools: any[] }) {
   return (
-    <DashboardCard title="Recently Added Schools" description="The last 5 schools that were created.">
+    <DashboardCard title="Recently Added Schools">
        {schools.length > 0 ? (
         <ul className="space-y-1">
           {schools.map(s => (

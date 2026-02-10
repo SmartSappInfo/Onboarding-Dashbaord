@@ -15,7 +15,7 @@ export function LatestSurveys({ surveys }: { surveys: any[] }) {
   }
 
   return (
-    <DashboardCard title="Latest Surveys" description="Top 3 most recently created surveys.">
+    <DashboardCard title="Latest Surveys">
        {surveys.length > 0 ? (
         <ul className="space-y-3">
           {surveys.map(survey => (

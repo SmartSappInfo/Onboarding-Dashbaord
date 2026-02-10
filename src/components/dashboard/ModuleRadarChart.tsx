@@ -33,9 +33,6 @@ export function ModuleRadarChart({ data }: { data: { abbreviation: string; name:
         <Card>
           <CardHeader className="items-center pb-4">
             <CardTitle>Module Implementations</CardTitle>
-            <CardDescription>
-              Distribution of modules being implemented across all schools.
-            </CardDescription>
           </CardHeader>
           <CardContent className="pb-0 h-[250px] flex items-center justify-center">
               <p className="text-sm text-muted-foreground text-center">Not enough module data to display a chart. (Requires at least 3)</p>
@@ -48,9 +45,6 @@ export function ModuleRadarChart({ data }: { data: { abbreviation: string; name:
     <Card>
       <CardHeader className="items-center pb-4">
         <CardTitle>Module Implementations</CardTitle>
-        <CardDescription>
-          Top {chartData.length} most implemented modules across all schools.
-        </CardDescription>
       </CardHeader>
       <CardContent className="pb-0">
         <ChartContainer

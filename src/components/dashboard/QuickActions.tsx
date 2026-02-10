@@ -6,7 +6,7 @@ import Link from "next/link"
 
 export function QuickActions() {
   return (
-    <DashboardCard title="Quick Actions" description="Jump straight into your most common tasks.">
+    <DashboardCard title="Quick Actions">
       <div className="grid grid-cols-2 gap-3">
         <Button asChild className="w-full justify-start gap-2">
           <Link href="/admin/schools/new">
