@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { School } from '@/lib/types';
@@ -8,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
@@ -15,6 +15,8 @@ import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow, User } from 'lucide-react';
 import { format } from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { useRouter } from 'next/navigation';
 
 interface SchoolDetailsModalProps {
   school: School | null;
@@ -24,6 +26,8 @@ interface SchoolDetailsModalProps {
 
 
 export default function SchoolDetailsModal({ school, open, onOpenChange }: SchoolDetailsModalProps) {
+  const router = useRouter();
+  
   if (!school) return null;
 
   const DetailItem = ({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value?: string | number | null, children?: React.ReactNode }) => {
@@ -71,7 +75,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               <Separator />
               <DetailItem icon={MapPin} label="Location">
                 {school.location ? (
-                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.location)}`} target="_blank" rel="noopener noreferrer" className="text-base text-foreground hover:underline">
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name + ' ' + school.location)}`} target="_blank" rel="noopener noreferrer" className="text-base text-foreground hover:underline">
                     {school.location}
                   </a>
                 ) : <p className="text-base text-foreground">N/A</p>}
@@ -161,8 +165,13 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
 
           </div>
         </ScrollArea>
+        <DialogFooter className="p-6 pt-0">
+          <Button onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+            <PenSquare className="mr-2 h-4 w-4" />
+            Edit Details
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
