@@ -9,6 +9,7 @@ import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import ActivityCard from './components/ActivityCard';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PartyPopper } from 'lucide-react';
+import LogActivityForm from './components/LogActivityForm';
 
 function ActivitySkeleton() {
     return (
@@ -64,6 +65,7 @@ export default function ActivitiesPage() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="max-w-3xl mx-auto space-y-8">
+            <LogActivityForm />
             {isLoading ? (
                 <>
                   <ActivitySkeleton />

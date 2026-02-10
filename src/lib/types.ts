@@ -202,5 +202,6 @@ export interface Activity {
   details?: {
     from?: string;
     to?: string;
+    [key: string]: any;
   };
 }
