@@ -8,18 +8,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, Building, PenSquare, Edit, Workflow, User } from 'lucide-react';
+import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow, User } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { format } from 'date-fns';
@@ -86,14 +79,15 @@ function MeetingList({ schoolId }: { schoolId: string }) {
 export default function SchoolDetailsModal({ school, open, onOpenChange }: SchoolDetailsModalProps) {
   if (!school) return null;
 
-  const DetailItem = ({ icon: Icon, label, value }: { icon: React.ElementType, label: string, value?: string | number | null }) => {
-    if (!value) return null;
+  const DetailItem = ({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value?: string | number | null, children?: React.ReactNode }) => {
+    if (!value && !children) return null;
     return (
       <div className="flex items-start gap-3">
         <Icon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
         <div>
           <p className="text-sm font-medium text-muted-foreground">{label}</p>
-          <p className="text-base text-foreground">{value}</p>
+          {value && <p className="text-base text-foreground">{String(value)}</p>}
+          {children}
         </div>
       </div>
     );
@@ -118,29 +112,22 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
             {/* Left Column */}
             <div className="space-y-6">
               <DetailItem icon={User} label="Assigned To" value={school.assignedTo?.name || 'Unassigned'} />
-              <div className="flex items-start gap-3">
-                <Workflow className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Onboarding Stage</p>
+              <DetailItem icon={Workflow} label="Onboarding Stage">
                   {school.stage?.name ? (
-                    <Badge style={{ backgroundColor: school.stage.color }} className="text-primary-foreground">
+                    <Badge style={{ backgroundColor: school.stage.color }} className="text-primary-foreground mt-1">
                       {school.stage.name}
                     </Badge>
                   ) : (
                     <p className="text-base text-foreground">N/A</p>
                   )}
-                </div>
-              </div>
+              </DetailItem>
               <Separator />
               <DetailItem icon={Globe} label="Website Slug" value={school.slug} />
-              <DetailItem icon={Building} label="Location" value={school.location} />
-              <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll} />
+              <DetailItem icon={MapPin} label="Location" value={school.location} />
+              <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll?.toLocaleString()} />
               {school.implementationDate && <DetailItem icon={Calendar} label="Go-live Date" value={format(new Date(school.implementationDate), 'PPP')} />}
-              <div className="flex items-start gap-3">
-                <PenSquare className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div>
-                    <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
-                    <div className="flex flex-wrap gap-2">
+              <DetailItem icon={PenSquare} label="Modules">
+                    <div className="flex flex-wrap gap-2 pt-1">
                         {school.modules && school.modules.length > 0 ? (
                             school.modules.map((module) => (
                                 <Badge key={module.id} style={{ backgroundColor: module.color, color: 'hsl(var(--primary-foreground))' }} className="border-transparent">
@@ -151,8 +138,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
                             <p className="text-sm text-foreground">Not specified</p>
                         )}
                     </div>
-                </div>
-              </div>
+              </DetailItem>
             </div>
 
             {/* Right Column */}
@@ -161,14 +147,11 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               <DetailItem icon={Mail} label="Contact Email" value={school.email} />
               <DetailItem icon={Phone} label="Contact Phone" value={school.phone} />
               <DetailItem icon={Users} label="Referee" value={school.referee} />
-              <div className="flex items-start gap-3">
-                  <div className="flex flex-row items-center justify-between rounded-lg border p-3 w-full">
-                    <p className="text-base">Include Drone Footage</p>
-                    <Badge variant={school.includeDroneFootage ? 'default' : 'secondary'}>
-                        {school.includeDroneFootage ? 'Yes' : 'No'}
-                    </Badge>
-                </div>
-              </div>
+              <DetailItem icon={Film} label="Include Drone Footage">
+                  <Badge variant={school.includeDroneFootage ? 'default' : 'secondary'} className="mt-1">
+                      {school.includeDroneFootage ? 'Yes' : 'No'}
+                  </Badge>
+              </DetailItem>
             </div>
 
           </div>
