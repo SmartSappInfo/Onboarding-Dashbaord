@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -35,7 +36,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GripVertical, Plus, Trash2, Loader2 } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 
@@ -89,9 +90,14 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
 
       </div>
       
-      <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => onDelete(module)}>
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      <div className="flex items-center">
+        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onToggleEdit(module)}>
+            <Pencil className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 shrink-0" onClick={() => onDelete(module)}>
+            <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   );
 }
