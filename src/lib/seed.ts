@@ -1,9 +1,9 @@
 
 'use client';
 
-import { collection, writeBatch, getDocs, doc, query, where, limit, orderBy } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday } from 'date-fns';
@@ -109,6 +109,17 @@ const defaultStages: Omit<OnboardingStage, 'id'>[] = [
     { name: 'Support', order: 9, color: ONBOARDING_STAGE_COLORS[8] },
 ];
 
+const defaultModules: Omit<Module, 'id'>[] = [
+    { name: 'Child Security', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
+    { name: 'Connected Community', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
+    { name: 'Fee Collection', description: 'Streamlines school fee payments and tracking.', order: 3 },
+    { name: 'Traffic Management', description: 'Manages school traffic flow during peak hours.', order: 4 },
+    { name: 'Academic Reports', description: 'Digital report cards and academic performance tracking.', order: 5 },
+    { name: 'Homework Management', description: 'Assign, submit, and track homework digitally.', order: 6 },
+    { name: 'Canteen Management', description: 'Cashless system for school canteen purchases.', order: 7 },
+];
+
+
 // --- UTILITY ---
 
 async function clearCollection(firestore: Firestore, collectionPath: string) {
@@ -123,6 +134,18 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedModules(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'modules');
+  const batch = writeBatch(firestore);
+  const modulesCollection = collection(firestore, 'modules');
+  defaultModules.forEach((moduleData) => {
+    const docRef = doc(modulesCollection);
+    batch.set(docRef, moduleData);
+  });
+  await batch.commit();
+  return defaultModules.length;
+}
 
 export async function seedMedia(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'media');

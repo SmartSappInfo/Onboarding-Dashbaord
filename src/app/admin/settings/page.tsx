@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages } from '@/lib/seed';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
+import ModuleEditor from './components/ModuleEditor';
+import { Separator } from '@/components/ui/separator';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'pipelinePieChart', 'quickActions', 'upcomingMeetings', 
@@ -30,6 +32,7 @@ export default function SettingsPage() {
     users: 'idle',
     stages: 'idle',
     layout: 'idle',
+    modules: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -81,6 +84,9 @@ export default function SettingsPage() {
               title: 'Pipeline Stages Updated',
               description: `${stagesCreated} default stages were created/reset. ${schoolsUpdated} schools were updated.`,
           });
+        } else if (seeder === 'modules') {
+            count = await seedModules(firestore);
+            name = 'Modules';
         }
 
         if (name) {
@@ -117,7 +123,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Data Seeding</CardTitle>
@@ -142,11 +148,17 @@ export default function SettingsPage() {
               <div className="flex flex-wrap gap-4">
                   <SeedingButton seeder="users">Update User Avatars</SeedingButton>
                   <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
+                  <SeedingButton seeder="modules">Seed Modules</SeedingButton>
                   <SeedingButton seeder="layout">Reset Dashboard Layout</SeedingButton>
               </div>
           </div>
         </CardContent>
       </Card>
+      
+      <Separator />
+
+      <ModuleEditor />
+
     </div>
   );
 }

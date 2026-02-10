@@ -171,3 +171,9 @@ export interface SurveySummary {
   prompt?: string;
 }
     
+export interface Module {
+  id: string;
+  name: string;
+  description: string;
+  order: number;
+}

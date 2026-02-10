@@ -442,6 +442,26 @@
         }
       },
       "required": ["name", "order"]
+    },
+    "Module": {
+      "title": "Module",
+      "type": "object",
+      "description": "Represents a single SmartSapp module that a school can be onboarded for.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the module."
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description of the module's purpose."
+        },
+        "order": {
+          "type": "number",
+          "description": "The numerical order of the module for display purposes."
+        }
+      },
+      "required": ["name", "order"]
     }
   },
   "auth": {
@@ -540,6 +560,16 @@
             "$ref": "#/entities/OnboardingStage"
           },
           "description": "Stores the stages for the school onboarding pipeline."
+        }
+      },
+      {
+        "path": "/modules/{moduleId}",
+        "definition": {
+          "entityName": "Module",
+          "schema": {
+            "$ref": "#/entities/Module"
+          },
+          "description": "Stores the available SmartSapp modules for school onboarding."
         }
       }
     ]
