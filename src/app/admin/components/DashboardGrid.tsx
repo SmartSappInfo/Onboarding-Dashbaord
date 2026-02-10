@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -61,14 +60,14 @@ const componentGridConfig: Record<string, string> = {
   upcomingMeetings: 'lg:col-span-2',
   latestSurveys: 'lg:col-span-2',
   recentActivity: 'lg:col-span-2',
-  monthlySchoolsChart: 'md:col-span-2 lg:col-span-4',
+  monthlySchoolsChart: 'md:col-span-4',
 };
 
 const DEFAULT_LAYOUT = [
     'userAssignments',
     'pipelinePieChart',
-    'quickActions',
     'moduleRadarChart',
+    'quickActions',
     'upcomingMeetings',
     'latestSurveys',
     'recentActivity',
