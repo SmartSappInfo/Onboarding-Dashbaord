@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -105,7 +106,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
                 className="pl-10"
             />
         </div>
-        <ScrollArea className="h-72 border rounded-md">
+        <ScrollArea className="h-96 border rounded-md">
           <div className="p-2">
             {isLoading ? (
               <div className="space-y-2">

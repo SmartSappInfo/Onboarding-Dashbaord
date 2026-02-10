@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -84,7 +83,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
             Move "{school?.name}" to a new stage in the pipeline.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="h-72 border rounded-md">
+        <ScrollArea className="h-96 border rounded-md">
           <div className="p-2">
             {isLoading ? (
               <div className="space-y-2">
