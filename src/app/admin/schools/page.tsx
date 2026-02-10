@@ -1,4 +1,5 @@
 
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -243,7 +244,7 @@ export default function SchoolsPage() {
                     </TableCell>
                     <TableCell>
                         <div className="flex flex-wrap gap-1 max-w-xs">
-                            {school.modules?.split(',').map(m => m.trim()).slice(0, 3).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || 'N/A'}
+                            {school.modules?.slice(0, 3).map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || 'N/A'}
                         </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -372,7 +373,7 @@ export default function SchoolsPage() {
                              <div>
                                 <p className="text-xs font-medium text-muted-foreground">Modules</p>
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {school.modules?.split(',').map(m => m.trim()).map(mod => <Badge key={mod} variant="secondary">{mod}</Badge>) || <p className="text-sm">N/A</p>}
+                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm">N/A</p>}
                                 </div>
                             </div>
                         </CardContent>
@@ -432,3 +433,5 @@ export default function SchoolsPage() {
     </TooltipProvider>
   );
 }
+
+    

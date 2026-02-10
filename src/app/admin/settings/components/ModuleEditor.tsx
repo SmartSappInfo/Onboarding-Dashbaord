@@ -39,15 +39,19 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { GripVertical, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
+import { cn } from '@/lib/utils';
 
-function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onFieldChange, editValues, saveChanges }: {
+function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onFieldChange, editValues, saveChanges, onColorChange }: {
   module: Module;
   onDelete: (module: Module) => void;
   isEditing: boolean;
   onToggleEdit: (module: Module) => void;
-  onFieldChange: (field: 'name' | 'description', value: string) => void;
-  editValues: { name: string; description: string };
+  onFieldChange: (field: 'name' | 'description' | 'abbreviation', value: string) => void;
+  editValues: { name: string; description: string; abbreviation: string; };
   saveChanges: () => void;
+  onColorChange: (id: string, color: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: module.id });
@@ -65,16 +69,30 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
       
       <div className="flex-grow space-y-2">
           {isEditing ? (
-            <Input
-              value={editValues.name}
-              onChange={(e) => onFieldChange('name', e.target.value)}
-              onBlur={saveChanges}
-              onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
-              autoFocus
-              className="font-medium"
-            />
+            <div className="flex gap-2">
+                <Input
+                value={editValues.name}
+                onChange={(e) => onFieldChange('name', e.target.value)}
+                onBlur={saveChanges}
+                onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
+                autoFocus
+                className="font-medium"
+                placeholder="Module Name"
+                />
+                <Input
+                value={editValues.abbreviation}
+                onChange={(e) => onFieldChange('abbreviation', e.target.value)}
+                onBlur={saveChanges}
+                onKeyDown={(e) => e.key === 'Enter' && saveChanges()}
+                className="w-24"
+                placeholder="Abbr."
+                />
+            </div>
           ) : (
-            <span className="font-medium block py-2 px-3" onDoubleClick={() => onToggleEdit(module)}>{module.name}</span>
+            <div className="flex items-center gap-3">
+                <span className="font-medium block py-2 px-3" onDoubleClick={() => onToggleEdit(module)}>{module.name}</span>
+                <span className="text-sm text-muted-foreground">({module.abbreviation})</span>
+            </div>
           )}
           {isEditing ? (
              <Textarea
@@ -87,10 +105,38 @@ function SortableModuleItem({ module, onDelete, isEditing, onToggleEdit, onField
           ) : (
              <p className="text-sm text-muted-foreground px-3">{module.description || 'No description.'}</p>
           )}
-
       </div>
       
       <div className="flex items-center">
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: module.color || '#ccc' }}>
+                    <div className="w-full h-full rounded-sm" style={{ backgroundColor: module.color || '#FFFFFF' }} />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2">
+                <div className="grid grid-cols-6 gap-1 mb-2">
+                    {ONBOARDING_STAGE_COLORS.map((color) => (
+                        <button
+                            key={color}
+                            className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === module.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+                            style={{ backgroundColor: color }}
+                            onClick={() => onColorChange(module.id, color)}
+                        />
+                    ))}
+                </div>
+                <div className="flex items-center gap-2 border-t pt-2">
+                    <label htmlFor={`color-picker-${module.id}`} className="text-sm font-medium">Custom</label>
+                    <Input
+                        id={`color-picker-${module.id}`}
+                        type="color"
+                        value={module.color || '#FFFFFF'}
+                        onChange={(e) => onColorChange(module.id, e.target.value)}
+                        className="w-10 h-10 p-1"
+                    />
+                </div>
+            </PopoverContent>
+        </Popover>
         <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0" onClick={() => onToggleEdit(module)}>
             <Pencil className="h-4 w-4" />
         </Button>
@@ -117,7 +163,7 @@ export default function ModuleEditor() {
   const [isAdding, setIsAdding] = React.useState(false);
 
   const [editingModuleId, setEditingModuleId] = React.useState<string | null>(null);
-  const [editValues, setEditValues] = React.useState({ name: '', description: '' });
+  const [editValues, setEditValues] = React.useState({ name: '', description: '', abbreviation: '' });
 
   const [moduleToDelete, setModuleToDelete] = React.useState<Module | null>(null);
 
@@ -155,7 +201,13 @@ export default function ModuleEditor() {
     if (!newModuleName.trim() || !firestore) return;
     setIsAdding(true);
     const maxOrder = localModules.reduce((max, s) => Math.max(max, s.order), -1);
-    const newModule = { name: newModuleName.trim(), description: '', order: maxOrder + 1 };
+    const newModule = { 
+        name: newModuleName.trim(), 
+        abbreviation: newModuleName.trim().substring(0, 3).toUpperCase(),
+        color: ONBOARDING_STAGE_COLORS[Math.floor(Math.random() * ONBOARDING_STAGE_COLORS.length)],
+        description: '', 
+        order: maxOrder + 1 
+    };
 
     try {
       await addDoc(collection(firestore, 'modules'), newModule);
@@ -188,23 +240,46 @@ export default function ModuleEditor() {
     };
     
     const moduleToUpdate = localModules.find(s => s.id === editingModuleId);
-    if (!moduleToUpdate || (moduleToUpdate.name === editValues.name.trim() && moduleToUpdate.description === editValues.description.trim())) {
+    if (!moduleToUpdate) {
         setEditingModuleId(null);
         return;
     }
 
-    const newName = editValues.name.trim();
-    const newDescription = editValues.description.trim();
+    const newValues = {
+        name: editValues.name.trim(),
+        abbreviation: editValues.abbreviation.trim() || editValues.name.trim().substring(0, 3).toUpperCase(),
+        description: editValues.description.trim(),
+    };
+
+    if (
+        moduleToUpdate.name === newValues.name &&
+        moduleToUpdate.description === newValues.description &&
+        moduleToUpdate.abbreviation === newValues.abbreviation
+    ) {
+        setEditingModuleId(null);
+        return;
+    }
+    
     const moduleRef = doc(firestore, 'modules', editingModuleId);
     
     try {
-        await updateDoc(moduleRef, { name: newName, description: newDescription });
+        await updateDoc(moduleRef, newValues);
         toast({ title: 'Module Updated' });
     } catch (error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update module.' });
     } finally {
         setEditingModuleId(null);
     }
+  };
+
+  const handleColorChange = async (id: string, color: string) => {
+      if (!firestore) return;
+      const stageRef = doc(firestore, 'modules', id);
+      try {
+          await updateDoc(stageRef, { color });
+      } catch (error) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Failed to update module color.' });
+      }
   };
   
   return (
@@ -213,7 +288,7 @@ export default function ModuleEditor() {
             <CardHeader>
                 <CardTitle>Module Management</CardTitle>
                 <CardDescription>
-                Manage the available SmartSapp modules. Drag to reorder, double-click to edit.
+                Manage the available SmartSapp modules. Drag to reorder, double-click to edit name.
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -234,12 +309,17 @@ export default function ModuleEditor() {
                                 isEditing={editingModuleId === module.id}
                                 editValues={editValues}
                                 onToggleEdit={(mod) => {
-                                    setEditingModuleId(mod.id);
-                                    setEditValues({ name: mod.name, description: mod.description || '' });
+                                    if (editingModuleId === mod.id) {
+                                        handleSaveChanges();
+                                    } else {
+                                        setEditingModuleId(mod.id);
+                                        setEditValues({ name: mod.name, description: mod.description || '', abbreviation: mod.abbreviation || '' });
+                                    }
                                 }}
                                 onFieldChange={(field, value) => setEditValues(prev => ({...prev, [field]: value}))}
                                 saveChanges={handleSaveChanges}
                                 onDelete={setModuleToDelete}
+                                onColorChange={handleColorChange}
                             />
                         ))}
                     </div>
@@ -277,3 +357,5 @@ export default function ModuleEditor() {
     </>
   );
 }
+
+    

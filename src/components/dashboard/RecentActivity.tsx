@@ -1,3 +1,4 @@
+
 // components/dashboard/RecentActivity.tsx
 import DashboardCard from "./DashboardCard"
 import { formatDistanceToNow } from "date-fns"
@@ -29,10 +30,10 @@ export function RecentActivity({ schools }: { schools: any[] }) {
                             <Users className="h-3 w-3" />
                             <span>{s.nominalRoll?.toLocaleString() || 0} students</span>
                         </div>
-                        {s.modules && (
+                        {s.modules && s.modules.length > 0 && (
                             <div className="flex flex-wrap gap-1">
-                                {s.modules.split(',').slice(0, 3).map((mod: string) => (
-                                    <Badge key={mod.trim()} variant="secondary" className="text-xs font-normal">{mod.trim()}</Badge>
+                                {s.modules.slice(0, 3).map((mod: any) => (
+                                    <Badge key={mod.id} style={{ backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))' }} className="text-xs font-normal border-transparent">{mod.abbreviation}</Badge>
                                 ))}
                             </div>
                         )}
@@ -50,3 +51,5 @@ export function RecentActivity({ schools }: { schools: any[] }) {
     </DashboardCard>
   )
 }
+
+    

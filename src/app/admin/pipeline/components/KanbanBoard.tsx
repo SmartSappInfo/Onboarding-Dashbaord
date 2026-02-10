@@ -78,8 +78,8 @@ function SchoolCard({ school }: { school: School }) {
                 </Avatar>
                 <span className="text-xs text-muted-foreground">{school.assignedTo?.name || 'Unassigned'}</span>
             </div>
-            {school.modules && (
-              <Badge variant="secondary" className="hidden sm:inline-flex">{school.modules.split(',')[0].trim()}</Badge>
+            {school.modules && school.modules.length > 0 && (
+              <Badge style={{ backgroundColor: school.modules[0].color, color: 'hsl(var(--primary-foreground))' }} className="hidden sm:inline-flex border-transparent">{school.modules[0].abbreviation}</Badge>
             )}
         </div>
       </CardContent>
@@ -336,3 +336,5 @@ export default function KanbanBoard() {
     </DndContext>
   );
 }
+
+    

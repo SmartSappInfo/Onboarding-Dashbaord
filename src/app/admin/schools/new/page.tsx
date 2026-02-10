@@ -22,7 +22,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,6 +30,8 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../components/media-select';
+import { ModuleSelect } from '../components/ModuleSelect';
+import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -44,7 +45,12 @@ const formSchema = z.object({
   location: z.string().optional(),
   
   nominalRoll: z.coerce.number().optional(),
-  modules: z.string().optional(),
+  modules: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    abbreviation: z.string(),
+    color: z.string(),
+  })).optional(),
   implementationDate: z.date().optional(),
   referee: z.string().optional(),
   includeDroneFootage: z.boolean().default(false),
@@ -68,7 +74,7 @@ export default function NewSchoolPage() {
       email: '',
       phone: '',
       location: '',
-      modules: '',
+      modules: [],
       referee: '',
       includeDroneFootage: false,
     },
@@ -329,9 +335,9 @@ export default function NewSchoolPage() {
                   name="modules"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Modules (Needs Discovery)</FormLabel>
+                      <FormLabel>Modules</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., Student Billing, Attendance, Reports" {...field} />
+                         <ModuleSelect {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -353,3 +359,5 @@ export default function NewSchoolPage() {
     </div>
   );
 }
+
+    

@@ -42,7 +42,12 @@ export interface School {
   phone?: string;
   location?: string;
   nominalRoll?: number;
-  modules?: string;
+  modules?: {
+    id: string;
+    name: string;
+    abbreviation: string;
+    color: string;
+  }[];
   implementationDate?: string; // ISO string
   referee?: string;
   includeDroneFootage?: boolean;
@@ -174,6 +179,10 @@ export interface SurveySummary {
 export interface Module {
   id: string;
   name: string;
+  abbreviation: string;
+  color: string;
   description: string;
   order: number;
 }
+
+    

@@ -60,14 +60,14 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
   },
 ];
 
-const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl'>[] = [
-  { name: 'Ghana International School', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, modules: 'Billing, SIS, Attendance', includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
-  { name: 'Lincoln Community School', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, modules: 'Attendance, Reports', includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
-  { name: 'Adisadel College', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, modules: 'Exams, SIS', includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
-  { name: 'SOS-Hermann Gmeiner International College', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, modules: 'Billing, Communication', includeDroneFootage: false, referee: 'SOS-CV Ghana', contactPerson: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231' },
-  { name: 'Wesley Girls\' High School', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, modules: 'SIS, Reports', includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
-  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, modules: 'Exams, SIS, Attendance', includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
-  { name: 'Galaxy International School', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, modules: 'Billing, Communication, Transport', includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
+const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules'>[] = [
+  { name: 'Ghana International School', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
+  { name: 'Lincoln Community School', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
+  { name: 'Adisadel College', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
+  { name: 'SOS-Hermann Gmeiner International College', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, includeDroneFootage: false, referee: 'SOS-CV Ghana', contactPerson: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231' },
+  { name: 'Wesley Girls\' High School', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
+  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
+  { name: 'Galaxy International School', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
 ];
 
 const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
@@ -110,13 +110,13 @@ const defaultStages: Omit<OnboardingStage, 'id'>[] = [
 ];
 
 const defaultModules: Omit<Module, 'id'>[] = [
-    { name: 'Child Security', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
-    { name: 'Connected Community', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
-    { name: 'Fee Collection', description: 'Streamlines school fee payments and tracking.', order: 3 },
-    { name: 'Traffic Management', description: 'Manages school traffic flow during peak hours.', order: 4 },
-    { name: 'Academic Reports', description: 'Digital report cards and academic performance tracking.', order: 5 },
-    { name: 'Homework Management', description: 'Assign, submit, and track homework digitally.', order: 6 },
-    { name: 'Canteen Management', description: 'Cashless system for school canteen purchases.', order: 7 },
+    { name: 'Child Security', abbreviation: 'SEC', color: '#f72585', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
+    { name: 'Connected Community', abbreviation: 'COM', color: '#b5179e', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
+    { name: 'Fee Collection', abbreviation: 'FEE', color: '#7209b7', description: 'Streamlines school fee payments and tracking.', order: 3 },
+    { name: 'Traffic Management', abbreviation: 'TRF', color: '#560bad', description: 'Manages school traffic flow during peak hours.', order: 4 },
+    { name: 'Academic Reports', abbreviation: 'REP', color: '#480ca8', description: 'Digital report cards and academic performance tracking.', order: 5 },
+    { name: 'Homework Management', abbreviation: 'HW', color: '#3f37c9', description: 'Assign, submit, and track homework digitally.', order: 6 },
+    { name: 'Canteen Management', abbreviation: 'CAN', color: '#4361ee', description: 'Cashless system for school canteen purchases.', order: 7 },
 ];
 
 
@@ -174,6 +174,9 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
     const stagesSnapshot = await getDocs(stagesQuery);
     const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data()} as OnboardingStage));
     
+    const modulesSnapshot = await getDocs(query(collection(firestore, 'modules'), orderBy('order')));
+    const allModules = modulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Module));
+
     if (stages.length === 0) {
         console.warn("No onboarding stages found. Please seed stages first. Schools will be un-staged.");
     }
@@ -182,6 +185,10 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
         const docRef = doc(schoolsCollection);
         const slug = schoolBase.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
+        const schoolModulesForSchool = allModules.length > 0 
+            ? [allModules[index % allModules.length], allModules[(index + 2) % allModules.length]] 
+            : [];
+        
         const school: Omit<School, 'id'> = {
             ...schoolBase,
             slug,
@@ -197,6 +204,7 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
                 : { userId: null, name: null, email: null },
             createdAt: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(), // Stagger creation dates
             implementationDate: new Date(Date.now() + (index + 1) * 7 * 24 * 60 * 60 * 1000).toISOString(),
+            modules: schoolModulesForSchool.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
         };
         batch.set(docRef, school);
     });
@@ -347,3 +355,5 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
 
     return { stagesCreated: defaultStages.length, schoolsUpdated };
 }
+
+    
