@@ -19,21 +19,38 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // --- Admin Rules ---
+    // --- Admin-Only Collections ---
     // Allow authenticated admins full read/write access to these collections.
-    match /schools/{document=**} {
-      allow read, write: if isAuthorized();
-    }
-    match /meetings/{document=**} {
-      allow read, write: if isAuthorized();
-    }
-    match /media/{document=**} {
-      allow read, write: if isAuthorized();
-    }
     match /onboardingStages/{document=**} {
       allow read, write: if isAuthorized();
     }
+    match /media/{document=**} {
+        allow read, write: if isAuthorized();
+    }
+     match /modules/{document=**} {
+      allow read, write: if isAuthorized();
+    }
+
+    // --- School Rules ---
+    match /schools/{schoolId} {
+      // Admins can perform any action on schools
+      allow write: if isAuthorized();
+      // Public can read a single school for meeting pages, admins can list all schools
+      allow get: if true;
+      allow list: if isAuthorized();
+    }
     
+    // --- Meeting Rules ---
+    match /meetings/{meetingId} {
+        // Admins can create, update, and delete any meeting
+        allow write: if isAuthorized();
+        // Admins can list all meetings
+        allow list: if isAuthorized();
+        // Anyone can view a specific meeting page
+        allow get: if true;
+    }
+    
+    // --- User-Specific Rules ---
     // Allow users to manage their own dashboard layout
     match /dashboardLayouts/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
@@ -47,17 +64,6 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
       // Users can read their own profile, and admins can read any profile.
       allow get: if (isSignedIn() && request.auth.uid == userId) || isAuthorized();
-    }
-
-    // --- Public Rules ---
-    // Allow public GET access for specific pages (e.g., meeting pages).
-    // LIST is not allowed to prevent scraping all data.
-    match /schools/{schoolId} {
-      allow get: if true;
-      allow create: if true;
-    }
-    match /meetings/{meetingId} {
-      allow get: if true;
     }
     
     // --- Survey Rules ---
