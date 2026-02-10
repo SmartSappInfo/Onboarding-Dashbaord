@@ -7,6 +7,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
+import { addDays, format, isAfter, startOfToday } from 'date-fns';
 
 // --- SEED DATA ---
 
@@ -199,9 +200,9 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
     
     MEETING_TYPES.forEach((type, typeIndex) => {
         const docRef = doc(meetingsCollection);
+        
         const daysInFuture = (index * 7) + (typeIndex * 2) + 1;
-        const meetingDate = new Date();
-        meetingDate.setDate(meetingDate.getDate() + daysInFuture);
+        const meetingDate = addDays(new Date(), daysInFuture);
         
         const meeting: Omit<Meeting, 'id'> = {
             schoolId: school.id,
