@@ -15,7 +15,6 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import {
-    QuickActions,
     LatestSurveys,
     RecentActivity,
     UpcomingMeetings,
@@ -31,7 +30,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const componentMap: Record<string, React.FC<any>> = {
-  quickActions: QuickActions,
   pipelinePieChart: PipelinePieChart,
   latestSurveys: LatestSurveys,
   recentActivity: RecentActivity,
@@ -42,7 +40,6 @@ const componentMap: Record<string, React.FC<any>> = {
 };
 
 const componentPropsMap = (data: any) => ({
-  quickActions: {},
   pipelinePieChart: { stages: data.pipelineCounts },
   latestSurveys: { surveys: data.latestSurveys },
   recentActivity: { schools: data.recentSchools },
@@ -55,9 +52,8 @@ const componentPropsMap = (data: any) => ({
 const componentGridConfig: Record<string, string> = {
   userAssignments: 'md:col-span-2 lg:col-span-4',
   pipelinePieChart: 'md:col-span-2 lg:col-span-2 lg:row-span-2',
-  quickActions: 'lg:col-span-2',
-  moduleRadarChart: 'lg:col-span-2',
   upcomingMeetings: 'lg:col-span-2',
+  moduleRadarChart: 'lg:col-span-2',
   latestSurveys: 'lg:col-span-2',
   recentActivity: 'lg:col-span-2',
   monthlySchoolsChart: 'md:col-span-4',
@@ -66,9 +62,8 @@ const componentGridConfig: Record<string, string> = {
 const DEFAULT_LAYOUT = [
     'userAssignments',
     'pipelinePieChart',
-    'moduleRadarChart',
-    'quickActions',
     'upcomingMeetings',
+    'moduleRadarChart',
     'latestSurveys',
     'recentActivity',
     'monthlySchoolsChart',

@@ -1,6 +1,5 @@
 export * from './DashboardCard';
 export * from './MetricCard';
-export * from './QuickActions';
 export * from './LatestSurveys';
 export * from './RecentActivity';
 export * from './UpcomingMeetings';
