@@ -40,6 +40,8 @@ export interface School {
   contactPerson?: string;
   email?: string;
   phone?: string;
+  additionalEmails?: string[];
+  additionalPhones?: string[];
   location?: string;
   nominalRoll?: number;
   modules?: {
@@ -48,6 +50,7 @@ export interface School {
     abbreviation: string;
     color: string;
   }[];
+  moduleRequestNotes?: string;
   implementationDate?: string; // ISO string
   referee?: string;
   includeDroneFootage?: boolean;

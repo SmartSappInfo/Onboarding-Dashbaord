@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { School } from '@/lib/types';
@@ -68,7 +69,6 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
                   )}
               </DetailItem>
               <Separator />
-              <DetailItem icon={Globe} label="Website Slug" value={school.slug} />
               <DetailItem icon={MapPin} label="Location">
                 {school.location ? (
                   <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.location)}`} target="_blank" rel="noopener noreferrer" className="text-base text-foreground hover:underline">
@@ -79,6 +79,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll?.toLocaleString()} />
               {school.implementationDate && <DetailItem icon={Calendar} label="Implementation Date" value={format(new Date(school.implementationDate), 'PPP')} />}
               <DetailItem icon={PenSquare} label="Modules">
+                  <div className="space-y-2">
                     <div className="flex flex-wrap gap-2 pt-1">
                         {school.modules && school.modules.length > 0 ? (
                             school.modules.map((module) => (
@@ -87,34 +88,74 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
                                 </Badge>
                             ))
                         ) : (
-                            <p className="text-sm text-foreground">Not specified</p>
+                            <p className="text-sm text-muted-foreground italic">No modules assigned yet.</p>
                         )}
                     </div>
+                    {school.moduleRequestNotes && (
+                        <div>
+                            <p className="text-sm font-medium text-muted-foreground mt-2">Initial Request:</p>
+                            <p className="text-base text-foreground">{school.moduleRequestNotes}</p>
+                        </div>
+                    )}
+                </div>
               </DetailItem>
             </div>
 
             {/* Right Column */}
             <div className="space-y-6">
-              <DetailItem icon={Users} label="Contact Person" value={school.contactPerson} />
-              <DetailItem icon={Mail} label="Contact Email">
+              <DetailItem icon={Users} label="Primary Contact" value={school.contactPerson} />
+              <DetailItem icon={Mail} label="Primary Email">
                 {school.email ? (
                   <a href={`mailto:${school.email}`} className="text-base text-foreground hover:underline">
                     {school.email}
                   </a>
                 ) : <p className="text-base text-foreground">N/A</p>}
               </DetailItem>
-              <DetailItem icon={Phone} label="Contact Phone">
+              <DetailItem icon={Phone} label="Primary Phone">
                 {school.phone ? (
                   <a href={`tel:${school.phone.replace(/[\s-()]/g, '')}`} className="text-base text-foreground hover:underline">
                     {school.phone}
                   </a>
                 ) : <p className="text-base text-foreground">N/A</p>}
               </DetailItem>
-              <DetailItem icon={Users} label="Referee" value={school.referee} />
+              <DetailItem icon={Globe} label="Referee" value={school.referee} />
               <DetailItem icon={Film} label="Include Drone Footage">
                   <Badge variant={school.includeDroneFootage ? 'default' : 'secondary'} className="mt-1">
                       {school.includeDroneFootage ? 'Yes' : 'No'}
                   </Badge>
+              </DetailItem>
+              <Separator />
+               <DetailItem icon={Users} label="Additional Contacts">
+                {(!school.additionalEmails || school.additionalEmails.length === 0) && (!school.additionalPhones || school.additionalPhones.length === 0) ? (
+                  <p className="text-base text-muted-foreground italic">Not provided</p>
+                ) : (
+                  <div className="space-y-3">
+                    {school.additionalEmails && school.additionalEmails.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Emails</p>
+                        <div className="flex flex-col items-start gap-1">
+                          {school.additionalEmails.map((email, index) => (
+                            <a key={index} href={`mailto:${email}`} className="text-base text-foreground hover:underline">
+                              {email}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {school.additionalPhones && school.additionalPhones.length > 0 && (
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">Phone Numbers</p>
+                        <div className="flex flex-col items-start gap-1">
+                          {school.additionalPhones.map((phone, index) => (
+                            <a key={index} href={`tel:${phone.replace(/[\s-()]/g, '')}`} className="text-base text-foreground hover:underline">
+                              {phone}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </DetailItem>
             </div>
 
@@ -124,3 +165,4 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
     </Dialog>
   );
 }
+

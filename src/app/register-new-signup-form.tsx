@@ -166,12 +166,13 @@ export default function NewSchoolSignupForm() {
       phone: data.phone,
       location: data.location,
       nominalRoll: data.nominalRoll,
-      modules: data.modules,
+      moduleRequestNotes: data.modules,
       implementationDate: data.implementationDate.toISOString(),
       referee: data.referee,
       includeDroneFootage: data.includeDroneFootage,
       stage: { id: 'welcome', name: 'Welcome', order: 1 },
-      assignedTo: { userId: null, name: null, email: null },
+      additionalEmails: data.notifySchoolEmails,
+      additionalPhones: data.notifySchoolSmsNumbers,
       createdAt: new Date().toISOString(),
     };
 
@@ -669,3 +670,4 @@ export default function NewSchoolSignupForm() {
     </Form>
   );
 }
+

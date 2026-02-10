@@ -91,6 +91,16 @@
           "type": "string",
           "description": "School contact phone."
         },
+        "additionalEmails": {
+          "type": "array",
+          "description": "Additional email addresses for notifications.",
+          "items": { "type": "string", "format": "email" }
+        },
+        "additionalPhones": {
+          "type": "array",
+          "description": "Additional phone numbers for SMS notifications.",
+          "items": { "type": "string" }
+        },
         "location": {
           "type": "string",
           "description": "City / Region of the school."
@@ -112,6 +122,10 @@
             },
             "required": ["id", "name", "abbreviation", "color"]
           }
+        },
+        "moduleRequestNotes": {
+          "type": "string",
+          "description": "Initial notes on modules requested during signup."
         },
         "implementationDate": {
           "type": "string",
