@@ -145,7 +145,7 @@ export default function SurveyResultsPage() {
             onValueChange={(value) => router.push(`/admin/surveys/${surveyId}/results?view=${value}`)}
             className="flex h-full flex-col"
         >
-            <header className="sticky top-0 z-40 shrink-0 border-b bg-background/95 backdrop-blur-sm p-4 sm:p-6">
+            <div className="shrink-0 border-b bg-background p-4 sm:p-6">
                  <div className="flex items-start justify-between">
                     <div className="min-w-0 flex-1">
                         <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
@@ -184,10 +184,10 @@ export default function SurveyResultsPage() {
                         <Brain className="mr-2 h-4 w-4" /> AI Summaries
                     </TabsTrigger>
                 </TabsList>
-            </header>
+            </div>
 
-            <div className="flex-1 overflow-auto">
-                <TabsContent value="responses" className="m-0 h-full overflow-auto">
+            <div className="flex-1 overflow-x-auto">
+                <TabsContent value="responses" className="m-0 h-full">
                       <ResponsesListView
                           survey={survey}
                           responses={responses || []}
