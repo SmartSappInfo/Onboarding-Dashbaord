@@ -1,6 +1,6 @@
 'use client';
 
-import type { School, Meeting } from '@/lib/types';
+import type { School } from '@/lib/types';
 import {
   Dialog,
   DialogContent,
@@ -13,10 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow, User } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { Skeleton } from '@/components/ui/skeleton';
 
 interface SchoolDetailsModalProps {
   school: School | null;
@@ -24,57 +21,6 @@ interface SchoolDetailsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-function MeetingList({ schoolId }: { schoolId: string }) {
-  const firestore = useFirestore();
-  const meetingsCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'meetings');
-  }, [firestore]);
-
-  const meetingsQuery = useMemoFirebase(() => {
-    if (!meetingsCol) return null;
-    return query(meetingsCol, where('schoolId', '==', schoolId), orderBy('meetingTime', 'desc'));
-  }, [meetingsCol, schoolId]);
-
-  const { data: meetings, isLoading } = useCollection<Meeting>(meetingsQuery);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-16 w-full" />
-        <Skeleton className="h-16 w-full" />
-      </div>
-    );
-  }
-
-  if (!meetings || meetings.length === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-4">No meetings scheduled for this school.</p>;
-  }
-
-  return (
-    <ul className="space-y-3">
-      {meetings.map((meeting) => (
-        <li key={meeting.id} className="flex items-start gap-4 rounded-md border p-3">
-          <Calendar className="h-5 w-5 text-muted-foreground mt-1" />
-          <div className="flex-grow">
-            <div className="flex justify-between items-center">
-              <p className="font-semibold">{meeting.type.name}</p>
-              <Badge variant="outline">{format(new Date(meeting.meetingTime), 'PPP p')}</Badge>
-            </div>
-            <a href={meeting.meetingLink} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline break-all">
-              {meeting.meetingLink}
-            </a>
-            {meeting.recordingUrl && (
-              <a href={meeting.recordingUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-muted-foreground hover:underline block break-all">
-                View Recording
-              </a>
-            )}
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 export default function SchoolDetailsModal({ school, open, onOpenChange }: SchoolDetailsModalProps) {
   if (!school) return null;
@@ -106,8 +52,8 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
           <DialogDescription>{school.slogan || 'School Details'}</DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="flex-grow">
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+        <ScrollArea className="flex-grow p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             
             {/* Left Column */}
             <div className="space-y-6">
@@ -154,13 +100,6 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               </DetailItem>
             </div>
 
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="px-6 pb-6">
-              <h3 className="text-lg font-semibold mb-4">Scheduled Meetings</h3>
-              <MeetingList schoolId={school.id} />
           </div>
         </ScrollArea>
       </DialogContent>
