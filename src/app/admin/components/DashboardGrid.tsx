@@ -22,7 +22,8 @@ import {
     UpcomingMeetings,
     PipelinePieChart,
     UserAssignments,
-    MonthlySchoolsChart
+    MonthlySchoolsChart,
+    ModuleRadarChart,
 } from "@/components/dashboard";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout } from '@/lib/types';
@@ -38,6 +39,7 @@ const componentMap: Record<string, React.FC<any>> = {
   upcomingMeetings: UpcomingMeetings,
   userAssignments: UserAssignments,
   monthlySchoolsChart: MonthlySchoolsChart,
+  moduleRadarChart: ModuleRadarChart,
 };
 
 const componentPropsMap = (data: any) => ({
@@ -48,12 +50,14 @@ const componentPropsMap = (data: any) => ({
   upcomingMeetings: { meetings: data.upcomingMeetings },
   userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools },
   monthlySchoolsChart: { data: data.monthlySchools },
+  moduleRadarChart: { data: data.moduleImplementations },
 });
 
 const componentGridConfig: Record<string, string> = {
   userAssignments: 'md:col-span-2 lg:col-span-4',
   pipelinePieChart: 'md:col-span-2 lg:col-span-2 lg:row-span-2',
   quickActions: 'lg:col-span-2',
+  moduleRadarChart: 'lg:col-span-2',
   upcomingMeetings: 'lg:col-span-2',
   latestSurveys: 'lg:col-span-2',
   recentActivity: 'lg:col-span-2',
@@ -64,6 +68,7 @@ const DEFAULT_LAYOUT = [
     'userAssignments',
     'pipelinePieChart',
     'quickActions',
+    'moduleRadarChart',
     'upcomingMeetings',
     'latestSurveys',
     'recentActivity',

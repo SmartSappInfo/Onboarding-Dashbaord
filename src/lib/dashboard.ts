@@ -45,6 +45,7 @@ export async function getDashboardData() {
           pipelineCounts: [],
           userAssignments: [],
           monthlySchools: [],
+          moduleImplementations: [],
       };
   }
 
@@ -164,6 +165,17 @@ export async function getDashboardData() {
   }, {} as Record<string, number>);
 
   const monthlySchoolsData = Object.entries(monthlySchools).map(([name, total]) => ({ name, total }));
+
+  const moduleCounts: Record<string, { name: string, count: number }> = {};
+  schools.forEach(school => {
+      school.modules?.forEach(module => {
+          if (!moduleCounts[module.abbreviation]) {
+              moduleCounts[module.abbreviation] = { name: module.abbreviation, count: 0 };
+          }
+          moduleCounts[module.abbreviation].count++;
+      });
+  });
+  const moduleImplementationData = Object.values(moduleCounts);
   
   return {
     metrics,
@@ -172,6 +184,7 @@ export async function getDashboardData() {
     upcomingMeetings,
     pipelineCounts,
     userAssignments,
-    monthlySchools: monthlySchoolsData
+    monthlySchools: monthlySchoolsData,
+    moduleImplementations: moduleImplementationData
   };
 }

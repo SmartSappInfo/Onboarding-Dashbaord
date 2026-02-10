@@ -7,3 +7,4 @@ export * from './UpcomingMeetings';
 export * from './PipelinePieChart';
 export * from './UserAssignments';
 export * from './MonthlySchoolsChart';
+export * from './ModuleRadarChart';
