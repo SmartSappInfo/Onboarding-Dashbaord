@@ -38,7 +38,7 @@ export default function AssignedUserGlobalFilter() {
 
   return (
     <div className="flex items-center gap-2">
-      <Label htmlFor="global-user-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">Assigned To:</Label>
+      <Label htmlFor="global-user-filter" className="text-sm font-medium text-muted-foreground whitespace-nowrap">For</Label>
       <Select value={assignedUserId ?? 'all'} onValueChange={handleValueChange} name="global-user-filter">
         <SelectTrigger className="w-full min-w-[150px] max-w-[200px]">
           <SelectValue asChild>
