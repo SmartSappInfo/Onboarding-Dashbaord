@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, limit, orderBy } from 'firebase/firestore';
