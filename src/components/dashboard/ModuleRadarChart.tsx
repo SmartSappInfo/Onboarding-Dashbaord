@@ -1,3 +1,4 @@
+
 "use client";
 
 import { PolarAngleAxis, PolarGrid, Radar, RadarChart as RechartsRadarChart } from "recharts";
@@ -16,10 +17,10 @@ import {
   ChartTooltipContent,
 } from "@/components/ui/chart";
 
-export function ModuleRadarChart({ data }: { data: { name: string; count: number }[] }) {
+export function ModuleRadarChart({ data }: { data: { abbreviation: string; name: string; count: number }[] }) {
   const chartConfig = {
     count: {
-      label: "Implementations",
+      label: "Schools",
       color: "hsl(var(--chart-1))",
     },
   } satisfies ChartConfig;
@@ -59,9 +60,22 @@ export function ModuleRadarChart({ data }: { data: { name: string; count: number
           <RechartsRadarChart data={chartData}>
             <ChartTooltip
               cursor={false}
-              content={<ChartTooltipContent indicator="dot" />}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload
+                  return (
+                    <div className="rounded-lg border bg-background p-2 text-sm shadow-sm">
+                      <div className="grid gap-1">
+                        <p className="font-medium">{data.name}</p>
+                        <p className="text-muted-foreground">Schools: {data.count}</p>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
             />
-            <PolarAngleAxis dataKey="name" />
+            <PolarAngleAxis dataKey="abbreviation" />
             <PolarGrid strokeDasharray="3 3" />
             <defs>
               <filter
