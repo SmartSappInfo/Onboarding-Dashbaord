@@ -4,13 +4,13 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, doc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { School } from '@/lib/types';
+import type { School, OnboardingStage, Module } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +29,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import SchoolDetailsModal from './components/school-details-modal';
@@ -64,24 +71,31 @@ export default function SchoolsPage() {
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
-  // State for filtering
+  // State for filtering & sorting
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
+  const [stageFilter, setStageFilter] = useState('all');
+  const [moduleFilter, setModuleFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
-  const schoolsCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'schools');
-  }, [firestore]);
+
+  // Data fetching
+  const schoolsCol = useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]);
+  const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
+  const modulesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null, [firestore]);
   
-  const { data: schools, isLoading: isLoadingSchools, error } = useCollection<School>(schoolsCol);
+  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
+  const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesCol);
+  const { data: modules, isLoading: isLoadingModules } = useCollection<Module>(modulesCol);
 
-  const isLoading = isLoadingSchools || isLoadingFilter;
+  const isLoading = isLoadingSchools || isLoadingFilter || isLoadingStages || isLoadingModules;
 
+  // Filtering Logic
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
     let tempSchools = schools;
     
-    // Filter by assigned user
+    // Global user filter
     if (assignedUserId) {
       if (assignedUserId === 'unassigned') {
         tempSchools = tempSchools.filter(school => !school.assignedTo?.userId);
@@ -90,13 +104,73 @@ export default function SchoolsPage() {
       }
     }
 
-    // Filter by search term
+    // Search term filter
     if (searchTerm) {
         tempSchools = tempSchools.filter(school => school.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }
     
+    // Stage filter
+    if (stageFilter !== 'all') {
+        tempSchools = tempSchools.filter(school => school.stage?.id === stageFilter);
+    }
+    
+    // Module filter
+    if (moduleFilter !== 'all') {
+        tempSchools = tempSchools.filter(school => school.modules?.some(m => m.id === moduleFilter));
+    }
+    
     return tempSchools;
-  }, [schools, assignedUserId, searchTerm]);
+  }, [schools, assignedUserId, searchTerm, stageFilter, moduleFilter]);
+  
+  // Sorting Logic
+  const sortedSchools = useMemo(() => {
+    let sortableSchools = [...filteredSchools];
+    if (sortConfig !== null) {
+      sortableSchools.sort((a, b) => {
+          const key = sortConfig.key;
+          
+          const getValue = (obj: any, path: string) => path.split('.').reduce((o, i) => o?.[i], obj);
+
+          const aValue = getValue(a, key);
+          const bValue = getValue(b, key);
+
+          if (aValue === null || aValue === undefined) return 1;
+          if (bValue === null || bValue === undefined) return -1;
+          
+          let comparison = 0;
+          if (typeof aValue === 'string' && typeof bValue === 'string') {
+              comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
+          } else {
+              if (aValue < bValue) {
+                  comparison = -1;
+              } else if (aValue > bValue) {
+                  comparison = 1;
+              }
+          }
+
+          return sortConfig.direction === 'asc' ? comparison : -comparison;
+      });
+    }
+    return sortableSchools;
+  }, [filteredSchools, sortConfig]);
+  
+  const handleSort = (key: keyof School | 'assignedTo.name' | 'stage.name') => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+          direction = 'desc';
+      }
+      setSortConfig({ key, direction });
+  };
+  
+  const renderSortArrow = (key: string) => {
+    if (!sortConfig || sortConfig.key !== key) {
+      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />;
+    }
+    if (sortConfig.direction === 'asc') {
+      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; // Replace with ArrowUp when available
+    }
+    return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; // Replace with ArrowDown
+  };
 
   const handleDeleteSchool = () => {
     if (!firestore || !schoolToDelete) return;
@@ -124,10 +198,6 @@ export default function SchoolsPage() {
         setSchoolToDelete(null);
       });
   };
-
-  if (error) {
-    return <div className="text-destructive">Error loading schools: {error.message}</div>;
-  }
 
   const renderSchoolActions = (school: School) => {
     const sanitizedPhone = formatPhoneNumberForLink(school.phone);
@@ -176,20 +246,38 @@ export default function SchoolsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex flex-wrap gap-2 items-center justify-between mb-8">
-            <div className="flex flex-wrap gap-2 w-full md:w-auto">
-               <Input
-                  placeholder="Search schools..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full max-w-xs"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-                <Button asChild>
-                  <Link href="/admin/schools/new">Add New School</Link>
-                </Button>
-            </div>
+        <div className="flex flex-wrap gap-4 items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto">
+             <Input
+                placeholder="Search schools..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full sm:w-auto sm:max-w-xs"
+            />
+            <Select value={stageFilter} onValueChange={setStageFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by stage..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Stages</SelectItem>
+                {stages?.map(stage => <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+             <Select value={moduleFilter} onValueChange={setModuleFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Filter by module..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Modules</SelectItem>
+                {modules?.map(mod => <SelectItem key={mod.id} value={mod.id}>{mod.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+              <Button asChild>
+                <Link href="/admin/schools/new">Add New School</Link>
+              </Button>
+          </div>
         </div>
         
         {/* Desktop Table View */}
@@ -198,10 +286,36 @@ export default function SchoolsPage() {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[80px]"></TableHead>
-                <TableHead>School Name</TableHead>
-                <TableHead>Stage</TableHead>
-                <TableHead>Assigned To</TableHead>
-                <TableHead>Implementation Date</TableHead>
+                <TableHead className="px-2">
+                  <Button variant="ghost" onClick={() => handleSort('name')} className="px-2">
+                      School Name
+                      {renderSortArrow('name')}
+                  </Button>
+                </TableHead>
+                <TableHead className="px-2">
+                  <Button variant="ghost" onClick={() => handleSort('stage.name')} className="px-2">
+                      Stage
+                      {renderSortArrow('stage.name')}
+                  </Button>
+                </TableHead>
+                <TableHead className="px-2">
+                  <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="px-2">
+                      Assigned To
+                      {renderSortArrow('assignedTo.name')}
+                  </Button>
+                </TableHead>
+                <TableHead className="text-right px-2">
+                  <Button variant="ghost" onClick={() => handleSort('nominalRoll')} className="px-2">
+                      Students
+                      {renderSortArrow('nominalRoll')}
+                  </Button>
+                </TableHead>
+                <TableHead className="px-2">
+                  <Button variant="ghost" onClick={() => handleSort('implementationDate')} className="px-2">
+                      Go-live Date
+                      {renderSortArrow('implementationDate')}
+                  </Button>
+                </TableHead>
                 <TableHead>Modules</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -214,13 +328,14 @@ export default function SchoolsPage() {
                     <TableCell><Skeleton className="h-5 w-40" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : filteredSchools && filteredSchools.length > 0 ? (
-                filteredSchools.map((school) => (
+              ) : sortedSchools && sortedSchools.length > 0 ? (
+                sortedSchools.map((school) => (
                   <TableRow key={school.id}>
                     <TableCell>
                       <Avatar>
@@ -239,6 +354,7 @@ export default function SchoolsPage() {
                     <TableCell className="text-muted-foreground">
                       {school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}
                     </TableCell>
+                     <TableCell className="font-medium text-right tabular-nums">{school.nominalRoll?.toLocaleString() || 'N/A'}</TableCell>
                     <TableCell className="text-muted-foreground">
                         {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
                     </TableCell>
@@ -291,7 +407,7 @@ export default function SchoolsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
+                  <TableCell colSpan={8} className="h-24 text-center">
                     No schools found.
                   </TableCell>
                 </TableRow>
@@ -304,8 +420,8 @@ export default function SchoolsPage() {
         <div className="grid gap-4 md:hidden">
             {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
-            ) : filteredSchools && filteredSchools.length > 0 ? (
-                filteredSchools.map(school => (
+            ) : sortedSchools && sortedSchools.length > 0 ? (
+                sortedSchools.map(school => (
                     <Card key={school.id} className="w-full">
                         <CardHeader>
                             <div className="flex items-start justify-between gap-4">
@@ -367,8 +483,8 @@ export default function SchoolsPage() {
                                 <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
                             </div>
                             <div>
-                                <p className="text-xs font-medium text-muted-foreground">Location</p>
-                                <p className="text-sm">{school.location || 'N/A'}</p>
+                                <p className="text-xs font-medium text-muted-foreground">Students</p>
+                                <p className="text-sm">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
                             </div>
                              <div>
                                 <p className="text-xs font-medium text-muted-foreground">Modules</p>
@@ -433,5 +549,3 @@ export default function SchoolsPage() {
     </TooltipProvider>
   );
 }
-
-    
