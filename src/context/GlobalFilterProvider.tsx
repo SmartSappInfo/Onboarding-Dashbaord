@@ -21,30 +21,37 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
   const [assignedUserId, setAssignedUserIdState] = React.useState<string | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // Initialize state from URL or logged-in user
+  // Initialize state from URL, or default to current user if no URL param is present.
   React.useEffect(() => {
     if (isUserLoading) return;
 
     const assignedToParam = searchParams.get('assignedTo');
+    
     if (assignedToParam) {
-      setAssignedUserIdState(assignedToParam);
+      // If a URL param exists, it is the source of truth.
+      // The value 'all' in the URL corresponds to a `null` state (All Users).
+      setAssignedUserIdState(assignedToParam === 'all' ? null : assignedToParam);
     } else if (user) {
-      // Default to the current user's ID if no filter is set in the URL
+      // On initial load without a param, default to the logged-in user.
       setAssignedUserIdState(user.uid);
     } else {
-      setAssignedUserIdState(null); // Default to "All" if no user
+      // If no user and no param, default to showing all.
+      setAssignedUserIdState(null);
     }
     setIsInitialized(true);
+  // This effect runs on changes to searchParams (back/forward navigation) and when the user logs in.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, isUserLoading, user]);
 
   const setAssignedUserId = React.useCallback((userId: string | null) => {
+    // This function is called by the filter component to update the state and URL.
     setAssignedUserIdState(userId);
 
     const current = new URLSearchParams(Array.from(searchParams.entries()));
 
-    if (!userId) {
-      current.delete('assignedTo');
+    // Represent the "All Users" state (`null`) as 'all' in the URL for persistence.
+    if (userId === null) {
+      current.set('assignedTo', 'all');
     } else {
       current.set('assignedTo', userId);
     }
@@ -52,7 +59,7 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
     const search = current.toString();
     const query = search ? `?${search}` : '';
     
-    // Using router.replace to avoid adding to browser history
+    // Use router.replace to update the URL without adding to browser history.
     router.replace(`${pathname}${query}`);
   }, [pathname, router, searchParams]);
 
