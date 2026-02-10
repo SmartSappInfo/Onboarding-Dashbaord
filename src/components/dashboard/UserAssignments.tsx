@@ -1,4 +1,3 @@
-
 'use client';
 import DashboardCard from "./DashboardCard";
 import { Users, User } from "lucide-react";
@@ -10,6 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Progress } from "@/components/ui/progress";
 
 
 const CHART_COLORS = [
@@ -21,6 +22,8 @@ const CHART_COLORS = [
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
 export function UserAssignments({ data, totalSchools }: { data: any[], totalSchools: number }) {
+    const isMobile = useIsMobile();
+    
     if (!data) {
         return (
             <DashboardCard title="School Distribution by User">
@@ -40,6 +43,50 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
             percentage: d.assignmentPercentage,
             color: d.user.color || CHART_COLORS[index % CHART_COLORS.length]
         }));
+        
+    if (isMobile) {
+        return (
+            <DashboardCard title="School Distribution by User">
+                <div className="space-y-6">
+                    <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                            <Users className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-3xl font-bold">{totalSchools}</p>
+                            <p className="text-sm text-muted-foreground">Total Schools</p>
+                        </div>
+                    </div>
+
+                    {displayData.length > 0 ? (
+                        <div className="space-y-4">
+                            {displayData.map((item) => (
+                                <div key={item.user.id} className="space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Avatar className="h-6 w-6">
+                                                <AvatarImage src={item.user.photoURL} alt={item.user.name} />
+                                                <AvatarFallback className="text-xs">{getInitials(item.user.name)}</AvatarFallback>
+                                            </Avatar>
+                                            <span className="text-sm font-medium">{item.user.name}</span>
+                                        </div>
+                                        <span className="text-sm font-semibold text-muted-foreground">
+                                            {item.totalAssigned} / {totalSchools} schools ({item.percentage.toFixed(0)}%)
+                                        </span>
+                                    </div>
+                                    <Progress value={item.percentage} style={{'--indicator-color': item.color} as React.CSSProperties} className="h-2 [&>div]:bg-[--indicator-color]" />
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center text-sm text-muted-foreground pt-4">
+                            <p>No schools assigned to any users.</p>
+                        </div>
+                    )}
+                </div>
+            </DashboardCard>
+        )
+    }
 
     return (
         <TooltipProvider>
