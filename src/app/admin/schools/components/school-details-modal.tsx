@@ -69,7 +69,13 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               </DetailItem>
               <Separator />
               <DetailItem icon={Globe} label="Website Slug" value={school.slug} />
-              <DetailItem icon={MapPin} label="Location" value={school.location} />
+              <DetailItem icon={MapPin} label="Location">
+                {school.location ? (
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.location)}`} target="_blank" rel="noopener noreferrer" className="text-base text-foreground hover:underline">
+                    {school.location}
+                  </a>
+                ) : <p className="text-base text-foreground">N/A</p>}
+              </DetailItem>
               <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll?.toLocaleString()} />
               {school.implementationDate && <DetailItem icon={Calendar} label="Implementation Date" value={format(new Date(school.implementationDate), 'PPP')} />}
               <DetailItem icon={PenSquare} label="Modules">
@@ -90,8 +96,20 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
             {/* Right Column */}
             <div className="space-y-6">
               <DetailItem icon={Users} label="Contact Person" value={school.contactPerson} />
-              <DetailItem icon={Mail} label="Contact Email" value={school.email} />
-              <DetailItem icon={Phone} label="Contact Phone" value={school.phone} />
+              <DetailItem icon={Mail} label="Contact Email">
+                {school.email ? (
+                  <a href={`mailto:${school.email}`} className="text-base text-foreground hover:underline">
+                    {school.email}
+                  </a>
+                ) : <p className="text-base text-foreground">N/A</p>}
+              </DetailItem>
+              <DetailItem icon={Phone} label="Contact Phone">
+                {school.phone ? (
+                  <a href={`tel:${school.phone.replace(/[\s-()]/g, '')}`} className="text-base text-foreground hover:underline">
+                    {school.phone}
+                  </a>
+                ) : <p className="text-base text-foreground">N/A</p>}
+              </DetailItem>
               <DetailItem icon={Users} label="Referee" value={school.referee} />
               <DetailItem icon={Film} label="Include Drone Footage">
                   <Badge variant={school.includeDroneFootage ? 'default' : 'secondary'} className="mt-1">
