@@ -47,6 +47,7 @@ import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { Separator } from '@/components/ui/separator';
 
 
 const formatPhoneNumberForLink = (phone?: string) => {
@@ -473,47 +474,47 @@ export default function SchoolsPage() {
                                 </DropdownMenu>
                             </div>
                         </CardHeader>
-                        <CardContent className="space-y-3">
-                             <div>
+                        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4">
+                           <div>
                                 <p className="text-xs font-medium text-muted-foreground">Stage</p>
                                 <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
                             </div>
                             <div>
+                                <p className="text-xs font-medium text-muted-foreground">Students</p>
+                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
+                            </div>
+                            <div className="col-span-2">
                                 <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
                                 <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
                             </div>
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground">Students</p>
-                                <p className="text-sm">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
-                            </div>
-                             <div>
+                            <div className="col-span-2">
                                 <p className="text-xs font-medium text-muted-foreground">Modules</p>
                                 <div className="flex flex-wrap gap-1 mt-1">
-                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm">N/A</p>}
+                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex-col items-start gap-3">
-                             <div className="flex items-center gap-2 w-full">
-                                  <Button variant="outline" size="sm" asChild className="flex-1">
-                                      <a href={`tel:${formatPhoneNumberForLink(school.phone)}`} aria-label={`Call ${school.name}`}>
-                                          <Phone className="h-4 w-4" />
-                                          <span className="sm:inline ml-2">Call</span>
-                                      </a>
-                                  </Button>
-                                  <Button variant="outline" size="sm" asChild className="flex-1">
-                                      <a href={`https://wa.me/${formatPhoneNumberForLink(school.phone)}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${school.name}`}>
-                                          <MessageSquare className="h-4 w-4" />
-                                          <span className="sm:inline ml-2">WhatsApp</span>
-                                      </a>
-                                  </Button>
-                                  <Button variant="outline" size="sm" asChild className="flex-1">
-                                      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location || '')}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${school.name} on map`}>
-                                          <MapPin className="h-4 w-4" />
-                                          <span className="sm:inline ml-2">Map</span>
-                                      </a>
-                                  </Button>
-                             </div>
+                        <CardFooter className="flex items-center justify-around border-t p-2">
+                           <Button variant="ghost" size="sm" asChild>
+                                <a href={`tel:${formatPhoneNumberForLink(school.phone)}`} className="flex flex-1 items-center justify-center gap-2">
+                                    <Phone className="h-4 w-4" />
+                                    <span>Call</span>
+                                </a>
+                            </Button>
+                            <Separator orientation="vertical" className="h-6" />
+                            <Button variant="ghost" size="sm" asChild>
+                                <a href={`https://wa.me/${formatPhoneNumberForLink(school.phone)}`} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-2">
+                                    <MessageSquare className="h-4 w-4" />
+                                    <span>WhatsApp</span>
+                                </a>
+                            </Button>
+                            <Separator orientation="vertical" className="h-6" />
+                            <Button variant="ghost" size="sm" asChild>
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location || '')}`} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>Map</span>
+                                </a>
+                            </Button>
                         </CardFooter>
                     </Card>
                 ))
