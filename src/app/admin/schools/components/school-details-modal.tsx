@@ -71,7 +71,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               <DetailItem icon={Globe} label="Website Slug" value={school.slug} />
               <DetailItem icon={MapPin} label="Location" value={school.location} />
               <DetailItem icon={Users} label="Nominal Roll" value={school.nominalRoll?.toLocaleString()} />
-              {school.implementationDate && <DetailItem icon={Calendar} label="Go-live Date" value={format(new Date(school.implementationDate), 'PPP')} />}
+              {school.implementationDate && <DetailItem icon={Calendar} label="Implementation Date" value={format(new Date(school.implementationDate), 'PPP')} />}
               <DetailItem icon={PenSquare} label="Modules">
                     <div className="flex flex-wrap gap-2 pt-1">
                         {school.modules && school.modules.length > 0 ? (
