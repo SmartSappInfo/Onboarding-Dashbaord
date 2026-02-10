@@ -38,7 +38,7 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
             totalAssigned: d.totalAssigned,
             totalStudents: d.totalStudents,
             percentage: d.assignmentPercentage,
-            color: CHART_COLORS[index % CHART_COLORS.length]
+            color: d.user.color || CHART_COLORS[index % CHART_COLORS.length]
         }));
 
     return (
@@ -112,4 +112,3 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
         </TooltipProvider>
     );
 }
-

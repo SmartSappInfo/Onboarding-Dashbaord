@@ -15,6 +15,7 @@ export interface UserProfile {
   email: string;
   phone: string;
   photoURL?: string;
+  color?: string;
   isAuthorized: boolean;
   createdAt: string; // ISO string
 }
@@ -187,5 +188,3 @@ export interface Module {
   description: string;
   order: number;
 }
-
-    

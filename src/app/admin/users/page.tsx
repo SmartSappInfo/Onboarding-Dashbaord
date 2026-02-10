@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useMemo } from 'react';
@@ -6,6 +7,7 @@ import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
 
+import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { format } from 'date-fns';
@@ -13,6 +15,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -57,6 +63,30 @@ export default function UsersPage() {
         });
       });
   };
+  
+  const handleColorChange = async (user: UserProfile, color: string) => {
+    if (!firestore) return;
+    const userDocRef = doc(firestore, 'users', user.id);
+    try {
+      await updateDoc(userDocRef, { color });
+      toast({
+        title: 'Color Updated',
+        description: `Color updated for ${user.name}.`,
+      });
+    } catch (e) {
+      const permissionError = new FirestorePermissionError({
+        path: userDocRef.path,
+        operation: 'update',
+        requestResourceData: { color },
+      });
+      errorEmitter.emit('permission-error', permissionError);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Failed to update user color.',
+      });
+    }
+  };
 
 
   if (error) {
@@ -69,6 +99,7 @@ export default function UsersPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-16">Color</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
@@ -80,6 +111,7 @@ export default function UsersPage() {
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Skeleton className="h-10 w-10 rounded-full" />
@@ -95,6 +127,37 @@ export default function UsersPage() {
             ) : users && users.length > 0 ? (
               users.map((user) => (
                 <TableRow key={user.id}>
+                  <TableCell>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: user.color || '#ccc' }}>
+                            <div className="w-full h-full rounded-sm" style={{ backgroundColor: user.color || '#FFFFFF' }} />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-2">
+                          <div className="grid grid-cols-6 gap-1 mb-2">
+                            {ONBOARDING_STAGE_COLORS.map((color) => (
+                              <button
+                                key={color}
+                                className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === user.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
+                                style={{ backgroundColor: color }}
+                                onClick={() => handleColorChange(user, color)}
+                              />
+                            ))}
+                          </div>
+                          <div className="flex items-center gap-2 border-t pt-2 mt-2">
+                            <label htmlFor={`color-picker-${user.id}`} className="text-sm font-medium">Custom</label>
+                            <Input
+                              id={`color-picker-${user.id}`}
+                              type="color"
+                              value={user.color || '#FFFFFF'}
+                              onChange={(e) => handleColorChange(user, e.target.value)}
+                              className="w-10 h-10 p-1"
+                            />
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+                  </TableCell>
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                        <Avatar>
@@ -120,7 +183,7 @@ export default function UsersPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No users found.
                 </TableCell>
               </TableRow>

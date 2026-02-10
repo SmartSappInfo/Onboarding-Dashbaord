@@ -37,6 +37,10 @@
             "description": "URL of the user's profile picture.",
             "format": "uri"
         },
+        "color": {
+            "type": "string",
+            "description": "A hex color code associated with the user for charts and tags."
+        },
         "isAuthorized": {
           "type": "boolean",
           "description": "Whether the user is authorized to access the admin dashboard.",
