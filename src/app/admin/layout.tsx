@@ -17,7 +17,7 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users, LogOut, User as UserIcon, Workflow } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users, LogOut, User as UserIcon, Workflow, Activity } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -43,6 +43,7 @@ const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline' },
+  { href: '/admin/activities', icon: Activity, label: 'Activities' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },

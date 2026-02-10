@@ -188,3 +188,19 @@ export interface Module {
   description: string;
   order: number;
 }
+
+export interface Activity {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  userId: string | null;
+  userName: string | null;
+  userAvatarUrl: string | null;
+  type: 'school_created' | 'school_updated' | 'stage_changed' | 'user_assigned' | 'meeting_created' | 'meeting_updated' | 'manual_log';
+  description: string;
+  timestamp: string; // ISO string
+  details?: {
+    from?: string;
+    to?: string;
+  };
+}

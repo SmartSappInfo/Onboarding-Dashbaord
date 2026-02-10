@@ -28,10 +28,11 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { MediaSelect } from '../components/media-select';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { Textarea } from '@/components/ui/textarea';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -62,6 +63,7 @@ export default function NewSchoolPage() {
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -109,7 +111,15 @@ export default function NewSchoolPage() {
     form.control.disabled = true;
 
     addDoc(schoolsCollection, schoolData)
-      .then(() => {
+      .then((docRef) => {
+        logActivity({
+          firestore,
+          schoolId: docRef.id,
+          schoolName: schoolData.name,
+          user,
+          type: 'school_created',
+          description: `Created school: ${schoolData.name}`
+        });
         toast({
           title: 'School Created',
           description: `${data.name} has been added successfully.`,

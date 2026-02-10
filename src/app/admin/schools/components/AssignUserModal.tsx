@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, doc, updateDoc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { School, UserProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon, Loader2, Search } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 interface AssignUserModalProps {
   school: School | null;
@@ -23,6 +24,7 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
 
 export default function AssignUserModal({ school, open, onOpenChange }: AssignUserModalProps) {
   const firestore = useFirestore();
+  const { user: currentUser } = useUser();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = React.useState('');
   const [isAssigning, setIsAssigning] = React.useState(false);
@@ -38,17 +40,31 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
     );
   }, [users, searchTerm]);
 
-  const handleAssign = async (user: UserProfile | null) => {
-    if (!firestore || !school) return;
+  const handleAssign = async (userToAssign: UserProfile | null) => {
+    if (!firestore || !school || !currentUser) return;
     setIsAssigning(true);
 
     const schoolDocRef = doc(firestore, 'schools', school.id);
-    const assignmentData = user
-      ? { userId: user.id, name: user.name, email: user.email }
+    const assignmentData = userToAssign
+      ? { userId: userToAssign.id, name: userToAssign.name, email: userToAssign.email }
       : { userId: null, name: 'Unassigned', email: null };
+
+    const oldAssigneeName = school.assignedTo?.name || 'Unassigned';
+    const newAssigneeName = assignmentData.name || 'Unassigned';
 
     try {
       await updateDoc(schoolDocRef, { assignedTo: assignmentData });
+      
+      logActivity({
+        firestore,
+        schoolId: school.id,
+        schoolName: school.name,
+        user: currentUser,
+        type: 'user_assigned',
+        description: `Assigned school to ${newAssigneeName}.`,
+        details: { from: oldAssigneeName, to: newAssigneeName }
+      });
+
       toast({
         title: 'School Reassigned',
         description: `${school.name} has been assigned to ${assignmentData.name}.`,

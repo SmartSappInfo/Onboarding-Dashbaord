@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -24,11 +25,12 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
 import { ArrowLeft } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -48,6 +50,7 @@ export default function NewMeetingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -78,11 +81,11 @@ export default function NewMeetingPage() {
 
 
   const onSubmit = (data: FormData) => {
-    if (!firestore) {
+    if (!firestore || !user) {
       toast({
         variant: "destructive",
-        title: "Firestore not available",
-        description: "Please check your Firebase connection.",
+        title: "Error",
+        description: "You must be logged in to create a meeting.",
       });
       return;
     }
@@ -103,6 +106,14 @@ export default function NewMeetingPage() {
 
     addDoc(meetingsCollection, meetingData)
       .then(() => {
+        logActivity({
+          firestore,
+          schoolId: data.school.id,
+          schoolName: data.school.name,
+          user,
+          type: 'meeting_created',
+          description: `Scheduled a "${data.type.name}" meeting for ${data.school.name}.`
+        });
         toast({
           title: 'Meeting Created',
           description: `Meeting for ${data.school.name} has been scheduled.`,

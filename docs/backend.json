@@ -1,6 +1,42 @@
 
 {
   "entities": {
+    "Activity": {
+      "title": "Activity",
+      "type": "object",
+      "description": "Represents a single event or action that occurred related to a school or user.",
+      "properties": {
+        "schoolId": { "type": "string", "description": "The ID of the school the activity is related to." },
+        "schoolName": { "type": "string", "description": "The name of the school for quick reference." },
+        "userId": { "type": ["string", "null"], "description": "The ID of the user who performed the action. Null for system events." },
+        "userName": { "type": ["string", "null"], "description": "The name of the user who performed the action." },
+        "userAvatarUrl": { "type": ["string", "null"], "format": "uri", "description": "URL of the user's avatar." },
+        "type": {
+          "type": "string",
+          "enum": [
+            "school_created",
+            "school_updated",
+            "stage_changed",
+            "user_assigned",
+            "meeting_created",
+            "meeting_updated",
+            "manual_log"
+          ],
+          "description": "The type of activity that occurred."
+        },
+        "description": { "type": "string", "description": "A human-readable summary of the activity." },
+        "timestamp": { "type": "string", "format": "date-time", "description": "The ISO timestamp when the activity occurred." },
+        "details": {
+          "type": "object",
+          "description": "Optional object for storing additional context about the activity.",
+          "properties": {
+            "from": { "type": "string" },
+            "to": { "type": "string" }
+          }
+        }
+      },
+      "required": ["schoolId", "schoolName", "type", "description", "timestamp"]
+    },
     "DashboardLayout": {
       "title": "Dashboard Layout",
       "type": "object",
@@ -606,6 +642,16 @@
             "$ref": "#/entities/Module"
           },
           "description": "Stores the available SmartSapp modules for school onboarding."
+        }
+      },
+      {
+        "path": "/activities/{activityId}",
+        "definition": {
+          "entityName": "Activity",
+          "schema": {
+            "$ref": "#/entities/Activity"
+          },
+          "description": "Timeline of all activities related to schools and users."
         }
       }
     ]

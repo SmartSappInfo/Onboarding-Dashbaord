@@ -4,14 +4,15 @@
 
 import * as React from 'react';
 import { collection, doc, updateDoc, orderBy, query } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { School, OnboardingStage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Workflow } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 interface ChangeStageModalProps {
   school: School | null;
@@ -21,6 +22,7 @@ interface ChangeStageModalProps {
 
 export default function ChangeStageModal({ school, open, onOpenChange }: ChangeStageModalProps) {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = React.useState(false);
 
@@ -31,14 +33,26 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
   const { data: stages, isLoading } = useCollection<OnboardingStage>(stagesQuery);
 
   const handleStageChange = async (stage: OnboardingStage) => {
-    if (!firestore || !school) return;
+    if (!firestore || !school || !user) return;
     setIsUpdating(true);
 
     const schoolDocRef = doc(firestore, 'schools', school.id);
     const newStageData = { id: stage.id, name: stage.name, order: stage.order, color: stage.color };
+    const oldStageName = school.stage?.name || 'None';
 
     try {
       await updateDoc(schoolDocRef, { stage: newStageData });
+      
+      logActivity({
+        firestore,
+        schoolId: school.id,
+        schoolName: school.name,
+        user,
+        type: 'stage_changed',
+        description: `Moved school from "${oldStageName}" to "${newStageData.name}" stage.`,
+        details: { from: oldStageName, to: newStageData.name }
+      });
+
       toast({
         title: 'Stage Updated',
         description: `${school.name} has been moved to the "${stage.name}" stage.`,
