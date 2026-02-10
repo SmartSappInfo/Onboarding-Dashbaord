@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { School, Meeting } from '@/lib/types';
@@ -140,8 +139,18 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
               <div className="flex items-start gap-3">
                 <PenSquare className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-0.5" />
                 <div>
-                    <p className="text-sm font-medium text-muted-foreground">Modules</p>
-                    <p className="text-base text-foreground">{school.modules || 'Not specified'}</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Modules</p>
+                    <div className="flex flex-wrap gap-2">
+                        {school.modules && school.modules.length > 0 ? (
+                            school.modules.map((module) => (
+                                <Badge key={module.id} style={{ backgroundColor: module.color, color: 'hsl(var(--primary-foreground))' }} className="border-transparent">
+                                    {module.name}
+                                </Badge>
+                            ))
+                        ) : (
+                            <p className="text-sm text-foreground">Not specified</p>
+                        )}
+                    </div>
                 </div>
               </div>
             </div>
