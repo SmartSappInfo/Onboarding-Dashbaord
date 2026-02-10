@@ -12,6 +12,7 @@ type LogActivityProps = {
     type: Activity['type'];
     description: string;
     details?: Activity['details'];
+    timestamp?: string;
 }
 
 export async function logActivity({
@@ -21,7 +22,8 @@ export async function logActivity({
     user,
     type,
     description,
-    details
+    details,
+    timestamp
 }: LogActivityProps): Promise<void> {
     try {
         const activityData: Omit<Activity, 'id'> = {
@@ -32,12 +34,12 @@ export async function logActivity({
             userAvatarUrl: user?.photoURL || null,
             type,
             description,
-            timestamp: new Date().toISOString(),
+            timestamp: timestamp || new Date().toISOString(),
             details: details || {},
         };
 
         // This is a fire-and-forget operation on the server for performance.
-        addDoc(collection(firestore, 'activities'), activityData);
+        await addDoc(collection(firestore, 'activities'), activityData);
     } catch (error) {
         console.error("Failed to log activity:", error);
     }
