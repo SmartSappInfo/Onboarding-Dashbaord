@@ -19,71 +19,65 @@ export function GlobalFilterProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, isUserLoading } = useUser();
-  const [isLoading, setIsLoading] = React.useState(true);
+  
+  const [assignedUserId, setAssignedUserIdState] = React.useState<string | null>(null);
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // Initialize state from sessionStorage or URL param for persistence.
-  const [assignedUserId, setAssignedUserIdState] = React.useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const storedValue = sessionStorage.getItem(STORAGE_KEY);
-      if (storedValue) {
-        return storedValue === 'all' ? null : storedValue;
-      }
-    }
-    const param = searchParams.get('assignedTo');
-    return param === 'all' ? null : param;
-  });
-
-  // Effect to set the initial default value and handle hydration.
+  // 1. Initialize state once from URL, sessionStorage, or user default.
   React.useEffect(() => {
-    if (isUserLoading) return;
+    // This effect should only run once after the user has been loaded.
+    if (isUserLoading || isInitialized) {
+      return;
+    }
 
-    let initialValue: string | null = null;
+    const urlParam = searchParams.get('assignedTo');
     const storedValue = sessionStorage.getItem(STORAGE_KEY);
+    
+    let initialValue: string | null = null;
 
-    if (storedValue) {
+    // The order of priority for the initial value is: URL > sessionStorage > logged-in user
+    if (urlParam) {
+      initialValue = urlParam === 'all' ? null : urlParam;
+    } else if (storedValue) {
       initialValue = storedValue === 'all' ? null : storedValue;
     } else if (user) {
-      // Default to current user only if nothing is stored from a previous session.
       initialValue = user.uid;
     }
-    
+
     setAssignedUserIdState(initialValue);
-    setIsLoading(false);
-  }, [isUserLoading, user]);
+    setIsInitialized(true); // Mark as initialized to prevent this from running again.
+  }, [isUserLoading, user, searchParams, isInitialized]);
   
 
+  // 2. This function is exposed to the app to change the filter.
+  // It updates the state and persists the choice to sessionStorage for cross-page navigation.
   const setAssignedUserId = React.useCallback((userId: string | null) => {
     setAssignedUserIdState(userId);
-    // Persist to session storage so it sticks across page loads.
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(STORAGE_KEY, userId === null ? 'all' : userId);
-    }
+    sessionStorage.setItem(STORAGE_KEY, userId === null ? 'all' : userId);
   }, []);
-
-  // Effect to keep the URL in sync with the state from session storage.
+  
+  const searchParamsString = searchParams.toString();
+  // 3. This effect syncs the state to the URL's query parameters.
   React.useEffect(() => {
-    // Don't modify URL until the initial value has been set.
-    if (isLoading) return;
+    // Don't update the URL until after the initial state has been set.
+    if (!isInitialized) return;
 
-    const currentParams = new URLSearchParams(Array.from(searchParams.entries()));
+    const currentParams = new URLSearchParams(searchParamsString);
     const valueInState = assignedUserId === null ? 'all' : assignedUserId;
 
-    // If the state has a value, ensure it's in the URL.
-    if (valueInState && currentParams.get('assignedTo') !== valueInState) {
+    // Only update the URL if it's out of sync with the state.
+    if (currentParams.get('assignedTo') !== valueInState) {
         currentParams.set('assignedTo', valueInState);
-        const search = currentParams.toString();
-        const query = search ? `?${search}` : '';
-        // Use replace to update URL without adding to browser history.
-        router.replace(`${pathname}${query}`);
+        router.replace(`${pathname}?${currentParams.toString()}`);
     }
-    
-  }, [assignedUserId, pathname, router, searchParams, isLoading]);
+  }, [assignedUserId, pathname, isInitialized, searchParamsString, router]);
+
 
   const value = React.useMemo(() => ({
     assignedUserId,
     setAssignedUserId,
-    isLoading: isLoading || isUserLoading,
-  }), [assignedUserId, setAssignedUserId, isLoading, isUserLoading]);
+    isLoading: !isInitialized || isUserLoading,
+  }), [assignedUserId, setAssignedUserId, isInitialized, isUserLoading]);
 
   return (
     <GlobalFilterContext.Provider value={value}>
