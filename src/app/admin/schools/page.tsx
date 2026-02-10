@@ -425,53 +425,55 @@ export default function SchoolsPage() {
                 sortedSchools.map(school => (
                     <Card key={school.id} className="w-full">
                         <CardHeader>
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="flex items-center gap-3">
+                            <div className="flex items-start justify-between gap-2">
+                                <div className="flex flex-1 items-center gap-3 min-w-0">
                                     <Avatar>
                                         <AvatarImage src={school.logoUrl} alt={school.name} />
                                         <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
                                     </Avatar>
-                                    <div>
+                                    <div className="min-w-0">
                                         <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
                                         <CardDescription>
                                             Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
                                         </CardDescription>
                                     </div>
                                 </div>
-                                <DropdownMenu modal={false}>
-                                    <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" className="h-8 w-8 p-0">
-                                          <span className="sr-only">Open menu</span>
-                                          <MoreHorizontal className="h-4 w-4" />
-                                      </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
-                                          <UserPlus className="mr-2 h-4 w-4" />
-                                          <span>Assign to User</span>
-                                        </DropdownMenuItem>
-                                         <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
-                                          <Workflow className="mr-2 h-4 w-4" />
-                                          <span>Change Stage</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                                          <Edit className="mr-2 h-4 w-4" />
-                                          <span>Edit School</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
-                                          <CalendarPlus className="mr-2 h-4 w-4" />
-                                          <span>Schedule Meeting</span>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem
-                                          className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                          onClick={() => setSchoolToDelete(school)}
-                                        >
-                                          <Trash2 className="mr-2 h-4 w-4" />
-                                          <span>Delete School</span>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
+                                <div className="flex-shrink-0">
+                                    <DropdownMenu modal={false}>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" className="h-8 w-8 p-0">
+                                              <span className="sr-only">Open menu</span>
+                                              <MoreHorizontal className="h-4 w-4" />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
+                                              <UserPlus className="mr-2 h-4 w-4" />
+                                              <span>Assign to User</span>
+                                            </DropdownMenuItem>
+                                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
+                                              <Workflow className="mr-2 h-4 w-4" />
+                                              <span>Change Stage</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                                              <Edit className="mr-2 h-4 w-4" />
+                                              <span>Edit School</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
+                                              <CalendarPlus className="mr-2 h-4 w-4" />
+                                              <span>Schedule Meeting</span>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuSeparator />
+                                            <DropdownMenuItem
+                                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
+                                              onClick={() => setSchoolToDelete(school)}
+                                            >
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              <span>Delete School</span>
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4">
