@@ -185,9 +185,16 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
         const docRef = doc(schoolsCollection);
         const slug = schoolBase.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
-        const schoolModulesForSchool = allModules.length > 0 
-            ? [allModules[index % allModules.length], allModules[(index + 2) % allModules.length]] 
-            : [];
+        const schoolModulesForSchool: Module[] = [];
+        if (allModules.length > 0) {
+            const moduleCount = (index % 3) + 1; // Assign 1, 2, or 3 modules
+            for (let i = 0; i < moduleCount; i++) {
+                const moduleIndex = (index + i * 2) % allModules.length;
+                if (!schoolModulesForSchool.find(m => m.id === allModules[moduleIndex].id)) {
+                    schoolModulesForSchool.push(allModules[moduleIndex]);
+                }
+            }
+        }
         
         const school: Omit<School, 'id'> = {
             ...schoolBase,
@@ -355,5 +362,3 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
 
     return { stagesCreated: defaultStages.length, schoolsUpdated };
 }
-
-    
