@@ -482,18 +482,18 @@ export default function SchoolsPage() {
                                 <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
                             </div>
                             <div>
-                                <p className="text-xs font-medium text-muted-foreground">Students</p>
-                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
+                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
+                                </div>
                             </div>
                             <div className="col-span-2">
                                 <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
                                 <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
                             </div>
                             <div className="col-span-2">
-                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
-                                </div>
+                                <p className="text-xs font-medium text-muted-foreground">Students</p>
+                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center justify-around border-t p-2">
