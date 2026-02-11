@@ -31,7 +31,7 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     
-    let q = query(collection(firestore, 'activities'), orderBy('timestamp', 'desc'), limit(100));
+    let q = query(collection(firestore, 'activities'), orderBy('timestamp', 'desc'), limit(50));
     
     if (schoolId) {
       q = query(q, where('schoolId', '==', schoolId));
