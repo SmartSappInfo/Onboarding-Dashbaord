@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { School } from '@/lib/types';
@@ -77,6 +78,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
               <Image src={school.logoUrl} alt="logo" width={40} height={40} className="rounded-full object-contain" />
             )}
             {school.name}
+             {school.initials && <Badge variant="secondary">{school.initials}</Badge>}
           </DialogTitle>
           <DialogDescription>{school.slogan || 'School Details'}</DialogDescription>
         </DialogHeader>
@@ -199,3 +201,5 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
     </Dialog>
   );
 }
+
+    

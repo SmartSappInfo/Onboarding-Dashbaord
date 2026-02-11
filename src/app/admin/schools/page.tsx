@@ -351,7 +351,7 @@ export default function SchoolsPage() {
                     <TableCell>
                       <Avatar>
                         <AvatarImage src={school.logoUrl} alt={school.name} />
-                        <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                        <AvatarFallback>{school.initials || getInitials(school.name)}</AvatarFallback>
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium">
@@ -439,7 +439,7 @@ export default function SchoolsPage() {
                                 <div className="flex flex-1 items-center gap-3 min-w-0">
                                     <Avatar>
                                         <AvatarImage src={school.logoUrl} alt={school.name} />
-                                        <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
+                                        <AvatarFallback>{school.initials || getInitials(school.name)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
                                         <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchoolIndex(index)}>{school.name}</CardTitle>
@@ -573,3 +573,5 @@ export default function SchoolsPage() {
     </TooltipProvider>
   );
 }
+
+    

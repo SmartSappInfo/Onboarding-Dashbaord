@@ -35,6 +35,7 @@ import { ModuleSelect } from '../../components/ModuleSelect';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
+  initials: z.string().optional(),
   slogan: z.string().optional(),
   logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -79,6 +80,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
         if (school) {
         form.reset({
             ...school,
+            initials: school.initials || '',
             nominalRoll: school.nominalRoll || undefined,
             implementationDate: school.implementationDate ? new Date(school.implementationDate) : undefined,
             modules: school.modules || [],
@@ -161,19 +163,34 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>School Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Ghana International School" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-8">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                <FormLabel>School Name</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., Ghana International School" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="initials"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Initials</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., GIS" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     <FormField
                     control={form.control}
                     name="slogan"
@@ -387,5 +404,7 @@ export default function EditSchoolPage() {
         </div>
     )
 }
+
+    
 
     

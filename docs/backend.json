@@ -64,6 +64,10 @@
           "type": "string",
           "description": "The full name of the school."
         },
+        "initials": {
+          "type": "string",
+          "description": "The school's initials or abbreviation."
+        },
         "slug": {
           "type": "string",
           "description": "The dynamically generated page name for the school (e.g., 'ghana-international-school')."
@@ -612,6 +616,8 @@
   }
 }
     
+    
+
     
 
     

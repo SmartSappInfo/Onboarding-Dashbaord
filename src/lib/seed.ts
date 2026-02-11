@@ -1,3 +1,4 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
@@ -60,13 +61,13 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
 ];
 
 const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules'>[] = [
-  { name: 'Ghana International School', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
-  { name: 'Lincoln Community School', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
-  { name: 'Adisadel College', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
-  { name: 'SOS-Hermann Gmeiner International College', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, includeDroneFootage: false, referee: 'SOS-CV Ghana', contactPerson: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231' },
-  { name: 'Wesley Girls\' High School', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
-  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
-  { name: 'Galaxy International School', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
+  { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
+  { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
+  { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
+  { name: 'SOS-Hermann Gmeiner International College', initials: 'SOS-HGIC', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, includeDroneFootage: false, referee: 'SOS-CV Ghana', contactPerson: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231' },
+  { name: 'Wesley Girls\' High School', initials: 'WGHS', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
+  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', initials: 'PRESEC', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
+  { name: 'Galaxy International School', initials: 'Galaxy', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
 ];
 
 const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
@@ -361,3 +362,5 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
 
     return { stagesCreated: defaultStages.length, schoolsUpdated };
 }
+
+    

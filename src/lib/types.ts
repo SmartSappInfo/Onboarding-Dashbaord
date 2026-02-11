@@ -34,6 +34,7 @@ export interface OnboardingStage {
 export interface School {
   id: string;
   name: string;
+  initials?: string;
   slug: string;
   slogan?: string;
   logoUrl?: string;
@@ -188,3 +189,5 @@ export interface Module {
   description: string;
   order: number;
 }
+
+    

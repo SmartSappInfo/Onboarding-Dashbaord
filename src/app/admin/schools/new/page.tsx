@@ -35,6 +35,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
+  initials: z.string().optional(),
   slogan: z.string().optional(),
   logoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   heroImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
@@ -68,6 +69,7 @@ export default function NewSchoolPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
+      initials: '',
       slogan: '',
       logoUrl: '',
       heroImageUrl: '',
@@ -80,6 +82,19 @@ export default function NewSchoolPage() {
       includeDroneFootage: false,
     },
   });
+
+  const watchName = form.watch("name");
+
+  React.useEffect(() => {
+    if (watchName) {
+        const initials = watchName
+            .split(' ')
+            .map(word => word[0])
+            .join('')
+            .toUpperCase();
+        form.setValue('initials', initials, { shouldValidate: true });
+    }
+  }, [watchName, form]);
 
   const onSubmit = (data: FormData) => {
     if (!firestore) {
@@ -151,19 +166,34 @@ export default function NewSchoolPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>School Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Ghana International School" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                 <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>School Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Ghana International School" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="initials"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Initials</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., GIS" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                 </div>
                 <FormField
                   control={form.control}
                   name="slogan"
@@ -360,5 +390,7 @@ export default function NewSchoolPage() {
     </div>
   );
 }
+
+    
 
     

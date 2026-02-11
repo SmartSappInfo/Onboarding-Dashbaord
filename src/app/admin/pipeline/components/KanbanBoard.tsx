@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -78,7 +79,7 @@ function SchoolCard({ school }: { school: School }) {
         <Avatar className="h-8 w-8">
           <AvatarImage src={school.logoUrl} alt={school.name} />
           <AvatarFallback className="text-xs">
-            {getInitials(school.name)}
+            {school.initials || getInitials(school.name)}
           </AvatarFallback>
         </Avatar>
         <CardTitle className="text-sm font-medium flex-1">{school.name}</CardTitle>
@@ -514,3 +515,5 @@ export default function KanbanBoard() {
     </DndContext>
   );
 }
+
+    
