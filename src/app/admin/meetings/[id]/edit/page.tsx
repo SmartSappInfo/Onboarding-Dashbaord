@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
-import { collection, doc, updateDoc } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 
 import type { School, Meeting, MeetingType } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -18,6 +18,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -30,6 +31,7 @@ import { BrochureSelect } from '../../components/brochure-select';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => value, { message: "School is required." }),
+  schoolSlug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
@@ -68,6 +70,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
       form.reset({
         school: selectedSchool,
+        schoolSlug: meeting.schoolSlug,
         meetingTime: new Date(meeting.meetingTime),
         type: meeting.type || MEETING_TYPES[0],
         meetingLink: meeting.meetingLink,
@@ -77,7 +80,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
     }
   }, [meeting, schools, form]);
 
-  const onSubmit = (data: FormData) => {
+  const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) {
       toast({
         variant: "destructive",
@@ -87,10 +90,23 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
       return;
     }
     
+    // Uniqueness check
+    const meetingsRef = collection(firestore, 'meetings');
+    const q = query(meetingsRef, where('type.slug', '==', data.type.slug), where('schoolSlug', '==', data.schoolSlug));
+    const querySnapshot = await getDocs(q);
+    
+    const isDuplicate = querySnapshot.docs.some(doc => doc.id !== meetingId);
+    
+    if (isDuplicate) {
+        form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type. Please choose another.' });
+        toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique slug for this meeting type.' });
+        return;
+    }
+
     const meetingData = {
         schoolId: data.school.id,
         schoolName: data.school.name,
-        schoolSlug: data.school.slug,
+        schoolSlug: data.schoolSlug,
         meetingTime: data.meetingTime.toISOString(),
         type: data.type,
         meetingLink: data.meetingLink,
@@ -160,6 +176,9 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                         onValueChange={(schoolId: string) => {
                           const school = schools?.find((s) => s.id === schoolId);
                           field.onChange(school);
+                          if (school) {
+                            form.setValue('schoolSlug', school.slug, { shouldValidate: true });
+                          }
                         }}
                         value={field.value?.id}
                       >
@@ -181,6 +200,23 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                  control={form.control}
+                  name="schoolSlug"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel>Meeting Page Slug</FormLabel>
+                          <FormControl>
+                              <Input placeholder="e.g., ghana-international-school" {...field} />
+                          </FormControl>
+                           <FormDescription>
+                              The unique slug for this meeting's public page URL.
+                          </FormDescription>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+                />
 
               <FormField
                 control={form.control}
