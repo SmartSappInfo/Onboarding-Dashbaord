@@ -32,6 +32,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@
 import { MediaSelect } from '../components/media-select';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { Textarea } from '@/components/ui/textarea';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -130,6 +131,15 @@ export default function NewSchoolPage() {
           title: 'School Created',
           description: `${data.name} has been added successfully.`,
         });
+        if (user) {
+            logActivity({
+                schoolId: docRef.id,
+                userId: user.uid,
+                type: 'school_created',
+                source: 'user_action',
+                description: `${user.displayName} created school "${data.name}".`,
+            });
+        }
         router.push('/admin/schools');
       })
       .catch((error) => {

@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
 import { ArrowLeft } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -119,11 +120,21 @@ export default function NewMeetingPage() {
     form.control.disabled = true;
 
     addDoc(meetingsCollection, meetingData)
-      .then(() => {
+      .then((docRef) => {
         toast({
           title: 'Meeting Created',
           description: `Meeting for ${data.school.name} has been scheduled.`,
         });
+        if (user) {
+            logActivity({
+                schoolId: data.school.id,
+                userId: user.uid,
+                type: 'meeting_created',
+                source: 'user_action',
+                description: `${user.displayName} scheduled a ${data.type.name} meeting for "${data.school.name}".`,
+                metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
+            });
+        }
         router.push('/admin/meetings');
       })
       .catch((error) => {

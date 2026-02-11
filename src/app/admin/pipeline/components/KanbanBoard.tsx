@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -30,7 +31,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { School, OnboardingStage } from '@/lib/types';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +44,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { cn } from '@/lib/utils';
+import { logActivity } from '@/lib/activity-logger';
 
 const getInitials = (name?: string | null) =>
   name
@@ -185,6 +187,7 @@ export default function KanbanBoard() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+  const { user } = useUser();
 
   const stagesQuery = useMemoFirebase(
     () =>
@@ -381,6 +384,8 @@ export default function KanbanBoard() {
     ) {
       const schoolId = active.id as string;
       const newStage = orderedStages.find((s) => s.id === overContainer);
+      const school = (active.data.current?.school) as School;
+      const oldStageName = school?.stage?.name || 'an unknown stage';
 
       if (newStage) {
         const schoolRef = doc(firestore, 'schools', schoolId);
@@ -397,6 +402,19 @@ export default function KanbanBoard() {
             title: 'School Moved',
             description: `Moved to "${newStage.name}" stage.`,
           });
+          if (user && school) {
+            logActivity({
+                schoolId,
+                userId: user.uid,
+                type: 'pipeline_stage_changed',
+                source: 'user_action',
+                description: `${user.displayName} moved school "${school.name}" from "${oldStageName}" to "${newStage.name}".`,
+                metadata: {
+                    from: oldStageName,
+                    to: newStage.name,
+                }
+            });
+          }
         } catch (error) {
           toast({
             variant: 'destructive',

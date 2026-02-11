@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -11,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 interface ChangeStageModalProps {
   school: School | null;
@@ -36,6 +38,8 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
 
     const schoolDocRef = doc(firestore, 'schools', school.id);
     const newStageData = { id: stage.id, name: stage.name, order: stage.order, color: stage.color };
+    const oldStageName = school.stage?.name || 'an unknown stage';
+
 
     try {
       await updateDoc(schoolDocRef, { stage: newStageData });
@@ -43,6 +47,17 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
       toast({
         title: 'Stage Updated',
         description: `${school.name} has been moved to the "${stage.name}" stage.`,
+      });
+      logActivity({
+          schoolId: school.id,
+          userId: user.uid,
+          type: 'pipeline_stage_changed',
+          source: 'user_action',
+          description: `${user.displayName} moved school "${school.name}" from "${oldStageName}" to "${stage.name}".`,
+          metadata: {
+              from: oldStageName,
+              to: stage.name,
+          }
       });
       onOpenChange(false);
     } catch (e) {

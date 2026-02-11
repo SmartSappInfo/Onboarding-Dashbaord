@@ -194,7 +194,7 @@ export interface Activity {
   id: string;
   schoolId: string;
   userId?: string | null;
-  type: 'note' | 'call' | 'visit' | 'email' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent';
+  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent';
   source: 'manual' | 'user_action' | 'system';
   timestamp: string; // ISO string
   description: string;

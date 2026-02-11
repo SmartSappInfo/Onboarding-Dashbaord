@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -13,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon, Loader2, Search } from 'lucide-react';
+import { logActivity } from '@/lib/activity-logger';
 
 interface AssignUserModalProps {
   school: School | null;
@@ -49,12 +51,22 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
       ? { userId: userToAssign.id, name: userToAssign.name, email: userToAssign.email }
       : { userId: null, name: 'Unassigned', email: null };
 
+    const oldAssignedToName = school.assignedTo?.name || 'Unassigned';
+
     try {
       await updateDoc(schoolDocRef, { assignedTo: assignmentData });
       
       toast({
         title: 'School Reassigned',
         description: `${school.name} has been assigned to ${assignmentData.name || 'Unassigned'}.`,
+      });
+      logActivity({
+        schoolId: school.id,
+        userId: currentUser.uid,
+        type: 'school_assigned',
+        source: 'user_action',
+        description: `${currentUser.displayName} assigned school "${school.name}" to ${assignmentData.name || 'Unassigned'}.`,
+        metadata: { from: oldAssignedToName, to: assignmentData.name }
       });
       onOpenChange(false);
     } catch (e) {

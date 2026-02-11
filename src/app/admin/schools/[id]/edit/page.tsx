@@ -32,6 +32,7 @@ import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissio
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../components/media-select';
 import { ModuleSelect } from '../../components/ModuleSelect';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -118,6 +119,13 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                 toast({
                     title: 'School Updated',
                     description: `${data.name} has been updated successfully.`,
+                });
+                logActivity({
+                    schoolId,
+                    userId: user!.uid,
+                    type: 'school_updated',
+                    source: 'user_action',
+                    description: `${user!.displayName} updated details for school "${data.name}".`,
                 });
                 router.push('/admin/schools');
             })

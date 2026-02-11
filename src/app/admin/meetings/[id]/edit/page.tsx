@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -28,6 +29,7 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, Fir
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
+import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => value, { message: "School is required." }),
@@ -122,6 +124,16 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
             title: 'Meeting Updated',
             description: `The meeting for ${data.school.name} has been updated.`,
         });
+        if (user) {
+            logActivity({
+                schoolId: data.school.id,
+                userId: user.uid,
+                type: 'school_updated',
+                source: 'user_action',
+                description: `${user.displayName} updated the ${data.type.name} meeting for "${data.school.name}".`,
+                metadata: { meetingId }
+            });
+        }
         router.push('/admin/meetings');
     }).catch((error) => {
         const permissionError = new FirestorePermissionError({
