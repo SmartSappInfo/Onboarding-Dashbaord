@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -23,7 +22,7 @@ import type { School } from '@/lib/types';
 
 
 const formSchema = z.object({
-  school: z.custom<School>().refine(value => value, { message: "School is required." }),
+  school: z.custom<School>().refine(value => value !== undefined, { message: "School is required." }),
   description: z.string().min(5, { message: "Description must be at least 5 characters." }),
   timestamp: z.date({
     required_error: "A date and time for the activity is required.",
@@ -43,12 +42,21 @@ export default function LogActivityForm() {
     
     const defaultFormValues = React.useMemo(() => ({
         timestamp: new Date(),
+        description: '',
+        school: undefined,
     }), []);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: defaultFormValues,
     });
+
+    React.useEffect(() => {
+        if (isDialogOpen) {
+            form.reset(defaultFormValues);
+        }
+    }, [isDialogOpen, form, defaultFormValues]);
+
 
     const onSubmit = async (data: FormData) => {
         if (!firestore || !user) {
@@ -68,7 +76,6 @@ export default function LogActivityForm() {
             });
 
             toast({ title: "Activity Logged", description: "The new activity has been added to the timeline." });
-            form.reset({ timestamp: new Date() });
             setIsDialogOpen(false);
 
         } catch (e) {
