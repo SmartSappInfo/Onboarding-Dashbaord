@@ -1,21 +1,21 @@
+
 'use client';
-import { useState, useRef, useMemo, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { File as FileIcon, X, CheckCircle, Upload, Loader2, Pencil } from 'lucide-react';
+import { File as FileIcon, X, CheckCircle, Upload, Loader2 } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
 import { ImageEditor, type ImageEditingState } from './ImageEditor';
-import { processImage } from '@/lib/image-processing';
+import { processImage, getImageDimensions } from '@/lib/image-processing';
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/svg+xml', 'image/gif'];
-// For now, only images can be edited. Other types will be uploaded directly.
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
 const ALLOWED_AUDIO_TYPES = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/m4a', 'audio/flac'];
 const ALLOWED_DOCUMENT_TYPES = [
@@ -41,6 +41,7 @@ interface FileState {
   progress: number;
   editingState?: ImageEditingState;
   dimensions?: { width: number; height: number };
+  dataUrl?: string;
 }
 
 interface MediaUploaderProps {
@@ -98,25 +99,26 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
     if (!newFiles) return;
     const validatedFiles = Array.from(newFiles).filter(validateFile);
     
-    validatedFiles.forEach(file => {
+    validatedFiles.forEach(async (file) => {
       const mediaType = getMediaType(file);
       const fileId = `${file.name}-${file.lastModified}-${file.size}`;
       
       if (stagedFiles.some(f => f.id === fileId)) return;
 
       if (mediaType === 'image') {
-        const image = new Image();
-        image.src = URL.createObjectURL(file);
-        image.onload = () => {
-          setStagedFiles(currentFiles => [...currentFiles, {
-            id: fileId,
-            file,
-            status: 'pending',
-            progress: 0,
-            dimensions: { width: image.width, height: image.height },
-          }]);
-          URL.revokeObjectURL(image.src);
-        };
+        try {
+            const { width, height, dataUrl } = await getImageDimensions(file);
+            setStagedFiles(currentFiles => [...currentFiles, {
+                id: fileId,
+                file,
+                status: 'pending',
+                progress: 0,
+                dimensions: { width, height },
+                dataUrl,
+            }]);
+        } catch(e) {
+            toast({ variant: 'destructive', title: 'Could not read image file', description: file.name });
+        }
       } else {
          setStagedFiles(currentFiles => [...currentFiles, { id: fileId, file, status: 'pending', progress: 0 }]);
       }
@@ -124,7 +126,6 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
 
   useEffect(() => {
-    // Automatically select the first file for editing if none is active
     if (stagedFiles.length > 0 && activeFileId === null) {
       setActiveFileId(stagedFiles[0].id);
     }
@@ -177,10 +178,10 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         const mediaType = getMediaType(fileState.file);
         if (!mediaType) throw new Error("Invalid file type");
 
-        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels) {
+        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels && fileState.dataUrl) {
           const { editingState } = fileState;
           const { file, width, height } = await processImage(
-            fileState.file, 
+            fileState.dataUrl,
             editingState.croppedAreaPixels, 
             editingState.resize?.width || fileState.dimensions!.width,
             editingState.quality,
@@ -289,9 +290,11 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         </form>
       )}
 
-      {activeFileState && isImageActive && activeFileState.dimensions && (
+      {activeFileState && isImageActive && activeFileState.dimensions && activeFileState.dataUrl && (
         <ImageEditor 
-          file={activeFileState.file}
+          imageUrl={activeFileState.dataUrl}
+          originalFileName={activeFileState.file.name}
+          originalFileSize={activeFileState.file.size}
           imageDimensions={activeFileState.dimensions}
           initialState={activeFileState.editingState}
           onStateChange={handleStateChange}

@@ -52,7 +52,7 @@ export async function processImage(
     pixelCrop.height
   );
 
-  const croppedBlob = await new Promise<Blob>((resolve) => {
+  const croppedBlob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, 'image/webp', 0.95);
   });
   if (!croppedBlob) {
@@ -71,7 +71,9 @@ export async function processImage(
   const originalFile = new File([croppedBlob], "temp.webp", {type: "image/webp"});
   const compressedBlob = await imageCompression(originalFile, options);
 
-  const finalImage = await createImage(URL.createObjectURL(compressedBlob));
+  const compressedDataUrl = URL.createObjectURL(compressedBlob);
+  const finalImage = await createImage(compressedDataUrl);
+  URL.revokeObjectURL(compressedDataUrl);
   
   const finalFile = new File([compressedBlob], `${fileName}.webp`, { type: 'image/webp' });
 

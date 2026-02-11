@@ -1,3 +1,4 @@
+
 'use client';
 import * as React from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
@@ -22,7 +23,9 @@ export interface ImageEditingState {
 }
 
 interface ImageEditorProps {
-  file: File;
+  imageUrl: string;
+  originalFileName: string;
+  originalFileSize: number;
   imageDimensions: { width: number; height: number; };
   initialState?: Partial<ImageEditingState>;
   onStateChange: (newState: ImageEditingState) => void;
@@ -36,15 +39,13 @@ const aspectRatios = [
     { label: "16:9", value: 16/9 },
 ];
 
-export function ImageEditor({ file, imageDimensions, initialState, onStateChange }: ImageEditorProps) {
-  const [imageUrl, setImageUrl] = React.useState<string>('');
-  
+export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imageDimensions, initialState, onStateChange }: ImageEditorProps) {
   const [crop, setCrop] = React.useState(initialState?.crop || { x: 0, y: 0 });
   const [zoom, setZoom] = React.useState(initialState?.zoom || 1);
   const [aspect, setAspect] = React.useState(initialState?.aspect || 16/9);
-  const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<Area | null>(initialState?.croppedAreaPixels || null);
+  const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<Area | null>(null);
   
-  const [filename, setFilename] = React.useState(initialState?.filename || file.name.split('.').slice(0, -1).join('.'));
+  const [filename, setFilename] = React.useState(initialState?.filename || originalFileName.split('.').slice(0, -1).join('.'));
   const [targetWidth, setTargetWidth] = React.useState(initialState?.resize?.width || imageDimensions.width);
   const [quality, setQuality] = React.useState(initialState?.quality || 80);
   const [format, setFormat] = React.useState<'jpeg' | 'png' | 'webp'>(initialState?.format || 'webp');
@@ -59,12 +60,6 @@ export function ImageEditor({ file, imageDimensions, initialState, onStateChange
     crop,
     aspect
   }, 500);
-
-  React.useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setImageUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
 
   React.useEffect(() => {
     if (debouncedState.croppedAreaPixels) {
@@ -143,7 +138,7 @@ export function ImageEditor({ file, imageDimensions, initialState, onStateChange
             <div className="space-y-2 text-sm text-muted-foreground rounded-lg border p-3">
                 <p className="font-semibold text-foreground">Original:</p>
                 <div className="flex justify-between"><span>Dimensions:</span> <span>{imageDimensions.width} x {imageDimensions.height}</span></div>
-                <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(file.size)}</span></div>
+                <div className="flex justify-between"><span>Size:</span> <span>{formatBytes(originalFileSize)}</span></div>
             </div>
         </div>
     </div>
