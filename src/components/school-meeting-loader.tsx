@@ -16,6 +16,7 @@ import TestimonialsSection from './testimonials-section';
 import WelcomeSection from './welcome-section';
 import KickoffMeetingHero from './kickoff-meeting-hero';
 import TrainingMeetingHero from './training-meeting-hero';
+import MeetingNotFound from './meeting-not-found';
 
 function MeetingPageSkeleton() {
   return (
@@ -190,14 +191,17 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
     }
 
     if (error) {
-        return <div className="container py-20 text-center text-destructive">{error}</div>;
+        return (
+            <div className="container py-20">
+                <MeetingNotFound />
+            </div>
+        );
     }
 
     if (!school || !meeting) {
         return (
-            <div className="container py-20 text-center">
-                <h1 className="text-4xl font-bold">Meeting Information Unavailable</h1>
-                <p className="text-muted-foreground mt-4">The meeting page for this school could not be fully loaded. Please check the name and try again, or contact support.</p>
+            <div className="container py-20">
+                <MeetingNotFound />
             </div>
         )
     }
