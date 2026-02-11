@@ -31,7 +31,7 @@ function SchoolCard({ school }: { school: School }) {
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0 : 1,
   };
 
   return (
@@ -69,7 +69,7 @@ function SchoolCard({ school }: { school: School }) {
   );
 }
 
-function StageColumn({ stage, schools, isOverlay, isHovered }: { stage: OnboardingStage; schools: School[], isOverlay?: boolean, isHovered?: boolean }) {
+function StageColumn({ stage, schools, isOverlay }: { stage: OnboardingStage; schools: School[], isOverlay?: boolean }) {
     const {
         attributes,
         listeners,
@@ -101,7 +101,7 @@ function StageColumn({ stage, schools, isOverlay, isHovered }: { stage: Onboardi
                     <Badge variant="secondary">{schools.length}</Badge>
                 </CardHeader>
                 <ScrollArea className="flex-grow">
-                    <CardContent className={cn("p-3 transition-colors", isHovered && "bg-accent")}>
+                    <CardContent className={cn("p-3 transition-colors")}>
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
                             {schools.map(school => (
                                 <SchoolCard key={school.id} school={school} />
