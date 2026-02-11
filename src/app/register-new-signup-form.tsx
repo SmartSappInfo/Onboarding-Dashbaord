@@ -670,5 +670,3 @@ export default function NewSchoolSignupForm() {
     </Form>
   );
 }
-
-    
