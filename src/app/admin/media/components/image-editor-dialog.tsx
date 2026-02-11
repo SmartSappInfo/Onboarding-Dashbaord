@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -29,13 +28,13 @@ interface ImageEditorDialogProps {
   onSave: (fileId: string, edits: StagedFile['edits']) => void;
 }
 
-const aspectRatios = [
-    { label: "Original", value: "none" },
-    { label: "1:1", value: "1/1" },
-    { label: "4:3", value: "4/3" },
-    { label: "3:2", value: "3/2" },
-    { label: "16:9", value: "16/9" },
-    { label: "2:1", value: "2/1" },
+const staticAspectRatios = [
+    { label: "Custom", value: "none" },
+    { label: "1:1", value: String(1/1) },
+    { label: "4:3", value: String(4/3) },
+    { label: "3:2", value: String(3/2) },
+    { label: "16:9", value: String(16/9) },
+    { label: "2:1", value: String(2/1) },
 ];
 
 
@@ -55,30 +54,53 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
   const debouncedCrop = useDebounce(croppedAreaPixels, 500);
   const debouncedWidth = useDebounce(targetWidth, 500);
   const debouncedQuality = useDebounce(quality, 500);
+  
+  const aspectRatios = React.useMemo(() => {
+      if (!file) return staticAspectRatios;
+      return [
+        { label: "Original Size", value: "original" },
+        ...staticAspectRatios,
+      ]
+  }, [file]);
 
 
   React.useEffect(() => {
-    if (file?.edits) {
-      const { edits } = file;
-      setCrop(edits.crop);
-      setZoom(edits.zoom);
-      const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - edits.aspect) < 0.01);
-      setAspectString(foundRatio ? foundRatio.value : 'none');
-      setName(edits.name);
-      setTargetWidth(edits.targetWidth);
-      setQuality(edits.quality);
-    } else if (file) {
-      // Set defaults from original file
-      const initialAspect = file.originalWidth! / file.originalHeight!;
-      const foundRatio = aspectRatios.find(r => r.value !== 'none' && Math.abs(eval(r.value) - initialAspect) < 0.01);
-      setAspectString(foundRatio ? foundRatio.value : '16/9');
-      setName(file.file.name.split('.').slice(0, -1).join('.'));
-      setTargetWidth(file.originalWidth!);
-      setZoom(1);
-      setCrop({x: 0, y: 0});
-      setQuality(80);
+    if (file) {
+        if (file.edits) {
+            const { edits } = file;
+            setCrop(edits.crop);
+            setZoom(edits.zoom);
+            
+            const originalAspect = file.originalWidth! / file.originalHeight!;
+            const isOriginal = Math.abs(edits.aspect - originalAspect) < 0.01 && edits.targetWidth === file.originalWidth;
+
+            if (isOriginal) {
+                setAspectString('original');
+            } else {
+                const foundRatio = staticAspectRatios.find(r => r.value !== 'none' && Math.abs(parseFloat(r.value) - edits.aspect) < 0.01);
+                setAspectString(foundRatio ? foundRatio.value : 'none');
+            }
+            
+            setName(edits.name);
+            setTargetWidth(edits.targetWidth);
+            setQuality(edits.quality);
+        } else {
+            // Set defaults from original file
+            setAspectString('16/9');
+            setName(file.file.name.split('.').slice(0, -1).join('.'));
+            setTargetWidth(file.originalWidth!);
+            setZoom(1);
+            setCrop({x: 0, y: 0});
+            setQuality(80);
+        }
     }
   }, [file]);
+
+  React.useEffect(() => {
+      if (file && aspectString === 'original') {
+          setTargetWidth(file.originalWidth!);
+      }
+  }, [aspectString, file]);
   
   React.useEffect(() => {
     if (!file?.originalDataUrl || !debouncedCrop || !open) return;
@@ -128,12 +150,15 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
   
   const aspectNumber = React.useMemo(() => {
     if (aspectString === 'none') return undefined;
+    if (aspectString === 'original') {
+        return file ? file.originalWidth! / file.originalHeight! : undefined;
+    }
     try {
-        return eval(aspectString);
+        return parseFloat(aspectString);
     } catch {
         return undefined;
     }
-  }, [aspectString]);
+  }, [aspectString, file]);
 
   const targetHeight = aspectNumber && targetWidth > 0 ? Math.round(targetWidth / aspectNumber) : 0;
 
@@ -180,7 +205,7 @@ export default function ImageEditorDialog({ file, open, onOpenChange, onSave }: 
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
                   <div className="flex items-center gap-2">
-                      <Input id="width" type="number" value={targetWidth} onChange={(e) => setTargetWidth(parseInt(e.target.value, 10) || 0)} />
+                      <Input id="width" type="number" value={targetWidth} onChange={(e) => setTargetWidth(parseInt(e.target.value, 10) || 0)} disabled={aspectString === 'original'} />
                       <span className="text-muted-foreground">x</span>
                       <Input id="height" type="number" value={targetHeight} disabled />
                   </div>
