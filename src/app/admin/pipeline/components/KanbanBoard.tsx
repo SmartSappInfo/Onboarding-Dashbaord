@@ -11,6 +11,7 @@ import {
   DragOverlay,
   type DragStartEvent,
   type DragEndEvent,
+  type DragOverEvent,
 } from '@dnd-kit/core';
 import { SortableContext, useSortable, arrayMove, horizontalListSortingStrategy, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -35,6 +36,7 @@ import { User, GripVertical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
@@ -58,11 +60,13 @@ function SchoolCard({ school }: { school: School }) {
     <Card
       ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
-      className="mb-3 touch-manipulation"
+      className="mb-3 touch-manipulation bg-card"
     >
-      <CardHeader className="p-4 flex flex-row items-center gap-3 space-y-0">
+      <CardHeader 
+        {...attributes}
+        {...listeners}
+        className="p-4 flex flex-row items-center gap-3 space-y-0 cursor-grab"
+      >
         <Avatar className="h-8 w-8">
             <AvatarImage src={school.logoUrl} alt={school.name} />
             <AvatarFallback className="text-xs">{getInitials(school.name)}</AvatarFallback>
@@ -87,7 +91,7 @@ function SchoolCard({ school }: { school: School }) {
   );
 }
 
-function StageColumn({ stage, schools, isOverlay }: { stage: OnboardingStage; schools: School[], isOverlay?: boolean }) {
+function StageColumn({ stage, schools, isOverlay, isHovered }: { stage: OnboardingStage; schools: School[], isOverlay?: boolean, isHovered?: boolean }) {
     const {
         attributes,
         listeners,
@@ -119,7 +123,7 @@ function StageColumn({ stage, schools, isOverlay }: { stage: OnboardingStage; sc
                     <Badge variant="secondary">{schools.length}</Badge>
                 </CardHeader>
                 <ScrollArea className="flex-grow">
-                    <CardContent className="p-3">
+                    <CardContent className={cn("p-3 transition-colors", isHovered && "bg-accent")}>
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
                             {schools.map(school => (
                                 <SchoolCard key={school.id} school={school} />
@@ -154,6 +158,7 @@ export default function KanbanBoard() {
   
   const [activeElement, setActiveElement] = React.useState<School | OnboardingStage | null>(null);
   const [orderedStages, setOrderedStages] = React.useState<OnboardingStage[]>([]);
+  const [hoveredColumnId, setHoveredColumnId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
       if (stages) {
@@ -198,6 +203,19 @@ export default function KanbanBoard() {
     return grouped;
   }, [orderedStages, filteredSchools]);
   
+    const findContainer = React.useCallback((id: string) => {
+        if (orderedStages.some(s => s.id === id)) {
+            return id;
+        }
+        for (const stageId in schoolsByStage) {
+            if (schoolsByStage[stageId].some(s => s.id === id)) {
+                return stageId;
+            }
+        }
+        return null;
+    }, [orderedStages, schoolsByStage]);
+
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     if (active.data.current?.type === 'SCHOOL') {
@@ -208,7 +226,21 @@ export default function KanbanBoard() {
     }
   };
   
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    const overId = over?.id as string;
+
+    if (!overId || active.data.current?.type !== 'SCHOOL') {
+        setHoveredColumnId(null);
+        return;
+    }
+    
+    const overContainer = findContainer(overId);
+    setHoveredColumnId(overContainer);
+  };
+  
   const handleDragEnd = async (event: DragEndEvent) => {
+    setHoveredColumnId(null);
     setActiveElement(null);
     const { active, over } = event;
 
@@ -255,6 +287,11 @@ export default function KanbanBoard() {
             });
         }
     }
+  };
+  
+  const handleDragCancel = () => {
+    setActiveElement(null);
+    setHoveredColumnId(null);
   };
 
   if (isLoadingSchools || isLoadingStages || isLoadingFilter) {
@@ -307,8 +344,9 @@ export default function KanbanBoard() {
     <DndContext
       sensors={sensors}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
-      onDragCancel={() => setActiveElement(null)}
+      onDragCancel={handleDragCancel}
     >
       <ScrollArea className="h-full whitespace-nowrap">
         <div className="flex h-full gap-4 p-4">
@@ -318,6 +356,7 @@ export default function KanbanBoard() {
                   key={stage.id}
                   stage={stage}
                   schools={schoolsByStage[stage.id] || []}
+                  isHovered={hoveredColumnId === stage.id && activeElement && !('order' in activeElement)}
                 />
               ))}
           </SortableContext>
@@ -329,7 +368,9 @@ export default function KanbanBoard() {
             activeIsColumn ? (
                 <StageColumn stage={activeElement as OnboardingStage} schools={schoolsByStage[(activeElement as OnboardingStage).id] || []} isOverlay />
             ) : (
-                <SchoolCard school={activeElement as School} />
+                <div className="shadow-2xl rounded-lg transform -rotate-3 transition-transform">
+                    <SchoolCard school={activeElement as School} />
+                </div>
             )
         ) : null}
       </DragOverlay>
