@@ -3,7 +3,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday } from 'date-fns';
@@ -134,6 +134,84 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedActivities(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'activities');
+  const batch = writeBatch(firestore);
+  const activitiesCollection = collection(firestore, 'activities');
+
+  const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
+  const usersSnapshot = await getDocs(collection(firestore, 'users'));
+  const stagesSnapshot = await getDocs(query(collection(firestore, 'onboardingStages'), orderBy('order')));
+
+  const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
+  const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+  const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
+
+  if (schools.length === 0 || users.length === 0) {
+    console.warn("Cannot seed activities without schools and users.");
+    return 0;
+  }
+
+  let activitiesCount = 0;
+
+  schools.forEach((school, schoolIndex) => {
+    const creationUser = users[schoolIndex % users.length];
+
+    // 1. School Created
+    const creationDate = new Date(school.createdAt);
+    const creationActivity: Omit<Activity, 'id'> = {
+      schoolId: school.id,
+      userId: creationUser.id,
+      type: 'school_created',
+      source: 'user_action',
+      timestamp: creationDate.toISOString(),
+      description: `${creationUser.name} created school "${school.name}".`,
+    };
+    batch.set(doc(activitiesCollection), creationActivity);
+    activitiesCount++;
+
+    // 2. Stage Changes
+    if (stages.length > 1 && school.stage) {
+      const currentStageIndex = stages.findIndex(s => s.id === school.stage!.id);
+      if (currentStageIndex > 0) {
+        for (let i = 0; i < currentStageIndex; i++) {
+          const fromStage = stages[i];
+          const toStage = stages[i+1];
+          const activityDate = new Date(creationDate.getTime() + (i + 1) * 3 * 24 * 60 * 60 * 1000); // 3 days later
+          const stageChangeActivity: Omit<Activity, 'id'> = {
+            schoolId: school.id,
+            userId: users[(schoolIndex + i) % users.length].id,
+            type: 'pipeline_stage_changed',
+            source: 'user_action',
+            timestamp: activityDate.toISOString(),
+            description: `${users[(schoolIndex + i) % users.length].name} moved school "${school.name}" from "${fromStage.name}" to "${toStage.name}".`,
+            metadata: { from: fromStage.name, to: toStage.name },
+          };
+          batch.set(doc(activitiesCollection), stageChangeActivity);
+          activitiesCount++;
+        }
+      }
+    }
+
+    // 3. Manual Note
+    const noteDate = new Date(creationDate.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days after creation
+    const noteActivity: Omit<Activity, 'id'> = {
+      schoolId: school.id,
+      userId: creationUser.id,
+      type: 'note',
+      source: 'manual',
+      timestamp: noteDate.toISOString(),
+      description: `${creationUser.name} added a note to "${school.name}".`,
+      metadata: { content: `Initial follow-up call made with ${school.contactPerson}. They are very interested in the Fee Collection and Communication modules.`}
+    };
+    batch.set(doc(activitiesCollection), noteActivity);
+    activitiesCount++;
+  });
+
+  await batch.commit();
+  return activitiesCount;
+}
 
 export async function seedModules(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'modules');
@@ -362,5 +440,3 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
 
     return { stagesCreated: defaultStages.length, schoolsUpdated };
 }
-
-    
