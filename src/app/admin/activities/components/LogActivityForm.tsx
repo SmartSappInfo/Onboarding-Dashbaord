@@ -22,7 +22,7 @@ import type { School } from '@/lib/types';
 
 
 const formSchema = z.object({
-  school: z.custom<School>().refine(value => value !== undefined, { message: "School is required." }),
+  schoolId: z.string().min(1, { message: "School is required." }),
   description: z.string().min(5, { message: "Description must be at least 5 characters." }),
   timestamp: z.date({
     required_error: "A date and time for the activity is required.",
@@ -43,7 +43,7 @@ export default function LogActivityForm() {
     const defaultFormValues = React.useMemo(() => ({
         timestamp: new Date(),
         description: '',
-        school: undefined,
+        schoolId: '',
     }), []);
 
     const form = useForm<FormData>({
@@ -59,8 +59,14 @@ export default function LogActivityForm() {
 
 
     const onSubmit = async (data: FormData) => {
-        if (!firestore || !user) {
+        if (!firestore || !user || !schools) {
             toast({ variant: 'destructive', title: 'You must be logged in to log an activity.' });
+            return;
+        }
+        
+        const selectedSchool = schools.find(s => s.id === data.schoolId);
+        if (!selectedSchool) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Selected school not found.' });
             return;
         }
 
@@ -68,8 +74,8 @@ export default function LogActivityForm() {
             await logActivity({
                 firestore,
                 user,
-                schoolId: data.school.id,
-                schoolName: data.school.name,
+                schoolId: selectedSchool.id,
+                schoolName: selectedSchool.name,
                 type: 'manual_log',
                 description: data.description,
                 timestamp: data.timestamp.toISOString(),
@@ -109,17 +115,14 @@ export default function LogActivityForm() {
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-4">
                             <FormField
                                 control={form.control}
-                                name="school"
+                                name="schoolId"
                                 render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>School</FormLabel>
                                     {isLoadingSchools ? <Skeleton className="h-10 w-full" /> : (
                                     <Select
-                                        onValueChange={(schoolId: string) => {
-                                        const school = schools?.find((s) => s.id === schoolId);
-                                        field.onChange(school);
-                                        }}
-                                        value={field.value?.id}
+                                        onValueChange={field.onChange}
+                                        value={field.value}
                                         disabled={form.formState.isSubmitting || isLoadingSchools}
                                     >
                                         <FormControl>
