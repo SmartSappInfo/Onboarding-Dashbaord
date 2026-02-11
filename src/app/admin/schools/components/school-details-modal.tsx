@@ -19,7 +19,7 @@ import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow,
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import ActivityTimeline from './ActivityTimeline';
+import ActivityTimeline from '../../components/ActivityTimeline';
 
 interface SchoolDetailsModalProps {
   school: School | null;
