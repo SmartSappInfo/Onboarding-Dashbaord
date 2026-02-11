@@ -56,8 +56,6 @@ export default function LogActivityForm() {
             return;
         }
 
-        form.control.disabled = true;
-
         try {
             await logActivity({
                 firestore,
@@ -76,8 +74,6 @@ export default function LogActivityForm() {
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to log activity.' });
-        } finally {
-            form.control.disabled = false;
         }
     }
     
@@ -117,6 +113,7 @@ export default function LogActivityForm() {
                                         field.onChange(school);
                                         }}
                                         value={field.value?.id}
+                                        disabled={form.formState.isSubmitting || isLoadingSchools}
                                     >
                                         <FormControl>
                                         <SelectTrigger>
@@ -143,7 +140,11 @@ export default function LogActivityForm() {
                                     <FormItem>
                                     <FormLabel>Description</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="e.g., Called to confirm data sheet." {...field} />
+                                        <Textarea 
+                                            placeholder="e.g., Called to confirm data sheet." 
+                                            {...field} 
+                                            disabled={form.formState.isSubmitting}
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                     </FormItem>
