@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow, User } from 'lucide-react';
+import { Globe, Calendar, Mail, Phone, Users, MapPin, Film, PenSquare, Workflow, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -22,10 +22,13 @@ interface SchoolDetailsModalProps {
   school: School | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onNavigate: (direction: 'next' | 'prev') => void;
+  canNavigatePrev: boolean;
+  canNavigateNext: boolean;
 }
 
 
-export default function SchoolDetailsModal({ school, open, onOpenChange }: SchoolDetailsModalProps) {
+export default function SchoolDetailsModal({ school, open, onOpenChange, onNavigate, canNavigatePrev, canNavigateNext }: SchoolDetailsModalProps) {
   const router = useRouter();
   
   if (!school) return null;
@@ -47,6 +50,27 @@ export default function SchoolDetailsModal({ school, open, onOpenChange }: Schoo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+        <Button
+            variant="outline"
+            size="icon"
+            className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full h-10 w-10 z-20 disabled:opacity-50"
+            onClick={() => onNavigate('prev')}
+            disabled={!canNavigatePrev}
+            aria-label="Previous school"
+        >
+            <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <Button
+            variant="outline"
+            size="icon"
+            className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 rounded-full h-10 w-10 z-20 disabled:opacity-50"
+            onClick={() => onNavigate('next')}
+            disabled={!canNavigateNext}
+            aria-label="Next school"
+        >
+            <ChevronRight className="h-5 w-5" />
+        </Button>
+        
         <DialogHeader className="px-6 pt-6 pb-4 border-b">
           <DialogTitle className="flex items-center gap-3">
             {school.logoUrl && (

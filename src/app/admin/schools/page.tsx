@@ -68,7 +68,7 @@ export default function SchoolsPage() {
 
   // State for modals
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
-  const [viewingSchool, setViewingSchool] = useState<School | null>(null);
+  const [viewingSchoolIndex, setViewingSchoolIndex] = useState<number | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
@@ -243,6 +243,16 @@ export default function SchoolsPage() {
         </div>
     );
   }
+  
+  const handleNavigate = (direction: 'next' | 'prev') => {
+    if (viewingSchoolIndex === null) return;
+    const newIndex = direction === 'next' ? viewingSchoolIndex + 1 : viewingSchoolIndex - 1;
+    if (newIndex >= 0 && newIndex < sortedSchools.length) {
+        setViewingSchoolIndex(newIndex);
+    }
+  };
+
+  const viewingSchool = viewingSchoolIndex !== null ? sortedSchools[viewingSchoolIndex] : null;
 
   return (
     <TooltipProvider>
@@ -336,7 +346,7 @@ export default function SchoolsPage() {
                   </TableRow>
                 ))
               ) : sortedSchools && sortedSchools.length > 0 ? (
-                sortedSchools.map((school) => (
+                sortedSchools.map((school, index) => (
                   <TableRow key={school.id}>
                     <TableCell>
                       <Avatar>
@@ -345,7 +355,7 @@ export default function SchoolsPage() {
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium">
-                      <button onClick={() => setViewingSchool(school)} className="hover:underline text-left">
+                      <button onClick={() => setViewingSchoolIndex(index)} className="hover:underline text-left">
                         {school.name}
                       </button>
                     </TableCell>
@@ -422,7 +432,7 @@ export default function SchoolsPage() {
             {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
             ) : sortedSchools && sortedSchools.length > 0 ? (
-                sortedSchools.map(school => (
+                sortedSchools.map((school, index) => (
                     <Card key={school.id} className="w-full">
                         <CardHeader>
                             <div className="flex items-start justify-between gap-2">
@@ -432,7 +442,7 @@ export default function SchoolsPage() {
                                         <AvatarFallback>{getInitials(school.name)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                        <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchool(school)}>{school.name}</CardTitle>
+                                        <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchoolIndex(index)}>{school.name}</CardTitle>
                                         <CardDescription>
                                             Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
                                         </CardDescription>
@@ -481,19 +491,19 @@ export default function SchoolsPage() {
                                 <p className="text-xs font-medium text-muted-foreground">Stage</p>
                                 <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
                             </div>
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
-                                </div>
+                             <div className="col-span-2">
+                                <p className="text-xs font-medium text-muted-foreground">Students</p>
+                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
                             </div>
                             <div className="col-span-2">
                                 <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
                                 <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
                             </div>
-                            <div className="col-span-2">
-                                <p className="text-xs font-medium text-muted-foreground">Students</p>
-                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
+                            <div>
+                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
+                                </div>
                             </div>
                         </CardContent>
                         <CardFooter className="flex items-center justify-around border-t p-2">
@@ -543,7 +553,18 @@ export default function SchoolsPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <SchoolDetailsModal school={viewingSchool} open={!!viewingSchool} onOpenChange={(open) => !open && setViewingSchool(null)} />
+      <SchoolDetailsModal
+        school={viewingSchool}
+        open={viewingSchoolIndex !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setViewingSchoolIndex(null);
+          }
+        }}
+        onNavigate={handleNavigate}
+        canNavigatePrev={viewingSchoolIndex !== null && viewingSchoolIndex > 0}
+        canNavigateNext={viewingSchoolIndex !== null && viewingSchoolIndex < sortedSchools.length - 1}
+      />
       
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
       
