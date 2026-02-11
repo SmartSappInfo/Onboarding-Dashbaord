@@ -40,15 +40,17 @@ export default function LogActivityForm() {
 
     const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
     const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
+    
+    const defaultFormValues = React.useMemo(() => ({
+        timestamp: new Date(),
+    }), []);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
-        defaultValues: {
-          timestamp: new Date(),
-        },
+        defaultValues: defaultFormValues,
     });
 
-    const onSubmit = (data: FormData) => {
+    const onSubmit = async (data: FormData) => {
         if (!firestore || !user) {
             toast({ variant: 'destructive', title: 'You must be logged in to log an activity.' });
             return;
@@ -56,20 +58,27 @@ export default function LogActivityForm() {
 
         form.control.disabled = true;
 
-        logActivity({
-            firestore,
-            user,
-            schoolId: data.school.id,
-            schoolName: data.school.name,
-            type: 'manual_log',
-            description: data.description,
-            timestamp: data.timestamp.toISOString(),
-        });
+        try {
+            await logActivity({
+                firestore,
+                user,
+                schoolId: data.school.id,
+                schoolName: data.school.name,
+                type: 'manual_log',
+                description: data.description,
+                timestamp: data.timestamp.toISOString(),
+            });
 
-        toast({ title: "Activity Logged", description: "The new activity has been added to the timeline." });
-        form.control.disabled = false;
-        form.reset({ timestamp: new Date() });
-        setIsDialogOpen(false);
+            toast({ title: "Activity Logged", description: "The new activity has been added to the timeline." });
+            form.reset({ timestamp: new Date() });
+            setIsDialogOpen(false);
+
+        } catch (e) {
+            console.error(e);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to log activity.' });
+        } finally {
+            form.control.disabled = false;
+        }
     }
     
     return (

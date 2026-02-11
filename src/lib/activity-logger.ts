@@ -38,9 +38,10 @@ export async function logActivity({
             details: details || {},
         };
 
-        // This is a fire-and-forget operation on the server for performance.
         await addDoc(collection(firestore, 'activities'), activityData);
     } catch (error) {
         console.error("Failed to log activity:", error);
+        // Re-throw the error to be caught by the calling function
+        throw error;
     }
 }
