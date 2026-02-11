@@ -29,7 +29,6 @@ import { Separator } from "./ui/separator";
 import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { logActivity } from "@/lib/activity-logger";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -179,17 +178,8 @@ export default function NewSchoolSignupForm() {
 
     try {
       const schoolsCollection = collection(firestore, 'schools');
-      const docRef = await addDoc(schoolsCollection, schoolData);
+      await addDoc(schoolsCollection, schoolData);
       
-      logActivity({
-        firestore,
-        schoolId: docRef.id,
-        schoolName: schoolData.name,
-        user: null,
-        type: 'school_created',
-        description: `New school signup received: ${schoolData.name}.`
-      });
-
       toast({
         title: "Registration Successful!",
         description: "Your new school signup has been submitted and saved.",

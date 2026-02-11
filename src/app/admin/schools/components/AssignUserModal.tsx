@@ -13,7 +13,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon, Loader2, Search } from 'lucide-react';
-import { logActivity } from '@/lib/activity-logger';
 
 interface AssignUserModalProps {
   school: School | null;
@@ -50,25 +49,12 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
       ? { userId: userToAssign.id, name: userToAssign.name, email: userToAssign.email }
       : { userId: null, name: 'Unassigned', email: null };
 
-    const oldAssigneeName = school.assignedTo?.name || 'Unassigned';
-    const newAssigneeName = assignmentData.name || 'Unassigned';
-
     try {
       await updateDoc(schoolDocRef, { assignedTo: assignmentData });
       
-      logActivity({
-        firestore,
-        schoolId: school.id,
-        schoolName: school.name,
-        user: currentUser,
-        type: 'user_assigned',
-        description: `Assigned school to ${newAssigneeName}.`,
-        details: { from: oldAssigneeName, to: newAssigneeName }
-      });
-
       toast({
         title: 'School Reassigned',
-        description: `${school.name} has been assigned to ${assignmentData.name}.`,
+        description: `${school.name} has been assigned to ${assignmentData.name || 'Unassigned'}.`,
       });
       onOpenChange(false);
     } catch (e) {

@@ -19,14 +19,6 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // --- Activity Log Rules ---
-    match /activities/{activityId} {
-      // Admins can read all activities. Only authorized users can create new logs.
-      allow list, get: if isAuthorized();
-      allow create: if isAuthorized();
-      allow update, delete: if false; // Activities are immutable from the client.
-    }
-
     // --- Admin-Only Collections ---
     // Allow authenticated admins full read/write access to these collections.
     match /onboardingStages/{document=**} {

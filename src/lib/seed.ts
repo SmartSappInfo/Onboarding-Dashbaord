@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday } from 'date-fns';
@@ -133,87 +133,6 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
-
-export async function seedActivities(firestore: Firestore): Promise<number> {
-  const activitiesCollection = collection(firestore, 'activities');
-  await clearCollection(firestore, 'activities');
-  const batch = writeBatch(firestore);
-
-  const schoolsSnapshot = await getDocs(query(collection(firestore, 'schools'), orderBy('createdAt', 'desc')));
-  const usersSnapshot = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true)));
-  const stagesSnapshot = await getDocs(query(collection(firestore, 'onboardingStages'), orderBy('order')));
-
-  if (schoolsSnapshot.empty || usersSnapshot.empty || stagesSnapshot.empty) {
-    console.warn("Seeding activities failed: Missing schools, users, or stages. Please seed them first.");
-    return 0;
-  }
-
-  const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
-  const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
-  const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
-  
-  let activitiesCount = 0;
-  const now = new Date();
-
-  schools.forEach((school, schoolIndex) => {
-    const user = users[schoolIndex % users.length];
-    
-    // 1. School Created
-    const creationDate = new Date(now.getTime() - (schools.length - schoolIndex) * 24 * 60 * 60 * 1000);
-    batch.set(doc(activitiesCollection), {
-      schoolId: school.id, schoolName: school.name,
-      userId: user.id, userName: user.name, userAvatarUrl: user.photoURL,
-      type: 'school_created',
-      description: `New school signup received: ${school.name}.`,
-      timestamp: creationDate.toISOString(),
-      details: {},
-    } as Omit<Activity, 'id'>);
-    activitiesCount++;
-
-    // 2. User Assigned
-    const assignmentDate = new Date(creationDate.getTime() + 60 * 60 * 1000);
-    batch.set(doc(activitiesCollection), {
-      schoolId: school.id, schoolName: school.name,
-      userId: users[0].id, userName: users[0].name, userAvatarUrl: users[0].photoURL, // Assume first user is an admin
-      type: 'user_assigned',
-      description: `Assigned school to ${user.name}.`,
-      timestamp: assignmentDate.toISOString(),
-      details: { from: 'Unassigned', to: user.name },
-    } as Omit<Activity, 'id'>);
-    activitiesCount++;
-    
-    // 3. Stage Changed
-    if (stages.length > 1) {
-        const stageChangeDate = new Date(assignmentDate.getTime() + 2 * 24 * 60 * 60 * 1000);
-        batch.set(doc(activitiesCollection), {
-            schoolId: school.id, schoolName: school.name,
-            userId: user.id, userName: user.name, userAvatarUrl: user.photoURL,
-            type: 'stage_changed',
-            description: `Moved school from "${stages[0].name}" to "${stages[1].name}" stage.`,
-            timestamp: stageChangeDate.toISOString(),
-            details: { from: stages[0].name, to: stages[1].name },
-        } as Omit<Activity, 'id'>);
-        activitiesCount++;
-    }
-
-    // 4. Manual Log
-    if (schoolIndex % 2 === 0) {
-        const manualLogDate = new Date(now.getTime() - (schoolIndex + 1) * 12 * 60 * 60 * 1000);
-        batch.set(doc(activitiesCollection), {
-            schoolId: school.id, schoolName: school.name,
-            userId: user.id, userName: user.name, userAvatarUrl: user.photoURL,
-            type: 'manual_log',
-            description: 'Called school to confirm data sheet.',
-            timestamp: manualLogDate.toISOString(),
-            details: {},
-        } as Omit<Activity, 'id'>);
-        activitiesCount++;
-    }
-  });
-
-  await batch.commit();
-  return activitiesCount;
-}
 
 export async function seedModules(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'modules');

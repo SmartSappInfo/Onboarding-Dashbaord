@@ -30,7 +30,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
 import { ArrowLeft } from 'lucide-react';
-import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -106,14 +105,6 @@ export default function NewMeetingPage() {
 
     addDoc(meetingsCollection, meetingData)
       .then(() => {
-        logActivity({
-          firestore,
-          schoolId: data.school.id,
-          schoolName: data.school.name,
-          user,
-          type: 'meeting_created',
-          description: `Scheduled a "${data.type.name}" meeting for ${data.school.name}.`
-        });
         toast({
           title: 'Meeting Created',
           description: `Meeting for ${data.school.name} has been scheduled.`,

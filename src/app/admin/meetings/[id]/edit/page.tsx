@@ -27,7 +27,6 @@ import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, Fir
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
-import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => value, { message: "School is required." }),
@@ -103,14 +102,6 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
     form.control.disabled = true;
 
     updateDoc(docRef, meetingData).then(() => {
-        logActivity({
-          firestore,
-          schoolId: data.school.id,
-          schoolName: data.school.name,
-          user,
-          type: 'meeting_updated',
-          description: `Updated the "${data.type.name}" meeting for ${data.school.name}.`
-        });
         toast({
             title: 'Meeting Updated',
             description: `The meeting for ${data.school.name} has been updated.`,

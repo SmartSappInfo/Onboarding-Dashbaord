@@ -32,7 +32,6 @@ import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@
 import { MediaSelect } from '../components/media-select';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { Textarea } from '@/components/ui/textarea';
-import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -112,14 +111,6 @@ export default function NewSchoolPage() {
 
     addDoc(schoolsCollection, schoolData)
       .then((docRef) => {
-        logActivity({
-          firestore,
-          schoolId: docRef.id,
-          schoolName: schoolData.name,
-          user,
-          type: 'school_created',
-          description: `Created school: ${schoolData.name}`
-        });
         toast({
           title: 'School Created',
           description: `${data.name} has been added successfully.`,

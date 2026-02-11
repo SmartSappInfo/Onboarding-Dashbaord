@@ -42,7 +42,6 @@ export async function getDashboardData() {
       return {
           metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0 },
           latestSurveys: [],
-          recentSchools: [],
           upcomingMeetings: [],
           pipelineCounts: [],
           userAssignments: [],
@@ -72,14 +71,6 @@ export async function getDashboardData() {
     publishedSurveys: publishedSurveysCount,
     totalResponses: totalResponsesCount,
   };
-
-  const recentSchools = schools
-    .sort((a, b) => {
-        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-        return dateB - dateA;
-    })
-    .slice(0, 5);
 
   const surveyResponseCounts = await Promise.all(surveysSnapshot.docs.map(async (doc) => {
     const responsesSnapshot = await getDocs(collection(db, 'surveys', doc.id, 'responses'));
@@ -189,7 +180,6 @@ export async function getDashboardData() {
   return {
     metrics,
     latestSurveys,
-    recentSchools,
     upcomingMeetings,
     pipelineCounts,
     userAssignments,

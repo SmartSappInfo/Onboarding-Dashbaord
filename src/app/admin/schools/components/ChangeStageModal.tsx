@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2 } from 'lucide-react';
-import { logActivity } from '@/lib/activity-logger';
 
 interface ChangeStageModalProps {
   school: School | null;
@@ -37,21 +36,10 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
 
     const schoolDocRef = doc(firestore, 'schools', school.id);
     const newStageData = { id: stage.id, name: stage.name, order: stage.order, color: stage.color };
-    const oldStageName = school.stage?.name || 'None';
 
     try {
       await updateDoc(schoolDocRef, { stage: newStageData });
       
-      logActivity({
-        firestore,
-        schoolId: school.id,
-        schoolName: school.name,
-        user,
-        type: 'stage_changed',
-        description: `Moved school from "${oldStageName}" to "${newStageData.name}" stage.`,
-        details: { from: oldStageName, to: newStageData.name }
-      });
-
       toast({
         title: 'Stage Updated',
         description: `${school.name} has been moved to the "${stage.name}" stage.`,

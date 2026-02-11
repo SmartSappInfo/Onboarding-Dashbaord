@@ -16,7 +16,6 @@ import { doc, setDoc } from 'firebase/firestore';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import {
     LatestSurveys,
-    RecentActivity,
     UpcomingMeetings,
     PipelinePieChart,
     UserAssignments,
@@ -32,7 +31,6 @@ import { useIsMobile } from '@/hooks/use-mobile';
 const componentMap: Record<string, React.FC<any>> = {
   pipelinePieChart: PipelinePieChart,
   latestSurveys: LatestSurveys,
-  recentActivity: RecentActivity,
   upcomingMeetings: UpcomingMeetings,
   userAssignments: UserAssignments,
   monthlySchoolsChart: MonthlySchoolsChart,
@@ -42,7 +40,6 @@ const componentMap: Record<string, React.FC<any>> = {
 const componentPropsMap = (data: any) => ({
   pipelinePieChart: { stages: data.pipelineCounts },
   latestSurveys: { surveys: data.latestSurveys },
-  recentActivity: { schools: data.recentSchools },
   upcomingMeetings: { meetings: data.upcomingMeetings },
   userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools },
   monthlySchoolsChart: { data: data.monthlySchools },
@@ -55,7 +52,6 @@ const componentGridConfig: Record<string, string> = {
   upcomingMeetings: 'lg:col-span-2',
   moduleRadarChart: 'lg:col-span-2',
   latestSurveys: 'lg:col-span-2',
-  recentActivity: 'lg:col-span-2',
   monthlySchoolsChart: 'md:col-span-4',
 };
 
@@ -65,7 +61,6 @@ const DEFAULT_LAYOUT = [
     'upcomingMeetings',
     'moduleRadarChart',
     'latestSurveys',
-    'recentActivity',
     'monthlySchoolsChart',
 ];
 
