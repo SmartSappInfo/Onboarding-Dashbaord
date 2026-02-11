@@ -110,8 +110,11 @@ function StageColumn({ stage, schools, isOverlay, isHovered }: { stage: Onboardi
     return (
         <div ref={setNodeRef} style={style} className="h-full w-72 flex-shrink-0">
             <Card 
-                className="h-full flex flex-col bg-card border-t-4"
-                style={{ borderTopColor: stage.color || 'hsl(var(--border))' }}
+                className={cn(
+                    "h-full flex flex-col bg-card border-t-4 transition-all duration-200 ease-in-out",
+                    isHovered && "scale-y-[1.015] shadow-2xl"
+                )}
+                style={{ borderTopColor: isHovered ? 'hsl(var(--primary))' : stage.color || 'hsl(var(--border))' }}
             >
                 <CardHeader className="p-3 border-b flex flex-row items-center justify-between">
                      <div className="flex items-center gap-2">
@@ -123,7 +126,7 @@ function StageColumn({ stage, schools, isOverlay, isHovered }: { stage: Onboardi
                     <Badge variant="secondary">{schools.length}</Badge>
                 </CardHeader>
                 <ScrollArea className="flex-grow">
-                    <CardContent className={cn("p-3 transition-colors", isHovered && "bg-accent")}>
+                    <CardContent className={cn("p-3 transition-colors", isHovered && "bg-accent/50")}>
                          <SortableContext items={schools.map(s => s.id)} strategy={verticalListSortingStrategy}>
                             {schools.map(school => (
                                 <SchoolCard key={school.id} school={school} />
