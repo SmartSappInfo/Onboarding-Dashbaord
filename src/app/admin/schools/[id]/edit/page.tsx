@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -90,14 +91,23 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
     });
 
     React.useEffect(() => {
-        if (school) {
-        form.reset({
-            ...school,
+        if (school && !form.formState.isDirty) {
+          form.reset({
+            name: school.name || '',
             initials: school.initials || '',
+            slogan: school.slogan || '',
+            logoUrl: school.logoUrl || '',
+            heroImageUrl: school.heroImageUrl || '',
+            contactPerson: school.contactPerson || '',
+            email: school.email || '',
+            phone: school.phone || '',
+            location: school.location || '',
             nominalRoll: school.nominalRoll || undefined,
-            implementationDate: school.implementationDate ? new Date(school.implementationDate) : undefined,
             modules: school.modules || [],
-        });
+            implementationDate: school.implementationDate ? new Date(school.implementationDate) : undefined,
+            referee: school.referee || '',
+            includeDroneFootage: school.includeDroneFootage || false,
+          });
         }
     }, [school, form]);
 

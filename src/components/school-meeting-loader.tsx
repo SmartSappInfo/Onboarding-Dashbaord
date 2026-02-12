@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
-import type { School, Meeting, MeetingType } from '@/lib/types';
+import type { School, Meeting } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -135,40 +136,42 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
             setSchool(foundSchool);
 
-            // 2. Fetch the latest meeting for that school and type
+            // 2. Fetch all meetings for that school
             const meetingsCollection = collection(firestore, 'meetings');
-            
-            // First, try to find an upcoming meeting
-            const upcomingMeetingQuery = query(
-              meetingsCollection, 
-              where('schoolSlug', '==', schoolSlug),
-              where('type.slug', '==', typeSlug),
-              where('meetingTime', '>=', new Date().toISOString()),
-              orderBy('meetingTime', 'asc'),
-              limit(1)
+            const allMeetingsForSchoolQuery = query(
+              meetingsCollection,
+              where('schoolId', '==', foundSchool.id),
+              orderBy('meetingTime', 'desc')
             );
-            const upcomingMeetingSnapshot = await getDocs(upcomingMeetingQuery);
+            const allMeetingsSnapshot = await getDocs(allMeetingsForSchoolQuery);
 
-            if (!upcomingMeetingSnapshot.empty) {
-              const foundMeeting = { ...upcomingMeetingSnapshot.docs[0].data(), id: upcomingMeetingSnapshot.docs[0].id } as Meeting;
-              setMeeting(foundMeeting);
+            if (allMeetingsSnapshot.empty) {
+                setError(`No meetings found for this school.`);
+                setIsLoading(false);
+                return;
+            }
+
+            // 3. Filter on the client-side to find the correct meeting type
+            const allMeetings = allMeetingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
+            const meetingsForType = allMeetings.filter(m => m.type.slug === typeSlug);
+
+            if (meetingsForType.length === 0) {
+                setError(`No ${meetingType?.name || 'meeting'} found for this school.`);
+                setIsLoading(false);
+                return;
+            }
+            
+            // 4. Find the best meeting: latest upcoming, or latest past if none are upcoming.
+            const now = new Date();
+            const upcomingMeetings = meetingsForType.filter(m => new Date(m.meetingTime) >= now).sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
+            const pastMeetings = meetingsForType.filter(m => new Date(m.meetingTime) < now).sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime());
+
+            const bestMeeting = upcomingMeetings[0] || pastMeetings[0];
+
+            if (bestMeeting) {
+              setMeeting(bestMeeting);
             } else {
-              // If no upcoming meeting, find the most recent past one
-              const pastMeetingQuery = query(
-                meetingsCollection,
-                where('schoolSlug', '==', schoolSlug),
-                where('type.slug', '==', typeSlug),
-                orderBy('meetingTime', 'desc'),
-                limit(1)
-              );
-              const pastMeetingSnapshot = await getDocs(pastMeetingQuery);
-
-              if (pastMeetingSnapshot.empty) {
-                  setError(`No ${meetingType?.name || 'meeting'} found for this school.`);
-              } else {
-                  const foundMeeting = { ...pastMeetingSnapshot.docs[0].data(), id: pastMeetingSnapshot.docs[0].id } as Meeting;
-                  setMeeting(foundMeeting);
-              }
+              setError(`No suitable meeting could be identified.`);
             }
 
           } catch (e: any) {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -75,7 +76,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
   });
 
   React.useEffect(() => {
-    if (meeting && schools) {
+    if (meeting && schools && !form.formState.isDirty) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
       form.reset({
         school: selectedSchool,
@@ -87,7 +88,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
         brochureUrl: meeting.brochureUrl || '',
       });
     }
-  }, [meeting, schools, form.reset]);
+  }, [meeting, schools, form]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) {
