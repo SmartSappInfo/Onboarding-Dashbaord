@@ -64,7 +64,10 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      school: undefined,
       schoolSlug: '',
+      meetingTime: undefined,
+      type: undefined,
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
@@ -84,7 +87,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
         brochureUrl: meeting.brochureUrl || '',
       });
     }
-  }, [meeting, schools, form]);
+  }, [meeting, schools, form.reset]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) {
