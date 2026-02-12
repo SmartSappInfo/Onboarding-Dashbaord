@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -48,7 +47,7 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
     onChange?.(newSelection);
   };
   
-  const handleRemove = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleRemove = (id: string, e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation();
     onChange?.(value?.filter(v => v.id !== id) || []);
   }
@@ -75,15 +74,21 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
                         className="mr-1 mb-1 border-transparent"
                     >
                         {module.abbreviation}
-                         <button
+                         <div
                             role="button"
                             aria-label={`Remove ${module.name}`}
                             tabIndex={0}
                             className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2"
                             onClick={(e) => handleRemove(module.id, e)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    handleRemove(module.id, e);
+                                }
+                            }}
                         >
                             <X className="h-3 w-3" />
-                        </button>
+                        </div>
                     </Badge>
                 ))
             ) : (
@@ -123,5 +128,3 @@ export function ModuleSelect({ value, onChange }: ModuleSelectProps) {
     </Popover>
   );
 }
-
-    
