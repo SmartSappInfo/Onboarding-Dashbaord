@@ -89,18 +89,16 @@ service cloud.firestore {
     }
 
     // --- Activity Log Rules ---
-    // The activity log is the immutable source of truth for all actions.
     match /activities/{activityId} {
-      // Only authorized backend processes (via server-side logic) can create activities.
-      // This ensures that `userId` and `timestamp` are trustworthy.
+      // Authorized users can create activities (typically via server-side logic).
       allow create: if isAuthorized();
       
-      // Only authorized users can read the activity feed.
+      // Authorized users can read the activity feed.
       allow read, list: if isAuthorized();
       
-      // CRITICAL: Activities are immutable. They cannot be updated or deleted by anyone
-      // through the client SDKs, ensuring a permanent and tamper-proof audit trail.
-      allow update, delete: if false;
+      // Allow a user to update or delete ONLY their own activities of type 'note'.
+      // All other activity types are immutable to preserve the audit trail.
+      allow update, delete: if request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
   }
 }
