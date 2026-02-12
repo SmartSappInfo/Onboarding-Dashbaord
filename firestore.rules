@@ -48,6 +48,13 @@ service cloud.firestore {
         allow list: if isAuthorized();
         // Anyone can view a specific meeting page
         allow get: if true;
+
+        // Rule for attendees subcollection
+        match /attendees/{attendeeId} {
+          allow create: if true;
+          // Only admins can view or manage attendee lists
+          allow read, list, update, delete: if isAuthorized();
+        }
     }
     
     // --- User-Specific Rules ---
@@ -102,3 +109,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

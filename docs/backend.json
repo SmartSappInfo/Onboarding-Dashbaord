@@ -239,6 +239,18 @@
       },
       "required": ["schoolId", "schoolName", "schoolSlug", "meetingTime", "meetingLink", "type"]
     },
+    "MeetingAttendee": {
+      "title": "Meeting Attendee",
+      "type": "object",
+      "description": "Represents an attendee who joined a meeting.",
+      "properties": {
+        "meetingId": { "type": "string", "description": "The ID of the meeting that was joined." },
+        "schoolId": { "type": "string", "description": "The ID of the school associated with the meeting." },
+        "name": { "type": "string", "description": "The name of the attendee." },
+        "joinedAt": { "type": "string", "format": "date-time", "description": "The timestamp when the attendee joined." }
+      },
+      "required": ["meetingId", "schoolId", "name", "joinedAt"]
+    },
     "MediaAsset": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Media Asset",
@@ -596,6 +608,16 @@
             "$ref": "#/entities/Meeting"
           },
           "description": "Stores meeting data for schools. Each document represents a specific meeting."
+        }
+      },
+      {
+        "path": "/meetings/{meetingId}/attendees/{attendeeId}",
+        "definition": {
+          "entityName": "MeetingAttendee",
+          "schema": {
+            "$ref": "#/entities/MeetingAttendee"
+          },
+          "description": "Stores attendee records for a specific meeting."
         }
       },
       {

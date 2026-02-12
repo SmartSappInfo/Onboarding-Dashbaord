@@ -1,11 +1,13 @@
+
 'use client';
 
 import Image from 'next/image';
 import type { School, Meeting } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
-import JoinMeetingButton from '@/components/join-meeting-button';
+import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
 import { format } from 'date-fns';
+import { Calendar, Clock } from 'lucide-react';
 
 interface MeetingHeroProps {
   school: School;
@@ -62,15 +64,25 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             </p>
 
             <div className="my-8 w-full">
-              <p className="mb-4 text-xl font-semibold text-center md:text-left">
-                  {format(new Date(meeting.meetingTime), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-x-6 gap-y-2 text-xl font-semibold mb-4">
+                  <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5" />
+                      <span>{format(new Date(meeting.meetingTime), "EEEE, MMMM d, yyyy")}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                      <Clock className="h-5 w-5" />
+                      <span>{format(new Date(meeting.meetingTime), "h:mm a")}</span>
+                  </div>
+              </div>
               <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
             </div>
             
-            <div className="w-full sm:w-auto">
-              <JoinMeetingButton meetingTime={meeting.meetingTime || ''} meetingLink={meeting.meetingLink || ''} />
-            </div>
+            <JoinMeetingForm
+              meetingId={meeting.id}
+              schoolId={school.id}
+              meetingLink={meeting.meetingLink || ''}
+              meetingTime={meeting.meetingTime || ''}
+            />
 
           </div>
 
@@ -98,3 +110,5 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
     </section>
   );
 }
+
+    
