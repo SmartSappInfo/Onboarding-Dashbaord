@@ -17,7 +17,7 @@ const DateSeparator = ({ date }: { date: string }) => {
     return (
         <div className="flex items-center my-4">
             <div className="flex-grow border-t"></div>
-            <span className="flex-shrink mx-4 text-xs font-medium text-muted-foreground">
+            <span className="flex-shrink mx-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 {date}
             </span>
             <div className="flex-grow border-t"></div>
@@ -62,57 +62,66 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
   const groupedActivities = React.useMemo(() => {
     if (!activities) return [];
 
-    const groups: { date: string; activities: Activity[] }[] = [];
-    if (activities.length === 0) return groups;
-
-    let currentDateStr = format(new Date(activities[0].timestamp), 'PPP');
-    let currentGroup: Activity[] = [];
-
-    activities.forEach(activity => {
+    const grouped = activities.reduce((acc, activity) => {
         const activityDate = new Date(activity.timestamp);
-        const activityDateStr = isSameDay(activityDate, new Date()) ? 'Today' : format(activityDate, 'PPP');
-
-        if (activityDateStr === currentDateStr) {
-            currentGroup.push(activity);
-        } else {
-            if (currentGroup.length > 0) {
-                groups.push({ date: currentDateStr, activities: currentGroup });
-            }
-            currentDateStr = activityDateStr;
-            currentGroup = [activity];
-        }
-    });
-
-    if (currentGroup.length > 0) {
-        groups.push({ date: currentDateStr, activities: currentGroup });
-    }
+        let dateLabel: string;
+        const today = new Date();
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
     
-    return groups;
+        if (isSameDay(activityDate, today)) {
+          dateLabel = 'Today';
+        } else if (isSameDay(activityDate, yesterday)) {
+          dateLabel = 'Yesterday';
+        } else {
+          dateLabel = format(activityDate, 'PPP'); // e.g., Jun 12, 2024
+        }
+    
+        if (!acc[dateLabel]) {
+          acc[dateLabel] = [];
+        }
+        acc[dateLabel].push(activity);
+        return acc;
+      }, {} as Record<string, Activity[]>);
+    
+      return Object.entries(grouped).map(([date, activities]) => ({ date, activities }));
 
   }, [activities]);
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <React.Fragment key={i}>
-            {i === 0 && <Skeleton className="h-4 w-24 mx-auto my-4" />}
+      <div className="space-y-8">
+        <Skeleton className="h-4 w-24 mx-auto my-4" />
+        <div className="space-y-6">
             <div className="flex gap-4">
-              <Skeleton className="h-10 w-10 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/4" />
-              </div>
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/4" />
+                </div>
             </div>
-          </React.Fragment>
-        ))}
+            <div className="flex gap-4">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-3 w-1/3" />
+                </div>
+            </div>
+             <div className="flex gap-4">
+                <Skeleton className="h-9 w-9 rounded-full" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-4/5" />
+                    <Skeleton className="h-3 w-1/2" />
+                </div>
+            </div>
+        </div>
       </div>
     );
   }
   
   if (!activities || activities.length === 0) {
       return (
-          <div className="text-center py-12">
+          <div className="text-center py-16">
               <p className="text-muted-foreground">No activities recorded yet.</p>
           </div>
       );
@@ -121,20 +130,23 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
   return (
     <div className="space-y-4">
         {groupedActivities.map((group) => (
-            <React.Fragment key={group.date}>
+            <div key={group.date}>
                 <DateSeparator date={group.date} />
-                <div className="space-y-6">
-                    {group.activities.map(activity => (
-                         <ActivityItem
-                            key={activity.id}
-                            activity={activity}
-                            user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                            school={schoolsMap.get(activity.schoolId)}
-                            showSchoolName={!schoolId}
-                         />
-                    ))}
+                <div className="relative">
+                    <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-border -translate-x-1/2" />
+                    <div className="space-y-2">
+                      {group.activities.map(activity => (
+                           <ActivityItem
+                              key={activity.id}
+                              activity={activity}
+                              user={activity.userId ? usersMap.get(activity.userId) : undefined}
+                              school={schoolsMap.get(activity.schoolId)}
+                              showSchoolName={!schoolId}
+                           />
+                      ))}
+                    </div>
                 </div>
-            </React.Fragment>
+            </div>
         ))}
     </div>
   );

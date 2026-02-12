@@ -5,7 +5,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Bot, User as UserIcon } from 'lucide-react';
 import { getActivityIcon } from '@/lib/activity-icons';
-import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface ActivityItemProps {
   activity: Activity;
@@ -19,34 +19,54 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
 export default function ActivityItem({ activity, user, school, showSchoolName = false }: ActivityItemProps) {
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
+  
+  const iconBgColor = activity.source === 'manual' 
+    ? 'bg-primary/10 text-primary' 
+    : 'bg-muted text-muted-foreground';
 
   return (
-    <div className="flex items-start gap-4">
-      <div className="relative flex flex-col items-center">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+    <div className="relative pl-12 py-2">
+      {/* Icon and Timeline Dot */}
+      <div className="absolute left-[18px] top-3 transform -translate-x-1/2">
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-full ring-8 ring-background", iconBgColor)}>
           {isSystemEvent ? (
-            <Bot className="h-5 w-5 text-muted-foreground" />
-          ) : user ? (
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={user.photoURL} alt={user.name} />
-              <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
-            </Avatar>
+            <Bot className="h-5 w-5" />
           ) : (
-             <Avatar className="h-9 w-9">
-                <AvatarFallback><UserIcon className="h-5 w-5" /></AvatarFallback>
-            </Avatar>
+            <Icon className="h-5 w-5" />
           )}
         </div>
       </div>
-      <div className="flex-1 space-y-1 pt-1">
+      
+      {/* Content */}
+      <div className="space-y-1">
         <p className="text-sm text-foreground">
             {activity.description}
-            {showSchoolName && school && (
-                <span className="text-muted-foreground"> at <span className="font-semibold text-foreground">{school.name}</span></span>
-            )}
         </p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{isSystemEvent ? 'System' : user?.name || 'Unknown User'}</span>
+          {isSystemEvent ? (
+            <span>System</span>
+          ) : user ? (
+            <div className="flex items-center gap-1.5">
+                <Avatar className="h-5 w-5">
+                  <AvatarImage src={user.photoURL} alt={user.name} />
+                  <AvatarFallback className="text-xs">{getInitials(user.name)}</AvatarFallback>
+                </Avatar>
+                <span>{user.name}</span>
+            </div>
+          ) : (
+             <div className="flex items-center gap-1.5">
+                <UserIcon className="h-4 w-4" />
+                <span>Unknown User</span>
+             </div>
+          )}
+
+          {showSchoolName && school && (
+             <>
+                <span>&middot;</span>
+                <span className="font-semibold text-foreground">{school.name}</span>
+             </>
+          )}
+
           <span>&middot;</span>
           <time
             dateTime={activity.timestamp}
