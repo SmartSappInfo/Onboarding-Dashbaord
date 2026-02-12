@@ -5,6 +5,7 @@ import type { School, Meeting } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingButton from '@/components/join-meeting-button';
 import LightRays from '@/components/LightRays';
+import { format } from 'date-fns';
 
 interface MeetingHeroProps {
   school: School;
@@ -61,6 +62,9 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
             </p>
 
             <div className="my-8 w-full">
+              <p className="mb-4 text-xl font-semibold text-center md:text-left">
+                  {format(new Date(meeting.meetingTime), "EEEE, MMMM d, yyyy 'at' h:mm a")}
+              </p>
               <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
             </div>
             
