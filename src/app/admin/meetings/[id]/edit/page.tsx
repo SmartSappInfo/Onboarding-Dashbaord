@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import * as React from 'react';
@@ -65,6 +63,12 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+      schoolSlug: '',
+      meetingLink: '',
+      recordingUrl: '',
+      brochureUrl: '',
+    },
   });
 
   React.useEffect(() => {
@@ -298,7 +302,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                   <FormItem>
                     <FormLabel>Recording URL (YouTube)</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://youtu.be/..." {...field} value={field.value ?? ''} />
+                      <Input placeholder="https://youtu.be/..." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
