@@ -1,4 +1,3 @@
-
 'use client';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const formSchema = z.object({
-  name: z.string().min(3, { message: 'Please enter your full name.' }),
+  name: z.string().min(3, { message: 'Please enter your name.' }),
 });
 
 interface JoinMeetingFormProps {
@@ -81,7 +80,7 @@ export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meet
         <div className="w-full max-w-md mx-auto md:mx-0 p-6 bg-white/10 backdrop-blur-md rounded-lg border border-white/20">
             <p className="text-lg font-semibold text-center md:text-left mb-4 text-white">Enter your name to join</p>
             <div className="flex flex-col sm:flex-row gap-2">
-                <Input placeholder="Your full name" className="h-12 text-lg bg-white/80 text-black placeholder:text-gray-500" disabled />
+                <Input placeholder="Your Name" className="h-12 text-lg bg-white/80 text-black placeholder:text-gray-500" disabled />
                 <Button size="lg" className="h-12 text-lg" disabled>Join Meeting</Button>
             </div>
         </div>
@@ -94,7 +93,7 @@ export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meet
         <div className="flex flex-col sm:flex-row gap-2">
             <Input 
                 {...form.register('name')} 
-                placeholder="Your full name"
+                placeholder="Your Name"
                 className="h-12 text-lg bg-white/80 text-black placeholder:text-gray-500"
                 disabled={isSubmitting}
             />
@@ -119,5 +118,3 @@ export default function JoinMeetingForm({ meetingId, schoolId, meetingLink, meet
     </form>
   )
 }
-
-    
