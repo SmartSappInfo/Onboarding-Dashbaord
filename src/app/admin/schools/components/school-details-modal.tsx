@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { School } from '@/lib/types';
@@ -18,7 +17,6 @@ import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User,
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import ActivityTimeline from '../../components/ActivityTimeline';
 import * as React from 'react';
 import LogActivityModal from './LogActivityModal';
 import NotesSection from '../../components/NotesSection';
@@ -56,7 +54,7 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="max-w-7xl w-[90vw] p-0 flex flex-col">
+        <SheetContent className="max-w-4xl w-[70vw] p-0 flex flex-col">
           <Button
               variant="outline"
               size="icon"
@@ -89,8 +87,8 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
             <SheetDescription>{school.slogan || 'School Details'}</SheetDescription>
           </SheetHeader>
           
-          <div className="flex-grow grid grid-cols-10 overflow-hidden">
-            <ScrollArea className="col-span-10 md:col-span-7 border-r">
+          <div className="flex-grow overflow-hidden">
+            <ScrollArea className="h-full">
                 <div className="p-6">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-6">
                         {/* Left Column */}
@@ -152,15 +150,6 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                     </div>
                     <Separator className="my-8" />
                     <NotesSection schoolId={school.id} />
-                </div>
-            </ScrollArea>
-            <ScrollArea className="col-span-10 md:col-span-3 bg-muted/30">
-                <div className="p-6">
-                    <div className="flex items-center gap-2 mb-6">
-                        <History className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="text-lg font-semibold">Activity Timeline</h3>
-                    </div>
-                    <ActivityTimeline schoolId={school.id} />
                 </div>
             </ScrollArea>
           </div>
