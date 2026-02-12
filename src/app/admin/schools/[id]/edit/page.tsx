@@ -125,7 +125,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                     userId: user!.uid,
                     type: 'school_updated',
                     source: 'user_action',
-                    description: `${user!.displayName} updated details for school "${data.name}".`,
+                    description: `updated details for school "${data.name}"`,
                 });
                 router.push('/admin/schools');
             })
@@ -412,7 +412,3 @@ export default function EditSchoolPage() {
         </div>
     )
 }
-
-    
-
-    

@@ -11,27 +11,25 @@ import ActivityItem from './ActivityItem';
 interface ActivityTimelineProps {
   schoolId?: string;
   userId?: string;
+  limit?: number;
 }
 
 const DateSeparator = ({ date }: { date: string }) => {
     return (
-        <div className="flex items-center my-4">
-            <div className="flex-grow border-t"></div>
-            <span className="flex-shrink mx-4 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {date}
-            </span>
-            <div className="flex-grow border-t"></div>
+        <div className="flex items-center pl-10 my-4">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{date}</div>
+            <div className="flex-grow border-t ml-4"></div>
         </div>
     );
 };
 
-export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineProps) {
+export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
 
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     
-    let q = query(collection(firestore, 'activities'), orderBy('timestamp', 'desc'), limit(50));
+    let q = query(collection(firestore, 'activities'), orderBy('timestamp', 'desc'), limit(dataLimit));
     
     if (schoolId) {
       q = query(q, where('schoolId', '==', schoolId));
@@ -41,7 +39,7 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
     }
 
     return q;
-  }, [firestore, schoolId, userId]);
+  }, [firestore, schoolId, userId, dataLimit]);
 
   const { data: activities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
@@ -91,27 +89,19 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
   if (isLoading) {
     return (
       <div className="space-y-8">
-        <Skeleton className="h-4 w-24 mx-auto my-4" />
+        <Skeleton className="h-4 w-24 ml-10 my-4" />
         <div className="space-y-6">
             <div className="flex gap-4">
-                <Skeleton className="h-9 w-9 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-3 w-1/4" />
+                    <Skeleton className="h-10 w-full" />
                 </div>
             </div>
             <div className="flex gap-4">
-                <Skeleton className="h-9 w-9 rounded-full" />
+                <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="flex-1 space-y-2">
                     <Skeleton className="h-4 w-1/2" />
-                    <Skeleton className="h-3 w-1/3" />
-                </div>
-            </div>
-             <div className="flex gap-4">
-                <Skeleton className="h-9 w-9 rounded-full" />
-                <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-4/5" />
-                    <Skeleton className="h-3 w-1/2" />
                 </div>
             </div>
         </div>
@@ -128,13 +118,13 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
   }
 
   return (
-    <div className="space-y-4">
-        {groupedActivities.map((group) => (
-            <div key={group.date}>
-                <DateSeparator date={group.date} />
-                <div className="relative">
-                    <div className="absolute left-[18px] top-3 bottom-3 w-0.5 bg-border -translate-x-1/2" />
-                    <div className="space-y-2">
+    <div className="relative">
+       <div className="absolute left-4 top-0 h-full w-0.5 bg-border -translate-x-1/2" />
+       <div className="space-y-6">
+            {groupedActivities.map((group) => (
+                <div key={group.date}>
+                    <DateSeparator date={group.date} />
+                    <div className="space-y-8">
                       {group.activities.map(activity => (
                            <ActivityItem
                               key={activity.id}
@@ -146,8 +136,8 @@ export default function ActivityTimeline({ schoolId, userId }: ActivityTimelineP
                       ))}
                     </div>
                 </div>
-            </div>
-        ))}
+            ))}
+        </div>
     </div>
   );
 }

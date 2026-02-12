@@ -92,7 +92,7 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
             userId: user.uid,
             type: data.type,
             source: 'manual',
-            description: `${user.displayName} logged a ${data.type} for "${school.name}".`,
+            description: `added a ${data.type}`,
             metadata: { content: data.content }
         });
         

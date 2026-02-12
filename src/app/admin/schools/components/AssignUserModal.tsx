@@ -65,7 +65,7 @@ export default function AssignUserModal({ school, open, onOpenChange }: AssignUs
         userId: currentUser.uid,
         type: 'school_assigned',
         source: 'user_action',
-        description: `${currentUser.displayName} assigned school "${school.name}" to ${assignmentData.name || 'Unassigned'}.`,
+        description: `assigned school "${school.name}" to ${assignmentData.name || 'Unassigned'}`,
         metadata: { from: oldAssignedToName, to: assignmentData.name }
       });
       onOpenChange(false);

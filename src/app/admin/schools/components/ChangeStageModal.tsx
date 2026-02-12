@@ -53,7 +53,7 @@ export default function ChangeStageModal({ school, open, onOpenChange }: ChangeS
           userId: user.uid,
           type: 'pipeline_stage_changed',
           source: 'user_action',
-          description: `${user.displayName} moved school "${school.name}" from "${oldStageName}" to "${stage.name}".`,
+          description: `moved school "${school.name}" from "${oldStageName}" to "${stage.name}"`,
           metadata: {
               from: oldStageName,
               to: stage.name,

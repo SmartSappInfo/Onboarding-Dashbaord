@@ -137,7 +137,7 @@ export default function NewSchoolPage() {
                 userId: user.uid,
                 type: 'school_created',
                 source: 'user_action',
-                description: `${user.displayName} created school "${data.name}".`,
+                description: `created school "${data.name}"`,
             });
         }
         router.push('/admin/schools');
@@ -400,7 +400,3 @@ export default function NewSchoolPage() {
     </div>
   );
 }
-
-    
-
-    

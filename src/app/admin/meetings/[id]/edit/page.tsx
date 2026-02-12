@@ -130,7 +130,7 @@ function EditMeetingForm({ meetingId }: { meetingId: string }) {
                 userId: user.uid,
                 type: 'school_updated',
                 source: 'user_action',
-                description: `${user.displayName} updated the ${data.type.name} meeting for "${data.school.name}".`,
+                description: `updated the ${data.type.name} meeting for "${data.school.name}".`,
                 metadata: { meetingId }
             });
         }

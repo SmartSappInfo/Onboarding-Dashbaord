@@ -131,7 +131,7 @@ export default function NewMeetingPage() {
                 userId: user.uid,
                 type: 'meeting_created',
                 source: 'user_action',
-                description: `${user.displayName} scheduled a ${data.type.name} meeting for "${data.school.name}".`,
+                description: `scheduled a ${data.type.name} meeting for "${data.school.name}".`,
                 metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
             });
         }

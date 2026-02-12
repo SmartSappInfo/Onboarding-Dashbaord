@@ -408,7 +408,7 @@ export default function KanbanBoard() {
                 userId: user.uid,
                 type: 'pipeline_stage_changed',
                 source: 'user_action',
-                description: `${user.displayName} moved school "${school.name}" from "${oldStageName}" to "${newStage.name}".`,
+                description: `moved school "${school.name}" from "${oldStageName}" to "${newStage.name}"`,
                 metadata: {
                     from: oldStageName,
                     to: newStage.name,
@@ -533,5 +533,3 @@ export default function KanbanBoard() {
     </DndContext>
   );
 }
-
-    
