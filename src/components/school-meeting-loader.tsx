@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
 import type { School, Meeting } from '@/lib/types';
@@ -136,12 +135,11 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
             setSchool(foundSchool);
 
-            // 2. Fetch all meetings for that school
+            // 2. Fetch all meetings for that school (without ordering)
             const meetingsCollection = collection(firestore, 'meetings');
             const allMeetingsForSchoolQuery = query(
               meetingsCollection,
-              where('schoolId', '==', foundSchool.id),
-              orderBy('meetingTime', 'desc')
+              where('schoolId', '==', foundSchool.id)
             );
             const allMeetingsSnapshot = await getDocs(allMeetingsForSchoolQuery);
 
@@ -151,8 +149,12 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
 
-            // 3. Filter on the client-side to find the correct meeting type
-            const allMeetings = allMeetingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
+            // 3. Map and sort on the client-side
+            const allMeetings = allMeetingsSnapshot.docs
+              .map(doc => ({ id: doc.id, ...doc.data() } as Meeting))
+              .sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime()); // Sort descending by time
+            
+            // 4. Filter to find the correct meeting type
             const meetingsForType = allMeetings.filter(m => m.type.slug === typeSlug);
 
             if (meetingsForType.length === 0) {
@@ -161,10 +163,10 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
             
-            // 4. Find the best meeting: latest upcoming, or latest past if none are upcoming.
+            // 5. Find the best meeting: latest upcoming, or latest past if none are upcoming.
             const now = new Date();
             const upcomingMeetings = meetingsForType.filter(m => new Date(m.meetingTime) >= now).sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
-            const pastMeetings = meetingsForType.filter(m => new Date(m.meetingTime) < now).sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime());
+            const pastMeetings = meetingsForType.filter(m => new Date(m.meetingTime) < now); // Already sorted descending
 
             const bestMeeting = upcomingMeetings[0] || pastMeetings[0];
 
