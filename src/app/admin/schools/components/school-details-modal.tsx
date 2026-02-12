@@ -148,8 +148,6 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                           </DetailItem>
                         </div>
                     </div>
-                    <Separator className="my-8" />
-                    <NotesSection schoolId={school.id} />
                 </div>
             </ScrollArea>
           </div>

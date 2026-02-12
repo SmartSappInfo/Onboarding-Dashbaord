@@ -33,8 +33,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../components/media-select';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { logActivity } from '@/lib/activity-logger';
-import { Separator } from '@/components/ui/separator';
-import NotesSection from '../../../components/NotesSection';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -165,247 +163,241 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
     }
 
     return (
-        <>
-            <Card className="max-w-4xl mx-auto">
-                <CardHeader>
-                <CardTitle>School Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-8">
-                            <FormField
-                                control={form.control}
-                                name="name"
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                    <FormLabel>School Name</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Ghana International School" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="initials"
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Initials</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., GIS" {...field} value={field.value ?? ''} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+            <CardTitle>School Details</CardTitle>
+            </CardHeader>
+            <CardContent>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-8">
                         <FormField
-                        control={form.control}
-                        name="slogan"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Slogan</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., Understanding of each other" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="logoUrl"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Logo URL</FormLabel>
-                            <FormControl>
-                                <MediaSelect 
-                                    value={field.value} 
-                                    onValueChange={field.onChange} 
-                                />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="heroImageUrl"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Hero Image URL</FormLabel>
-                            <FormControl>
-                            <MediaSelect 
-                                    value={field.value} 
-                                    onValueChange={field.onChange} 
-                            />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="contactPerson"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Contact Person</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Yaw Mensah" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Contact Email</FormLabel>
-                            <FormControl>
-                                <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="phone"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Contact Phone</FormLabel>
-                            <FormControl>
-                                <Input type="tel" placeholder="+233 24 123 4567" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="location"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Location</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Accra, Ghana" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="nominalRoll"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Nominal Roll (Number of Students)</FormLabel>
-                            <FormControl>
-                                <Input type="number" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="referee"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Referee</FormLabel>
-                            <FormControl>
-                                <Input placeholder="Ama Serwaa" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                        <FormField
-                        control={form.control}
-                        name="implementationDate"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col">
-                            <FormLabel>Implementation Date</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                <FormLabel>School Name</FormLabel>
                                 <FormControl>
-                                    <Button
-                                    variant={"outline"}
-                                    className={cn(
-                                        "w-full justify-start pl-3 text-left font-normal",
-                                        !field.value && "text-muted-foreground"
-                                    )}
-                                    >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                    </Button>
+                                    <Input placeholder="e.g., Ghana International School" {...field} value={field.value ?? ''} />
                                 </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                    mode="single"
-                                    selected={field.value}
-                                    onSelect={field.onChange}
-                                    initialFocus
-                                />
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                            </FormItem>
-                        )}
+                                <FormMessage />
+                                </FormItem>
+                            )}
                         />
                         <FormField
-                        control={form.control}
-                        name="includeDroneFootage"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                                <FormLabel className="text-base">Include Drone Footage</FormLabel>
-                            </div>
-                            <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            </FormItem>
-                        )}
+                            control={form.control}
+                            name="initials"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Initials</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="e.g., GIS" {...field} value={field.value ?? ''} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
                         />
                     </div>
-
                     <FormField
-                        control={form.control}
-                        name="modules"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Modules</FormLabel>
-                            <FormControl>
-                                <ModuleSelect {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
+                    control={form.control}
+                    name="slogan"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Slogan</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Understanding of each other" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="logoUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Logo URL</FormLabel>
+                        <FormControl>
+                            <MediaSelect 
+                                value={field.value} 
+                                onValueChange={field.onChange} 
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="heroImageUrl"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Hero Image URL</FormLabel>
+                        <FormControl>
+                        <MediaSelect 
+                                value={field.value} 
+                                onValueChange={field.onChange} 
                         />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="contactPerson"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contact Person</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Yaw Mensah" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contact Email</FormLabel>
+                        <FormControl>
+                            <Input type="email" placeholder="yaw.mensah@school.edu.gh" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Contact Phone</FormLabel>
+                        <FormControl>
+                            <Input type="tel" placeholder="+233 24 123 4567" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="location"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Location</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Accra, Ghana" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="nominalRoll"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Nominal Roll (Number of Students)</FormLabel>
+                        <FormControl>
+                            <Input type="number" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="referee"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Referee</FormLabel>
+                        <FormControl>
+                            <Input placeholder="Ama Serwaa" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="implementationDate"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                        <FormLabel>Implementation Date</FormLabel>
+                        <Popover>
+                            <PopoverTrigger asChild>
+                            <FormControl>
+                                <Button
+                                variant={"outline"}
+                                className={cn(
+                                    "w-full justify-start pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                )}
+                                >
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                </Button>
+                            </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                            />
+                            </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="includeDroneFootage"
+                    render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                            <FormLabel className="text-base">Include Drone Footage</FormLabel>
+                        </div>
+                        <FormControl>
+                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                        </FormItem>
+                    )}
+                    />
+                </div>
 
-                    <div className="flex justify-end gap-4">
-                        <Button type="button" variant="outline" onClick={() => router.push('/admin/schools')}>
-                        Cancel
-                        </Button>
-                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                        {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
-                        </Button>
-                    </div>
-                    </form>
-                </Form>
-                </CardContent>
-            </Card>
-            
-            <Separator className="my-8" />
-            
-            <NotesSection schoolId={schoolId} />
-        </>
+                <FormField
+                    control={form.control}
+                    name="modules"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Modules</FormLabel>
+                        <FormControl>
+                            <ModuleSelect {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+
+                <div className="flex justify-end gap-4">
+                    <Button type="button" variant="outline" onClick={() => router.push('/admin/schools')}>
+                    Cancel
+                    </Button>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                </div>
+                </form>
+            </Form>
+            </CardContent>
+        </Card>
     );
 }
 
