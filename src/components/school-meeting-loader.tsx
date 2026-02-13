@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
 import type { School, Meeting } from '@/lib/types';
@@ -17,6 +17,7 @@ import WelcomeSection from './welcome-section';
 import KickoffMeetingHero from './kickoff-meeting-hero';
 import TrainingMeetingHero from './training-meeting-hero';
 import MeetingNotFound from './meeting-not-found';
+import RecordingSection from './recording-section';
 
 function MeetingPageSkeleton() {
   return (
@@ -70,6 +71,7 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
       <AppDownloadSection />
       <SetupProfileSection />
       {meeting.brochureUrl && <BrochureDownloadSection brochureUrl={meeting.brochureUrl} />}
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
       <HelpSection helpVideos={helpVideos} />
       <TestimonialsSection />
     </>
@@ -78,13 +80,19 @@ const ParentEngagementLayout = ({ school, meeting }: { school: School, meeting: 
 
 const KickoffLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <KickoffMeetingHero school={school} meeting={meeting} />
+    <>
+      <KickoffMeetingHero school={school} meeting={meeting} />
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
   )
 }
 
 const TrainingLayout = ({ school, meeting }: { school: School, meeting: Meeting }) => {
   return (
-    <TrainingMeetingHero school={school} meeting={meeting} />
+    <>
+      <TrainingMeetingHero school={school} meeting={meeting} />
+      {meeting.recordingUrl && <RecordingSection recordingUrl={meeting.recordingUrl} />}
+    </>
   )
 }
 
@@ -135,7 +143,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
             setSchool(foundSchool);
 
-            // 2. Fetch all meetings for that school (without ordering)
+            // 2. Fetch all meetings for that school
             const meetingsCollection = collection(firestore, 'meetings');
             const allMeetingsForSchoolQuery = query(
               meetingsCollection,
@@ -149,12 +157,10 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
 
-            // 3. Map and sort on the client-side
+            // 3. Filter and sort on the client-side
             const allMeetings = allMeetingsSnapshot.docs
-              .map(doc => ({ id: doc.id, ...doc.data() } as Meeting))
-              .sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime()); // Sort descending by time
+              .map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
             
-            // 4. Filter to find the correct meeting type
             const meetingsForType = allMeetings.filter(m => m.type.slug === typeSlug);
 
             if (meetingsForType.length === 0) {
@@ -163,10 +169,15 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
             
-            // 5. Find the best meeting: latest upcoming, or latest past if none are upcoming.
+            // 4. Find the best meeting: latest upcoming, or latest past if none are upcoming.
             const now = new Date();
-            const upcomingMeetings = meetingsForType.filter(m => new Date(m.meetingTime) >= now).sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
-            const pastMeetings = meetingsForType.filter(m => new Date(m.meetingTime) < now); // Already sorted descending
+            const upcomingMeetings = meetingsForType
+                .filter(m => new Date(m.meetingTime) >= now)
+                .sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
+            
+            const pastMeetings = meetingsForType
+                .filter(m => new Date(m.meetingTime) < now)
+                .sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime());
 
             const bestMeeting = upcomingMeetings[0] || pastMeetings[0];
 

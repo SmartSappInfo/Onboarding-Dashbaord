@@ -1,4 +1,3 @@
-
 'use client';
 
 import Image from 'next/image';
@@ -6,8 +5,10 @@ import type { School, Meeting } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
-import { format } from 'date-fns';
-import { Calendar, Clock } from 'lucide-react';
+import { format, isAfter } from 'date-fns';
+import { Calendar, Clock, PlayCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
 
 interface MeetingHeroProps {
   school: School;
@@ -15,6 +16,27 @@ interface MeetingHeroProps {
 }
 
 export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
+  const [meetingState, setMeetingState] = useState<'UPCOMING' | 'ENDED_NO_RECORDING' | 'ENDED_WITH_RECORDING'>('UPCOMING');
+
+  useEffect(() => {
+    const checkMeetingState = () => {
+      if (meeting.recordingUrl) {
+        setMeetingState('ENDED_WITH_RECORDING');
+        return;
+      }
+      
+      const meetingEndTime = new Date(new Date(meeting.meetingTime).getTime() + 2 * 60 * 60 * 1000); // 2 hours after start
+      if (isAfter(new Date(), meetingEndTime)) {
+        setMeetingState('ENDED_NO_RECORDING');
+      } else {
+        setMeetingState('UPCOMING');
+      }
+    };
+
+    checkMeetingState();
+    const interval = setInterval(checkMeetingState, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [meeting.meetingTime, meeting.recordingUrl]);
 
   return (
     <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 min-h-screen flex items-center overflow-hidden">
@@ -74,15 +96,32 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
                       <span>{format(new Date(meeting.meetingTime), "h:mm a")}</span>
                   </div>
               </div>
-              <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />
+              {meetingState === 'UPCOMING' && <CountdownTimer targetDate={meeting.meetingTime || new Date().toISOString()} />}
             </div>
             
-            <JoinMeetingForm
-              meetingId={meeting.id}
-              schoolId={school.id}
-              meetingLink={meeting.meetingLink || ''}
-              meetingTime={meeting.meetingTime || ''}
-            />
+            {meetingState === 'UPCOMING' && (
+              <JoinMeetingForm
+                meetingId={meeting.id}
+                schoolId={school.id}
+                meetingLink={meeting.meetingLink || ''}
+                meetingTime={meeting.meetingTime || ''}
+              />
+            )}
+            
+            {meetingState === 'ENDED_NO_RECORDING' && (
+              <div className="w-full max-w-md mx-auto md:mx-0 p-6 bg-white/10 backdrop-blur-md rounded-lg border border-white/20 text-center">
+                <p className="text-lg font-semibold text-white">Meeting has ended. Recording will be available soon.</p>
+              </div>
+            )}
+
+            {meetingState === 'ENDED_WITH_RECORDING' && (
+              <Button asChild size="lg" className="h-12 text-lg bg-white text-primary hover:bg-gray-200">
+                <a href="#recording">
+                  <PlayCircle className="mr-2 h-6 w-6" />
+                  Watch Meeting Recording
+                </a>
+              </Button>
+            )}
 
           </div>
 
@@ -110,5 +149,3 @@ export default function MeetingHero({ school, meeting }: MeetingHeroProps) {
     </section>
   );
 }
-
-    
