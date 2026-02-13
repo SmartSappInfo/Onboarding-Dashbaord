@@ -1,7 +1,6 @@
 'use client';
 
 import AppStoreButtons from '@/components/app-store-buttons';
-import ScrollDownIndicator from './scroll-down-indicator';
 
 export default function AppDownloadSection() {
   return (
@@ -39,7 +38,6 @@ export default function AppDownloadSection() {
           <AppStoreButtons />
         </div>
       </div>
-      <ScrollDownIndicator href="#setup-profile" />
     </section>
   );
 }
