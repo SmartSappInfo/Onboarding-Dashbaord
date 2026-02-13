@@ -102,8 +102,16 @@ body {
   * {
     @apply border-border;
   }
+  html {
+    scroll-behavior: smooth;
+    scroll-snap-type: y proximity;
+  }
   body {
     @apply bg-background text-foreground;
+  }
+  section {
+    scroll-snap-align: start;
+    scroll-margin-top: 4rem; /* Adjust to account for fixed header */
   }
   h1,
   h2,
