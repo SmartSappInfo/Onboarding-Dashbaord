@@ -40,7 +40,7 @@ export default function KickoffMeetingHero({ school, meeting }: KickoffMeetingHe
   }, [meeting.meetingTime, meeting.recordingUrl]);
 
   return (
-    <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 min-h-screen flex items-center overflow-hidden">
+    <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 h-screen flex items-center overflow-hidden">
         <LightRays
             raysOrigin="top-center"
             raysColor="#3B5FFF"
