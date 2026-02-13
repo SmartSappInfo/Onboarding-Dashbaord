@@ -2,6 +2,7 @@
 
 import VideoEmbed from '@/components/video-embed';
 import LightRays from '@/components/LightRays';
+import ScrollDownIndicator from './scroll-down-indicator';
 
 export default function WelcomeHeroSection() {
   return (
@@ -37,6 +38,7 @@ export default function WelcomeHeroSection() {
             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
         </div>
       </div>
+      <ScrollDownIndicator href="#download" />
     </section>
   );
 }

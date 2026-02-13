@@ -9,6 +9,7 @@ import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import ScrollDownIndicator from './scroll-down-indicator';
 
 interface TrainingMeetingHeroProps {
   school: School;
@@ -146,6 +147,7 @@ export default function TrainingMeetingHero({ school, meeting }: TrainingMeeting
           </div>
         </div>
       </div>
+      {meetingState === 'ENDED_WITH_RECORDING' && <ScrollDownIndicator href="#recording" />}
     </section>
   );
 }

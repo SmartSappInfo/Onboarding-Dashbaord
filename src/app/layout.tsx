@@ -15,7 +15,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
       <head>
         {/* Google Tag Manager tags are now handled by GtmProvider */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

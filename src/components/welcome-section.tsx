@@ -4,7 +4,7 @@ import VideoEmbed from '@/components/video-embed';
 
 export default function WelcomeSection() {
   return (
-    <section className="bg-white py-20 text-center md:py-28">
+    <section id="welcome" className="bg-white py-20 text-center md:py-28">
       <div className="container">
         <h2 className="mb-4 font-headline text-3xl font-bold text-gray-900 md:text-4xl">
           Welcome to the <span className="text-primary">SmartSapp</span> Family
