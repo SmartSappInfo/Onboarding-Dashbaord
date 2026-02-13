@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { GoogleIcon, SmartSappIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
 import Image from 'next/image';
+import { Eye, EyeOff } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -42,6 +43,8 @@ export default function SignupPage() {
   const router = useRouter();
   const auth = useAuth();
   const firestore = useFirestore();
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -217,9 +220,21 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password*</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Min. 8 characters" {...field} />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" {...field} />
+                      </FormControl>
+                       <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                      >
+                        {showPassword ? <EyeOff /> : <Eye />}
+                        <span className="sr-only">{showPassword ? 'Hide password' : 'Show password'}</span>
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -230,9 +245,21 @@ export default function SignupPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Confirm Password*</FormLabel>
-                    <FormControl>
-                      <Input type="password" placeholder="Min. 8 characters" {...field} />
-                    </FormControl>
+                    <div className="relative">
+                      <FormControl>
+                        <Input type={showConfirmPassword ? "text" : "password"} placeholder="Min. 8 characters" {...field} />
+                      </FormControl>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                        onClick={() => setShowConfirmPassword((prev) => !prev)}
+                      >
+                        {showConfirmPassword ? <EyeOff /> : <Eye />}
+                        <span className="sr-only">{showConfirmPassword ? 'Hide password' : 'Show password'}</span>
+                      </Button>
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
