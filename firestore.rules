@@ -35,19 +35,16 @@ service cloud.firestore {
     match /schools/{schoolId} {
       // Admins can perform any action on schools
       allow write: if isAuthorized();
-      // Public can read a single school for meeting pages, admins can list all schools
-      allow get: if true;
-      allow list: if isAuthorized();
+      // Public can read school documents for meeting pages
+      allow read: if true;
     }
     
     // --- Meeting Rules ---
     match /meetings/{meetingId} {
         // Admins can create, update, and delete any meeting
         allow write: if isAuthorized();
-        // Admins can list all meetings
-        allow list: if isAuthorized();
-        // Anyone can view a specific meeting page
-        allow get: if true;
+        // Anyone can read meeting documents
+        allow read: if true;
 
         // Rule for attendees subcollection
         match /attendees/{attendeeId} {
@@ -109,5 +106,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
