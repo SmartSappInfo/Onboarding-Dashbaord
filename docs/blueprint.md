@@ -1,25 +1,17 @@
-# **App Name**: SmartOnboard
+# SmartOnboard Application Blueprint
 
-## Core Features:
+This document provides a high-level overview of the core features implemented in the SmartOnboard application. Each section links to a more detailed document explaining the feature's implementation and potential future enhancements.
 
-- Onboarding Page: Displays a central landing page directing users to school-specific onboarding materials based on info at smartsapp.com/onboarding.
-- Dynamic Page Generation: Dynamically generates a unique page for each school, named 'pe-[school-name]', pulling data from the admin dashboard. Each page contains tailored information.
-- Customized Content: Includes School's full name, slogan and logo for branding.
-- Meeting Details Display: Shows meeting time and link clearly.
-- Hero Section: Features a hero image, custom text, a descriptive excerpt, a countdown timer to the meeting, and a 'Join Meeting' button.
-- Informative Video Integration: Embeds a video tutorial about the app, complete with captions and descriptions. Video url: https://youtu.be/M6MUlDkfZOg.
-- App Download Links: Presents a section dedicated to downloading the SmartSApp mobile app from various platforms: Android (https://play.google.com/store/apps/details?id=com.smartsapp&hl=en), iOS (https://apps.apple.com/us/app/smartsapp/id1544420000), and Huawei (https://appgallery.huawei.com/#/app/C103443309).
-- Installation Guide: Integrates an embedded video providing instructions on how to install the app. Video URL: https://youtu.be/WJRKrl5S5tM
-- Resource Library: Features a section with useful help videos. The videos provide more detailed instructions for certain aspects of using the app.
-- Video Testimonials: Embeds a compilation of user testimonials to add a vote of confidence about the platform.
+## Core Features
 
-## Style Guidelines:
+1.  **[Dynamic Onboarding Pages](./onboarding-pages.md)**
+    *   Automatically generates unique, branded landing pages for each school to use for parent meetings and onboarding.
 
-- Primary color: Deep blue (#3F51B5) to convey trust and reliability.
-- Background color: Very light blue (#E8EAF6) for a clean, professional feel.
-- Accent color: Teal (#009688) to add a touch of modern sophistication and highlight key interactive elements.
-- Body font: 'PT Sans', a humanist sans-serif that combines a modern look and a little warmth or personality; suitable for body text
-- Headline font: 'Playfair', A modern sans-serif similar to Didot, geometric, high contrast thin-thick lines, with an elegant, fashionable, high-end feel; suitable for headlines
-- Consistent use of simple, professional icons relevant to onboarding, like play buttons and download symbols.
-- Clean, grid-based layout for easy content digestion. Each section is clearly divided.
-- Subtle, smooth transitions and loading animations to enhance user experience without distraction.
+2.  **[Administrative Dashboard](./admin-dashboard.md)**
+    *   A comprehensive back-office for managing schools, scheduling meetings, overseeing the onboarding pipeline, and managing media assets.
+
+3.  **[Authentication & User Management](./authentication.md)**
+    *   A secure system for administrator signup, login, and authorization, ensuring only approved personnel can access the admin dashboard.
+
+4.  **[Generative AI Features](./gen-ai.md)**
+    *   Leverages AI to streamline content creation, including generating surveys from text and summarizing survey results.
