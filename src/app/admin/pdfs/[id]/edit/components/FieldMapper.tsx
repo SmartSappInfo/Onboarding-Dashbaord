@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -155,6 +154,9 @@ interface PropertiesSidebarProps {
   setPassword: (password: string) => void;
   passwordProtected: boolean;
   setPasswordProtected: (enabled: boolean) => void;
+  onSave: () => Promise<void>;
+  isSaving: boolean;
+  onPreview: () => void;
 }
 
 const PropertiesSidebar = ({
@@ -168,6 +170,9 @@ const PropertiesSidebar = ({
   setPassword,
   passwordProtected,
   setPasswordProtected,
+  onSave,
+  isSaving,
+  onPreview,
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -298,6 +303,16 @@ const PropertiesSidebar = ({
             )}
         </div>
       </ScrollArea>
+      <div className="flex-shrink-0 border-t p-4 space-y-2 bg-background">
+        <Button onClick={onSave} disabled={isSaving} className="w-full">
+            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
+        <Button variant="outline" onClick={onPreview} className="w-full">
+            <Eye className="mr-2 h-4 w-4" />
+            Preview
+        </Button>
+      </div>
     </>
   );
 };
@@ -585,21 +600,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
                               <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={handleZoomIn}><ZoomIn /></Button></TooltipTrigger>
                               <TooltipContent><p>Zoom In</p></TooltipContent>
                           </Tooltip>
-
-                           <Separator orientation="vertical" className="h-6 mx-1" />
-
-                          <Tooltip>
-                            <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={onPreview}><Eye /></Button></TooltipTrigger>
-                            <TooltipContent><p>Preview</p></TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="icon" onClick={onSave} disabled={isSaving}>
-                                {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent><p>Save Changes</p></TooltipContent>
-                          </Tooltip>
+                          
                           <div className="md:hidden">
                             <Separator orientation="vertical" className="h-6 mx-1" />
                             <Tooltip>
@@ -630,7 +631,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
 
       {/* Right Sidebar Column (Desktop only) */}
       <div 
-        className="h-full bg-card border-l transition-all hidden md:block"
+        className="h-full bg-card border-l transition-all hidden md:flex flex-col"
         style={{ width: isCollapsed ? "56px" : `${sidebarWidth}px` }}
       >
         <div className="flex flex-col h-full">
@@ -640,7 +641,21 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
                 </Button>
             </div>
             
-            {!isCollapsed && <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />}
+            {!isCollapsed && <PropertiesSidebar 
+                fields={fields} 
+                selectedFieldId={selectedFieldId} 
+                setSelectedFieldId={setSelectedFieldId} 
+                updateField={updateField} 
+                removeField={removeField} 
+                pagesLength={pages.length}
+                password={password}
+                setPassword={setPassword}
+                passwordProtected={passwordProtected}
+                setPasswordProtected={setPasswordProtected}
+                onSave={onSave}
+                isSaving={isSaving}
+                onPreview={onPreview}
+            />}
             
             {isCollapsed && (
                 <div className="flex flex-col items-center gap-4 py-4">
@@ -659,7 +674,21 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
        {/* Properties Sheet (Mobile only) */}
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden" side="right">
-          <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />
+          <PropertiesSidebar 
+            fields={fields} 
+            selectedFieldId={selectedFieldId} 
+            setSelectedFieldId={setSelectedFieldId} 
+            updateField={updateField} 
+            removeField={removeField} 
+            pagesLength={pages.length}
+            password={password}
+            setPassword={setPassword}
+            passwordProtected={passwordProtected}
+            setPasswordProtected={setPasswordProtected}
+            onSave={onSave}
+            isSaving={isSaving}
+            onPreview={onPreview}
+          />
         </SheetContent>
       </Sheet>
     </div>
