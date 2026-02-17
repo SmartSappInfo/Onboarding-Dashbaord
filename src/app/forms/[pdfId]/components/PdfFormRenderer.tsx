@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import * as React from 'react';
@@ -10,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2, Download, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { generateFilledPdf } from '@/lib/pdf-actions';
+import { regenerateSubmissionPdf, savePdfSubmission } from '@/lib/pdf-actions';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SmartSappLogo } from '@/components/icons';
@@ -34,6 +32,8 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isDownloading, setIsDownloading] = React.useState(false);
+  const [submissionId, setSubmissionId] = React.useState<string | null>(null);
   const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const { toast } = useToast();
@@ -51,7 +51,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         try {
             const pdfjs = await import('pdfjs-dist');
             const pdfjsViewer = await import('pdfjs-dist/web/pdf_viewer.mjs');
-            (window as any).pdfjsLib = pdfjs;
+            window.pdfjsLib = pdfjs;
             const pdfjsVersion = '4.4.168';
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
@@ -70,7 +70,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
   }, [pdfForm.downloadUrl, toast]);
   
-  const onSubmit = async (data: any) => {
+  const handleSave = async (data: any) => {
     if (isPreview) {
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
@@ -78,7 +78,27 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     
     setIsSubmitting(true);
 
-    const result = await generateFilledPdf(pdfForm.id, data);
+    const result = await savePdfSubmission(pdfForm.id, data);
+    
+    if (result.success && result.submissionId) {
+        toast({ title: 'Success!', description: 'Your submission has been saved.' });
+        setSubmissionId(result.submissionId);
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save your submission.' });
+    }
+
+    setIsSubmitting(false);
+  };
+  
+  const handleDownload = async () => {
+    if (!submissionId) {
+        toast({ title: 'Please Save First', description: 'You must save your submission before you can download it.' });
+        return;
+    }
+    
+    setIsDownloading(true);
+    
+    const result = await regenerateSubmissionPdf(pdfForm.id, submissionId);
     
     if (result.success && result.pdfDataUri) {
         toast({ title: 'Success!', description: 'Your document is now downloading.' });
@@ -94,8 +114,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate the PDF.' });
     }
-
-    setIsSubmitting(false);
+    
+    setIsDownloading(false);
   };
   
   const renderField = (field: PDFFormField) => {
@@ -157,10 +177,27 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <SmartSappLogo className="h-8" />
                 <span className="hidden sm:inline-block font-semibold truncate">{pdfForm.name}</span>
             </div>
-            <Button type="button" size="lg" disabled={isSubmitting || (!isValid && !isPreview)} onClick={handleSubmit(onSubmit)}>
-                {isSubmitting && !isPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                {isSubmitting && !isPreview ? 'Submitting...' : 'Submit & Download'}
-            </Button>
+            <div className="flex items-center gap-2">
+                <Button 
+                    type="button" 
+                    size="lg" 
+                    variant="outline"
+                    disabled={isSubmitting || isDownloading || !isValid || !!submissionId || isPreview} 
+                    onClick={handleSubmit(handleSave)}
+                >
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                    {submissionId ? 'Saved' : 'Save Submission'}
+                </Button>
+                <Button 
+                    type="button" 
+                    size="lg" 
+                    disabled={isDownloading || !submissionId || isPreview} 
+                    onClick={handleDownload}
+                >
+                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                    Download PDF
+                </Button>
+            </div>
         </header>
 
         <main className="flex-grow overflow-y-auto p-4 sm:p-8">
@@ -172,7 +209,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 )}
                 
                 {pdfDoc && (
-                    <form id="pdf-form" onSubmit={handleSubmit(onSubmit)}>
+                    <form id="pdf-form" onSubmit={handleSubmit(handleSave)}>
                         <div className="space-y-4">
                             {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                 <PageRenderer

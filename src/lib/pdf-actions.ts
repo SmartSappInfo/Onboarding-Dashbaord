@@ -243,15 +243,14 @@ async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: 
     return await pdfDoc.saveAsBase64({ dataUri: true });
 }
 
-export async function generateFilledPdf(pdfId: string, formData: { [key: string]: string }) {
+export async function savePdfSubmission(pdfId: string, formData: { [key: string]: any }) {
   if (!pdfId || !formData) {
-    return { error: 'Invalid input data for PDF generation.' };
+    return { error: 'Invalid input data.' };
   }
-  
+
   const db = getDb();
-  
+
   try {
-    // 1. Fetch PDFForm document
     const pdfFormRef = doc(db, 'pdfs', pdfId);
     const pdfFormSnap = await getDoc(pdfFormRef);
 
@@ -260,10 +259,6 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
     }
     const pdfForm = pdfFormSnap.data() as PDFForm;
 
-    // 2. Generate PDF in memory
-    const pdfDataUri = await generatePdfFromData(pdfForm, formData);
-    
-    // 3. Create submission record in Firestore
     const submissionData = {
         pdfId,
         submittedAt: new Date().toISOString(),
@@ -271,7 +266,6 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
     };
     const submissionRef = await addDoc(collection(db, `pdfs/${pdfId}/submissions`), submissionData);
     
-    // 4. Log activity
     await logActivity({
         schoolId: '', // Not tied to a specific school
         userId: null, // Public action
@@ -281,10 +275,9 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
         metadata: { pdfId, submissionId: submissionRef.id }
     });
 
-    // 5. Return data URI for immediate download
-    return { success: true, pdfDataUri };
+    return { success: true, submissionId: submissionRef.id };
   } catch (error: any) {
-    console.error("Failed to generate PDF:", error);
+    console.error("Failed to save submission:", error);
     return { error: `An unexpected error occurred: ${error.message}` };
   }
 }
