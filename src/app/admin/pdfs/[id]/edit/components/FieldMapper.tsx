@@ -1,8 +1,6 @@
-
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye } from 'lucide-react';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
@@ -25,16 +24,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import PdfPreviewDialog from './PdfPreviewDialog';
 import { updatePdfFormStatus } from '@/lib/pdf-actions';
 
-interface PageDetail {
-  canvas: HTMLCanvasElement;
-  textContent: any;
-  annotations: any[];
-  width: number;
-  height: number;
-  viewport: any;
-}
-
-type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   text: Text,
@@ -42,8 +31,9 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   date: Calendar,
 };
 
-function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom }: {
-    page: PageDetail;
+function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUpdate, zoom }: {
+    pdf: PDFDocumentProxy;
+    pageNumber: number;
     fields: LocalPDFFormField[];
     selectedFieldId: string | null;
     onSelect: (id: string) => void;
@@ -54,58 +44,80 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
     const textLayerRef = React.useRef<HTMLDivElement>(null);
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
     const pdfjsRef = React.useRef<any | null>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [pageDimensions, setPageDimensions] = React.useState({ width: 0, height: 0 });
 
     React.useEffect(() => {
         const renderPage = async () => {
+             setIsLoading(true);
              if (!pdfjsRef.current) {
-                const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
+                pdfjsRef.current = await import('pdfjs-dist');
                 const pdfjsVersion = '4.4.168';
-                pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-                pdfjsRef.current = pdfjsModule;
-            }
-            const pdfjs = pdfjsRef.current;
+                pdfjsRef.current.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+             }
+             const pdfjs = pdfjsRef.current;
 
-            if (canvasRef.current) {
-                const context = canvasRef.current.getContext('2d');
-                if (context) {
-                    canvasRef.current.width = page.width;
-                    canvasRef.current.height = page.height;
-                    context.drawImage(page.canvas, 0, 0);
+            try {
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: zoom * 1.5 }); // Render at higher res for clarity
+                setPageDimensions({ width: viewport.width, height: viewport.height });
+
+                // Render Canvas
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    if (context) {
+                        await page.render({ canvasContext: context, viewport }).promise;
+                    }
                 }
-            }
-            if (textLayerRef.current) {
-                textLayerRef.current.innerHTML = '';
-                await pdfjs.renderTextLayer({
-                    textContentSource: page.textContent,
-                    container: textLayerRef.current,
-                    viewport: page.viewport,
-                }).promise;
-            }
-             if (annotationLayerRef.current) {
-                pdfjs.AnnotationLayer.render({
-                    viewport: page.viewport.clone({ dontFlip: true }),
-                    div: annotationLayerRef.current,
-                    annotations: page.annotations,
-                    page: page as any,
-                    linkService: new pdfjs.web.PDFLinkService(),
-                    renderForms: false,
-                });
+
+                // Render Text Layer
+                if (textLayerRef.current) {
+                    textLayerRef.current.innerHTML = '';
+                    const textContent = await page.getTextContent();
+                    await pdfjs.renderTextLayer({
+                        textContentSource: textContent,
+                        container: textLayerRef.current,
+                        viewport: viewport,
+                    }).promise;
+                }
+
+                // Render Annotation Layer (for links)
+                if (annotationLayerRef.current) {
+                    annotationLayerRef.current.innerHTML = '';
+                    const annotations = await page.getAnnotations();
+                    pdfjs.AnnotationLayer.render({
+                        viewport: viewport.clone({ dontFlip: true }),
+                        div: annotationLayerRef.current,
+                        annotations: annotations,
+                        page: page,
+                        linkService: new pdfjs.web.PDFLinkService(),
+                        renderForms: false,
+                    });
+                }
+
+            } catch (error) {
+                console.error(`Error rendering page ${pageNumber}:`, error);
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        if (page) {
-            renderPage();
-        }
-    }, [page]);
+        renderPage();
+    }, [pdf, pageNumber, zoom]);
     
     return (
         <div 
-            className="relative mx-auto shadow-lg mb-4"
+            className="relative mx-auto shadow-lg mb-4 bg-white pdf-page-container"
             style={{ 
-                width: page.width * zoom,
-                height: page.height * zoom,
+                width: pageDimensions.width / 1.5, // Display at normal scale
+                height: pageDimensions.height / 1.5,
             }}
         >
+            {isLoading && <Skeleton className="absolute inset-0" />}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
             <div ref={textLayerRef} className="textLayer absolute inset-0 w-full h-full" />
             <div ref={annotationLayerRef} className="annotationLayer absolute inset-0 w-full h-full" />
@@ -114,7 +126,7 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
                 <ResizableField
                     key={field.id}
                     field={field}
-                    page={page}
+                    pageDimensions={pageDimensions}
                     isSelected={selectedFieldId === field.id}
                     onSelect={onSelect}
                     onUpdate={onUpdate}
@@ -127,14 +139,13 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
 
 const ResizableField = ({
     field,
-    page,
+    pageDimensions,
     isSelected,
     onSelect,
     onUpdate,
-    zoom,
 }: {
     field: LocalPDFFormField;
-    page: PageDetail;
+    pageDimensions: { width: number, height: number };
     isSelected: boolean;
     onSelect: (id: string) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
@@ -156,11 +167,13 @@ const ResizableField = ({
         e.stopPropagation();
         e.preventDefault();
         setIsResizing(true);
+        const displayWidth = pageDimensions.width / 1.5;
+        const displayHeight = pageDimensions.height / 1.5;
         initialResizeState.current = {
             startX: e.clientX,
             startY: e.clientY,
-            startWidth: (field.dimensions.width / 100) * (page.width * zoom),
-            startHeight: (field.dimensions.height / 100) * (page.height * zoom),
+            startWidth: (field.dimensions.width / 100) * displayWidth,
+            startHeight: (field.dimensions.height / 100) * displayHeight,
         };
         onSelect(field.id);
     };
@@ -174,10 +187,13 @@ const ResizableField = ({
             const newWidth = initialResizeState.current.startWidth + dx;
             const newHeight = initialResizeState.current.startHeight + dy;
             
+            const displayWidth = pageDimensions.width / 1.5;
+            const displayHeight = pageDimensions.height / 1.5;
+            
             onUpdate(field.id, {
                 dimensions: {
-                    width: (newWidth / (page.width * zoom)) * 100,
-                    height: (newHeight / (page.height * zoom)) * 100,
+                    width: (newWidth / displayWidth) * 100,
+                    height: (newHeight / displayHeight) * 100,
                 },
             });
         };
@@ -196,7 +212,7 @@ const ResizableField = ({
             window.removeEventListener('mousemove', handleResize);
             window.removeEventListener('mouseup', handleResizeEnd);
         };
-    }, [isResizing, field.id, onUpdate, page.width, page.height, zoom]);
+    }, [isResizing, field.id, onUpdate, pageDimensions]);
 
     const style: React.CSSProperties = {
         position: 'absolute',
@@ -443,6 +459,8 @@ interface FieldMapperProps {
   onStatusChange: (status: PDFForm['status']) => void;
 }
 
+type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
+
 export default function FieldMapper({
   pdf,
   fields,
@@ -458,9 +476,8 @@ export default function FieldMapper({
   onStatusChange,
 }: FieldMapperProps) {
   const { toast } = useToast();
-  const [pages, setPages] = React.useState<PageDetail[]>([]);
+  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
-  const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isDetecting, setIsDetecting] = React.useState(false);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -494,60 +511,28 @@ export default function FieldMapper({
   );
 
   React.useEffect(() => {
-    const loadAndRenderPdf = async () => {
-      setIsLoadingPdf(true);
-      try {
-        if (!pdfjsRef.current) {
-          const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
-          const pdfjsVersion = '4.4.168';
-          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-          pdfjsRef.current = pdfjsModule;
+    const loadPdf = async () => {
+        try {
+            if (!pdfjsRef.current) {
+                pdfjsRef.current = await import('pdfjs-dist');
+                const pdfjsVersion = '4.4.168';
+                pdfjsRef.current.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            }
+            const pdfjs = pdfjsRef.current;
+            const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
+            const loadedPdf = await loadingTask.promise;
+            setPdfDoc(loadedPdf);
+        } catch (error: any) {
+            console.error("PDF Loading Error:", error);
+            let description = 'Could not load document. Check the console for details.';
+            if (error.name === 'NetworkError' || (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch')))) {
+                description = 'CORS policy error. The server for the PDF is not configured to allow this application to fetch it.';
+            }
+            toast({ variant: 'destructive', title: 'Error Loading PDF', description, duration: 15000 });
         }
-        const pdfjs = pdfjsRef.current;
-        const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
-        const pdfDoc = await loadingTask.promise;
-        const pageDetails: PageDetail[] = [];
-
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-          const page = await pdfDoc.getPage(i);
-          const viewport = page.getViewport({ scale: 1.5 });
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          if (!context) continue;
-
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          await page.render({ canvasContext: context, viewport }).promise;
-
-          const textContent = await page.getTextContent();
-          const annotations = await page.getAnnotations();
-          
-          pageDetails.push({
-            canvas,
-            textContent,
-            annotations,
-            width: viewport.width,
-            height: viewport.height,
-            viewport,
-          });
-        }
-        setPages(pageDetails);
-      } catch (error: any) {
-        console.error("PDF Loading Error:", error);
-        toast({ 
-            variant: 'destructive', 
-            title: 'Error Loading PDF',
-            description: error.message || 'Could not load document.',
-            duration: 15000,
-        });
-      } finally {
-        setIsLoadingPdf(false);
-      }
     };
-
     if (pdf.downloadUrl) {
-      loadAndRenderPdf();
+      loadPdf();
     }
   }, [pdf.downloadUrl, toast]);
   
@@ -616,11 +601,13 @@ export default function FieldMapper({
     const fieldToMove = fields.find(f => f.id === active.id);
     if (!fieldToMove) return;
 
-    const pageDetail = pages[fieldToMove.pageNumber - 1];
-    if (!pageDetail) return;
+    const pageDiv = document.querySelector(`.pdf-page-container[data-page-number="${fieldToMove.pageNumber}"]`);
+    if (!pageDiv) return;
 
-    const newX = fieldToMove.position.x + (delta.x / (pageDetail.width * displayZoom)) * 100;
-    const newY = fieldToMove.position.y + (delta.y / (pageDetail.height * displayZoom)) * 100;
+    const { width, height } = pageDiv.getBoundingClientRect();
+
+    const newX = fieldToMove.position.x + (delta.x / width) * 100;
+    const newY = fieldToMove.position.y + (delta.y / height) * 100;
 
     const updatedField = {
         ...fieldToMove,
@@ -672,11 +659,12 @@ export default function FieldMapper({
                     className="p-4 space-y-4 pb-24 flex flex-col items-center"
                     onClick={() => setSelectedFieldId(null)}
                 >
-                    {isLoadingPdf && <Skeleton className="w-full h-[1000px]" />}
-                    {!isLoadingPdf && pages.map((page, index) => (
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-white shadow-lg" />)}
+                    {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index}
-                            page={page}
+                            pdf={pdfDoc}
+                            pageNumber={index + 1}
                             fields={fields.filter(f => f.pageNumber === index + 1)}
                             selectedFieldId={selectedFieldId}
                             onSelect={setSelectedFieldId}
@@ -780,7 +768,7 @@ export default function FieldMapper({
                 setSelectedFieldId={setSelectedFieldId} 
                 updateField={updateField} 
                 removeField={removeField} 
-                pagesLength={pages.length}
+                pagesLength={pdfDoc?.numPages || 0}
                 pdf={pdf}
                 onSave={onSave}
                 isSaving={isSaving}
@@ -828,7 +816,7 @@ export default function FieldMapper({
             setSelectedFieldId={setSelectedFieldId} 
             updateField={updateField} 
             removeField={removeField} 
-            pagesLength={pages.length}
+            pagesLength={pdfDoc?.numPages || 0}
             pdf={pdf}
             onSave={onSave}
             isSaving={isSaving}

@@ -131,7 +131,7 @@ body {
       right: 0;
       bottom: 0;
       overflow: hidden;
-      opacity: 0.2;
+      opacity: 1;
       line-height: 1.0;
       user-select: text;
   }
@@ -140,6 +140,8 @@ body {
       white-space: pre;
       cursor: text;
       transform-origin: 0% 0%;
+      color: transparent; /* Make default text invisible */
+      background-color: transparent; /* Ensure no background interference */
   }
   .pdf-page-container .annotationLayer a {
       position: absolute;

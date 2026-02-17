@@ -1,12 +1,11 @@
-
 'use client';
 
 import * as React from 'react';
-import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import { Loader2, Download } from 'lucide-react';
@@ -15,16 +14,6 @@ import { generateFilledPdf } from '@/lib/pdf-actions';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SmartSappLogo } from '@/components/icons';
-
-
-interface PageDetail {
-  canvas: HTMLCanvasElement;
-  textContent: any;
-  annotations: any[];
-  width: number;
-  height: number;
-  viewport: any;
-}
 
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
@@ -41,13 +30,11 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
 
 
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
-  const [pages, setPages] = React.useState<PageDetail[]>([]);
-  const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
+  const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submissionResult, setSubmissionResult] = React.useState<{ url: string } | null>(null);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const { toast } = useToast();
-  const pdfjsRef = React.useRef<any>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -58,74 +45,24 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
 
   React.useEffect(() => {
-    const loadAndRenderPdf = async () => {
-      setIsLoadingPdf(true);
-      try {
-        if (!pdfjsRef.current) {
-          const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
-          const pdfjsVersion = '4.4.168';
-          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-          pdfjsRef.current = pdfjsModule;
+    const loadPdf = async () => {
+        try {
+            const pdfjs = await import('pdfjs-dist');
+            const pdfjsVersion = '4.4.168';
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
+            const loadedPdf = await loadingTask.promise;
+            setPdfDoc(loadedPdf);
+        } catch (error: any) {
+            let description = 'Could not load document. Check the browser console for details.';
+            if (error.name === 'NetworkError' || (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch')))) {
+                description = 'CORS policy error. The server for the PDF is not configured to allow this application to fetch it.';
+            }
+            toast({ variant: 'destructive', title: 'Error Loading PDF', description, duration: 15000 });
         }
-        const pdfjs = pdfjsRef.current;
-        const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
-        const pdfDoc = await loadingTask.promise;
-        const pageDetails: PageDetail[] = [];
-
-        for (let i = 1; i <= pdfDoc.numPages; i++) {
-          const page = await pdfDoc.getPage(i);
-          const viewport = page.getViewport({ scale: 1.5 });
-          
-          const canvas = document.createElement('canvas');
-          const context = canvas.getContext('2d');
-          if (!context) continue;
-
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          await page.render({ canvasContext: context, viewport }).promise;
-
-          const textContent = await page.getTextContent();
-          const annotations = await page.getAnnotations();
-
-          pageDetails.push({
-            canvas,
-            textContent,
-            annotations,
-            width: viewport.width,
-            height: viewport.height,
-            viewport,
-          });
-        }
-        setPages(pageDetails);
-      } catch (error: any) {
-        const debugInfo = {
-          errorMessage: error.message,
-          errorName: error.name,
-          errorStack: error.stack,
-          pdfUrl: pdfForm.downloadUrl,
-          isCorsError: error.name === 'NetworkError' || (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))),
-        };
-        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", JSON.stringify(debugInfo, null, 2));
-
-        let description = 'Could not load document. Check the browser console for details.';
-        if (debugInfo.isCorsError) {
-            description = 'This is likely a CORS issue. The server holding the PDF is not configured to allow your app to fetch it. The server administrator must update the CORS policy.';
-        }
-
-        toast({ 
-            variant: 'destructive', 
-            title: 'Error Loading PDF',
-            description: description,
-            duration: 15000,
-        });
-      } finally {
-        setIsLoadingPdf(false);
-      }
     };
-    
     if (pdfForm.downloadUrl) {
-      loadAndRenderPdf();
+      loadPdf();
     }
   }, [pdfForm.downloadUrl, toast]);
   
@@ -223,64 +160,24 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
         <main className="flex-grow overflow-y-auto p-4 sm:p-8">
             <div className="max-w-4xl mx-auto">
-                {isLoadingPdf && (
+                {!pdfDoc && (
                      <div className="space-y-4">
                         <Skeleton className="w-full h-[80vh] bg-gray-300" />
                     </div>
                 )}
                 
-                {!isLoadingPdf && pages.length > 0 && (
+                {pdfDoc && (
                     <form id="pdf-form" onSubmit={handleSubmit(onSubmit)}>
                         <div className="space-y-4">
-                            {pages.map((page, index) => {
-                                const canvasRef = React.useRef<HTMLCanvasElement>(null);
-                                const textLayerRef = React.useRef<HTMLDivElement>(null);
-                                const annotationLayerRef = React.useRef<HTMLDivElement>(null);
-
-                                React.useEffect(() => {
-                                    if (canvasRef.current && pdfjsRef.current) {
-                                        const context = canvasRef.current.getContext('2d');
-                                        if (context) {
-                                            canvasRef.current.width = page.width;
-                                            canvasRef.current.height = page.height;
-                                            context.drawImage(page.canvas, 0, 0);
-                                        }
-                                    }
-                                    if (textLayerRef.current && pdfjsRef.current) {
-                                        textLayerRef.current.innerHTML = '';
-                                        pdfjsRef.current.renderTextLayer({
-                                            textContentSource: page.textContent,
-                                            container: textLayerRef.current,
-                                            viewport: page.viewport,
-                                        });
-                                    }
-                                    if (annotationLayerRef.current && pdfjsRef.current) {
-                                        pdfjsRef.current.AnnotationLayer.render({
-                                            viewport: page.viewport.clone({ dontFlip: true }),
-                                            div: annotationLayerRef.current,
-                                            annotations: page.annotations,
-                                            page: page as any,
-                                            linkService: new pdfjsRef.current.web.PDFLinkService(),
-                                            renderForms: false,
-                                        });
-                                    }
-                                }, [page]);
-
-                                return (
-                                    <div key={index} className="relative mx-auto shadow-lg bg-white pdf-page-container" style={{ width: page.width, height: page.height }}>
-                                        <canvas ref={canvasRef} />
-                                        <div ref={textLayerRef} className="textLayer" />
-                                        <div ref={annotationLayerRef} className="annotationLayer" />
-                                        <div className="absolute inset-0">
-                                            {pdfForm.fields.filter(f => f.pageNumber === index + 1).map(field => (
-                                            <div key={field.id} style={{position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`}}>
-                                                {renderField(field)}
-                                            </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                            {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                                <PageRenderer
+                                    key={index}
+                                    pdf={pdfDoc}
+                                    pageNumber={index + 1}
+                                    fields={pdfForm.fields}
+                                    renderField={renderField}
+                                />
+                            ))}
                         </div>
                     </form>
                 )}
@@ -299,4 +196,67 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         />
     </div>
   );
+}
+
+function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], renderField: (field: PDFFormField) => React.ReactNode }) {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const textLayerRef = React.useRef<HTMLDivElement>(null);
+    const annotationLayerRef = React.useRef<HTMLDivElement>(null);
+    const [isLoading, setIsLoading] = React.useState(true);
+    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+
+    React.useEffect(() => {
+        const render = async () => {
+            setIsLoading(true);
+            try {
+                const pdfjs = await import('pdfjs-dist');
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: 1.5 });
+                setDimensions({ width: viewport.width, height: viewport.height });
+
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    if (context) {
+                        await page.render({ canvasContext: context, viewport }).promise;
+                    }
+                }
+                if (textLayerRef.current) {
+                    textLayerRef.current.innerHTML = '';
+                    const textContent = await page.getTextContent();
+                    await pdfjs.renderTextLayer({ textContentSource: textContent, container: textLayerRef.current, viewport }).promise;
+                }
+                if (annotationLayerRef.current) {
+                    annotationLayerRef.current.innerHTML = '';
+                    const annotations = await page.getAnnotations();
+                    pdfjs.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: new pdfjs.web.PDFLinkService(), renderForms: false });
+                }
+            } catch (e) {
+                console.error("Failed to render page", e);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        render();
+    }, [pdf, pageNumber]);
+
+    return (
+        <div className="relative mx-auto shadow-lg bg-white pdf-page-container" style={{ width: dimensions.width, height: dimensions.height }}>
+            {isLoading && <Skeleton className="absolute inset-0" />}
+            <canvas ref={canvasRef} />
+            <div ref={textLayerRef} className="textLayer" />
+            <div ref={annotationLayerRef} className="annotationLayer" />
+            {!isLoading && (
+                <div className="absolute inset-0">
+                    {fields.filter(f => f.pageNumber === pageNumber).map(field => (
+                        <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%` }}>
+                            {renderField(field)}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
