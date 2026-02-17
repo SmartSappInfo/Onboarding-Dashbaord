@@ -2,7 +2,7 @@
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity } from '@/lib/types';
 import { format, isAfter, startOfToday } from 'date-fns';
 
 function getDb() {
@@ -22,6 +22,7 @@ export async function getDashboardData() {
     stagesSnapshot,
     usersSnapshot,
     modulesSnapshot,
+    activitiesSnapshot,
   ] = await Promise.all([
     getDocs(collection(db, 'schools')),
     getDocs(collection(db, 'meetings')),
@@ -29,6 +30,7 @@ export async function getDashboardData() {
     getDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
     getDocs(query(collection(db, 'modules'))),
+    getDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
   ].map(p => p.catch(e => {
     console.error("Dashboard data fetching error:", e);
     // In case of an error with one fetch, return it to be handled below
@@ -36,7 +38,7 @@ export async function getDashboardData() {
   }))); 
 
   // Gracefully handle cases where one of the fetches might fail
-  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error) {
+  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
       // Return a default, empty state for the dashboard
       return {
@@ -47,6 +49,9 @@ export async function getDashboardData() {
           userAssignments: [],
           monthlySchools: [],
           moduleImplementations: [],
+          activities: [],
+          allUsers: [],
+          allSchools: [],
       };
   }
 
@@ -176,6 +181,8 @@ export async function getDashboardData() {
       });
   });
   const moduleImplementationData = Object.values(moduleCounts);
+
+  const activities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
   
   return {
     metrics,
@@ -184,6 +191,9 @@ export async function getDashboardData() {
     pipelineCounts,
     userAssignments,
     monthlySchools: monthlySchoolsData,
-    moduleImplementations: moduleImplementationData
+    moduleImplementations: moduleImplementationData,
+    activities,
+    allUsers: users,
+    allSchools: schools,
   };
 }

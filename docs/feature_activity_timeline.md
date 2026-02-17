@@ -17,6 +17,7 @@ To capture and display a chronological feed of significant user and system actio
 - **Log Creation (Manual):** An administrator clicks the "Log Interaction" button within the School Details modal, which opens the `LogActivityModal` component.
 - **Timeline Viewing (Global):** An administrator navigates to the `/admin/activities` route.
 - **Timeline Viewing (School-specific):** An administrator opens the `SchoolDetailsModal` and views the `NotesSection`.
+- **Dashboard Viewing:** The most recent activities are displayed in a widget on the main administrative dashboard (`/admin` route).
 
 ## Data Model
 
@@ -61,6 +62,7 @@ The feature uses a single Firestore collection:
 - **School Management Feature:** The `NotesSection` is embedded within the school details view.
 - **User Management Feature:** Uses the `/users` collection to enrich activity items with user names and avatars.
 - **Survey Engine, PDF Forms:** Trigger activity logs upon public submission.
+- **Admin Dashboard:** A widget on the main dashboard displays the most recent activities.
 
 ## State Changes
 
@@ -77,6 +79,7 @@ The feature uses a single Firestore collection:
 - `src/app/admin/components/NotesSection.tsx`: A specialized view of the timeline for a single school.
 - `src/app/admin/components/LogActivityModal.tsx`: A form for manually logging activities.
 - `src/lib/activity-icons.tsx`: A utility that maps an activity `type` to a specific `lucide-react` icon component.
+- `src/components/dashboard/RecentActivity.tsx`: A dashboard widget that displays a summary of recent activities.
 - `firestore.rules`: Defines access control for the `/activities` path.
 
 ## What This Feature Does NOT Do
