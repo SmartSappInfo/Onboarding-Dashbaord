@@ -31,6 +31,7 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     pdf_uploaded: FileText,
     pdf_published: FileText,
     pdf_form_submitted: FileText,
+    pdf_status_changed: BadgeCheck,
   };
   return iconMap[type] || Bot;
 };

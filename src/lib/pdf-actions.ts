@@ -72,6 +72,45 @@ export async function updatePdfFormMapping(pdfId: string, fields: PDFFormField[]
   }
 }
 
+export async function updatePdfFormStatus(pdfId: string, status: PDFForm['status'], userId: string) {
+    if (!pdfId || !status || !userId) {
+      return { error: 'Invalid arguments.' };
+    }
+  
+    const db = getDb();
+    const pdfRef = doc(db, 'pdfs', pdfId);
+  
+    try {
+      const pdfSnap = await getDoc(pdfRef);
+      if (!pdfSnap.exists()) {
+        return { error: 'Document not found.' };
+      }
+      const pdfData = pdfSnap.data() as PDFForm;
+  
+      await updateDoc(pdfRef, {
+        status: status,
+        updatedAt: new Date().toISOString(),
+      });
+  
+      await logActivity({
+        schoolId: '', // Not school-specific
+        userId,
+        type: 'pdf_status_changed',
+        source: 'user_action',
+        description: `changed status of PDF "${pdfData.name}" to ${status}`,
+        metadata: { pdfId: pdfId, from: pdfData.status, to: status },
+      });
+  
+      revalidatePath('/admin/pdfs');
+      revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+  
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to update PDF form status:', error);
+      return { error: 'Could not update the document status.' };
+    }
+  }
+
 
 export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
     if (!pdfId || !storagePath || !userId) {

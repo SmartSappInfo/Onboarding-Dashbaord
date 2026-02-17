@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,12 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Text, Signature, Calendar, Plus, Trash2, Loader2, Save, Sparkles } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
-import { updatePdfFormMapping } from '@/lib/pdf-actions';
+import { updatePdfFormMapping, updatePdfFormStatus } from '@/lib/pdf-actions';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { useUser } from '@/firebase';
 
 interface PageDetail {
   dataUrl: string;
@@ -131,12 +132,14 @@ const ResizableField = ({
 
 export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   const { toast } = useToast();
+  const { user } = useUser();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [fields, setFields] = React.useState<LocalPDFFormField[]>(() => JSON.parse(JSON.stringify(pdf.fields || [])));
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDetecting, setIsDetecting] = React.useState(false);
+  const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -303,6 +306,22 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     setIsSaving(false);
   };
 
+  const handleStatusChange = async (newStatus: PDFForm['status']) => {
+    if (!user) {
+        toast({ variant: 'destructive', title: 'You must be logged in.' });
+        return;
+    }
+    setIsStatusChanging(true);
+    const result = await updatePdfFormStatus(pdf.id, newStatus, user.uid);
+    if (result.success) {
+        toast({ title: 'Status Updated' });
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error });
+    }
+    setIsStatusChanging(false);
+  };
+
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 h-full">
       {/* PDF Viewer */}
@@ -354,6 +373,30 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           </CardContent>
         </Card>
         
+        <Card>
+            <CardHeader>
+                <CardTitle>Status</CardTitle>
+                <CardDescription>Control the visibility of this form.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Select
+                    value={pdf.status}
+                    onValueChange={(value: PDFForm['status']) => handleStatusChange(value)}
+                    disabled={isStatusChanging}
+                >
+                    <SelectTrigger>
+                        <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="draft">Draft</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+                {isStatusChanging && <Loader2 className="mt-2 h-4 w-4 animate-spin" />}
+            </CardContent>
+        </Card>
+
         {selectedField ? (
           <Card>
             <CardHeader>
