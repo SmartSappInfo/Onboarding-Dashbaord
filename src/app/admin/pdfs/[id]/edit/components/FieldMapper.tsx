@@ -14,11 +14,8 @@ import { updatePdfFormMapping } from '@/lib/pdf-actions';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
-// Set up the worker source for pdfjs-dist
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url
-).toString();
+// Set up the worker source for pdfjs-dist from a CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 interface PageDetail {
   canvas: HTMLCanvasElement;
