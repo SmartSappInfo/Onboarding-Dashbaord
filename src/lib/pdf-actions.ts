@@ -1,13 +1,13 @@
 
 'use server';
 
-import { doc, addDoc, collection, deleteDoc } from 'firebase/firestore';
+import { doc, addDoc, collection, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { getStorage } from 'firebase/storage';
 import { getDb } from './server-only-firestore';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { PDFForm } from './types';
+import type { PDFForm, PDFFormField } from './types';
 
 type CreatePdfFormData = Pick<PDFForm, 'name' | 'originalFileName' | 'storagePath' | 'downloadUrl'>;
 
@@ -46,6 +46,30 @@ export async function createPdfForm(data: CreatePdfFormData, userId: string) {
     return { error: 'Could not create the PDF form in the database.' };
   }
 }
+
+export async function updatePdfFormMapping(pdfId: string, fieldMapping: PDFFormField[]) {
+  if (!pdfId) {
+    return { error: 'Invalid input provided.' };
+  }
+
+  const db = getDb();
+  const pdfRef = doc(db, 'pdfs', pdfId);
+
+  try {
+    // Security rules will verify user authorization.
+    await updateDoc(pdfRef, {
+      fieldMapping: fieldMapping,
+      updatedAt: new Date().toISOString(),
+    });
+    
+    revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update PDF form mapping:', error);
+    return { error: 'You do not have permission to edit this form or the form does not exist.' };
+  }
+}
+
 
 export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
     if (!pdfId || !storagePath || !userId) {

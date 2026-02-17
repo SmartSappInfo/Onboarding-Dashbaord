@@ -68,13 +68,13 @@
 [ ] Build the client-side capabilities for visually editing and filling documents.
 
 ### Feature: Dynamic PDF Forms (Editing & Filling)
-[ ] Integrate PDF.js library for client-side PDF rendering in the admin UI.
-[ ] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
-    [ ] Create a canvas-based interface to display PDF pages.
+[*] Integrate PDF.js library for client-side PDF rendering in the admin UI.
+[*] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
+    [*] Create a canvas-based interface to display PDF pages.
     [ ] Develop draggable and resizable overlay components for form fields.
-    [ ] Implement logic to calculate and store field coordinates and dimensions as percentages.
-    [ ] Create a toolbar for selecting and adding new field types (text, signature, date).
-    [ ] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
+    [*] Implement logic to calculate and store field coordinates and dimensions as percentages.
+    [*] Create a toolbar for selecting and adding new field types (text, signature, date).
+    [*] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
 [ ] Implement the public-facing route at `/forms/[pdfId]`.
 [ ] Develop the public rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
 [ ] Implement real-time state synchronization to show a live preview of user input on the form.
