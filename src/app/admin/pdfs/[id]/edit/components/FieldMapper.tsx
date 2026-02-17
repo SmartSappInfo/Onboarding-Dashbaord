@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import * as pdfjs from 'pdfjs-dist';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +12,6 @@ import type { PDFForm, PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping } from '@/lib/pdf-actions';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-
-// Set up the worker source for pdfjs-dist from a CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 interface PageDetail {
   canvas: HTMLCanvasElement;
@@ -128,13 +124,33 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isPdfjsLoaded, setIsPdfjsLoaded] = React.useState(false);
+  const pdfjsRef = React.useRef<any>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    const loadPdfJs = async () => {
+        try {
+            const pdfjsModule = await import('pdfjs-dist');
+            pdfjsModule.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsModule.version}/pdf.worker.min.mjs`;
+            pdfjsRef.current = pdfjsModule;
+            setIsPdfjsLoaded(true);
+        } catch (error) {
+            console.error("Failed to load pdfjs-dist:", error);
+            toast({ variant: 'destructive', title: 'Error loading PDF library' });
+        }
+    };
+    loadPdfJs();
+  }, [toast]);
+
+  React.useEffect(() => {
+    if (!isPdfjsLoaded || !pdf.downloadUrl) return;
+
     const loadPdf = async () => {
       try {
         setIsLoadingPdf(true);
+        const pdfjs = pdfjsRef.current;
         const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl, CMapReaderFactory: pdfjs.CMapCompressionType.NONE });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
@@ -160,7 +176,7 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
       }
     };
     loadPdf();
-  }, [pdf.downloadUrl, toast]);
+  }, [pdf.downloadUrl, toast, isPdfjsLoaded]);
   
   const addField = (type: PDFFormField['type']) => {
     const newField: PDFFormField = {

@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { useForm } from 'react-hook-form';
-import * as pdfjs from 'pdfjs-dist';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -10,9 +9,6 @@ import { Textarea } from '@/components/ui/textarea';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import { Loader2 } from 'lucide-react';
-
-// Set up the worker source for pdfjs-dist from a CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
 
 interface PageDetail {
   canvas: HTMLCanvasElement;
@@ -25,13 +21,33 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
+  const [isPdfjsLoaded, setIsPdfjsLoaded] = React.useState(false);
+  const pdfjsRef = React.useRef<any>(null);
 
   const { register, handleSubmit, watch, setValue } = useForm();
 
   React.useEffect(() => {
+    const loadPdfJs = async () => {
+        try {
+            const pdfjsModule = await import('pdfjs-dist');
+            pdfjsModule.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsModule.version}/pdf.worker.min.mjs`;
+            pdfjsRef.current = pdfjsModule;
+            setIsPdfjsLoaded(true);
+        } catch (error) {
+            console.error("Failed to load pdfjs-dist:", error);
+            // Handle error display for user
+        }
+    };
+    loadPdfJs();
+  }, []);
+
+  React.useEffect(() => {
+    if (!isPdfjsLoaded || !pdfForm.downloadUrl) return;
+
     const loadPdf = async () => {
       try {
         setIsLoadingPdf(true);
+        const pdfjs = pdfjsRef.current;
         const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
@@ -57,7 +73,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
       }
     };
     loadPdf();
-  }, [pdfForm.downloadUrl]);
+  }, [pdfForm.downloadUrl, isPdfjsLoaded]);
   
   const onSubmit = (data: any) => {
     setIsSubmitting(true);
@@ -161,3 +177,4 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     </div>
   );
 }
+    
