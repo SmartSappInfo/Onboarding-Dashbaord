@@ -28,7 +28,7 @@ const FieldSuggestionSchema = z.object({
         width: z.number().min(1).max(100).describe("The width of the field as a percentage of the page width."),
         height: z.number().min(1).max(100).describe("The height of the field as a percentage of the page height."),
     }),
-    label: z.string().optional().describe("A suggested label for the field based on surrounding text, e.g., 'Full Name'."),
+    label: z.string().optional().describe("A concise, human-readable label for the field, inferred from any nearby text on the PDF. For example, if the PDF has 'Applicant Name:' next to a blank line, the label should be 'Applicant Name'."),
 });
 
 
@@ -51,7 +51,7 @@ For each field you identify, provide:
 2.  **pageNumber**: The 1-based page number where the field is located.
 3.  **position**: The top-left corner (x, y) of the field's bounding box, expressed as percentages of the page dimensions.
 4.  **dimensions**: The size (width, height) of the field's bounding box, also expressed as percentages.
-5.  **label**: A descriptive label for the field, inferred from the text near it (e.g., "Full Name", "Date of Birth").
+5.  **label**: A concise, human-readable label for the field, inferred from any text printed on the PDF to the left of, or directly above, the field. For example, if the PDF has 'Applicant Name:' next to a blank line, the label should be 'Applicant Name'. This is a critical field; do not leave it blank unless there is absolutely no descriptive text nearby.
 
 **IMPORTANT**:
 -   Pay close attention to underlined spaces, boxes, and labels like "Name:", "Signature:", or "Date:".
