@@ -240,7 +240,7 @@ interface PropertiesSidebarProps {
   password: string;
   setPassword: (password: string) => void;
   passwordProtected: boolean;
-  setPasswordProtected: (protected: boolean) => void;
+  setPasswordProtected: (isProtected: boolean) => void;
 }
 
 const PropertiesSidebar = ({
@@ -429,7 +429,7 @@ interface FieldMapperProps {
   password: string;
   setPassword: (password: string) => void;
   passwordProtected: boolean;
-  setPasswordProtected: (protected: boolean) => void;
+  setPasswordProtected: (isProtected: boolean) => void;
   isStatusChanging: boolean;
   onStatusChange: (status: PDFForm['status']) => void;
 }
