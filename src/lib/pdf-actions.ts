@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import { doc, addDoc, collection, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
@@ -49,7 +50,14 @@ export async function createPdfForm(data: CreatePdfFormData, userId: string) {
   }
 }
 
-export async function updatePdfFormMapping(pdfId: string, fields: PDFFormField[]) {
+export async function updatePdfFormMapping(
+  pdfId: string,
+  data: {
+    fields: PDFFormField[];
+    password?: string;
+    passwordProtected?: boolean;
+  }
+) {
   if (!pdfId) {
     return { error: 'Invalid input provided.' };
   }
@@ -60,7 +68,9 @@ export async function updatePdfFormMapping(pdfId: string, fields: PDFFormField[]
   try {
     // Security rules will verify user authorization.
     await updateDoc(pdfRef, {
-      fields: fields,
+      fields: data.fields,
+      password: data.password || null,
+      passwordProtected: data.passwordProtected || false,
       updatedAt: new Date().toISOString(),
     });
     

@@ -3,6 +3,7 @@ import { getDb } from '@/lib/server-only-firestore';
 import type { PDFForm } from '@/lib/types';
 import PdfFormRenderer from './components/PdfFormRenderer';
 import { notFound } from 'next/navigation';
+import PasswordGatedForm from './components/PasswordGatedForm';
 
 async function getPdfForm(id: string): Promise<PDFForm | null> {
     const db = getDb();
@@ -23,13 +24,21 @@ export default async function PublicPdfFormPage({ params }: { params: { pdfId: s
         notFound();
     }
 
+    const formContent = (
+      pdfForm.passwordProtected ? (
+        <PasswordGatedForm pdfForm={pdfForm} />
+      ) : (
+        <PdfFormRenderer pdfForm={pdfForm} />
+      )
+    );
+
     return (
         <div className="bg-gray-100 min-h-screen">
             <header className="bg-white shadow-sm p-4 text-center">
                 <h1 className="text-xl font-semibold">{pdfForm.name}</h1>
             </header>
             <main className="p-4 sm:p-8">
-                <PdfFormRenderer pdfForm={pdfForm} />
+                {formContent}
             </main>
              <footer className="py-8 text-center text-sm text-gray-500">
                 <p>Powered by SmartSapp</p>

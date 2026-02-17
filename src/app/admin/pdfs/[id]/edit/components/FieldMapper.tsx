@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, EyeOff, Lock } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
+import { Switch } from '@/components/ui/switch';
 
 interface PageDetail {
   dataUrl: string;
@@ -150,6 +151,10 @@ interface PropertiesSidebarProps {
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   pagesLength: number;
+  password: string;
+  setPassword: (password: string) => void;
+  passwordProtected: boolean;
+  setPasswordProtected: (enabled: boolean) => void;
 }
 
 const PropertiesSidebar = ({
@@ -159,8 +164,13 @@ const PropertiesSidebar = ({
   updateField,
   removeField,
   pagesLength,
+  password,
+  setPassword,
+  passwordProtected,
+  setPasswordProtected,
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   return (
     <>
@@ -244,8 +254,46 @@ const PropertiesSidebar = ({
                     </CardContent>
                 </Card>
             ) : (
-                <Card className="text-center text-sm text-muted-foreground p-8">
-                    <p>Select a field to edit its properties or add a new field from the toolbar.</p>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Lock className="h-4 w-4"/> Security</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <div className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <div className="space-y-0.5">
+                              <Label>Password Protection</Label>
+                              <p className="text-xs text-muted-foreground">
+                                  Require a password to view the form.
+                              </p>
+                          </div>
+                          <Switch
+                              checked={passwordProtected}
+                              onCheckedChange={setPasswordProtected}
+                          />
+                      </div>
+                      {passwordProtected && (
+                          <div className="space-y-2">
+                              <Label htmlFor="form-password">Form Password</Label>
+                              <div className="relative">
+                                <Input
+                                    id="form-password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                  onClick={() => setShowPassword(p => !p)}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                              </div>
+                          </div>
+                      )}
+                  </CardContent>
                 </Card>
             )}
         </div>
@@ -260,12 +308,16 @@ interface FieldMapperProps {
   pdf: PDFForm;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
+  password: string;
+  setPassword: (password: string) => void;
+  passwordProtected: boolean;
+  setPasswordProtected: (enabled: boolean) => void;
   onSave: () => Promise<void>;
   isSaving: boolean;
   onPreview: () => void;
 }
 
-export default function FieldMapper({ pdf, fields, setFields, onSave, isSaving, onPreview }: FieldMapperProps) {
+export default function FieldMapper({ pdf, fields, setFields, password, setPassword, passwordProtected, setPasswordProtected, onSave, isSaving, onPreview }: FieldMapperProps) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
@@ -588,7 +640,7 @@ export default function FieldMapper({ pdf, fields, setFields, onSave, isSaving, 
                 </Button>
             </div>
             
-            {!isCollapsed && <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} />}
+            {!isCollapsed && <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />}
             
             {isCollapsed && (
                 <div className="flex flex-col items-center gap-4 py-4">
@@ -607,7 +659,7 @@ export default function FieldMapper({ pdf, fields, setFields, onSave, isSaving, 
        {/* Properties Sheet (Mobile only) */}
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden" side="right">
-          <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} />
+          <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pages.length} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />
         </SheetContent>
       </Sheet>
     </div>

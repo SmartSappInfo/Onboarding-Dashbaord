@@ -230,6 +230,8 @@ export interface PDFForm {
     createdAt: string; // ISO String
     updatedAt: string; // ISO String
     fields: PDFFormField[];
+    password?: string;
+    passwordProtected?: boolean;
 }
 
 export interface Submission {

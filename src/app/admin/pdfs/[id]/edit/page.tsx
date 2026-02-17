@@ -6,7 +6,7 @@ import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, Save, Eye } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,8 @@ export default function EditPdfPage() {
   const { user } = useUser();
 
   const [fields, setFields] = React.useState<PDFFormField[]>([]);
+  const [password, setPassword] = React.useState('');
+  const [passwordProtected, setPasswordProtected] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
@@ -39,12 +41,18 @@ export default function EditPdfPage() {
     if (pdf) {
       // Deep copy to avoid direct mutation of props and ensure editor state is independent
       setFields(JSON.parse(JSON.stringify(pdf.fields || [])));
+      setPassword(pdf.password || '');
+      setPasswordProtected(pdf.passwordProtected || false);
     }
   }, [pdf]);
 
   const handleSave = async () => {
     setIsSaving(true);
-    const result = await updatePdfFormMapping(pdfId, fields);
+    const result = await updatePdfFormMapping(pdfId, {
+      fields,
+      password: passwordProtected ? password : '',
+      passwordProtected,
+    });
     if (result.success) {
       toast({ title: 'Field map saved successfully!' });
     } else {
@@ -123,6 +131,10 @@ export default function EditPdfPage() {
             pdf={pdf}
             fields={fields}
             setFields={setFields}
+            password={password}
+            setPassword={setPassword}
+            passwordProtected={passwordProtected}
+            setPasswordProtected={setPasswordProtected}
             onSave={handleSave}
             isSaving={isSaving}
             onPreview={() => setIsPreviewOpen(true)}
@@ -132,7 +144,7 @@ export default function EditPdfPage() {
       <PdfPreviewDialog
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        pdfForm={{ ...pdf, fields: fields }}
+        pdfForm={{ ...pdf, fields: fields, password, passwordProtected }}
       />
     </div>
   );
