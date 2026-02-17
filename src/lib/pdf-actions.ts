@@ -3,7 +3,7 @@
 'use server';
 
 import { doc, addDoc, collection, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, deleteObject, getBytes } from 'firebase/storage';
 import { getDb, getServerStorage } from './server-only-firestore';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
@@ -185,12 +185,9 @@ export async function deletePdfForm(pdfId: string, storagePath: string, userId: 
 }
 
 async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: any }) {
-    // Fetch original PDF from Storage
-    const response = await fetch(pdfForm.downloadUrl);
-    if (!response.ok) {
-        throw new Error(`Failed to fetch original PDF: ${response.statusText}`);
-    }
-    const pdfBuffer = await response.arrayBuffer();
+    const storage = getServerStorage();
+    const fileRef = ref(storage, pdfForm.storagePath);
+    const pdfBuffer = await getBytes(fileRef);
 
     // Load PDF with pdf-lib
     const pdfDoc = await PDFDocument.load(pdfBuffer);
