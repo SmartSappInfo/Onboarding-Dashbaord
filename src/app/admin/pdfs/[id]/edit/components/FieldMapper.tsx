@@ -9,13 +9,14 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 
 interface PageDetail {
   dataUrl: string;
@@ -37,12 +38,14 @@ const ResizableField = ({
     isSelected,
     onSelect,
     onUpdate,
+    zoom,
 }: {
     field: LocalPDFFormField;
     page: PageDetail;
     isSelected: boolean;
     onSelect: (id: string) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
+    zoom: number;
 }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: field.id,
@@ -63,8 +66,8 @@ const ResizableField = ({
         initialResizeState.current = {
             startX: e.clientX,
             startY: e.clientY,
-            startWidth: (field.dimensions.width / 100) * page.width,
-            startHeight: (field.dimensions.height / 100) * page.height,
+            startWidth: (field.dimensions.width / 100) * (page.width * zoom),
+            startHeight: (field.dimensions.height / 100) * (page.height * zoom),
         };
         onSelect(field.id);
     };
@@ -80,8 +83,8 @@ const ResizableField = ({
             
             onUpdate(field.id, {
                 dimensions: {
-                    width: (newWidth / page.width) * 100,
-                    height: (newHeight / page.height) * 100,
+                    width: (newWidth / (page.width * zoom)) * 100,
+                    height: (newHeight / (page.height * zoom)) * 100,
                 },
             });
         };
@@ -100,7 +103,7 @@ const ResizableField = ({
             window.removeEventListener('mousemove', handleResize);
             window.removeEventListener('mouseup', handleResizeEnd);
         };
-    }, [isResizing, field.id, onUpdate, page.width, page.height]);
+    }, [isResizing, field.id, onUpdate, page.width, page.height, zoom]);
 
     const style: React.CSSProperties = {
         position: 'absolute',
@@ -140,9 +143,12 @@ interface FieldMapperProps {
   pdf: PDFForm;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
+  onSave: () => Promise<void>;
+  isSaving: boolean;
+  onPreview: () => void;
 }
 
-export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps) {
+export default function FieldMapper({ pdf, fields, setFields, onSave, isSaving, onPreview }: FieldMapperProps) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
@@ -153,6 +159,10 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
   const isResizing = React.useRef(false);
+  
+  const [displayZoom, setDisplayZoom] = React.useState(1);
+  const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
 
   React.useEffect(() => {
     const loadAndRenderPdf = async () => {
@@ -272,8 +282,8 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
     const pageDetail = pages[fieldToMove.pageNumber - 1];
     if (!pageDetail) return;
 
-    const newX = fieldToMove.position.x + (delta.x / pageDetail.width) * 100;
-    const newY = fieldToMove.position.y + (delta.y / pageDetail.height) * 100;
+    const newX = fieldToMove.position.x + (delta.x / (pageDetail.width * displayZoom)) * 100;
+    const newY = fieldToMove.position.y + (delta.y / (pageDetail.height * displayZoom)) * 100;
 
     const updatedField = {
         ...fieldToMove,
@@ -324,16 +334,23 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
           <DndContext onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full bg-muted">
                 <div
-                    className="p-4 space-y-4 pb-24"
+                    className="p-4 space-y-4 pb-24 flex flex-col items-center"
                     onClick={() => setSelectedFieldId(null)}
                 >
                     {isLoadingPdf && <Skeleton className="w-full h-[1000px]" />}
                     {!isLoadingPdf && pages.map((page, index) => (
-                        <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
+                        <div 
+                            key={index}
+                            className="relative mx-auto shadow-lg mb-4"
+                            style={{ 
+                                width: page.width * displayZoom,
+                                height: page.height * displayZoom,
+                            }}
+                        >
                             <Image
                                 src={page.dataUrl}
-                                width={page.width}
-                                height={page.height}
+                                fill
+                                sizes={`${page.width * displayZoom}px`}
                                 alt={`Page ${index + 1}`}
                                 priority
                             />
@@ -345,6 +362,7 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                                     isSelected={selectedFieldId === field.id}
                                     onSelect={setSelectedFieldId}
                                     onUpdate={updateField}
+                                    zoom={displayZoom}
                                 />
                             ))}
                         </div>
@@ -378,6 +396,40 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                                   </Button>
                               </TooltipTrigger>
                               <TooltipContent><p>Auto-detect Fields (AI)</p></TooltipContent>
+                          </Tooltip>
+
+                          <Separator orientation="vertical" className="h-6" />
+
+                          <Tooltip>
+                            <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={handleZoomOut}><ZoomOut /></Button></TooltipTrigger>
+                            <TooltipContent><p>Zoom Out</p></TooltipContent>
+                          </Tooltip>
+                           <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="flex items-center justify-center w-12 h-9 text-sm font-medium text-muted-foreground border border-input rounded-md bg-transparent">
+                                {Math.round(displayZoom * 100)}%
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Current Zoom</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                              <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={handleZoomIn}><ZoomIn /></Button></TooltipTrigger>
+                              <TooltipContent><p>Zoom In</p></TooltipContent>
+                          </Tooltip>
+
+                           <Separator orientation="vertical" className="h-6" />
+
+                          <Tooltip>
+                            <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={onPreview}><Eye /></Button></TooltipTrigger>
+                            <TooltipContent><p>Preview</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button size="icon" onClick={onSave} disabled={isSaving}>
+                                {isSaving ? <Loader2 className="animate-spin" /> : <Save />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Save Changes</p></TooltipContent>
                           </Tooltip>
                       </div>
                     </TooltipProvider>

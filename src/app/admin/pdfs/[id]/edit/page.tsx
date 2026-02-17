@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -116,15 +115,6 @@ export default function EditPdfPage() {
                     <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
             </Select>
-
-            <Button variant="outline" onClick={() => setIsPreviewOpen(true)}>
-                <Eye className="mr-2 h-4 w-4" />
-                Preview
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                Save
-            </Button>
         </div>
       </div>
 
@@ -133,6 +123,9 @@ export default function EditPdfPage() {
             pdf={pdf}
             fields={fields}
             setFields={setFields}
+            onSave={handleSave}
+            isSaving={isSaving}
+            onPreview={() => setIsPreviewOpen(true)}
         />
       </div>
 
