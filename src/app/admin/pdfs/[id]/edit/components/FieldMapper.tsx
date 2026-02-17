@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 interface PageDetail {
-  canvas: HTMLCanvasElement;
+  dataUrl: string;
   width: number;
   height: number;
 }
@@ -124,34 +125,23 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [isPdfjsLoaded, setIsPdfjsLoaded] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
-    const loadPdfJs = async () => {
-        try {
-            const pdfjsModule = await import('pdfjs-dist');
-            pdfjsModule.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsModule.version}/pdf.worker.min.mjs`;
-            pdfjsRef.current = pdfjsModule;
-            setIsPdfjsLoaded(true);
-        } catch (error) {
-            console.error("Failed to load pdfjs-dist:", error);
-            toast({ variant: 'destructive', title: 'Error loading PDF library' });
-        }
-    };
-    loadPdfJs();
-  }, [toast]);
-
-  React.useEffect(() => {
-    if (!isPdfjsLoaded || !pdf.downloadUrl) return;
-
-    const loadPdf = async () => {
+    const loadAndRenderPdf = async () => {
+      setIsLoadingPdf(true);
       try {
-        setIsLoadingPdf(true);
+        if (!pdfjsRef.current) {
+          const pdfjsModule = await import('pdfjs-dist');
+          const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
+          pdfjsModule.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+          pdfjsRef.current = pdfjsModule;
+        }
+
         const pdfjs = pdfjsRef.current;
-        const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl, CMapReaderFactory: pdfjs.CMapCompressionType.NONE });
+        const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
 
@@ -163,8 +153,12 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           canvas.height = viewport.height;
           canvas.width = viewport.width;
           if (context) {
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-            pageDetails.push({ canvas, width: viewport.width, height: viewport.height });
+            await page.render({ canvasContext: context, viewport }).promise;
+            pageDetails.push({
+              dataUrl: canvas.toDataURL('image/webp', 0.9),
+              width: viewport.width,
+              height: viewport.height,
+            });
           }
         }
         setPages(pageDetails);
@@ -175,8 +169,11 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
         setIsLoadingPdf(false);
       }
     };
-    loadPdf();
-  }, [pdf.downloadUrl, toast, isPdfjsLoaded]);
+
+    if (pdf.downloadUrl) {
+      loadAndRenderPdf();
+    }
+  }, [pdf.downloadUrl, toast]);
   
   const addField = (type: PDFFormField['type']) => {
     const newField: PDFFormField = {
@@ -244,14 +241,12 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           {isLoadingPdf && <Skeleton className="w-full h-[80vh]" />}
           {!isLoadingPdf && pages.map((page, index) => (
             <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
-              <canvas
-                ref={node => {
-                  if (node && !node.firstChild) {
-                    node.getContext('2d')?.drawImage(page.canvas, 0, 0);
-                  }
-                }}
+              <Image
+                src={page.dataUrl}
                 width={page.width}
                 height={page.height}
+                alt={`Page ${index + 1}`}
+                priority
               />
               {fields.filter(f => f.pageNumber === index + 1).map(field => (
                  <ResizableField
@@ -337,4 +332,6 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     </div>
   );
 }
+    
+
     

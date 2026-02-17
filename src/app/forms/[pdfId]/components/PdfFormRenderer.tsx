@@ -1,17 +1,17 @@
 'use client';
 
 import * as React from 'react';
+import Image from 'next/image';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import { Loader2 } from 'lucide-react';
 
 interface PageDetail {
-  canvas: HTMLCanvasElement;
+  dataUrl: string;
   width: number;
   height: number;
 }
@@ -21,32 +21,21 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
-  const [isPdfjsLoaded, setIsPdfjsLoaded] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
   const { register, handleSubmit, watch, setValue } = useForm();
 
   React.useEffect(() => {
-    const loadPdfJs = async () => {
-        try {
-            const pdfjsModule = await import('pdfjs-dist');
-            pdfjsModule.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsModule.version}/pdf.worker.min.mjs`;
-            pdfjsRef.current = pdfjsModule;
-            setIsPdfjsLoaded(true);
-        } catch (error) {
-            console.error("Failed to load pdfjs-dist:", error);
-            // Handle error display for user
-        }
-    };
-    loadPdfJs();
-  }, []);
-
-  React.useEffect(() => {
-    if (!isPdfjsLoaded || !pdfForm.downloadUrl) return;
-
-    const loadPdf = async () => {
+    const loadAndRenderPdf = async () => {
+      setIsLoadingPdf(true);
       try {
-        setIsLoadingPdf(true);
+        if (!pdfjsRef.current) {
+          const pdfjsModule = await import('pdfjs-dist');
+          const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
+          pdfjsModule.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+          pdfjsRef.current = pdfjsModule;
+        }
+
         const pdfjs = pdfjsRef.current;
         const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
         const pdfDoc = await loadingTask.promise;
@@ -61,19 +50,25 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
           canvas.width = viewport.width;
           if (context) {
             await page.render({ canvasContext: context, viewport: viewport }).promise;
-            pageDetails.push({ canvas, width: viewport.width, height: viewport.height });
+            pageDetails.push({
+              dataUrl: canvas.toDataURL('image/webp', 0.9),
+              width: viewport.width,
+              height: viewport.height,
+            });
           }
         }
         setPages(pageDetails);
       } catch (error) {
         console.error("Failed to load PDF:", error);
-        // Handle error display
       } finally {
         setIsLoadingPdf(false);
       }
     };
-    loadPdf();
-  }, [pdfForm.downloadUrl, isPdfjsLoaded]);
+    
+    if (pdfForm.downloadUrl) {
+      loadAndRenderPdf();
+    }
+  }, [pdfForm.downloadUrl]);
   
   const onSubmit = (data: any) => {
     setIsSubmitting(true);
@@ -136,14 +131,12 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
                 <div className="space-y-4">
                     {pages.map((page, index) => (
                         <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
-                            <canvas
-                                ref={node => {
-                                if (node && !node.firstChild) {
-                                    node.getContext('2d')?.drawImage(page.canvas, 0, 0);
-                                }
-                                }}
+                             <Image
+                                src={page.dataUrl}
                                 width={page.width}
                                 height={page.height}
+                                alt={`Page ${index + 1}`}
+                                priority
                             />
                              <div className="absolute inset-0">
                                 {pdfForm.fieldMapping.filter(f => f.pageNumber === index + 1).map(field => (
@@ -177,4 +170,6 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     </div>
   );
 }
+    
+
     
