@@ -50,6 +50,26 @@ export async function createPdfForm(data: CreatePdfFormData, userId: string) {
   }
 }
 
+export async function updatePdfFormName(pdfId: string, newName: string) {
+  if (!pdfId || !newName.trim()) {
+    return { error: 'Invalid input.' };
+  }
+  const db = getDb();
+  const pdfRef = doc(db, 'pdfs', pdfId);
+  try {
+    await updateDoc(pdfRef, {
+      name: newName.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+    revalidatePath('/admin/pdfs');
+    return { success: true };
+  } catch (error) {
+    console.error('Failed to update PDF form name:', error);
+    return { error: 'Could not update the document name.' };
+  }
+}
+
 export async function updatePdfFormMapping(
   pdfId: string,
   data: {

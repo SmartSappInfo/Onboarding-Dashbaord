@@ -6,9 +6,10 @@ import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { ArrowLeft, Pencil } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
-import { updatePdfFormMapping, updatePdfFormStatus } from '@/lib/pdf-actions';
+import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
@@ -29,6 +30,8 @@ export default function EditPdfPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
+  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
+  const [editableTitle, setEditableTitle] = React.useState('');
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -43,6 +46,7 @@ export default function EditPdfPage() {
       setFields(JSON.parse(JSON.stringify(pdf.fields || [])));
       setPassword(pdf.password || '');
       setPasswordProtected(pdf.passwordProtected || false);
+      setEditableTitle(pdf.name);
     }
   }, [pdf]);
 
@@ -76,6 +80,21 @@ export default function EditPdfPage() {
     setIsStatusChanging(false);
   };
 
+  const handleTitleSave = async () => {
+    if (!pdf || editableTitle.trim() === '' || editableTitle.trim() === pdf.name) {
+      setIsEditingTitle(false);
+      return;
+    }
+    const result = await updatePdfFormName(pdf.id, editableTitle);
+    if (result.success) {
+      toast({ title: 'Title updated successfully!' });
+    } else {
+      toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
+      setEditableTitle(pdf.name); // Revert on failure
+    }
+    setIsEditingTitle(false);
+  };
+
 
   if (isLoading) {
     return (
@@ -101,12 +120,28 @@ export default function EditPdfPage() {
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" onClick={() => router.push('/admin/pdfs')}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back
             </Button>
-            <h1 className="text-lg font-semibold truncate">{pdf.name}</h1>
+            {isEditingTitle ? (
+              <Input
+                value={editableTitle}
+                onChange={(e) => setEditableTitle(e.target.value)}
+                onBlur={handleTitleSave}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setIsEditingTitle(false);}}
+                className="text-lg font-semibold h-9"
+                autoFocus
+              />
+            ) : (
+              <div className="flex items-center gap-1 group min-w-0">
+                <h1 className="text-lg font-semibold truncate" title={pdf.name}>{pdf.name}</h1>
+                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => setIsEditingTitle(true)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
         </div>
         <div className="flex items-center gap-2">
             <Select
