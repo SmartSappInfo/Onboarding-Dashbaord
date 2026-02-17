@@ -1,7 +1,6 @@
-
 rules_version = '2';
 
-// Triggering synchronization. This comment forces a redeployment.
+// Re-deploying rules to ensure synchronization with project studio-9220106300-f74cb.
 // This is a trigger for redeployment.
 // Triggering synchronization again to be certain.
 
