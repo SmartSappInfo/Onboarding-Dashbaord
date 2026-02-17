@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -160,7 +161,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
                                 priority
                             />
                              <div className="absolute inset-0">
-                                {pdfForm.fieldMapping.filter(f => f.pageNumber === index + 1).map(field => (
+                                {pdfForm.fields.filter(f => f.pageNumber === index + 1).map(field => (
                                    <div key={field.id} style={{position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`}}>
                                        {renderField(field)}
                                    </div>

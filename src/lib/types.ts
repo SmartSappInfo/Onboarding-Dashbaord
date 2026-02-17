@@ -1,6 +1,5 @@
 
 
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -227,11 +226,10 @@ export interface PDFForm {
     storagePath: string;
     downloadUrl: string;
     status: 'draft' | 'published' | 'archived';
+    createdBy: string;
     createdAt: string; // ISO String
     updatedAt: string; // ISO String
-    fieldMapping: PDFFormField[]; // This will be renamed to 'fields' but let's keep it for now to avoid breaking changes, then rename
     fields: PDFFormField[];
-    pages: { width: number, height: number }[];
 }
 
 export interface Submission {

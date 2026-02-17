@@ -22,7 +22,8 @@ export async function createPdfForm(data: CreatePdfFormData, userId: string) {
   const newPdfData: Omit<PDFForm, 'id'> = {
     ...data,
     status: 'draft',
-    fieldMapping: [],
+    fields: [],
+    createdBy: userId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -47,7 +48,7 @@ export async function createPdfForm(data: CreatePdfFormData, userId: string) {
   }
 }
 
-export async function updatePdfFormMapping(pdfId: string, fieldMapping: PDFFormField[]) {
+export async function updatePdfFormMapping(pdfId: string, fields: PDFFormField[]) {
   if (!pdfId) {
     return { error: 'Invalid input provided.' };
   }
@@ -58,7 +59,7 @@ export async function updatePdfFormMapping(pdfId: string, fieldMapping: PDFFormF
   try {
     // Security rules will verify user authorization.
     await updateDoc(pdfRef, {
-      fieldMapping: fieldMapping,
+      fields: fields,
       updatedAt: new Date().toISOString(),
     });
     

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Text, Signature, Calendar, Plus, Trash2, Loader2, Save } from 'lucide-react';
+import { Text, Signature, Calendar, Plus, Trash2, Loader2, Save, Sparkles } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping } from '@/lib/pdf-actions';
+import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
@@ -20,6 +22,8 @@ interface PageDetail {
   height: number;
 }
 
+type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
+
 const ResizableField = ({
     field,
     page,
@@ -27,11 +31,11 @@ const ResizableField = ({
     onSelect,
     onUpdate,
 }: {
-    field: PDFFormField;
+    field: LocalPDFFormField;
     page: PageDetail;
     isSelected: boolean;
     onSelect: (id: string) => void;
-    onUpdate: (id: string, newProps: Partial<PDFFormField>) => void;
+    onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
 }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({
         id: field.id,
@@ -98,8 +102,14 @@ const ResizableField = ({
         width: `${field.dimensions.width}%`,
         height: `${field.dimensions.height}%`,
         transform: CSS.Translate.toString(transform),
-        zIndex: isSelected ? 10 : 1,
+        zIndex: isSelected ? 10 : (field.isSuggestion ? 5 : 1),
     };
+
+    const borderColorClass = isSelected
+        ? 'border-primary'
+        : field.isSuggestion
+        ? 'border-green-500'
+        : 'border-dashed border-primary/50 hover:border-primary';
 
     return (
         <div
@@ -107,9 +117,10 @@ const ResizableField = ({
             style={style}
             {...listeners}
             {...attributes}
-            onClick={() => onSelect(field.id)}
-            className={`absolute border-2 cursor-grab ${isSelected ? 'border-primary' : 'border-dashed border-primary/50 hover:border-primary'}`}
+            onClick={(e) => { e.stopPropagation(); onSelect(field.id); }}
+            className={`absolute border-2 cursor-grab ${borderColorClass}`}
         >
+             {field.isSuggestion && <span className="absolute -top-6 left-0 text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">AI Suggestion</span>}
             <div
                 className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full cursor-se-resize -mb-1.5 -mr-1.5"
                 onMouseDown={handleResizeStart}
@@ -121,10 +132,11 @@ const ResizableField = ({
 export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
-  const [fields, setFields] = React.useState<PDFFormField[]>(() => JSON.parse(JSON.stringify(pdf.fieldMapping || [])));
+  const [fields, setFields] = React.useState<LocalPDFFormField[]>(() => JSON.parse(JSON.stringify(pdf.fields || [])));
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isDetecting, setIsDetecting] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -194,7 +206,7 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   }, [pdf.downloadUrl, toast]);
   
   const addField = (type: PDFFormField['type']) => {
-    const newField: PDFFormField = {
+    const newField: LocalPDFFormField = {
       id: `field_${Date.now()}`,
       type,
       pageNumber: 1, // Default to first page
@@ -216,6 +228,41 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
   }, []);
 
+  const handleDetectFields = async () => {
+    setIsDetecting(true);
+    toast({ title: 'AI Field Detection', description: 'The AI is analyzing your PDF. This might take a moment...' });
+    
+    try {
+        const response = await fetch(pdf.downloadUrl);
+        const blob = await response.blob();
+        
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = async () => {
+            const base64data = reader.result as string;
+            const result = await detectPdfFields({ pdfDataUri: base64data });
+
+            if (result.fields && result.fields.length > 0) {
+                const newFields: LocalPDFFormField[] = result.fields.map(suggestion => ({
+                    ...suggestion,
+                    id: `ai_${Date.now()}_${Math.random()}`,
+                    isSuggestion: true,
+                }));
+                setFields(prev => [...prev.filter(f => !f.isSuggestion), ...newFields]);
+                toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields have been added as suggestions.` });
+            } else {
+                toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
+            }
+        };
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+        setIsDetecting(false);
+    }
+  };
+
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
     const fieldToMove = fields.find(f => f.id === active.id);
@@ -227,21 +274,29 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     const newX = fieldToMove.position.x + (delta.x / pageDetail.width) * 100;
     const newY = fieldToMove.position.y + (delta.y / pageDetail.height) * 100;
 
-    updateField(active.id as string, {
+    const updatedField = {
+        ...fieldToMove,
         position: {
             x: Math.max(0, Math.min(100 - fieldToMove.dimensions.width, newX)),
             y: Math.max(0, Math.min(100 - fieldToMove.dimensions.height, newY)),
-        }
-    });
+        },
+        isSuggestion: false, // Confirm suggestion on move
+    };
+
+    updateField(active.id as string, updatedField);
   };
   
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
   const handleSave = async () => {
     setIsSaving(true);
-    const result = await updatePdfFormMapping(pdf.id, fields);
+    // Remove the temporary 'isSuggestion' flag before saving
+    const fieldsToSave = fields.map(({ isSuggestion, ...rest }) => rest);
+    const result = await updatePdfFormMapping(pdf.id, fieldsToSave);
     if (result.success) {
       toast({ title: 'Field mapping saved successfully!' });
+      // Update local state to remove the suggestion flag visually
+      setFields(fieldsToSave);
     } else {
       toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
     }
@@ -255,6 +310,7 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
         <div
           ref={containerRef}
           className="md:col-span-2 lg:col-span-3 bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
+          onClick={() => setSelectedFieldId(null)}
         >
           {isLoadingPdf && <Skeleton className="w-full h-[80vh]" />}
           {!isLoadingPdf && pages.map((page, index) => (
@@ -287,10 +343,14 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           <CardHeader>
             <CardTitle>Toolbar</CardTitle>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2">
-            <Button variant="outline" onClick={() => addField('text')}><Text className="mr-2 h-4 w-4" /> Text</Button>
+          <CardContent className="grid grid-cols-1 gap-2">
+            <Button variant="outline" onClick={() => addField('text')}><Text className="mr-2 h-4 w-4" /> Text Input</Button>
             <Button variant="outline" onClick={() => addField('signature')}><Signature className="mr-2 h-4 w-4" /> Signature</Button>
             <Button variant="outline" onClick={() => addField('date')}><Calendar className="mr-2 h-4 w-4" /> Date</Button>
+            <Button variant="outline" className="text-primary border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={handleDetectFields} disabled={isDetecting}>
+                {isDetecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Auto-detect Fields
+            </Button>
           </CardContent>
         </Card>
         
