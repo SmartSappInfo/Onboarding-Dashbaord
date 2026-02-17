@@ -19,7 +19,7 @@ interface PageDetail {
   height: number;
 }
 
-export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
+export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -95,6 +95,11 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
   }, [pdfForm.downloadUrl, toast]);
   
   const onSubmit = async (data: any) => {
+    if (isPreview) {
+        toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
+        return;
+    }
+    
     setIsSubmitting(true);
     setSubmissionResult(null);
 
@@ -196,8 +201,8 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
                 </div>
                  <div className="mt-8 flex justify-end">
                     <Button type="submit" size="lg" disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {isSubmitting ? 'Submitting...' : 'Submit Document'}
+                        {isSubmitting && !isPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {isSubmitting && !isPreview ? 'Submitting...' : 'Submit Document'}
                     </Button>
                 </div>
             </form>
