@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,6 +23,7 @@ interface PageDetail {
   annotations: any[];
   width: number;
   height: number;
+  viewport: any;
 }
 
 
@@ -92,6 +94,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             annotations,
             width: viewport.width,
             height: viewport.height,
+            viewport,
           });
         }
         setPages(pageDetails);
@@ -248,16 +251,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                         pdfjsRef.current.renderTextLayer({
                                             textContentSource: page.textContent,
                                             container: textLayerRef.current,
-                                            viewport: page.canvas.getContext('2d')!.canvas as any,
+                                            viewport: page.viewport,
                                         });
                                     }
                                     if (annotationLayerRef.current && pdfjsRef.current) {
                                         pdfjsRef.current.AnnotationLayer.render({
-                                            viewport: page.canvas.getContext('2d')!.canvas.cloneNode() as any,
+                                            viewport: page.viewport.clone({ dontFlip: true }),
                                             div: annotationLayerRef.current,
                                             annotations: page.annotations,
-                                            page: page as any, // It's incomplete, but enough for link rendering
+                                            page: page as any,
                                             linkService: new pdfjsRef.current.web.PDFLinkService(),
+                                            renderForms: false,
                                         });
                                     }
                                 }, [page]);

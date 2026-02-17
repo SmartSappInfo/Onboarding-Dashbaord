@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -30,6 +31,7 @@ interface PageDetail {
   annotations: any[];
   width: number;
   height: number;
+  viewport: any;
 }
 
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
@@ -76,16 +78,17 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
                 await pdfjs.renderTextLayer({
                     textContentSource: page.textContent,
                     container: textLayerRef.current,
-                    viewport: page.canvas.getContext('2d')!.canvas as any,
+                    viewport: page.viewport,
                 }).promise;
             }
              if (annotationLayerRef.current) {
                 pdfjs.AnnotationLayer.render({
-                    viewport: page.canvas.getContext('2d')!.canvas.cloneNode() as any,
+                    viewport: page.viewport.clone({ dontFlip: true }),
                     div: annotationLayerRef.current,
                     annotations: page.annotations,
                     page: page as any,
                     linkService: new pdfjs.web.PDFLinkService(),
+                    renderForms: false,
                 });
             }
         };
@@ -526,6 +529,7 @@ export default function FieldMapper({
             annotations,
             width: viewport.width,
             height: viewport.height,
+            viewport,
           });
         }
         setPages(pageDetails);
