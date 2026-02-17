@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -289,13 +288,13 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full overflow-hidden p-4">
-      {/* Center Panel: PDF Viewer */}
-      <div className="lg:col-span-2 h-full">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-hidden p-4">
+      {/* PDF Viewer Column */}
+      <div className="lg:col-span-8 xl:col-span-9 h-full relative">
           <DndContext onDragEnd={handleDragEnd}>
               <div
                   ref={containerRef}
-                  className="bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
+                  className="bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full pb-24"
                   onClick={() => setSelectedFieldId(null)}
               >
                   {isLoadingPdf && <Skeleton className="w-full h-full" />}
@@ -322,42 +321,42 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                   ))}
               </div>
           </DndContext>
+          
+          {/* Floating Toolbar */}
+           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+              <Card className="shadow-lg">
+                  <CardContent className="p-2">
+                    <TooltipProvider>
+                      <div className="flex items-center gap-2">
+                          <Tooltip>
+                              <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('text')}><Text /></Button></TooltipTrigger>
+                              <TooltipContent><p>Add Text Field</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                              <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('signature')}><Signature /></Button></TooltipTrigger>
+                              <TooltipContent><p>Add Signature Field</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                              <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('date')}><Calendar /></Button></TooltipTrigger>
+                              <TooltipContent><p>Add Date Field</p></TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button variant="outline" size="icon" className="text-primary border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={handleDetectFields} disabled={isDetecting}>
+                                      {isDetecting ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                                  </Button>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Auto-detect Fields (AI)</p></TooltipContent>
+                          </Tooltip>
+                      </div>
+                    </TooltipProvider>
+                  </CardContent>
+              </Card>
+          </div>
       </div>
 
-      {/* Right Panel: Controls */}
-      <div className="lg:col-span-1 h-full overflow-y-auto space-y-4">
-          <Card>
-              <CardHeader>
-                  <CardTitle>Toolbar</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <TooltipProvider>
-                  <div className="grid grid-cols-4 gap-2">
-                      <Tooltip>
-                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('text')}><Text /></Button></TooltipTrigger>
-                          <TooltipContent><p>Add Text Field</p></TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('signature')}><Signature /></Button></TooltipTrigger>
-                          <TooltipContent><p>Add Signature Field</p></TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('date')}><Calendar /></Button></TooltipTrigger>
-                          <TooltipContent><p>Add Date Field</p></TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Button variant="outline" size="icon" className="text-primary border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={handleDetectFields} disabled={isDetecting}>
-                                  {isDetecting ? <Loader2 className="animate-spin" /> : <Sparkles />}
-                              </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Auto-detect Fields (AI)</p></TooltipContent>
-                      </Tooltip>
-                  </div>
-                </TooltipProvider>
-              </CardContent>
-          </Card>
-          
+      {/* Right Sidebar Column */}
+      <div className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto space-y-4">
           <Card>
               <CardHeader>
                   <CardTitle>Fields ({fields.length})</CardTitle>
