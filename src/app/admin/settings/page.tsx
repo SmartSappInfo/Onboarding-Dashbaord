@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities } from '@/lib/seed';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms } from '@/lib/seed';
 import { Loader2 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import { Separator } from '@/components/ui/separator';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'pipelinePieChart', 'quickActions', 'upcomingMeetings', 
@@ -34,6 +34,7 @@ export default function SettingsPage() {
     layout: 'idle',
     modules: 'idle',
     activities: 'idle',
+    pdfs: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -91,6 +92,9 @@ export default function SettingsPage() {
         } else if (seeder === 'modules') {
             count = await seedModules(firestore);
             name = 'Modules';
+        } else if (seeder === 'pdfs') {
+            count = await seedPdfForms(firestore);
+            name = 'Doc Signing Forms';
         }
 
         if (name) {
@@ -145,6 +149,7 @@ export default function SettingsPage() {
                   <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
                   <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
                   <SeedingButton seeder="activities">Seed Activities</SeedingButton>
+                  <SeedingButton seeder="pdfs">Seed Doc Signing Forms</SeedingButton>
               </div>
           </div>
           <div>

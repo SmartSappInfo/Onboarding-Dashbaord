@@ -1,9 +1,8 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday } from 'date-fns';
@@ -94,6 +93,21 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
       { id: 'sec_4_follow_up', type: 'section', title: 'Follow-Up', description: 'Thank you for your feedback. We appreciate your time.', renderAsPage: true, },
       { id: 'q_contact_permission', type: 'dropdown', title: 'May we contact you for a follow-up interview?', isRequired: false, options: ['Yes, by email', 'Yes, by phone', 'No, thank you'], },
     ],
+  },
+];
+
+const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fieldMapping' | 'status'>[] = [
+  {
+    name: 'Sample Enrollment Form',
+    originalFileName: 'enrollment.pdf',
+    storagePath: 'seed/enrollment.pdf',
+    downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+  },
+  {
+    name: 'Field Trip Permission Slip',
+    originalFileName: 'permission.pdf',
+    storagePath: 'seed/permission.pdf',
+    downloadUrl: 'https://www.antennahouse.com/hubfs/xsl-fo-sample/pdf/basic-link-1.pdf',
   },
 ];
 
@@ -211,6 +225,25 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
 
   await batch.commit();
   return activitiesCount;
+}
+
+export async function seedPdfForms(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'pdfs');
+  const batch = writeBatch(firestore);
+  const pdfsCollection = collection(firestore, 'pdfs');
+  pdfFormData.forEach((pdf) => {
+    const docRef = doc(pdfsCollection);
+    const completePdfData = {
+      ...pdf,
+      status: 'draft' as const,
+      fieldMapping: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    batch.set(docRef, completePdfData);
+  });
+  await batch.commit();
+  return pdfFormData.length;
 }
 
 export async function seedModules(firestore: Firestore): Promise<number> {
