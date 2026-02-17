@@ -44,6 +44,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
     const textLayerRef = React.useRef<HTMLDivElement>(null);
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
     const pdfjsRef = React.useRef<any | null>(null);
+    const pdfjsViewerRef = React.useRef<any | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [pageDimensions, setPageDimensions] = React.useState({ width: 0, height: 0 });
 
@@ -51,11 +52,17 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
         const renderPage = async () => {
              setIsLoading(true);
              if (!pdfjsRef.current) {
-                pdfjsRef.current = await import('pdfjs-dist');
+                const [pdfjs, pdfjsViewer] = await Promise.all([
+                    import('pdfjs-dist'),
+                    import('pdfjs-dist/web/pdf_viewer.mjs'),
+                ]);
                 const pdfjsVersion = '4.4.168';
-                pdfjsRef.current.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                pdfjsRef.current = pdfjs;
+                pdfjsViewerRef.current = pdfjsViewer;
              }
              const pdfjs = pdfjsRef.current;
+             const pdfjsViewer = pdfjsViewerRef.current;
 
             try {
                 const page = await pdf.getPage(pageNumber);
@@ -75,26 +82,27 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                 }
 
                 // Render Text Layer
+                const textContent = await page.getTextContent();
                 if (textLayerRef.current) {
                     textLayerRef.current.innerHTML = '';
-                    const textContent = await page.getTextContent();
-                    await pdfjs.renderTextLayer({
+                    pdfjs.renderTextLayer({
                         textContentSource: textContent,
                         container: textLayerRef.current,
                         viewport: viewport,
-                    }).promise;
+                    });
                 }
 
                 // Render Annotation Layer (for links)
                 if (annotationLayerRef.current) {
                     annotationLayerRef.current.innerHTML = '';
                     const annotations = await page.getAnnotations();
+                    const linkService = new pdfjsViewer.PDFLinkService();
                     pdfjs.AnnotationLayer.render({
                         viewport: viewport.clone({ dontFlip: true }),
                         div: annotationLayerRef.current,
                         annotations: annotations,
                         page: page,
-                        linkService: new pdfjs.web.PDFLinkService(),
+                        linkService: linkService,
                         renderForms: false,
                     });
                 }
@@ -514,9 +522,10 @@ export default function FieldMapper({
     const loadPdf = async () => {
         try {
             if (!pdfjsRef.current) {
-                pdfjsRef.current = await import('pdfjs-dist');
+                const pdfjs = await import('pdfjs-dist');
                 const pdfjsVersion = '4.4.168';
-                pdfjsRef.current.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                pdfjsRef.current = pdfjs;
             }
             const pdfjs = pdfjsRef.current;
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });

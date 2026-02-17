@@ -202,6 +202,8 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const textLayerRef = React.useRef<HTMLDivElement>(null);
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
+    const pdfjsRef = React.useRef<any | null>(null);
+    const pdfjsViewerRef = React.useRef<any | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
@@ -209,7 +211,19 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
         const render = async () => {
             setIsLoading(true);
             try {
-                const pdfjs = await import('pdfjs-dist');
+                if (!pdfjsRef.current) {
+                    const [pdfjsModule, pdfjsViewerModule] = await Promise.all([
+                        import('pdfjs-dist'),
+                        import('pdfjs-dist/web/pdf_viewer.mjs'),
+                    ]);
+                    const pdfjsVersion = '4.4.168';
+                    pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                    pdfjsRef.current = pdfjsModule;
+                    pdfjsViewerRef.current = pdfjsViewerModule;
+                }
+                const pdfjs = pdfjsRef.current;
+                const pdfjsViewer = pdfjsViewerRef.current;
+
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: 1.5 });
                 setDimensions({ width: viewport.width, height: viewport.height });
@@ -223,15 +237,18 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
                         await page.render({ canvasContext: context, viewport }).promise;
                     }
                 }
+
+                const textContent = await page.getTextContent();
                 if (textLayerRef.current) {
                     textLayerRef.current.innerHTML = '';
-                    const textContent = await page.getTextContent();
-                    await pdfjs.renderTextLayer({ textContentSource: textContent, container: textLayerRef.current, viewport }).promise;
+                    pdfjs.renderTextLayer({ textContentSource: textContent, container: textLayerRef.current, viewport });
                 }
+
                 if (annotationLayerRef.current) {
                     annotationLayerRef.current.innerHTML = '';
                     const annotations = await page.getAnnotations();
-                    pdfjs.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: new pdfjs.web.PDFLinkService(), renderForms: false });
+                    const linkService = new pdfjsViewer.PDFLinkService();
+                    pdfjs.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: linkService, renderForms: false });
                 }
             } catch (e) {
                 console.error("Failed to render page", e);
