@@ -4,7 +4,24 @@ import { cn } from '@/lib/utils';
 
 const logoUrl = "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/SmartSapp%20Logo%20short.png?alt=media&token=046f95a8-b331-4129-a4ef-43ae7837eadd";
 
-export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { variant?: 'primary' | 'white', className?: string } & React.HTMLAttributes<HTMLDivElement>) => {
+export const SmartSappLogo = ({ variant, className, ...props }: { variant?: 'primary' | 'white', className?: string } & React.HTMLAttributes<HTMLDivElement>) => {
+  let imageClassName, textClassName;
+
+  switch(variant) {
+    case 'white':
+      imageClassName = 'brightness-0 invert';
+      textClassName = 'text-white';
+      break;
+    case 'primary':
+      imageClassName = '';
+      textClassName = 'text-primary';
+      break;
+    default: // No variant, so theme-dependent
+      imageClassName = 'dark:brightness-0 dark:invert';
+      textClassName = 'text-primary dark:text-white';
+      break;
+  }
+
   return (
     <div className={cn("flex items-center gap-2", className)} {...props}>
       <div className="relative h-full aspect-square">
@@ -13,12 +30,12 @@ export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { va
           alt="SmartSapp Logo" 
           fill 
           sizes="(max-height: 32px) 32px, 10vw" 
-          className={cn(variant === 'white' && 'brightness-0 invert')}
+          className={cn(imageClassName)}
         />
       </div>
       <span className={cn(
           "font-headline text-xl font-bold",
-          variant === 'primary' ? 'text-primary' : 'text-white'
+          textClassName
         )}>
         SmartSapp
       </span>
@@ -27,9 +44,23 @@ export const SmartSappLogo = ({ variant = 'primary', className, ...props }: { va
 };
 
 export const SmartSappIcon = ({ className, variant, ...props }: { className?: string, variant?: 'primary' | 'white' } & React.HTMLAttributes<HTMLDivElement>) => {
+    let imageClassName;
+
+    switch(variant) {
+      case 'white':
+        imageClassName = 'brightness-0 invert';
+        break;
+      case 'primary':
+        imageClassName = '';
+        break;
+      default: // No variant, theme-dependent
+        imageClassName = 'dark:brightness-0 dark:invert';
+        break;
+    }
+    
     return (
         <div className={cn("relative", className)} {...props}>
-            <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" className={cn(variant === 'white' && 'brightness-0 invert')} />
+            <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" className={cn(imageClassName)} />
         </div>
     )
 };

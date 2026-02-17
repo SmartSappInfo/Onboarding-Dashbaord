@@ -266,7 +266,7 @@ export default function LoginPage() {
             <div className="relative bg-white/20 rounded-full p-2 backdrop-blur-sm">
                 <div className="absolute inset-0 rounded-full bg-white/20 animate-pulse-fade"></div>
                 <div className="relative bg-white rounded-full h-32 w-32 flex items-center justify-center">
-                    <SmartSappIcon className="h-20 w-20 text-primary" />
+                    <SmartSappIcon className="h-20 w-20 text-primary" variant="primary" />
                 </div>
             </div>
             <h2 className="mt-8 text-4xl font-bold">SmartSapp Onboarding</h2>

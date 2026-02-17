@@ -9,7 +9,7 @@ const Header = () => {
       <div className="container">
         <div className="flex items-center justify-between rounded-full bg-black/20 backdrop-blur-sm border border-white/10 py-1 px-4">
           <Link href="/" aria-label="Back to homepage">
-            <Logo className="h-8" variant="white" />
+            <Logo className="h-8" />
           </Link>
           <div className="flex items-center gap-4 sm:gap-6">
             <a
