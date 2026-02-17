@@ -34,6 +34,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     const [typedInitials, setTypedInitials] = React.useState('');
     const [uploadedImage, setUploadedImage] = React.useState<string | null>(null);
     const [isConsented, setIsConsented] = React.useState(false);
+    const [hasDrawn, setHasDrawn] = React.useState(false);
 
     // Camera states
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
@@ -85,7 +86,10 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     }, [open, activeTab, hasCameraPermission, toast]);
 
     const handleClear = () => {
-        if (activeTab === 'draw' && sigPadRef.current) sigPadRef.current.clear();
+        if (activeTab === 'draw' && sigPadRef.current) {
+            sigPadRef.current.clear();
+            setHasDrawn(false);
+        }
         if (activeTab === 'type') setTypedInitials('');
         if (activeTab === 'upload') setUploadedImage(null);
         if (activeTab === 'photo') setCapturedImage(null);
@@ -99,6 +103,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         setCapturedImage(null);
         sigPadRef.current?.clear();
         setIsConsented(false);
+        setHasDrawn(false);
     };
 
     const handleOpenChange = (isOpen: boolean) => {
@@ -173,7 +178,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     };
 
     const isSignatureProvided = 
-        (activeTab === 'draw' && sigPadRef.current && !sigPadRef.current.isEmpty()) ||
+        (activeTab === 'draw' && hasDrawn) ||
         (activeTab === 'type' && typedInitials.length > 0) ||
         (activeTab === 'upload' && uploadedImage !== null) ||
         (activeTab === 'photo' && capturedImage !== null);
@@ -197,7 +202,12 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             </TabsList>
                             <TabsContent value="draw">
                                 <div className="border rounded-md bg-white mt-4 relative">
-                                    <SignatureCanvas ref={sigPadRef} penColor='black' canvasProps={{ className: 'w-full h-48 rounded-md' }} />
+                                    <SignatureCanvas 
+                                        ref={sigPadRef} 
+                                        penColor='black' 
+                                        canvasProps={{ className: 'w-full h-48 rounded-md' }} 
+                                        onBegin={() => setHasDrawn(true)}
+                                    />
                                 </div>
                             </TabsContent>
                             <TabsContent value="type">
