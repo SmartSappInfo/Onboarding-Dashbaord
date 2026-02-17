@@ -44,7 +44,7 @@ const componentPropsMap = (data: any) => ({
   pipelinePieChart: { stages: data.pipelineCounts },
   latestSurveys: { surveys: data.latestSurveys },
   upcomingMeetings: { meetings: data.upcomingMeetings },
-  userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools },
+  userAssignments: { data: data.userAssignments, totalSchools: data.metrics.totalSchools, totalStudents: data.metrics.totalStudents },
   monthlySchoolsChart: { data: data.monthlySchools },
   moduleRadarChart: { data: data.moduleImplementations },
   recentActivity: { activities: data.activities, users: data.allUsers, schools: data.allSchools },

@@ -21,7 +21,7 @@ const CHART_COLORS = [
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <User size={12} />;
 
-export function UserAssignments({ data, totalSchools }: { data: any[], totalSchools: number }) {
+export function UserAssignments({ data, totalSchools, totalStudents }: { data: any[], totalSchools: number, totalStudents: number }) {
     const isMobile = useIsMobile();
     
     if (!data) {
@@ -48,13 +48,24 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
         return (
             <DashboardCard title="School Distribution by User">
                 <div className="space-y-6">
-                    <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                            <Users className="h-6 w-6 text-primary" />
+                     <div className="grid grid-cols-2 gap-4">
+                         <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                                <Users className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalSchools}</p>
+                                <p className="text-sm text-muted-foreground">Total Schools</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-3xl font-bold">{totalSchools}</p>
-                            <p className="text-sm text-muted-foreground">Total Schools</p>
+                         <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
+                                <User className="h-6 w-6 text-green-500" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalStudents.toLocaleString()}</p>
+                                <p className="text-sm text-muted-foreground">Total Students</p>
+                            </div>
                         </div>
                     </div>
 
@@ -68,7 +79,7 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
                                                 <AvatarImage src={item.user.photoURL} alt={item.user.name} />
                                                 <AvatarFallback className="text-xs">{getInitials(item.user.name)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-sm font-medium">{item.user.name}</span>
+                                            <span className="text-sm font-medium">{item.user.name?.split(' ')[0]}</span>
                                         </div>
                                         <span className="text-sm font-semibold text-muted-foreground">
                                             {item.totalAssigned} / {totalSchools} schools ({item.percentage.toFixed(0)}%)
@@ -93,12 +104,24 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
             <DashboardCard title="School Distribution by User">
                 <div className="space-y-6">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                            <Users className="h-6 w-6 text-primary" />
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                                <Users className="h-6 w-6 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalSchools}</p>
+                                <p className="text-sm text-muted-foreground">Total Schools</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-3xl font-bold">{totalSchools}</p>
-                            <p className="text-sm text-muted-foreground">Total Schools</p>
+                        <div className="mx-4 h-12 w-px bg-border" />
+                         <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
+                                <User className="h-6 w-6 text-green-500" />
+                            </div>
+                            <div>
+                                <p className="text-3xl font-bold">{totalStudents.toLocaleString()}</p>
+                                <p className="text-sm text-muted-foreground">Total Students</p>
+                            </div>
                         </div>
                     </div>
 
@@ -137,7 +160,7 @@ export function UserAssignments({ data, totalSchools }: { data: any[], totalScho
                                                 <AvatarImage src={item.user.photoURL} alt={item.user.name} />
                                                 <AvatarFallback className="text-xs">{getInitials(item.user.name)}</AvatarFallback>
                                             </Avatar>
-                                            <span className="text-xs font-medium text-muted-foreground">{item.user.name}</span>
+                                            <span className="text-xs font-medium text-muted-foreground">{item.user.name?.split(' ')[0]}</span>
                                         </div>
                                          <p className="text-sm font-semibold text-foreground mt-1">
                                             {item.totalAssigned} School{item.totalAssigned === 1 ? '' : 's'}

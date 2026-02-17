@@ -42,7 +42,7 @@ export async function getDashboardData() {
       console.error("Failed to fetch one or more dashboard data sources.");
       // Return a default, empty state for the dashboard
       return {
-          metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0 },
+          metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0, totalStudents: 0 },
           latestSurveys: [],
           upcomingMeetings: [],
           pipelineCounts: [],
@@ -59,6 +59,7 @@ export async function getDashboardData() {
   const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
   const now = startOfToday();
   const totalSchools = schools.length;
+  const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
   const upcomingMeetingsCount = meetingsSnapshot.docs.filter(doc => {
     const meetingTime = doc.data().meetingTime;
@@ -72,6 +73,7 @@ export async function getDashboardData() {
 
   const metrics = {
     totalSchools: totalSchools,
+    totalStudents: totalStudents,
     upcomingMeetings: upcomingMeetingsCount,
     publishedSurveys: publishedSurveysCount,
     totalResponses: totalResponsesCount,
