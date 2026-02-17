@@ -14,9 +14,7 @@ import { generateFilledPdf } from '@/lib/pdf-actions';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SmartSappLogo } from '@/components/icons';
-import * as pdfjsLib from 'pdfjs-dist';
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface PageDetail {
   canvas: HTMLCanvasElement;
@@ -47,6 +45,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [submissionResult, setSubmissionResult] = React.useState<{ url: string } | null>(null);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const { toast } = useToast();
+  const pdfjsRef = React.useRef<any>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -60,7 +59,13 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const loadAndRenderPdf = async () => {
       setIsLoadingPdf(true);
       try {
-        const pdfjs = pdfjsLib;
+        if (!pdfjsRef.current) {
+          const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
+          const pdfjsVersion = '4.4.168';
+          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+          pdfjsRef.current = pdfjsModule;
+        }
+        const pdfjs = pdfjsRef.current;
         const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
@@ -230,7 +235,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                 const annotationLayerRef = React.useRef<HTMLDivElement>(null);
 
                                 React.useEffect(() => {
-                                    if (canvasRef.current) {
+                                    if (canvasRef.current && pdfjsRef.current) {
                                         const context = canvasRef.current.getContext('2d');
                                         if (context) {
                                             canvasRef.current.width = page.width;
@@ -238,21 +243,21 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                             context.drawImage(page.canvas, 0, 0);
                                         }
                                     }
-                                    if (textLayerRef.current) {
+                                    if (textLayerRef.current && pdfjsRef.current) {
                                         textLayerRef.current.innerHTML = '';
-                                        pdfjsLib.renderTextLayer({
+                                        pdfjsRef.current.renderTextLayer({
                                             textContentSource: page.textContent,
                                             container: textLayerRef.current,
                                             viewport: page.canvas.getContext('2d')!.canvas as any,
                                         });
                                     }
-                                    if (annotationLayerRef.current) {
-                                        pdfjsLib.AnnotationLayer.render({
+                                    if (annotationLayerRef.current && pdfjsRef.current) {
+                                        pdfjsRef.current.AnnotationLayer.render({
                                             viewport: page.canvas.getContext('2d')!.canvas.cloneNode() as any,
                                             div: annotationLayerRef.current,
                                             annotations: page.annotations,
                                             page: page as any, // It's incomplete, but enough for link rendering
-                                            linkService: new pdfjsLib.web.PDFLinkService(),
+                                            linkService: new pdfjsRef.current.web.PDFLinkService(),
                                         });
                                     }
                                 }, [page]);

@@ -21,11 +21,8 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetFooter } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import * as pdfjsLib from 'pdfjs-dist';
 import PdfPreviewDialog from './PdfPreviewDialog';
 import { updatePdfFormStatus } from '@/lib/pdf-actions';
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface PageDetail {
   canvas: HTMLCanvasElement;
@@ -54,11 +51,18 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const textLayerRef = React.useRef<HTMLDivElement>(null);
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
+    const pdfjsRef = React.useRef<any | null>(null);
 
     React.useEffect(() => {
-        if (!page) return;
-
         const renderPage = async () => {
+             if (!pdfjsRef.current) {
+                const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
+                const pdfjsVersion = '4.4.168';
+                pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                pdfjsRef.current = pdfjsModule;
+            }
+            const pdfjs = pdfjsRef.current;
+
             if (canvasRef.current) {
                 const context = canvasRef.current.getContext('2d');
                 if (context) {
@@ -69,24 +73,26 @@ function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom 
             }
             if (textLayerRef.current) {
                 textLayerRef.current.innerHTML = '';
-                await pdfjsLib.renderTextLayer({
+                await pdfjs.renderTextLayer({
                     textContentSource: page.textContent,
                     container: textLayerRef.current,
                     viewport: page.canvas.getContext('2d')!.canvas as any,
                 }).promise;
             }
              if (annotationLayerRef.current) {
-                pdfjsLib.AnnotationLayer.render({
+                pdfjs.AnnotationLayer.render({
                     viewport: page.canvas.getContext('2d')!.canvas.cloneNode() as any,
                     div: annotationLayerRef.current,
                     annotations: page.annotations,
                     page: page as any,
-                    linkService: new pdfjsLib.web.PDFLinkService(),
+                    linkService: new pdfjs.web.PDFLinkService(),
                 });
             }
         };
 
-        renderPage();
+        if (page) {
+            renderPage();
+        }
     }, [page]);
     
     return (
@@ -465,6 +471,7 @@ export default function FieldMapper({
   const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
   
   const viewportRef = React.useRef<HTMLDivElement>(null);
+  const pdfjsRef = React.useRef<any>(null);
   
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey) {
@@ -487,7 +494,13 @@ export default function FieldMapper({
     const loadAndRenderPdf = async () => {
       setIsLoadingPdf(true);
       try {
-        const pdfjs = pdfjsLib;
+        if (!pdfjsRef.current) {
+          const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
+          const pdfjsVersion = '4.4.168';
+          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+          pdfjsRef.current = pdfjsModule;
+        }
+        const pdfjs = pdfjsRef.current;
         const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
