@@ -1,3 +1,4 @@
+
 # SYSTEM EXECUTION ROADMAP
 
 ## Phase 1: Foundation & Identity Layer
@@ -36,14 +37,17 @@
 [ ] Define `Meeting` schema in Firestore with fields for type, time, and links to a school.
 [ ] Define `MediaAsset` schema in Firestore for storing metadata about uploaded files and links.
 [ ] Define `Survey` schema in Firestore, including a flexible `elements` array for questions and layout blocks.
+[ ] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
 [ ] Implement the base administrative layout (`/admin/layout.tsx`) with sidebar navigation.
 [ ] Implement the main dashboard page (`/admin/page.tsx`) to fetch and display aggregated data.
-[ ] Implement the draggable dashboard grid (`DashboardGrid.tsx`) to allow admins to personalize their widget layout.
+[ ] Implement the draggable dashboard grid (`DashboardGrid.tsx`).
     [ ] Persist user-specific widget order to the `dashboardLayouts/{userId}` collection in Firestore.
 [ ] Implement the school management page (`/admin/schools` route) with a data table for all schools.
 [ ] Implement the meeting management page (`/admin/meetings` route) with a data table for all meetings.
 [ ] Implement the media library page (`/admin/media` route) with a grid view for all media assets.
 [ ] Implement the survey management page (`/admin/surveys` route) with a data table for all surveys.
+[ ] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
+    [ ] Implement the file upload mechanism to Firebase Storage for new PDFs.
 [ ] Implement the pipeline Kanban board (`/admin/pipeline` route).
     [ ] Render columns based on `OnboardingStage` documents.
     [ ] Render school cards within their respective stage columns.
@@ -52,52 +56,76 @@
 ### Feature: Activity Timeline
 
 [ ] Define the `Activity` schema in Firestore to log significant system and user events.
-[ ] Implement a centralized `logActivity` server action (`src/lib/activity-logger.ts`) as the sole entry point for creating new activity logs.
-[ ] Implement the global activity feed UI (`/admin/activities` route) to display all logs chronologically.
-[ ] Implement a school-specific activity view (e.g., `NotesSection.tsx`) to be embedded in the school details modal.
-[ ] Implement server actions (`updateNote`, `deleteNote`) to allow users to edit or delete their own `'note'` type activities, governed by Firestore security rules.
+[ ] Implement a centralized `logActivity` server action (`src/lib/activity-logger.ts`) as the sole entry point.
+[ ] Implement the global activity feed UI (`/admin/activities` route).
+[ ] Implement a school-specific activity view (`NotesSection.tsx`) to be embedded in the school details modal.
+[ ] Implement server actions (`updateNote`, `deleteNote`) to allow users to edit or delete their own `'note'` type activities.
 
-## Phase 3: Generative AI & Content Automation
+## Phase 3: Document Rendering & Interaction Layer
 
-[ ] Integrate generative AI capabilities to automate content creation and data analysis tasks for administrators.
+[ ] Build the client-side capabilities for visually editing and filling documents.
+
+### Feature: PDF Field Mapping
+[ ] Integrate PDF.js library for client-side PDF rendering in the admin UI.
+[ ] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
+    [ ] Create a canvas-based interface to display PDF pages.
+    [ ] Develop draggable and resizable overlay components for form fields.
+    [ ] Implement logic to calculate and store field coordinates and dimensions as percentages.
+    [ ] Create a toolbar for selecting and adding new field types (text, signature, date).
+    [ ] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
+
+### Feature: Public PDF Form Engine
+[ ] Implement the public-facing route at `/forms/[pdfId]`.
+[ ] Develop the rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
+[ ] Implement real-time state synchronization to show a live preview of user input on the form.
+[ ] Create the signature capture modal and component using a library like `react-signature-canvas`.
+
+## Phase 4: Server-Side Processing & Automation
+
+[ ] Implement backend logic for content generation, analysis, and document processing.
 
 ### Feature: Generative AI Abstraction
-
-[ ] Define Zod schemas for the inputs and outputs of all AI flows (`GenerateSurveyInputSchema`, `GetLinkMetadataOutputSchema`, etc.).
+[ ] Define Zod schemas for the inputs and outputs of all AI flows.
 [ ] Configure the global Genkit AI instance (`/src/ai/genkit.ts`).
-[ ] Implement the `generateSurvey` flow to create a complete survey structure from a text prompt or URL.
-[ ] Implement the UI for AI survey generation (`/admin/surveys/new/ai`).
-[ ] Implement the `getLinkMetadata` flow to fetch and parse metadata (`title`, `description`, `imageUrl`) from a given URL.
-[ ] Integrate the `getLinkMetadata` flow into the "Add Link" functionality in the media library to pre-fill asset details.
-[ ] Implement the `generateSurveySummary` flow to analyze all responses for a given survey and produce an HTML summary.
-[ ] Implement the `querySurveyData` flow to answer a user's natural language question about a set of survey responses.
-[ ] Implement the AI analysis UI (`AISummariesView.tsx`) on the survey results page to trigger AI summaries and Q&A.
+[ ] Implement the `generateSurvey` flow.
+[ ] Implement the `getLinkMetadata` flow.
+[ ] Implement the `generateSurveySummary` flow.
+[ ] Implement the `querySurveyData` flow.
+[ ] Implement the `detectPdfFields` flow.
+    [ ] Instruct the AI model to analyze a PDF's visual layout and return field suggestions.
+    [ ] Ensure the output is a structured JSON array with percentage-based coordinates.
+[ ] Integrate the `detectPdfFields` flow into the PDF Field Mapping editor via an "Auto-detect" button.
 
-## Phase 4: Public-Facing Features & User Interaction
+### Feature: PDF Generation Pipeline
+[ ] Create a server-side Cloud Function (`generateFilledPdf`).
+[ ] Integrate the `pdf-lib` library for PDF manipulation.
+[ ] Implement logic to fetch the original PDF from Storage and its `fieldMapping` from Firestore.
+[ ] Develop the core logic to draw text and signature images onto the PDF canvas based on percentage-based coordinates.
+[ ] Implement logic to save the final, mutated PDF to a `/submissions` path in Firebase Storage.
+[ ] Secure the function to be callable only from the application.
 
-[ ] Build the public-facing interfaces that allow users (parents, staff, respondents) to interact with the data managed by administrators.
+## Phase 5: Public-Facing Features & User Interaction
+
+[ ] Build the public-facing interfaces that allow end-users to interact with the data managed by administrators.
 
 ### Feature: Dynamic Onboarding Pages
-
 [ ] Create dynamic Next.js routes for different meeting types (e.g., `/meetings/parent-engagement/[schoolSlug]`).
 [ ] Implement the `SchoolMeetingLoader` client component.
-    [ ] Fetch the `School` document based on the `schoolSlug` from the URL.
-    [ ] Fetch all associated `Meeting` documents for that school.
-    [ ] Filter and sort meetings on the client to find the most relevant one (soonest upcoming or most recent past).
-[ ] Implement hero components (`MeetingHero`, `KickoffMeetingHero`) with time-based logic.
-    [ ] Display a countdown timer before the meeting starts.
-    [ ] Disable the "Join Meeting" button until 5 minutes before the meeting.
-    [ ] After 2 hours have passed, display an "ended" message.
-    [ ] If a `recordingUrl` is present, display a "Watch Meeting Recording" button that links to the recording section.
-[ ] Implement the `JoinMeetingForm` to capture attendee names and write them to the `/meetings/{meetingId}/attendees` subcollection in Firestore.
-[ ] Implement the `RecordingSection` component, which is conditionally rendered only when a `recordingUrl` is available in the `Meeting` document.
+    [ ] Fetch the `School` document based on the `schoolSlug`.
+    [ ] Fetch all associated `Meeting` documents for that school and filter on the client.
+[ ] Implement time-based logic in hero components (countdown, ended message, recording button).
+[ ] Implement the `JoinMeetingForm` to capture attendee names.
+[ ] Implement the `RecordingSection` component, conditionally rendered when a `recordingUrl` is available.
 
 ### Feature: Survey Engine
-
 [ ] Implement the public survey page (`/surveys/[slug]` route).
-    [ ] Fetch the survey document where `slug` matches the URL and `status` is 'published'.
-[ ] Implement the `SurveyDisplay` and `SurveyForm` components.
-    [ ] Dynamically render form fields based on the survey's `elements` array.
-    [ ] Implement client-side logic to handle conditional visibility and requirements based on `SurveyLogicBlock` rules.
-[ ] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection containing the user's answers.
-[ ] Implement the post-submission "Thank You" page display.
+[ ] Implement `SurveyDisplay` and `SurveyForm` components to dynamically render form fields.
+[ ] Implement client-side logic for conditional visibility based on `SurveyLogicBlock` rules.
+[ ] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection.
+
+### Feature: Public PDF Form Engine (Submission)
+[ ] Implement the client-side submission handler for public PDF forms.
+    [ ] The handler will first call the `generateFilledPdf` Cloud Function.
+    [ ] On success, it will create a new document in the `/pdfs/{pdfId}/submissions` subcollection.
+    [ ] This new document will store the user's raw input and the URL of the generated PDF.
+    [ ] Implement the post-submission "Thank You" page display.

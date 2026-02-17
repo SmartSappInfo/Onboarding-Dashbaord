@@ -9,10 +9,11 @@ To capture and display a chronological feed of significant user and system actio
 
 - **System:** Automatically generates logs for certain events (e.g., school creation).
 - **Administrator:** Generates logs by performing actions (e.g., updating a school, changing a pipeline stage) or by manually creating log entries (notes, calls, visits, emails). Views the activity timeline.
+- **Public User:** Generates logs by submitting a survey or a PDF form.
 
 ## Entry Points
 
-- **Log Creation (Automatic):** Triggered by server-side logic within other features (e.g., creating a school via `POST /admin/schools/new`, changing a stage via the Kanban board UI). This is handled by calls to the `logActivity` server action.
+- **Log Creation (Automatic):** Triggered by server-side logic within other features (e.g., creating a school, changing a stage, submitting a form). This is handled by calls to the `logActivity` server action.
 - **Log Creation (Manual):** An administrator clicks the "Log Interaction" button within the School Details modal, which opens the `LogActivityModal` component.
 - **Timeline Viewing (Global):** An administrator navigates to the `/admin/activities` route.
 - **Timeline Viewing (School-specific):** An administrator opens the `SchoolDetailsModal` and views the `NotesSection`.
@@ -24,17 +25,19 @@ The feature uses a single Firestore collection:
 - **Collection:** `/activities`
 - **Document Schema (`Activity`):**
   - `id` (string, auto-generated)
-  - `schoolId` (string): The ID of the associated school.
-  - `userId` (string, nullable): The ID of the user who performed the action. Null for system events.
-  - `type` (enum string): The category of the activity. Possible values: `note`, `call`, `visit`, `email`, `school_created`, `school_assigned`, `meeting_created`, `pipeline_stage_changed`, `school_updated`, `form_submission`, `notification_sent`.
-  - `source` (enum string): How the log was generated. Possible values: `manual`, `user_action`, `system`.
+  - `schoolId` (string, nullable): The ID of the associated school.
+  - `userId` (string, nullable): The ID of the user who performed the action. Null for system or public events.
+  - `type` (enum string): The category of the activity. Possible values: `note`, `call`, `visit`, `email`, `school_created`, `school_assigned`, `meeting_created`, `pipeline_stage_changed`, `school_updated`, `form_submission`, `notification_sent`, `pdf_uploaded`, `pdf_published`, `pdf_form_submitted`.
+  - `source` (enum string): How the log was generated. Possible values: `manual`, `user_action`, `system`, `public`.
   - `timestamp` (ISO string): The time the event occurred.
   - `description` (string): A human-readable sentence describing the action (e.g., "Jane Doe created school 'New School'").
   - `metadata` (object, optional): A map for storing additional, type-specific data.
     - `content` (string): For `note`, `call`, `visit`, `email` types.
-    - `from` (string): For `pipeline_stage_changed`, the name of the previous stage.
-    - `to` (string): For `pipeline_stage_changed`, the name of the new stage.
+    - `from` (string): For `pipeline_stage_changed`.
+    - `to` (string): For `pipeline_stage_changed`.
     - `meetingId` (string): For `meeting_created`.
+    - `surveyId` (string): For `form_submission`.
+    - `pdfId` (string): For PDF-related events.
 
 ## Workflow
 
@@ -57,6 +60,7 @@ The feature uses a single Firestore collection:
 - **Firebase Firestore:** Used for storing and retrieving all activity documents.
 - **School Management Feature:** The `NotesSection` is embedded within the school details view.
 - **User Management Feature:** Uses the `/users` collection to enrich activity items with user names and avatars.
+- **Survey Engine, PDF Forms:** Trigger activity logs upon public submission.
 
 ## State Changes
 
@@ -70,8 +74,8 @@ The feature uses a single Firestore collection:
 - `src/lib/activity-actions.ts`: Contains server actions for updating and deleting `note` activities.
 - `src/app/admin/components/ActivityTimeline.tsx`: The primary UI component for fetching, grouping, and displaying a list of activities.
 - `src/app/admin/components/ActivityItem.tsx`: Renders a single item in the timeline, including its icon, user info, and content.
-- `src/app/admin/components/NotesSection.tsx`: A specialized view of the timeline for a single school, focusing on `note` activities and providing an interface to add new ones.
-- `src/app/admin/components/LogActivityModal.tsx`: A form for manually logging activities like calls, visits, and emails.
+- `src/app/admin/components/NotesSection.tsx`: A specialized view of the timeline for a single school.
+- `src/app/admin/components/LogActivityModal.tsx`: A form for manually logging activities.
 - `src/lib/activity-icons.tsx`: A utility that maps an activity `type` to a specific `lucide-react` icon component.
 - `firestore.rules`: Defines access control for the `/activities` path.
 
