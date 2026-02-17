@@ -92,6 +92,24 @@ service cloud.firestore {
       allow create, read, list, delete: if isAuthorized();
     }
 
+    // --- PDF Form Rules ---
+    match /pdfs/{pdfId} {
+      // Admins can manage all aspects of PDF forms
+      allow write, list: if isAuthorized();
+      // Public can read a single published PDF form to fill it out
+      allow get: if resource.data.status == 'published' || isAuthorized();
+      
+      // Submissions subcollection
+      match /submissions/{submissionId} {
+        // Anyone can create a submission for a published form
+        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
+        // Only admins can read/list submissions
+        allow read, list: if isAuthorized();
+        // Submissions are immutable
+        allow update, delete: if false;
+      }
+    }
+
     // --- Activity Log Rules ---
     match /activities/{activityId} {
       // Authorized users can create activities (typically via server-side logic).
