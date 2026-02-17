@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, EyeOff, Lock } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
@@ -18,12 +18,19 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetFooter } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import * as pdfjsLib from 'pdfjs-dist';
+import PdfPreviewDialog from './PdfPreviewDialog';
+import { updatePdfFormStatus } from '@/lib/pdf-actions';
+
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
 interface PageDetail {
-  dataUrl: string;
+  canvas: HTMLCanvasElement;
+  textContent: any;
+  annotations: any[];
   width: number;
   height: number;
 }
@@ -35,6 +42,79 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   signature: Signature,
   date: Calendar,
 };
+
+function PageRenderer({ page, fields, selectedFieldId, onSelect, onUpdate, zoom }: {
+    page: PageDetail;
+    fields: LocalPDFFormField[];
+    selectedFieldId: string | null;
+    onSelect: (id: string) => void;
+    onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
+    zoom: number;
+}) {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const textLayerRef = React.useRef<HTMLDivElement>(null);
+    const annotationLayerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!page) return;
+
+        const renderPage = async () => {
+            if (canvasRef.current) {
+                const context = canvasRef.current.getContext('2d');
+                if (context) {
+                    canvasRef.current.width = page.width;
+                    canvasRef.current.height = page.height;
+                    context.drawImage(page.canvas, 0, 0);
+                }
+            }
+            if (textLayerRef.current) {
+                textLayerRef.current.innerHTML = '';
+                await pdfjsLib.renderTextLayer({
+                    textContentSource: page.textContent,
+                    container: textLayerRef.current,
+                    viewport: page.canvas.getContext('2d')!.canvas as any,
+                }).promise;
+            }
+             if (annotationLayerRef.current) {
+                pdfjsLib.AnnotationLayer.render({
+                    viewport: page.canvas.getContext('2d')!.canvas.cloneNode() as any,
+                    div: annotationLayerRef.current,
+                    annotations: page.annotations,
+                    page: page as any,
+                    linkService: new pdfjsLib.web.PDFLinkService(),
+                });
+            }
+        };
+
+        renderPage();
+    }, [page]);
+    
+    return (
+        <div 
+            className="relative mx-auto shadow-lg mb-4"
+            style={{ 
+                width: page.width * zoom,
+                height: page.height * zoom,
+            }}
+        >
+            <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
+            <div ref={textLayerRef} className="textLayer absolute inset-0 w-full h-full" />
+            <div ref={annotationLayerRef} className="annotationLayer absolute inset-0 w-full h-full" />
+            
+            {fields.map(field => (
+                <ResizableField
+                    key={field.id}
+                    field={field}
+                    page={page}
+                    isSelected={selectedFieldId === field.id}
+                    onSelect={onSelect}
+                    onUpdate={onUpdate}
+                    zoom={zoom}
+                />
+            ))}
+        </div>
+    );
+}
 
 const ResizableField = ({
     field,
@@ -151,6 +231,16 @@ interface PropertiesSidebarProps {
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   pagesLength: number;
+  pdf: PDFForm;
+  onSave: () => void;
+  isSaving: boolean;
+  onPreview: () => void;
+  isStatusChanging: boolean;
+  onStatusChange: (status: PDFForm['status']) => void;
+  password: string;
+  setPassword: (password: string) => void;
+  passwordProtected: boolean;
+  setPasswordProtected: (protected: boolean) => void;
 }
 
 const PropertiesSidebar = ({
@@ -160,6 +250,16 @@ const PropertiesSidebar = ({
   updateField,
   removeField,
   pagesLength,
+  pdf,
+  onSave,
+  isSaving,
+  onPreview,
+  isStatusChanging,
+  onStatusChange,
+  password,
+  setPassword,
+  passwordProtected,
+  setPasswordProtected
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
@@ -256,8 +356,63 @@ const PropertiesSidebar = ({
                     </CardContent>
                 </Card>
             ) : null}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Security</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                            <Label htmlFor="password-protect-toggle">Password Protect</Label>
+                            <p className="text-xs text-muted-foreground">Require a password to view this form.</p>
+                        </div>
+                        <Switch
+                            id="password-protect-toggle"
+                            checked={passwordProtected}
+                            onCheckedChange={setPasswordProtected}
+                        />
+                    </div>
+                    {passwordProtected && (
+                         <div className="space-y-2">
+                            <Label htmlFor="form-password">Form Password</Label>
+                            <Input id="form-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Status</CardTitle>
+                </CardHeader>
+                <CardContent>
+                     <Select
+                        value={pdf.status}
+                        onValueChange={(value: PDFForm['status']) => onStatusChange(value)}
+                        disabled={isStatusChanging}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Set status..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
         </div>
       </ScrollArea>
+       <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={onPreview}>
+                <Eye className="mr-2 h-4 w-4" />
+                Preview
+            </Button>
+            <Button onClick={onSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+        </SheetFooter>
     </>
   );
 };
@@ -268,15 +423,36 @@ interface FieldMapperProps {
   pdf: PDFForm;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
+  onSave: () => void;
+  isSaving: boolean;
+  onPreview: () => void;
+  password: string;
+  setPassword: (password: string) => void;
+  passwordProtected: boolean;
+  setPasswordProtected: (protected: boolean) => void;
+  isStatusChanging: boolean;
+  onStatusChange: (status: PDFForm['status']) => void;
 }
 
-export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps) {
+export default function FieldMapper({
+  pdf,
+  fields,
+  setFields,
+  onSave,
+  isSaving,
+  onPreview,
+  password,
+  setPassword,
+  passwordProtected,
+  setPasswordProtected,
+  isStatusChanging,
+  onStatusChange,
+}: FieldMapperProps) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isDetecting, setIsDetecting] = React.useState(false);
-  const pdfjsRef = React.useRef<any>(null);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
@@ -311,14 +487,7 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
     const loadAndRenderPdf = async () => {
       setIsLoadingPdf(true);
       try {
-        if (!pdfjsRef.current) {
-          const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
-          const pdfjsVersion = '4.4.168';
-          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-          pdfjsRef.current = pdfjsModule;
-        }
-
-        const pdfjs = pdfjsRef.current;
+        const pdfjs = pdfjsLib;
         const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
         const pdfDoc = await loadingTask.promise;
         const pageDetails: PageDetail[] = [];
@@ -328,16 +497,23 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
           const viewport = page.getViewport({ scale: 1.5 });
           const canvas = document.createElement('canvas');
           const context = canvas.getContext('2d');
+          if (!context) continue;
+
           canvas.height = viewport.height;
           canvas.width = viewport.width;
-          if (context) {
-            await page.render({ canvasContext: context, viewport }).promise;
-            pageDetails.push({
-              dataUrl: canvas.toDataURL('image/webp', 0.9),
-              width: viewport.width,
-              height: viewport.height,
-            });
-          }
+          
+          await page.render({ canvasContext: context, viewport }).promise;
+
+          const textContent = await page.getTextContent();
+          const annotations = await page.getAnnotations();
+          
+          pageDetails.push({
+            canvas,
+            textContent,
+            annotations,
+            width: viewport.width,
+            height: viewport.height,
+          });
         }
         setPages(pageDetails);
       } catch (error: any) {
@@ -481,33 +657,15 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                 >
                     {isLoadingPdf && <Skeleton className="w-full h-[1000px]" />}
                     {!isLoadingPdf && pages.map((page, index) => (
-                        <div 
+                        <PageRenderer
                             key={index}
-                            className="relative mx-auto shadow-lg mb-4"
-                            style={{ 
-                                width: page.width * displayZoom,
-                                height: page.height * displayZoom,
-                            }}
-                        >
-                            <Image
-                                src={page.dataUrl}
-                                fill
-                                sizes={`${page.width * displayZoom}px`}
-                                alt={`Page ${index + 1}`}
-                                priority
-                            />
-                            {fields.filter(f => f.pageNumber === index + 1).map(field => (
-                                <ResizableField
-                                    key={field.id}
-                                    field={field}
-                                    page={page}
-                                    isSelected={selectedFieldId === field.id}
-                                    onSelect={setSelectedFieldId}
-                                    onUpdate={updateField}
-                                    zoom={displayZoom}
-                                />
-                            ))}
-                        </div>
+                            page={page}
+                            fields={fields.filter(f => f.pageNumber === index + 1)}
+                            selectedFieldId={selectedFieldId}
+                            onSelect={setSelectedFieldId}
+                            onUpdate={updateField}
+                            zoom={displayZoom}
+                        />
                     ))}
                 </div>
               </ScrollArea>
@@ -606,6 +764,16 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                 updateField={updateField} 
                 removeField={removeField} 
                 pagesLength={pages.length}
+                pdf={pdf}
+                onSave={onSave}
+                isSaving={isSaving}
+                onPreview={onPreview}
+                isStatusChanging={isStatusChanging}
+                onStatusChange={onStatusChange}
+                password={password}
+                setPassword={setPassword}
+                passwordProtected={passwordProtected}
+                setPasswordProtected={setPasswordProtected}
             />}
             
             {isCollapsed && (
@@ -616,6 +784,18 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
                                 <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}><List /></Button>
                             </TooltipTrigger>
                             <TooltipContent side="left"><p>Fields</p></TooltipContent>
+                        </Tooltip>
+                         <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={onPreview}><Eye /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left"><p>Preview</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={onSave} disabled={isSaving}><Save /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left"><p>Save Changes</p></TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
@@ -632,6 +812,16 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
             updateField={updateField} 
             removeField={removeField} 
             pagesLength={pages.length}
+            pdf={pdf}
+            onSave={onSave}
+            isSaving={isSaving}
+            onPreview={onPreview}
+            isStatusChanging={isStatusChanging}
+            onStatusChange={onStatusChange}
+            password={password}
+            setPassword={setPassword}
+            passwordProtected={passwordProtected}
+            setPasswordProtected={setPasswordProtected}
           />
         </SheetContent>
       </Sheet>
