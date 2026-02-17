@@ -2,14 +2,20 @@
 
 import { usePathname } from 'next/navigation';
 import Script from 'next/script';
+import { useEffect, useState } from 'react';
 
 const GTM_ID = 'GTM-TK8KJZPG';
 
 export function GtmProvider() {
   const pathname = usePathname();
+  const [isClient, setIsClient] = useState(false);
 
-  // Don't render GTM scripts on admin pages
-  if (pathname.startsWith('/admin')) {
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Don't render GTM scripts on server, or on admin pages
+  if (!isClient || pathname.startsWith('/admin')) {
     return null;
   }
 
