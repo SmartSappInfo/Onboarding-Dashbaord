@@ -71,7 +71,7 @@
 [*] Integrate PDF.js library for client-side PDF rendering in the admin UI.
 [*] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
     [*] Create a canvas-based interface to display PDF pages.
-    [ ] Develop draggable and resizable overlay components for form fields.
+    [*] Develop draggable and resizable overlay components for form fields.
     [*] Implement logic to calculate and store field coordinates and dimensions as percentages.
     [*] Create a toolbar for selecting and adding new field types (text, signature, date).
     [*] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
@@ -129,3 +129,5 @@
 [ ] Implement `SurveyDisplay` and `SurveyForm` components to dynamically render form fields.
 [ ] Implement client-side logic for conditional visibility based on `SurveyLogicBlock` rules.
 [ ] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection.
+
+    

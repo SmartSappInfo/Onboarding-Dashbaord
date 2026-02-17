@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -12,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Text, Signature, Calendar, Plus, Trash2, Loader2, Save } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping } from '@/lib/pdf-actions';
+import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
 
 // Set up the worker source for pdfjs-dist
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
@@ -24,6 +25,104 @@ interface PageDetail {
   width: number;
   height: number;
 }
+
+const ResizableField = ({
+    field,
+    page,
+    isSelected,
+    onSelect,
+    onUpdate,
+}: {
+    field: PDFFormField;
+    page: PageDetail;
+    isSelected: boolean;
+    onSelect: (id: string) => void;
+    onUpdate: (id: string, newProps: Partial<PDFFormField>) => void;
+}) => {
+    const { attributes, listeners, setNodeRef, transform } = useDraggable({
+        id: field.id,
+    });
+    
+    const [isResizing, setIsResizing] = React.useState(false);
+    const initialResizeState = React.useRef<{
+        startX: number;
+        startY: number;
+        startWidth: number;
+        startHeight: number;
+    } | null>(null);
+
+    const handleResizeStart = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        setIsResizing(true);
+        initialResizeState.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            startWidth: (field.dimensions.width / 100) * page.width,
+            startHeight: (field.dimensions.height / 100) * page.height,
+        };
+        onSelect(field.id);
+    };
+
+    React.useEffect(() => {
+        const handleResize = (e: MouseEvent) => {
+            if (!isResizing || !initialResizeState.current) return;
+            const dx = e.clientX - initialResizeState.current.startX;
+            const dy = e.clientY - initialResizeState.current.startY;
+            
+            const newWidth = initialResizeState.current.startWidth + dx;
+            const newHeight = initialResizeState.current.startHeight + dy;
+            
+            onUpdate(field.id, {
+                dimensions: {
+                    width: (newWidth / page.width) * 100,
+                    height: (newHeight / page.height) * 100,
+                },
+            });
+        };
+
+        const handleResizeEnd = () => {
+            setIsResizing(false);
+            initialResizeState.current = null;
+        };
+
+        if (isResizing) {
+            window.addEventListener('mousemove', handleResize);
+            window.addEventListener('mouseup', handleResizeEnd);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleResize);
+            window.removeEventListener('mouseup', handleResizeEnd);
+        };
+    }, [isResizing, field.id, onUpdate, page.width, page.height]);
+
+    const style: React.CSSProperties = {
+        position: 'absolute',
+        left: `${field.position.x}%`,
+        top: `${field.position.y}%`,
+        width: `${field.dimensions.width}%`,
+        height: `${field.dimensions.height}%`,
+        transform: CSS.Translate.toString(transform),
+        zIndex: isSelected ? 10 : 1,
+    };
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            {...listeners}
+            {...attributes}
+            onClick={() => onSelect(field.id)}
+            className={`absolute border-2 cursor-grab ${isSelected ? 'border-primary' : 'border-dashed border-primary/50 hover:border-primary'}`}
+        >
+            <div
+                className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full cursor-se-resize -mb-1.5 -mr-1.5"
+                onMouseDown={handleResizeStart}
+            />
+        </div>
+    );
+};
 
 export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   const { toast } = useToast();
@@ -85,8 +184,27 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     }
   };
 
-  const updateField = (id: string, newProps: Partial<PDFFormField>) => {
+  const updateField = React.useCallback((id: string, newProps: Partial<PDFFormField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
+  }, []);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+    const fieldToMove = fields.find(f => f.id === active.id);
+    if (!fieldToMove) return;
+
+    const pageDetail = pages[fieldToMove.pageNumber - 1];
+    if (!pageDetail) return;
+
+    const newX = fieldToMove.position.x + (delta.x / pageDetail.width) * 100;
+    const newY = fieldToMove.position.y + (delta.y / pageDetail.height) * 100;
+
+    updateField(active.id as string, {
+        position: {
+            x: Math.max(0, Math.min(100 - fieldToMove.dimensions.width, newX)),
+            y: Math.max(0, Math.min(100 - fieldToMove.dimensions.height, newY)),
+        }
+    });
   };
   
   const selectedField = fields.find(f => f.id === selectedFieldId);
@@ -105,38 +223,37 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 h-full">
       {/* PDF Viewer */}
-      <div
-        ref={containerRef}
-        className="md:col-span-2 lg:col-span-3 bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
-      >
-        {isLoadingPdf && <Skeleton className="w-full h-[80vh]" />}
-        {!isLoadingPdf && pages.map((page, index) => (
-          <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
-            <canvas
-              ref={node => {
-                if (node && !node.firstChild) {
-                  node.getContext('2d')?.drawImage(page.canvas, 0, 0);
-                }
-              }}
-              width={page.width}
-              height={page.height}
-            />
-            {fields.filter(f => f.pageNumber === index + 1).map(field => (
-              <div
-                key={field.id}
-                className={`absolute border-2 cursor-pointer hover:border-blue-400 ${selectedFieldId === field.id ? 'border-primary' : 'border-dashed border-primary/50'}`}
-                style={{
-                  left: `${field.position.x}%`,
-                  top: `${field.position.y}%`,
-                  width: `${field.dimensions.width}%`,
-                  height: `${field.dimensions.height}%`,
+      <DndContext onDragEnd={handleDragEnd}>
+        <div
+          ref={containerRef}
+          className="md:col-span-2 lg:col-span-3 bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
+        >
+          {isLoadingPdf && <Skeleton className="w-full h-[80vh]" />}
+          {!isLoadingPdf && pages.map((page, index) => (
+            <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
+              <canvas
+                ref={node => {
+                  if (node && !node.firstChild) {
+                    node.getContext('2d')?.drawImage(page.canvas, 0, 0);
+                  }
                 }}
-                onClick={() => setSelectedFieldId(field.id)}
+                width={page.width}
+                height={page.height}
               />
-            ))}
-          </div>
-        ))}
-      </div>
+              {fields.filter(f => f.pageNumber === index + 1).map(field => (
+                 <ResizableField
+                    key={field.id}
+                    field={field}
+                    page={page}
+                    isSelected={selectedFieldId === field.id}
+                    onSelect={setSelectedFieldId}
+                    onUpdate={updateField}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </DndContext>
 
       {/* Controls Panel */}
       <div className="space-y-6">
@@ -174,21 +291,21 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
                <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-2">
                     <Label htmlFor={`x-pos-${selectedField.id}`}>X (%)</Label>
-                    <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
+                    <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
                   </div>
                    <div className="space-y-2">
                     <Label htmlFor={`y-pos-${selectedField.id}`}>Y (%)</Label>
-                    <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
+                    <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
                   </div>
               </div>
                <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-2">
                     <Label htmlFor={`width-${selectedField.id}`}>Width (%)</Label>
-                    <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
+                    <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
                   </div>
                    <div className="space-y-2">
                     <Label htmlFor={`height-${selectedField.id}`}>Height (%)</Label>
-                    <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
+                    <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
                   </div>
               </div>
             </CardContent>
@@ -207,3 +324,4 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     </div>
   );
 }
+    
