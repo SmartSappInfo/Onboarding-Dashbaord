@@ -9,14 +9,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Text, Signature, Calendar, Plus, Trash2, Loader2, Save, Sparkles } from 'lucide-react';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
-import { updatePdfFormStatus } from '@/lib/pdf-actions';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -147,12 +145,10 @@ interface FieldMapperProps {
 
 export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps) {
   const { toast } = useToast();
-  const { user } = useUser();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isDetecting, setIsDetecting] = React.useState(false);
-  const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -292,178 +288,156 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
   
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
-  const handleStatusChange = async (newStatus: PDFForm['status']) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'You must be logged in.' });
-        return;
-    }
-    setIsStatusChanging(true);
-    const result = await updatePdfFormStatus(pdf.id, newStatus, user.uid);
-    if (result.success) {
-        toast({ title: 'Status Updated' });
-    } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-    }
-    setIsStatusChanging(false);
-  };
-
-
   return (
-    <div className="grid grid-cols-12 gap-4 h-full overflow-hidden p-4">
-        {/* Left Panel: Field List */}
-        <div className="col-span-2 bg-background border-r h-full overflow-y-auto">
-            <div className="p-2 space-y-2">
-                <h3 className="text-sm font-semibold px-2">Fields ({fields.length})</h3>
-                <ScrollArea className="h-[calc(100vh-12rem)]">
-                    {fields.map((field) => {
-                        const Icon = fieldIcons[field.type];
-                        return (
-                            <button
-                                key={field.id}
-                                onClick={() => setSelectedFieldId(field.id)}
-                                className={cn(
-                                    "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted",
-                                    selectedFieldId === field.id && 'bg-muted ring-2 ring-primary'
-                                )}
-                            >
-                                <Icon className="h-4 w-4 text-muted-foreground" />
-                                <span className="truncate text-sm flex-1">{field.label || field.id}</span>
-                            </button>
-                        );
-                    })}
-                </ScrollArea>
-            </div>
-        </div>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-full overflow-hidden p-4">
+      {/* Center Panel: PDF Viewer */}
+      <div className="lg:col-span-2 h-full">
+          <DndContext onDragEnd={handleDragEnd}>
+              <div
+                  ref={containerRef}
+                  className="bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
+                  onClick={() => setSelectedFieldId(null)}
+              >
+                  {isLoadingPdf && <Skeleton className="w-full h-full" />}
+                  {!isLoadingPdf && pages.map((page, index) => (
+                      <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
+                          <Image
+                              src={page.dataUrl}
+                              width={page.width}
+                              height={page.height}
+                              alt={`Page ${index + 1}`}
+                              priority
+                          />
+                          {fields.filter(f => f.pageNumber === index + 1).map(field => (
+                              <ResizableField
+                                  key={field.id}
+                                  field={field}
+                                  page={page}
+                                  isSelected={selectedFieldId === field.id}
+                                  onSelect={setSelectedFieldId}
+                                  onUpdate={updateField}
+                              />
+                          ))}
+                      </div>
+                  ))}
+              </div>
+          </DndContext>
+      </div>
 
-        {/* Center Panel: PDF Viewer */}
-        <div className="col-span-7 h-full">
-            <DndContext onDragEnd={handleDragEnd}>
-                <div
-                    ref={containerRef}
-                    className="bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full"
-                    onClick={() => setSelectedFieldId(null)}
-                >
-                    {isLoadingPdf && <Skeleton className="w-full h-full" />}
-                    {!isLoadingPdf && pages.map((page, index) => (
-                        <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
-                            <Image
-                                src={page.dataUrl}
-                                width={page.width}
-                                height={page.height}
-                                alt={`Page ${index + 1}`}
-                                priority
-                            />
-                            {fields.filter(f => f.pageNumber === index + 1).map(field => (
-                                <ResizableField
-                                    key={field.id}
-                                    field={field}
-                                    page={page}
-                                    isSelected={selectedFieldId === field.id}
-                                    onSelect={setSelectedFieldId}
-                                    onUpdate={updateField}
-                                />
-                            ))}
-                        </div>
-                    ))}
-                </div>
-            </DndContext>
-        </div>
+      {/* Right Panel: Controls */}
+      <div className="lg:col-span-1 h-full overflow-y-auto space-y-4">
+          <Card>
+              <CardHeader>
+                  <CardTitle>Toolbar</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TooltipProvider>
+                  <div className="grid grid-cols-4 gap-2">
+                      <Tooltip>
+                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('text')}><Text /></Button></TooltipTrigger>
+                          <TooltipContent><p>Add Text Field</p></TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('signature')}><Signature /></Button></TooltipTrigger>
+                          <TooltipContent><p>Add Signature Field</p></TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                          <TooltipTrigger asChild><Button variant="outline" size="icon" onClick={() => addField('date')}><Calendar /></Button></TooltipTrigger>
+                          <TooltipContent><p>Add Date Field</p></TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button variant="outline" size="icon" className="text-primary border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={handleDetectFields} disabled={isDetecting}>
+                                  {isDetecting ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Auto-detect Fields (AI)</p></TooltipContent>
+                      </Tooltip>
+                  </div>
+                </TooltipProvider>
+              </CardContent>
+          </Card>
+          
+          <Card>
+              <CardHeader>
+                  <CardTitle>Fields ({fields.length})</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <ScrollArea className="h-48">
+                      <div className="space-y-1">
+                          {fields.map((field) => {
+                              const Icon = fieldIcons[field.type];
+                              return (
+                                  <button
+                                      key={field.id}
+                                      onClick={() => setSelectedFieldId(field.id)}
+                                      className={cn(
+                                          "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted",
+                                          selectedFieldId === field.id && 'bg-muted ring-1 ring-primary'
+                                      )}
+                                  >
+                                      <Icon className="h-4 w-4 text-muted-foreground" />
+                                      <span className="truncate text-sm flex-1">{field.label || field.id}</span>
+                                  </button>
+                              );
+                          })}
+                      </div>
+                  </ScrollArea>
+              </CardContent>
+          </Card>
 
-        {/* Right Panel: Controls */}
-        <div className="col-span-3 h-full overflow-y-auto">
-            <div className="space-y-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Toolbar</CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid grid-cols-1 gap-2">
-                        <Button variant="outline" onClick={() => addField('text')}><Text className="mr-2 h-4 w-4" /> Text Input</Button>
-                        <Button variant="outline" onClick={() => addField('signature')}><Signature className="mr-2 h-4 w-4" /> Signature</Button>
-                        <Button variant="outline" onClick={() => addField('date')}><Calendar className="mr-2 h-4 w-4" /> Date</Button>
-                        <Button variant="outline" className="text-primary border-primary/50 hover:bg-primary/10 hover:text-primary" onClick={handleDetectFields} disabled={isDetecting}>
-                            {isDetecting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                            Auto-detect Fields
-                        </Button>
-                    </CardContent>
-                </Card>
-                
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Status</CardTitle>
-                        <CardDescription>Control the visibility of this form.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Select
-                            value={pdf.status}
-                            onValueChange={(value: PDFForm['status']) => handleStatusChange(value)}
-                            disabled={isStatusChanging}
-                        >
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="draft">Draft</SelectItem>
-                                <SelectItem value="published">Published</SelectItem>
-                                <SelectItem value="archived">Archived</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {isStatusChanging && <Loader2 className="mt-2 h-4 w-4 animate-spin" />}
-                    </CardContent>
-                </Card>
-
-                {selectedField ? (
-                <Card>
-                    <CardHeader>
-                    <CardTitle className="flex justify-between items-center">
-                        <span>Field Properties</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                    </CardTitle>
-                    <CardDescription>ID: {selectedField.id}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor={`label-${selectedField.id}`}>Field Label</Label>
-                            <Input id={`label-${selectedField.id}`} placeholder="e.g. Applicant Name" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label>Type</Label>
-                            <Input value={selectedField.type} disabled className="capitalize" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor={`page-${selectedField.id}`}>Page Number</Label>
-                            <Input id={`page-${selectedField.id}`} type="number" min="1" max={pages.length} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} />
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                                <Label htmlFor={`x-pos-${selectedField.id}`}>X (%)</Label>
-                                <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor={`y-pos-${selectedField.id}`}>Y (%)</Label>
-                                <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-2">
-                                <Label htmlFor={`width-${selectedField.id}`}>Width (%)</Label>
-                                <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor={`height-${selectedField.id}`}>Height (%)</Label>
-                                <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                ) : (
-                    <Card className="text-center text-sm text-muted-foreground p-8">
-                        <p>Select a field to edit its properties or add a new field from the toolbar.</p>
-                    </Card>
-                )}
-            </div>
-        </div>
+          {selectedField ? (
+          <Card>
+              <CardHeader>
+              <CardTitle className="flex justify-between items-center">
+                  <span>Field Properties</span>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}>
+                      <Trash2 className="h-4 w-4" />
+                  </Button>
+              </CardTitle>
+              <CardDescription>ID: {selectedField.id}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor={`label-${selectedField.id}`}>Field Label</Label>
+                      <Input id={`label-${selectedField.id}`} placeholder="e.g. Applicant Name" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} />
+                  </div>
+                  <div className="space-y-2">
+                      <Label>Type</Label>
+                      <Input value={selectedField.type} disabled className="capitalize" />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor={`page-${selectedField.id}`}>Page Number</Label>
+                      <Input id={`page-${selectedField.id}`} type="number" min="1" max={pages.length} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                          <Label htmlFor={`x-pos-${selectedField.id}`}>X (%)</Label>
+                          <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor={`y-pos-${selectedField.id}`}>Y (%)</Label>
+                          <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
+                      </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-2">
+                          <Label htmlFor={`width-${selectedField.id}`}>Width (%)</Label>
+                          <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
+                      </div>
+                      <div className="space-y-2">
+                          <Label htmlFor={`height-${selectedField.id}`}>Height (%)</Label>
+                          <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
+                      </div>
+                  </div>
+              </CardContent>
+          </Card>
+          ) : (
+              <Card className="text-center text-sm text-muted-foreground p-8">
+                  <p>Select a field to edit its properties or add a new field from the toolbar.</p>
+              </Card>
+          )}
+      </div>
     </div>
   );
 }
