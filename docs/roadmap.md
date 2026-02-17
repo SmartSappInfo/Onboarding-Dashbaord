@@ -27,7 +27,7 @@
 [x] Implement an interactive preview modal for real-time testing.
 [x] Implement the public-facing route at `/forms/[pdfId]`.
 [x] Develop the public rendering engine with an HTML overlay for interactive fields.
-[x] Create the signature capture modal.
+[x] Create the multi-method signature capture modal (Draw, Type, Upload, Photo).
 
 ## Phase 4: Server-Side Processing & Automation
 [x] Implement backend logic for content generation, analysis, and document processing.

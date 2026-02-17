@@ -147,11 +147,27 @@ User can download the final PDF / Admin sees submission record
 
 ## 8. Signature Handling
 
-1.  User clicks a signature field, opening the `SignaturePadModal`.
-2.  The user draws their signature on the `<canvas>`.
-3.  On save, `react-signature-canvas` exports the signature as a `data:image/png;base64,...` data URL.
-4.  This data URL is stored in the form's state. The signature field now displays this image instead of the "Click to Sign" prompt.
-5.  During final submission, this data URL is sent to the backend generation function.
+The `SignaturePadModal.tsx` component manages a two-step signature capture process:
+
+1.  **Step 1: Signature Creation**
+    -   The user clicks a signature field, opening a dialog with four tabs:
+        -   **Draw**: The user draws their signature on a canvas using `react-signature-canvas`.
+        -   **Type**: The user types their name, which is rendered on a canvas with a cursive font.
+        -   **Upload**: The user selects an image file (PNG, JPG) of their signature, which is previewed.
+        -   **Take Photo**: The user's camera is activated to capture a photo of a physical signature.
+    -   The user clicks "Next" to proceed.
+
+2.  **Step 2: Confirmation**
+    -   A preview of the generated signature image is displayed.
+    -   A legal consent message and a toggle switch ("I consent to sign") are shown.
+    -   A "Back" button allows the user to return to Step 1.
+    -   The "Sign Now" button is enabled only after the user checks the consent toggle.
+
+3.  **Finalization**
+    -   Upon clicking "Sign Now", the signature is exported as a `data:image/png;base64,...` data URL.
+    -   This data URL is stored in the main form's state.
+    -   The signature field on the PDF renderer now displays this image.
+    -   During final submission, this data URL is sent to the backend `generateFilledPdf` server action.
 
 ---
 
