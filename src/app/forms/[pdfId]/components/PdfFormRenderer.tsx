@@ -49,6 +49,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const loadPdf = async () => {
         try {
             const pdfjs = await import('pdfjs-dist');
+            (window as any).pdfjsLib = pdfjs;
             const pdfjsVersion = '4.4.168';
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
@@ -217,6 +218,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
                         import('pdfjs-dist'),
                         import('pdfjs-dist/web/pdf_viewer.mjs'),
                     ]);
+                    (window as any).pdfjsLib = pdfjsModule;
                     const pdfjsVersion = '4.4.168';
                     pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
                     pdfjsRef.current = pdfjsModule;

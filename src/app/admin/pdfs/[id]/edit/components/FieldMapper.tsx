@@ -487,7 +487,8 @@ export default function FieldMapper({
   React.useEffect(() => {
     const loadPdf = async () => {
         try {
-            const pdfjs = await pdfjsPromise;
+            const [pdfjs, pdfjsViewer] = await Promise.all([pdfjsPromise, pdfjsViewerPromise]);
+            (window as any).pdfjsLib = pdfjs;
             const pdfjsVersion = '4.4.168';
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
