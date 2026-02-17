@@ -55,4 +55,3 @@ export async function deleteNote(activityId: string) {
     return { error: 'You do not have permission to delete this note or it does not exist.' };
   }
 }
-
