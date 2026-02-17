@@ -34,7 +34,7 @@ export default function WelcomeHeroSection() {
         <p className="mb-10 text-lg font-semibold text-foreground">
           Please watch the full video. It's super important!
         </p>
-        <div className="mx-auto max-w-[60%]">
+        <div className="mx-auto w-full md:max-w-[60%]">
             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />
         </div>
       </div>
