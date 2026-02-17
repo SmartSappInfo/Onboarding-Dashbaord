@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -248,7 +249,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
                     annotationLayerRef.current.innerHTML = '';
                     const annotations = await page.getAnnotations();
                     const linkService = new pdfjsViewer.PDFLinkService();
-                    pdfjs.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: linkService, renderForms: false });
+                    pdfjsViewer.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: linkService, renderForms: false });
                 }
             } catch (e) {
                 console.error("Failed to render page", e);
@@ -277,3 +278,5 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
         </div>
     );
 }
+
+    

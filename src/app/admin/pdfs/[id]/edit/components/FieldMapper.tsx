@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -21,6 +22,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetFooter } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import * as pdfjsLib from 'pdfjs-dist';
 import PdfPreviewDialog from './PdfPreviewDialog';
 import { updatePdfFormStatus } from '@/lib/pdf-actions';
 
@@ -82,9 +84,9 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                 }
 
                 // Render Text Layer
-                const textContent = await page.getTextContent();
                 if (textLayerRef.current) {
                     textLayerRef.current.innerHTML = '';
+                    const textContent = await page.getTextContent();
                     pdfjs.renderTextLayer({
                         textContentSource: textContent,
                         container: textLayerRef.current,
@@ -97,7 +99,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                     annotationLayerRef.current.innerHTML = '';
                     const annotations = await page.getAnnotations();
                     const linkService = new pdfjsViewer.PDFLinkService();
-                    pdfjs.AnnotationLayer.render({
+                    pdfjsViewer.AnnotationLayer.render({
                         viewport: viewport.clone({ dontFlip: true }),
                         div: annotationLayerRef.current,
                         annotations: annotations,
@@ -842,3 +844,5 @@ export default function FieldMapper({
     </div>
   );
 }
+
+    
