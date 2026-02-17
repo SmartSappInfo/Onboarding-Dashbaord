@@ -135,7 +135,8 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
       try {
         if (!pdfjsRef.current) {
           const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
-          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+          const pdfjsVersion = '4.4.168';
+          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
           pdfjsRef.current = pdfjsModule;
         }
 
@@ -161,9 +162,20 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           }
         }
         setPages(pageDetails);
-      } catch (error) {
-        console.error("Failed to load PDF:", error);
-        toast({ variant: 'destructive', title: 'Error loading PDF' });
+      } catch (error: any) {
+        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", {
+          errorMessage: error.message,
+          errorName: error.name,
+          errorStack: error.stack,
+          pdfUrl: pdf.downloadUrl,
+          isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
+        });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Error Loading PDF',
+            description: 'This is likely a CORS issue. Please check the browser console for details and apply the CORS configuration to your Firebase Storage bucket.',
+            duration: 10000,
+        });
       } finally {
         setIsLoadingPdf(false);
       }

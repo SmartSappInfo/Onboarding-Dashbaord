@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface PageDetail {
   dataUrl: string;
@@ -22,6 +23,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const pdfjsRef = React.useRef<any>(null);
+  const { toast } = useToast();
 
   const { register, handleSubmit, watch, setValue } = useForm();
 
@@ -31,7 +33,8 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
       try {
         if (!pdfjsRef.current) {
           const pdfjsModule = await import('pdfjs-dist/build/pdf.mjs');
-          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+          const pdfjsVersion = '4.4.168';
+          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
           pdfjsRef.current = pdfjsModule;
         }
 
@@ -57,8 +60,20 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
           }
         }
         setPages(pageDetails);
-      } catch (error) {
-        console.error("Failed to load PDF:", error);
+      } catch (error: any) {
+        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", {
+          errorMessage: error.message,
+          errorName: error.name,
+          errorStack: error.stack,
+          pdfUrl: pdfForm.downloadUrl,
+          isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
+        });
+        toast({ 
+            variant: 'destructive', 
+            title: 'Error Loading PDF',
+            description: 'Could not load document. This may be a CORS issue. Please check the browser console.',
+            duration: 10000,
+        });
       } finally {
         setIsLoadingPdf(false);
       }
@@ -67,7 +82,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     if (pdfForm.downloadUrl) {
       loadAndRenderPdf();
     }
-  }, [pdfForm.downloadUrl]);
+  }, [pdfForm.downloadUrl, toast]);
   
   const onSubmit = (data: any) => {
     setIsSubmitting(true);
