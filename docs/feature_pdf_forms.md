@@ -53,13 +53,13 @@ This feature uses both Firestore for metadata and Firebase Storage for file bina
 
 ## Workflow
 
-1.  **Upload & Management:** An admin uploads a PDF to Firebase Storage. A new `PDFForm` document is created in Firestore with `status: 'draft'`, containing the `storagePath` and `downloadUrl`.
-2.  **Field Mapping:** The admin navigates to the editor (`/admin/pdfs/[id]/edit`). The `FieldMapper.tsx` component renders the PDF using PDF.js. The admin adds, moves, and resizes field overlays. All positions and dimensions are calculated and stored as percentages of the page size to ensure responsiveness.
-3.  **AI Field Detection (Optional):** The admin can click "Auto-detect Fields". This triggers the `detectPdfFields` Genkit flow. The flow sends the PDF's data URI to the Gemini model, which analyzes the layout and returns a JSON array of suggested field locations and types (e.g., text, signature), also using percentage-based coordinates. The editor displays these as temporary suggestions for the admin to confirm or discard.
-4.  **Publish:** The admin changes the form's status to `published`.
-5.  **Public Filling:** A user accesses the public URL (`/forms/[pdfId]`). The `PdfFormRenderer.tsx` component fetches the PDF and its `fieldMapping`. It renders the PDF onto a `<canvas>` and creates an HTML overlay with interactive inputs (`<input>`, signature pads) positioned precisely using the stored percentages.
-6.  **Submission & Generation:** Upon submission, the client calls a server-side Cloud Function (`generateFilledPdf`), passing the form data. This function uses the `pdf-lib` library. It fetches the original PDF template, iterates through the `fieldMapping`, and draws the user's submitted text and signature images onto a new PDF at the exact percentage-based coordinates.
-7.  **Storage:** The newly generated, filled PDF is uploaded to `/submissions/...` in Firebase Storage. The function returns the new file's URL. The client then creates a new submission document in the `/pdfs/{pdfId}/submissions` subcollection, storing the user's input and the URL to the final, generated PDF.
+- [*] **Upload & Management:** An admin uploads a PDF to Firebase Storage. A new `PDFForm` document is created in Firestore with `status: 'draft'`, containing the `storagePath` and `downloadUrl`.
+- [*] **Field Mapping:** The admin navigates to the editor (`/admin/pdfs/[id]/edit`). The `FieldMapper.tsx` component renders the PDF using PDF.js. The admin adds, moves, and resizes field overlays. All positions and dimensions are calculated and stored as percentages of the page size to ensure responsiveness.
+- [*] **AI Field Detection (Optional):** The admin can click "Auto-detect Fields". This triggers the `detectPdfFields` Genkit flow. The flow sends the PDF's data URI to the Gemini model, which analyzes the layout and returns a JSON array of suggested field locations and types (e.g., text, signature), also using percentage-based coordinates. The editor displays these as temporary suggestions for the admin to confirm or discard.
+- [*] **Publish:** The admin changes the form's status to `published`.
+- [*] **Public Filling:** A user accesses the public URL (`/forms/[pdfId]`). The `PdfFormRenderer.tsx` component fetches the PDF and its `fieldMapping`. It renders the PDF onto a `<canvas>` and creates an HTML overlay with interactive inputs (`<input>`, signature pads) positioned precisely using the stored percentages.
+- [*] **Submission & Generation:** Upon submission, the client calls a server-side Cloud Function (`generateFilledPdf`), passing the form data. This function uses the `pdf-lib` library. It fetches the original PDF template, iterates through the `fieldMapping`, and draws the user's submitted text and signature images onto a new PDF at the exact percentage-based coordinates.
+- [*] **Storage:** The newly generated, filled PDF is uploaded to `/submissions/...` in Firebase Storage. The function returns the new file's URL. The client then creates a new submission document in the `/pdfs/{pdfId}/submissions` subcollection, storing the user's input and the URL to the final, generated PDF.
 
 ## Business Rules
 
