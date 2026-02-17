@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -40,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -97,7 +99,7 @@ export default function PdfFormsPage() {
   }
 
   return (
-    <>
+    <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-between gap-4 mb-8">
             <div>
@@ -115,7 +117,7 @@ export default function PdfFormsPage() {
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead className="w-[100px] text-center">Fields</TableHead>
                 <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
-                <TableHead className="w-[100px] text-right">Actions</TableHead>
+                <TableHead className="w-[160px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -139,47 +141,75 @@ export default function PdfFormsPage() {
                     <TableCell className="text-center font-medium">{pdf.fields?.length || 0}</TableCell>
                     <TableCell className="hidden md:table-cell">{format(new Date(pdf.createdAt), "PPP")}</TableCell>
                     <TableCell className="text-right">
-                       <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              <span>Map Fields</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuSeparator />
-                             <DropdownMenuItem onClick={() => navigator.clipboard.writeText(`${window.location.origin}/forms/${pdf.id}`)}>
-                              <Copy className="mr-2 h-4 w-4" />
-                              <span>Copy Public Link</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
+                       <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    `${window.location.origin}/forms/${pdf.id}`
+                                  );
+                                  toast({
+                                    title: "Link Copied",
+                                    description: "Public form URL copied to clipboard.",
+                                  });
+                                }}
+                              >
+                                <Copy className="h-4 w-4" />
+                                <span className="sr-only">Copy link</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Copy Public Link</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
                                 <a href={`/forms/${pdf.id}`} target="_blank" rel="noopener noreferrer">
-                                    <ExternalLink className="mr-2 h-4 w-4" />
-                                    <span>View Public Link</span>
+                                  <ExternalLink className="h-4 w-4" />
+                                  <span className="sr-only">View public page</span>
                                 </a>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
-                                {pdf.status === 'published' ? (
-                                    <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
-                                ) : (
-                                    <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
-                                )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:bg-destructive/10"
-                              onClick={() => setFormToDelete(pdf)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View Public Page</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                <span>Map Fields</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
+                                  {pdf.status === 'published' ? (
+                                      <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
+                                  ) : (
+                                      <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
+                                  )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:bg-destructive/10"
+                                onClick={() => setFormToDelete(pdf)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                       </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -213,6 +243,6 @@ export default function PdfFormsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </TooltipProvider>
   );
 }
