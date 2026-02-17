@@ -96,7 +96,7 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
   },
 ];
 
-const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fieldMapping' | 'status'>[] = [
+const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fields' | 'status' | 'createdBy'>[] = [
   {
     name: 'Sample Enrollment Form',
     originalFileName: 'enrollment.pdf',
@@ -231,12 +231,13 @@ export async function seedPdfForms(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'pdfs');
   const batch = writeBatch(firestore);
   const pdfsCollection = collection(firestore, 'pdfs');
-  pdfFormData.forEach((pdf) => {
+  pdfFormData.forEach((pdf, index) => {
     const docRef = doc(pdfsCollection);
-    const completePdfData = {
+    const completePdfData: Omit<PDFForm, 'id'> = {
       ...pdf,
-      status: 'draft' as const,
-      fieldMapping: [],
+      status: index === 0 ? 'published' : 'draft',
+      fields: [],
+      createdBy: 'system-seed',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -245,6 +246,7 @@ export async function seedPdfForms(firestore: Firestore): Promise<number> {
   await batch.commit();
   return pdfFormData.length;
 }
+
 
 export async function seedModules(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'modules');
