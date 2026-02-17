@@ -19,11 +19,12 @@
 [x] Build the client-side capabilities for visually editing and filling documents.
 
 ### Feature: Doc Signing (Editing & Filling)
-[x] Integrate `pdfjs-dist` for client-side PDF rendering.
+[x] Integrate `pdfjs-dist` for client-side PDF rendering into image components.
 [x] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
-    [x] Create a canvas-based interface to display PDF pages.
+    [x] Create a three-panel layout with a field list, a PDF viewer, and a properties inspector.
     [x] Develop draggable and resizable overlay components for form fields.
     [x] Implement logic to calculate and store field coordinates as percentages.
+[x] Implement an interactive preview modal for real-time testing.
 [x] Implement the public-facing route at `/forms/[pdfId]`.
 [x] Develop the public rendering engine with an HTML overlay for interactive fields.
 [x] Create the signature capture modal.

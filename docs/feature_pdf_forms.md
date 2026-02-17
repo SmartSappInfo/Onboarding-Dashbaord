@@ -90,9 +90,12 @@ User can download the final PDF / Admin sees submission record
     {
       "id": "fld_1",
       "type": "text",
+      "label": "Applicant Full Name",
       "pageNumber": 1,
       "position": { "x": 32.5, "y": 48.2 },
-      "dimensions": { "width": 22.1, "height": 3.5 }
+      "dimensions": { "width": 22.1, "height": 3.5 },
+      "fontSize": 12,
+      "required": true
     }
   ]
 }
@@ -123,11 +126,13 @@ User can download the final PDF / Admin sees submission record
 
 ## 6. Admin Editor Architecture (`FieldMapper.tsx`)
 
--   **Rendering**: The component uses `pdfjs-dist` to render each page of the PDF into an `Image` component. This is a stable and performant approach.
+-   **Layout**: The editor is a three-panel interface: a list of all fields on the left, a central canvas displaying the PDF pages, and a properties panel on the right for editing the selected field.
+-   **Rendering**: The component uses `pdfjs-dist` to render each page of the PDF into an `Image` component for a stable and performant viewing experience.
 -   **Field Overlays**: The interactive fields (`text`, `signature`, etc.) are React components absolutely positioned over the rendered page images.
--   **Interaction**: The `dnd-kit` library handles dragging, and custom logic on the resize handles calculates the new percentage-based dimensions.
--   **State Management**: Field data (`position`, `dimensions`, etc.) is managed in React state and is saved to Firestore via a server action (`updatePdfFormMapping`).
+-   **Interaction**: The `dnd-kit` library handles dragging fields, and custom logic on the resize handles calculates the new percentage-based dimensions.
+-   **State Management**: Field data (`label`, `position`, `dimensions`, etc.) is managed in React state and is saved to Firestore via a server action (`updatePdfFormMapping`).
 -   **AI Assist**: A button triggers the `detectPdfFields` Genkit flow, which analyzes the PDF and returns an array of suggested field locations. The editor then displays these as temporary overlays for the admin to confirm.
+-   **Interactive Preview**: A "Preview" button launches a modal that shows a fully interactive, public-facing version of the form, allowing for end-to-end testing without leaving the editor.
 
 ---
 
