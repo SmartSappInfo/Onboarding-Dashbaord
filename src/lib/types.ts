@@ -234,8 +234,8 @@ export interface PDFForm {
 
 export interface Submission {
   id: string;
-  formId: string;
-  values: { [key: string]: string };
-  signedPdfPath: string;
-  createdAt: string; // ISO String
+  pdfId: string;
+  submittedAt: string; // ISO String
+  formData: { [key: string]: any };
+  generatedPdfUrl: string;
 }

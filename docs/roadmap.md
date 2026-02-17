@@ -29,15 +29,15 @@
 [x] Create the signature capture modal.
 
 ## Phase 4: Server-Side Processing & Automation
-[ ] Implement backend logic for content generation, analysis, and document processing.
+[x] Implement backend logic for content generation, analysis, and document processing.
 
 ### Feature: Doc Signing (Backend & AI)
-[ ] Implement the `generateFilledPdf` server action.
-    [ ] Integrate the `pdf-lib` library for PDF manipulation.
-    [ ] Implement logic to draw text and signature images onto the PDF.
-    [ ] Implement logic to save the final PDF to Storage and create a submission record in Firestore.
-[ ] Implement the `detectPdfFields` Genkit flow for AI-assisted field detection.
-[ ] Integrate the AI flow into the PDF Field Mapping editor.
+[x] Implement the `generateFilledPdf` server action.
+    [x] Integrate the `pdf-lib` library for PDF manipulation.
+    [x] Implement logic to draw text and signature images onto the PDF.
+    [x] Implement logic to save the final PDF to Storage and create a submission record in Firestore.
+[x] Implement the `detectPdfFields` Genkit flow for AI-assisted field detection.
+[x] Integrate the AI flow into the PDF Field Mapping editor.
 
 ## Phase 5: Public-Facing Features & User Interaction (Other)
 [ ] Build other public-facing interfaces like meeting pages and surveys.

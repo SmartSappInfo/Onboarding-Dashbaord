@@ -9,8 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { generateFilledPdf } from '@/lib/pdf-actions';
 
 interface PageDetail {
   dataUrl: string;
@@ -22,6 +23,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [isLoadingPdf, setIsLoadingPdf] = React.useState(true);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [submissionResult, setSubmissionResult] = React.useState<{ url: string } | null>(null);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const pdfjsRef = React.useRef<any>(null);
   const { toast } = useToast();
@@ -92,13 +94,20 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     }
   }, [pdfForm.downloadUrl, toast]);
   
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     setIsSubmitting(true);
-    console.log("Form Submitted:", data);
-    // Here we will call the Cloud Function in the next step
-    setTimeout(() => {
-        setIsSubmitting(false);
-    }, 2000);
+    setSubmissionResult(null);
+
+    const result = await generateFilledPdf(pdfForm.id, data);
+    
+    if (result.success && result.url) {
+        toast({ title: 'Success!', description: 'Your document has been generated.' });
+        setSubmissionResult({ url: result.url });
+    } else {
+        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate the PDF.' });
+    }
+
+    setIsSubmitting(false);
   };
   
   const renderField = (field: PDFFormField) => {
@@ -140,11 +149,26 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     }
   }
 
+  if (submissionResult) {
+    return (
+        <div className="text-center py-20 bg-white rounded-lg shadow-xl max-w-2xl mx-auto">
+            <h2 className="text-2xl font-bold">Document Submitted Successfully!</h2>
+            <p className="text-muted-foreground mt-2 mb-6">You can download your final document below.</p>
+            <Button asChild size="lg">
+                <a href={submissionResult.url} target="_blank" rel="noopener noreferrer" download={`${pdfForm.name}-signed.pdf`}>
+                    <Download className="mr-2 h-5 w-5" />
+                    Download Your PDF
+                </a>
+            </Button>
+        </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
         {isLoadingPdf && (
              <div className="space-y-4">
-                <Skeleton className="w-full h-[80vh]" />
+                <Skeleton className="w-full h-[80vh] bg-gray-300" />
             </div>
         )}
         
@@ -152,7 +176,7 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
             <form onSubmit={handleSubmit(onSubmit)}>
                 <div className="space-y-4">
                     {pages.map((page, index) => (
-                        <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
+                        <div key={index} className="relative mx-auto shadow-lg bg-white" style={{ width: page.width, height: page.height }}>
                              <Image
                                 src={page.dataUrl}
                                 width={page.width}
@@ -192,4 +216,3 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     </div>
   );
 }
-    

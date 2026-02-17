@@ -18,7 +18,7 @@ Loads public form URL → Fills interactive fields
    ↓
 User clicks "Submit"
    ↓
-*Cloud Function generates the final, flattened PDF*
+*Server Action generates the final, flattened PDF*
    ↓
 User can download the final PDF / Admin sees submission record
 
@@ -34,7 +34,7 @@ User can download the final PDF / Admin sees submission record
 | Field Layout System     | Custom React Overlay   |
 | Backend State           | Firebase Firestore     |
 | File Storage            | Firebase Storage       |
-| Server-Side Logic       | Firebase Cloud Functions (or Server Actions) |
+| Server-Side Logic       | Next.js Server Actions |
 | AI Field Detection      | Genkit (Google AI)     |
 
 ---
@@ -63,10 +63,6 @@ User can download the final PDF / Admin sees submission record
    /lib
       pdf-actions.ts           # Server actions (create, update, generate)
       types.ts                 # All TypeScript type definitions
-
-/functions
-   /src
-      index.ts                 # (Future) Location for Cloud Function
 ```
 
 ---
@@ -87,9 +83,10 @@ User can download the final PDF / Admin sees submission record
   "storagePath": "pdfs/form123/original.pdf",
   "downloadUrl": "https://firebasestorage.googleapis.com/...",
   "status": "draft" | "published",
+  "createdBy": "user_uid_string",
   "createdAt": "2024-01-01T12:00:00Z",
   "updatedAt": "2024-01-02T14:30:00Z",
-  "fieldMapping": [
+  "fields": [
     {
       "id": "fld_1",
       "type": "text",
@@ -120,7 +117,7 @@ User can download the final PDF / Admin sees submission record
 ## 5. Firebase Storage Layout
 
 -   **Original Templates**: `/pdfs/{unique_id}-{original_filename}.pdf`
--   **Generated Submissions**: `/submissions/{submissionId}.pdf`
+-   **Generated Submissions**: `/submissions/{pdfId}/{submissionId}.pdf`
 
 ---
 
@@ -138,7 +135,7 @@ User can download the final PDF / Admin sees submission record
 
 -   **Load Sequence**: The page fetches the `published` `PDFForm` document from Firestore.
 -   **Rendering**: Like the editor, it renders the PDF pages as images.
--   **Interactive Overlay**: It maps over the `fieldMapping` array and renders the appropriate HTML inputs (`<input>`, `SignaturePadModal`, etc.) precisely positioned on top of the PDF images using the stored percentage values.
+-   **Interactive Overlay**: It maps over the `fields` array and renders the appropriate HTML inputs (`<input>`, `SignaturePadModal`, etc.) precisely positioned on top of the PDF images using the stored percentage values.
 -   **Real-Time Preview**: Each input is bound to `react-hook-form` state. As the user types or signs, the state is updated, providing a fast, real-time preview directly in the HTML overlay without regenerating the PDF.
 
 ---
@@ -167,11 +164,11 @@ A server action `generateFilledPdf` is triggered on form submission.
 1.  **Fetch Data**: The function loads the `PDFForm` document from Firestore and the original PDF template from Firebase Storage.
 2.  **Load PDF Engine**: It initializes the `pdf-lib` library with the original PDF's buffer.
 3.  **Draw Fields**: It iterates through the `formData`. For each field:
-    -   It looks up the field's properties (`position`, `dimensions`, `pageNumber`) from the `fieldMapping`.
+    -   It looks up the field's properties (`position`, `dimensions`, `pageNumber`) from the `fields` array.
     -   It **converts percentage coordinates to PDF points**, flipping the Y-axis (`y = pageHeight - (y_percent * pageHeight)`).
     -   For text fields, it uses `page.drawText()`.
     -   For signature fields, it embeds the PNG data URL using `page.drawImage()`.
-4.  **Save & Upload**: The modified PDF is saved as a `Uint8Array` and uploaded to the `/submissions/{submissionId}.pdf` path in Firebase Storage.
+4.  **Save & Upload**: The modified PDF is saved as a `Uint8Array` and uploaded to the `submissions/{pdfId}/{submissionId}.pdf` path in Firebase Storage.
 5.  **Record Submission**: The function gets the `downloadUrl` of the new PDF and creates a new document in the `/pdfs/{pdfId}/submissions` collection containing the `formData` and the `generatedPdfUrl`.
 6.  **Return URL**: The function returns the URL of the newly created, finalized PDF to the client.
 
