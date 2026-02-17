@@ -168,13 +168,13 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
           errorName: error.name,
           errorStack: error.stack,
           pdfUrl: pdf.downloadUrl,
-          isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
+          isCorsError: error.name === 'NetworkError' || (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))),
         };
         console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", JSON.stringify(debugInfo, null, 2));
         
         let description = 'Could not load document. Check the browser console for details.';
         if (debugInfo.isCorsError) {
-            description = 'This is a CORS issue. Please run the `gcloud` command provided previously to update your Firebase Storage bucket configuration.';
+            description = 'This is likely a CORS issue. Please follow the CORS troubleshooting steps in the README.md file.';
         }
 
         toast({ 

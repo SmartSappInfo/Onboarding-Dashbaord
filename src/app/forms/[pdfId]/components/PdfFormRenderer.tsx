@@ -66,13 +66,13 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
           errorName: error.name,
           errorStack: error.stack,
           pdfUrl: pdfForm.downloadUrl,
-          isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
+          isCorsError: error.name === 'NetworkError' || (error.message && (error.message.includes('CORS') || error.message.includes('Failed to fetch'))),
         };
         console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", JSON.stringify(debugInfo, null, 2));
 
         let description = 'Could not load document. Check the browser console for details.';
         if (debugInfo.isCorsError) {
-            description = 'This is a CORS issue. The server holding the PDF is not configured to allow your app to fetch it. The server administrator must update the CORS policy.';
+            description = 'This is likely a CORS issue. The server holding the PDF is not configured to allow your app to fetch it. The server administrator must update the CORS policy.';
         }
 
         toast({ 
