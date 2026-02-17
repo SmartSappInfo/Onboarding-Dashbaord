@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
@@ -150,7 +150,9 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
   const [isDetecting, setIsDetecting] = React.useState(false);
   const pdfjsRef = React.useRef<any>(null);
 
-  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  const [sidebarWidth, setSidebarWidth] = React.useState(384);
+  const isResizing = React.useRef(false);
 
   React.useEffect(() => {
     const loadAndRenderPdf = async () => {
@@ -287,39 +289,68 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
   
   const selectedField = fields.find(f => f.id === selectedFieldId);
 
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    isResizing.current = true;
+  };
+
+  const handleMouseUp = React.useCallback(() => {
+    isResizing.current = false;
+  }, []);
+
+  const handleMouseMove = React.useCallback((e: MouseEvent) => {
+    if (isResizing.current) {
+        const newWidth = window.innerWidth - e.clientX;
+        if (newWidth > 320 && newWidth < 600) { // Clamping the width
+            setSidebarWidth(newWidth);
+        }
+    }
+  }, []);
+
+  React.useEffect(() => {
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-full overflow-hidden p-4">
+    <div className="flex h-full overflow-hidden">
       {/* PDF Viewer Column */}
-      <div className="lg:col-span-8 xl:col-span-9 h-full relative">
+      <div className="flex-1 h-full relative min-w-0">
           <DndContext onDragEnd={handleDragEnd}>
-              <div
-                  ref={containerRef}
-                  className="bg-muted rounded-lg border overflow-auto p-4 space-y-4 h-full pb-24"
-                  onClick={() => setSelectedFieldId(null)}
-              >
-                  {isLoadingPdf && <Skeleton className="w-full h-full" />}
-                  {!isLoadingPdf && pages.map((page, index) => (
-                      <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
-                          <Image
-                              src={page.dataUrl}
-                              width={page.width}
-                              height={page.height}
-                              alt={`Page ${index + 1}`}
-                              priority
-                          />
-                          {fields.filter(f => f.pageNumber === index + 1).map(field => (
-                              <ResizableField
-                                  key={field.id}
-                                  field={field}
-                                  page={page}
-                                  isSelected={selectedFieldId === field.id}
-                                  onSelect={setSelectedFieldId}
-                                  onUpdate={updateField}
-                              />
-                          ))}
-                      </div>
-                  ))}
-              </div>
+              <ScrollArea className="h-full bg-muted">
+                <div
+                    className="p-4 space-y-4 pb-24"
+                    onClick={() => setSelectedFieldId(null)}
+                >
+                    {isLoadingPdf && <Skeleton className="w-full h-[1000px]" />}
+                    {!isLoadingPdf && pages.map((page, index) => (
+                        <div key={index} className="relative mx-auto shadow-lg" style={{ width: page.width, height: page.height }}>
+                            <Image
+                                src={page.dataUrl}
+                                width={page.width}
+                                height={page.height}
+                                alt={`Page ${index + 1}`}
+                                priority
+                            />
+                            {fields.filter(f => f.pageNumber === index + 1).map(field => (
+                                <ResizableField
+                                    key={field.id}
+                                    field={field}
+                                    page={page}
+                                    isSelected={selectedFieldId === field.id}
+                                    onSelect={setSelectedFieldId}
+                                    onUpdate={updateField}
+                                />
+                            ))}
+                        </div>
+                    ))}
+                </div>
+              </ScrollArea>
           </DndContext>
           
           {/* Floating Toolbar */}
@@ -354,90 +385,131 @@ export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps
               </Card>
           </div>
       </div>
+      
+      {/* Resizer Handle */}
+      <div 
+        className="w-2 cursor-col-resize bg-border/50 hover:bg-border transition-colors flex items-center justify-center"
+        onMouseDown={handleMouseDown}
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
 
       {/* Right Sidebar Column */}
-      <div className="lg:col-span-4 xl:col-span-3 h-full overflow-y-auto space-y-4">
-          <Card>
-              <CardHeader>
-                  <CardTitle>Fields ({fields.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                  <ScrollArea className="h-48">
-                      <div className="space-y-1">
-                          {fields.map((field) => {
-                              const Icon = fieldIcons[field.type];
-                              return (
-                                  <button
-                                      key={field.id}
-                                      onClick={() => setSelectedFieldId(field.id)}
-                                      className={cn(
-                                          "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted",
-                                          selectedFieldId === field.id && 'bg-muted ring-1 ring-primary'
-                                      )}
-                                  >
-                                      <Icon className="h-4 w-4 text-muted-foreground" />
-                                      <span className="truncate text-sm flex-1">{field.label || field.id}</span>
-                                  </button>
-                              );
-                          })}
-                      </div>
-                  </ScrollArea>
-              </CardContent>
-          </Card>
+      <div 
+        className="h-full bg-card border-l transition-all"
+        style={{ width: isCollapsed ? "56px" : `${sidebarWidth}px` }}
+      >
+        <div className="flex flex-col h-full">
+            <div className="p-2 border-b flex-shrink-0">
+                 <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>
+                    {isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+                </Button>
+            </div>
+            
+            {isCollapsed ? (
+                <div className="flex flex-col items-center gap-4 py-4">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon"><List /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left"><p>Fields</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon"><Settings2 /></Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left"><p>Properties</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            ) : (
+                <ScrollArea className="flex-grow">
+                    <div className="space-y-4 p-4">
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Fields ({fields.length})</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <ScrollArea className="h-48">
+                                    <div className="space-y-1">
+                                        {fields.map((field) => {
+                                            const Icon = fieldIcons[field.type];
+                                            return (
+                                                <button
+                                                    key={field.id}
+                                                    onClick={() => setSelectedFieldId(field.id)}
+                                                    className={cn(
+                                                        "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted",
+                                                        selectedFieldId === field.id && 'bg-muted ring-1 ring-primary'
+                                                    )}
+                                                >
+                                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="truncate text-sm flex-1">{field.label || field.id}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </ScrollArea>
+                            </CardContent>
+                        </Card>
 
-          {selectedField ? (
-          <Card>
-              <CardHeader>
-              <CardTitle className="flex justify-between items-center">
-                  <span>Field Properties</span>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}>
-                      <Trash2 className="h-4 w-4" />
-                  </Button>
-              </CardTitle>
-              <CardDescription>ID: {selectedField.id}</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor={`label-${selectedField.id}`}>Field Label</Label>
-                      <Input id={`label-${selectedField.id}`} placeholder="e.g. Applicant Name" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                      <Label>Type</Label>
-                      <Input value={selectedField.type} disabled className="capitalize" />
-                  </div>
-                  <div className="space-y-2">
-                      <Label htmlFor={`page-${selectedField.id}`}>Page Number</Label>
-                      <Input id={`page-${selectedField.id}`} type="number" min="1" max={pages.length} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-2">
-                          <Label htmlFor={`x-pos-${selectedField.id}`}>X (%)</Label>
-                          <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor={`y-pos-${selectedField.id}`}>Y (%)</Label>
-                          <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
-                      </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-2">
-                          <Label htmlFor={`width-${selectedField.id}`}>Width (%)</Label>
-                          <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
-                      </div>
-                      <div className="space-y-2">
-                          <Label htmlFor={`height-${selectedField.id}`}>Height (%)</Label>
-                          <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
-                      </div>
-                  </div>
-              </CardContent>
-          </Card>
-          ) : (
-              <Card className="text-center text-sm text-muted-foreground p-8">
-                  <p>Select a field to edit its properties or add a new field from the toolbar.</p>
-              </Card>
-          )}
+                        {selectedField ? (
+                            <Card>
+                                <CardHeader>
+                                <CardTitle className="flex justify-between items-center">
+                                    <span>Field Properties</span>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </CardTitle>
+                                <CardDescription>ID: {selectedField.id}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor={`label-${selectedField.id}`}>Field Label</Label>
+                                        <Input id={`label-${selectedField.id}`} placeholder="e.g. Applicant Name" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>Type</Label>
+                                        <Input value={selectedField.type} disabled className="capitalize" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor={`page-${selectedField.id}`}>Page Number</Label>
+                                        <Input id={`page-${selectedField.id}`} type="number" min="1" max={pages.length} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`x-pos-${selectedField.id}`}>X (%)</Label>
+                                            <Input id={`x-pos-${selectedField.id}`} type="number" value={selectedField.position.x.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`y-pos-${selectedField.id}`}>Y (%)</Label>
+                                            <Input id={`y-pos-${selectedField.id}`} type="number" value={selectedField.position.y.toFixed(2)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`width-${selectedField.id}`}>Width (%)</Label>
+                                            <Input id={`width-${selectedField.id}`} type="number" value={selectedField.dimensions.width.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor={`height-${selectedField.id}`}>Height (%)</Label>
+                                            <Input id={`height-${selectedField.id}`} type="number" value={selectedField.dimensions.height.toFixed(2)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} />
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Card className="text-center text-sm text-muted-foreground p-8">
+                                <p>Select a field to edit its properties or add a new field from the toolbar.</p>
+                            </Card>
+                        )}
+                    </div>
+                </ScrollArea>
+            )}
+        </div>
       </div>
     </div>
   );
 }
-    
