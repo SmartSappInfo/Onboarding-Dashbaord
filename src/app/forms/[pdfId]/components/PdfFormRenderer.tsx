@@ -31,8 +31,8 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
       try {
         if (!pdfjsRef.current) {
           const pdfjsModule = await import('pdfjs-dist');
-          const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
-          pdfjsModule.GlobalWorkerOptions.workerSrc = pdfjsWorker.default;
+          const pdfjsVersion = (await import('pdfjs-dist/package.json')).version;
+          pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
           pdfjsRef.current = pdfjsModule;
         }
 
