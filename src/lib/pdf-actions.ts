@@ -7,7 +7,7 @@ import { ref, deleteObject, uploadBytes, getDownloadURL } from 'firebase/storage
 import { getDb, getServerStorage } from './server-only-firestore';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { PDFForm, PDFFormField } from './types';
+import type { PDFForm, PDFFormField, Submission } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 
@@ -184,51 +184,34 @@ export async function deletePdfForm(pdfId: string, storagePath: string, userId: 
     }
 }
 
-export async function generateFilledPdf(pdfId: string, formData: { [key: string]: string }) {
-  if (!pdfId || !formData) {
-    return { error: 'Invalid input data for PDF generation.' };
-  }
-  
-  const db = getDb();
-  const storage = getServerStorage();
-  
-  try {
-    // 1. Fetch PDFForm document
-    const pdfFormRef = doc(db, 'pdfs', pdfId);
-    const pdfFormSnap = await getDoc(pdfFormRef);
-
-    if (!pdfFormSnap.exists() || pdfFormSnap.data().status !== 'published') {
-      return { error: 'This form is not available for submission.' };
-    }
-    const pdfForm = pdfFormSnap.data() as PDFForm;
-
-    // 2. Fetch original PDF from Storage
+async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: any }) {
+    // Fetch original PDF from Storage
     const response = await fetch(pdfForm.downloadUrl);
     if (!response.ok) {
         throw new Error(`Failed to fetch original PDF: ${response.statusText}`);
     }
     const pdfBuffer = await response.arrayBuffer();
-    
-    // 3. Load PDF with pdf-lib
+
+    // Load PDF with pdf-lib
     const pdfDoc = await PDFDocument.load(pdfBuffer);
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
 
-    // 4. Draw fields onto the PDF
+    // Draw fields onto the PDF
     for (const fieldId in formData) {
         const value = formData[fieldId];
         if (!value) continue;
 
         const field = pdfForm.fields.find((f) => f.id === fieldId);
         if (!field || field.pageNumber > pages.length) continue;
-        
+
         const page = pages[field.pageNumber - 1];
         const { width: pageWidth, height: pageHeight } = page.getSize();
-        
+
         // Convert percentage-based coordinates to PDF points
         const x = (field.position.x / 100) * pageWidth;
         const y = pageHeight - ((field.position.y / 100) * pageHeight);
-        
+
         const fieldHeight = (field.dimensions.height / 100) * pageHeight;
         const fontSize = field.fontSize || Math.max(8, fieldHeight * 0.8);
 
@@ -244,9 +227,9 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
             const pngImageBytes = Buffer.from(value.split(',')[1], 'base64');
             const pngImage = await pdfDoc.embedPng(pngImageBytes);
             const fieldWidth = (field.dimensions.width / 100) * pageWidth;
-            
+
             const scale = Math.min(fieldWidth / pngImage.width, fieldHeight / pngImage.height);
-            
+
             page.drawImage(pngImage, {
                 x: x,
                 y: y - fieldHeight,
@@ -256,25 +239,39 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
         }
     }
 
-    // 5. Save modified PDF and upload
-    const modifiedPdfBytes = await pdfDoc.save();
-    const submissionId = `sub_${Date.now()}`;
-    const submissionPath = `submissions/${pdfId}/${submissionId}.pdf`;
-    const newPdfRef = ref(storage, submissionPath);
-    
-    await uploadBytes(newPdfRef, modifiedPdfBytes);
-    const generatedPdfUrl = await getDownloadURL(newPdfRef);
+    // Return the modified PDF bytes
+    return await pdfDoc.saveAsBase64({ dataUri: true });
+}
 
-    // 6. Create submission record in Firestore
+export async function generateFilledPdf(pdfId: string, formData: { [key: string]: string }) {
+  if (!pdfId || !formData) {
+    return { error: 'Invalid input data for PDF generation.' };
+  }
+  
+  const db = getDb();
+  
+  try {
+    // 1. Fetch PDFForm document
+    const pdfFormRef = doc(db, 'pdfs', pdfId);
+    const pdfFormSnap = await getDoc(pdfFormRef);
+
+    if (!pdfFormSnap.exists() || pdfFormSnap.data().status !== 'published') {
+      return { error: 'This form is not available for submission.' };
+    }
+    const pdfForm = pdfFormSnap.data() as PDFForm;
+
+    // 2. Generate PDF in memory
+    const pdfDataUri = await generatePdfFromData(pdfForm, formData);
+    
+    // 3. Create submission record in Firestore
     const submissionData = {
         pdfId,
         submittedAt: new Date().toISOString(),
         formData,
-        generatedPdfUrl,
     };
     const submissionRef = await addDoc(collection(db, `pdfs/${pdfId}/submissions`), submissionData);
     
-    // Log activity
+    // 4. Log activity
     await logActivity({
         schoolId: '', // Not tied to a specific school
         userId: null, // Public action
@@ -284,10 +281,42 @@ export async function generateFilledPdf(pdfId: string, formData: { [key: string]
         metadata: { pdfId, submissionId: submissionRef.id }
     });
 
-    // 7. Return URL
-    return { success: true, url: generatedPdfUrl };
+    // 5. Return data URI for immediate download
+    return { success: true, pdfDataUri };
   } catch (error: any) {
     console.error("Failed to generate PDF:", error);
     return { error: `An unexpected error occurred: ${error.message}` };
   }
+}
+
+export async function regenerateSubmissionPdf(pdfId: string, submissionId: string) {
+    if (!pdfId || !submissionId) {
+        return { error: 'Invalid input data.' };
+    }
+
+    const db = getDb();
+
+    try {
+        const pdfFormRef = doc(db, 'pdfs', pdfId);
+        const submissionRef = doc(db, `pdfs/${pdfId}/submissions`, submissionId);
+
+        const [pdfFormSnap, submissionSnap] = await Promise.all([
+            getDoc(pdfFormRef),
+            getDoc(submissionRef)
+        ]);
+
+        if (!pdfFormSnap.exists() || !submissionSnap.exists()) {
+            return { error: 'Form or submission not found.' };
+        }
+
+        const pdfForm = pdfFormSnap.data() as PDFForm;
+        const submission = submissionSnap.data() as Submission;
+
+        const pdfDataUri = await generatePdfFromData(pdfForm, submission.formData);
+
+        return { success: true, pdfDataUri };
+    } catch (error: any) {
+        console.error("Failed to regenerate PDF:", error);
+        return { error: `An unexpected error occurred: ${error.message}` };
+    }
 }

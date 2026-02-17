@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -9,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Download, Eye } from 'lucide-react';
+import { ArrowLeft, Eye } from 'lucide-react';
 
 export default function SubmissionsPage() {
   const params = useParams();
@@ -78,12 +79,6 @@ export default function SubmissionsPage() {
                                 <Eye className="mr-2 h-4 w-4" />
                                 View
                             </Link>
-                        </Button>
-                        <Button asChild size="sm">
-                            <a href={submission.generatedPdfUrl} target="_blank" rel="noopener noreferrer" download>
-                                <Download className="mr-2 h-4 w-4" />
-                                Download
-                            </a>
                         </Button>
                     </div>
                   </TableCell>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -33,7 +34,7 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [submissionResult, setSubmissionResult] = React.useState<{ url: string } | null>(null);
+  const [isSubmitted, setIsSubmitted] = React.useState(false);
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const { toast } = useToast();
 
@@ -49,6 +50,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const loadPdf = async () => {
         try {
             const pdfjs = await import('pdfjs-dist');
+            const pdfjsViewer = await import('pdfjs-dist/web/pdf_viewer.mjs');
             (window as any).pdfjsLib = pdfjs;
             const pdfjsVersion = '4.4.168';
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
@@ -75,13 +77,20 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
     
     setIsSubmitting(true);
-    setSubmissionResult(null);
 
     const result = await generateFilledPdf(pdfForm.id, data);
     
-    if (result.success && result.url) {
-        toast({ title: 'Success!', description: 'Your document has been generated.' });
-        setSubmissionResult({ url: result.url });
+    if (result.success && result.pdfDataUri) {
+        toast({ title: 'Success!', description: 'Your document is now downloading.' });
+        
+        const link = document.createElement('a');
+        link.href = result.pdfDataUri;
+        link.download = `${pdfForm.name}-signed.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setIsSubmitted(true);
     } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate the PDF.' });
     }
@@ -132,17 +141,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     );
   }
 
-  if (submissionResult) {
+  if (isSubmitted) {
     return (
         <div className="text-center py-20 bg-white rounded-lg shadow-xl max-w-2xl mx-auto">
             <h2 className="text-2xl font-bold">Document Submitted Successfully!</h2>
-            <p className="text-muted-foreground mt-2 mb-6">You can download your final document below.</p>
-            <Button asChild size="lg">
-                <a href={submissionResult.url} target="_blank" rel="noopener noreferrer" download={`${pdfForm.name}-signed.pdf`}>
-                    <Download className="mr-2 h-5 w-5" />
-                    Download Your PDF
-                </a>
-            </Button>
+            <p className="text-muted-foreground mt-2 mb-6">Your download should have started automatically. You can close this window.</p>
         </div>
     );
   }
@@ -204,28 +207,22 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const textLayerRef = React.useRef<HTMLDivElement>(null);
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
-    const pdfjsRef = React.useRef<any | null>(null);
-    const pdfjsViewerRef = React.useRef<any | null>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
     React.useEffect(() => {
+        let isMounted = true;
         const render = async () => {
             setIsLoading(true);
             try {
-                if (!pdfjsRef.current) {
-                    const [pdfjsModule, pdfjsViewerModule] = await Promise.all([
-                        import('pdfjs-dist'),
-                        import('pdfjs-dist/web/pdf_viewer.mjs'),
-                    ]);
-                    (window as any).pdfjsLib = pdfjsModule;
-                    const pdfjsVersion = '4.4.168';
-                    pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-                    pdfjsRef.current = pdfjsModule;
-                    pdfjsViewerRef.current = pdfjsViewerModule;
-                }
-                const pdfjs = pdfjsRef.current;
-                const pdfjsViewer = pdfjsViewerRef.current;
+                const pdfjs = await import('pdfjs-dist');
+                const pdfjsViewer = await import('pdfjs-dist/web/pdf_viewer.mjs');
+                window.pdfjsLib = pdfjs;
+
+                const pdfjsVersion = '4.4.168';
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+
+                if (!isMounted) return;
 
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: 1.5 });
@@ -244,22 +241,23 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
                 const textContent = await page.getTextContent();
                 if (textLayerRef.current) {
                     textLayerRef.current.innerHTML = '';
-                    pdfjs.renderTextLayer({ textContentSource: textContent, container: textLayerRef.current, viewport });
+                    await pdfjs.renderTextLayer({ textContentSource: textContent, container: textLayerRef.current, viewport });
                 }
 
                 if (annotationLayerRef.current) {
                     annotationLayerRef.current.innerHTML = '';
                     const annotations = await page.getAnnotations();
                     const linkService = new pdfjsViewer.PDFLinkService();
-                    pdfjsViewer.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService: linkService, renderForms: false });
+                    pdfjsViewer.AnnotationLayer.render({ viewport: viewport.clone({ dontFlip: true }), div: annotationLayerRef.current, annotations, page, linkService, renderForms: false });
                 }
             } catch (e) {
                 console.error("Failed to render page", e);
             } finally {
-                setIsLoading(false);
+                if (isMounted) setIsLoading(false);
             }
         };
         render();
+        return () => { isMounted = false; };
     }, [pdf, pageNumber]);
 
     return (

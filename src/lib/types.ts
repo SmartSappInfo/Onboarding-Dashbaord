@@ -239,5 +239,4 @@ export interface Submission {
   pdfId: string;
   submittedAt: string; // ISO String
   formData: { [key: string]: any };
-  generatedPdfUrl: string;
 }
