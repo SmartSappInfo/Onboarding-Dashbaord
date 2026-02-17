@@ -12,7 +12,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, EyeOff, Lock } from 'lucide-react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
-import { DndContext, useDraggable, type DragEndEvent } from '@dnd-kit/core';
+import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -20,6 +20,7 @@ import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface PageDetail {
   dataUrl: string;
@@ -144,6 +145,7 @@ const ResizableField = ({
 
 
 interface PropertiesSidebarProps {
+  pdf: PDFForm;
   fields: LocalPDFFormField[];
   selectedFieldId: string | null;
   setSelectedFieldId: (id: string | null) => void;
@@ -154,12 +156,13 @@ interface PropertiesSidebarProps {
   setPassword: (password: string) => void;
   passwordProtected: boolean;
   setPasswordProtected: (enabled: boolean) => void;
-  onSave: () => Promise<void>;
-  isSaving: boolean;
+  onStatusChange: (status: PDFForm['status']) => void;
+  isStatusChanging: boolean;
   onPreview: () => void;
 }
 
 const PropertiesSidebar = ({
+  pdf,
   fields,
   selectedFieldId,
   setSelectedFieldId,
@@ -170,8 +173,8 @@ const PropertiesSidebar = ({
   setPassword,
   passwordProtected,
   setPasswordProtected,
-  onSave,
-  isSaving,
+  onStatusChange,
+  isStatusChanging,
   onPreview,
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
@@ -304,10 +307,20 @@ const PropertiesSidebar = ({
         </div>
       </ScrollArea>
       <div className="flex-shrink-0 border-t p-4 space-y-2 bg-background">
-        <Button onClick={onSave} disabled={isSaving} className="w-full">
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-            {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
+        <Select
+            value={pdf.status}
+            onValueChange={(value: PDFForm['status']) => onStatusChange(value)}
+            disabled={isStatusChanging}
+        >
+            <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+            </SelectContent>
+        </Select>
         <Button variant="outline" onClick={onPreview} className="w-full">
             <Eye className="mr-2 h-4 w-4" />
             Preview
@@ -327,12 +340,12 @@ interface FieldMapperProps {
   setPassword: (password: string) => void;
   passwordProtected: boolean;
   setPasswordProtected: (enabled: boolean) => void;
-  onSave: () => Promise<void>;
-  isSaving: boolean;
+  onStatusChange: (status: PDFForm['status']) => void;
+  isStatusChanging: boolean;
   onPreview: () => void;
 }
 
-export default function FieldMapper({ pdf, fields, setFields, password, setPassword, passwordProtected, setPasswordProtected, onSave, isSaving, onPreview }: FieldMapperProps) {
+export default function FieldMapper({ pdf, fields, setFields, password, setPassword, passwordProtected, setPasswordProtected, onStatusChange, isStatusChanging, onPreview }: FieldMapperProps) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
@@ -349,6 +362,25 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
   const [displayZoom, setDisplayZoom] = React.useState(1);
   const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 2));
   const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
+  
+  const viewportRef = React.useRef<HTMLDivElement>(null);
+  
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const zoomFactor = 0.1;
+      const { deltaY } = e;
+      setDisplayZoom(prev => Math.max(0.5, Math.min(prev - (deltaY > 0 ? zoomFactor : -zoomFactor), 2)));
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   React.useEffect(() => {
     const loadAndRenderPdf = async () => {
@@ -515,8 +547,8 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
     <div className="flex h-full overflow-hidden">
       {/* PDF Viewer Column */}
       <div className="flex-1 h-full relative min-w-0">
-          <DndContext onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full bg-muted">
+          <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+              <ScrollArea className="h-full bg-muted" onWheel={handleWheel} viewportRef={viewportRef}>
                 <div
                     className="p-4 space-y-4 pb-24 flex flex-col items-center"
                     onClick={() => setSelectedFieldId(null)}
@@ -590,7 +622,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
                           </Tooltip>
                            <Tooltip>
                             <TooltipTrigger asChild>
-                              <div className="flex items-center justify-center w-12 h-9 text-sm font-medium text-muted-foreground border border-input rounded-md bg-transparent">
+                              <div className="flex items-center justify-center w-16 h-9 text-sm font-medium text-muted-foreground border border-input rounded-md bg-transparent">
                                 {Math.round(displayZoom * 100)}%
                               </div>
                             </TooltipTrigger>
@@ -642,6 +674,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
             </div>
             
             {!isCollapsed && <PropertiesSidebar 
+                pdf={pdf}
                 fields={fields} 
                 selectedFieldId={selectedFieldId} 
                 setSelectedFieldId={setSelectedFieldId} 
@@ -652,8 +685,8 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
                 setPassword={setPassword}
                 passwordProtected={passwordProtected}
                 setPasswordProtected={setPasswordProtected}
-                onSave={onSave}
-                isSaving={isSaving}
+                onStatusChange={onStatusChange}
+                isStatusChanging={isStatusChanging}
                 onPreview={onPreview}
             />}
             
@@ -675,6 +708,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden" side="right">
           <PropertiesSidebar 
+            pdf={pdf}
             fields={fields} 
             selectedFieldId={selectedFieldId} 
             setSelectedFieldId={setSelectedFieldId} 
@@ -685,8 +719,8 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
             setPassword={setPassword}
             passwordProtected={passwordProtected}
             setPasswordProtected={setPasswordProtected}
-            onSave={onSave}
-            isSaving={isSaving}
+            onStatusChange={onStatusChange}
+            isStatusChanging={isStatusChanging}
             onPreview={onPreview}
           />
         </SheetContent>

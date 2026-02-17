@@ -7,13 +7,12 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2 } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 export default function EditPdfPage() {
@@ -144,20 +143,10 @@ export default function EditPdfPage() {
             )}
         </div>
         <div className="flex items-center gap-2">
-            <Select
-                value={pdf.status}
-                onValueChange={(value: PDFForm['status']) => handleStatusChange(value)}
-                disabled={isStatusChanging}
-            >
-                <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                </SelectContent>
-            </Select>
+            <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
         </div>
       </div>
 
@@ -170,8 +159,8 @@ export default function EditPdfPage() {
             setPassword={setPassword}
             passwordProtected={passwordProtected}
             setPasswordProtected={setPasswordProtected}
-            onSave={handleSave}
-            isSaving={isSaving}
+            onStatusChange={handleStatusChange}
+            isStatusChanging={isStatusChanging}
             onPreview={() => setIsPreviewOpen(true)}
         />
       </div>
