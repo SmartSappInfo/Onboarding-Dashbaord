@@ -23,6 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PdfPreviewDialog from './PdfPreviewDialog';
+import { updatePdfFormStatus } from '@/lib/pdf-actions';
 
 // Dynamically import pdfjs-dist
 const pdfjsPromise = import('pdfjs-dist');
@@ -239,12 +240,15 @@ const ResizableField = ({
                                 </TooltipTrigger><TooltipContent><p>Change Type</p></TooltipContent></Tooltip>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
-                                {(['text', 'signature', 'date'] as const).map(type => (
-                                    <Button key={type} variant="ghost" className="w-full justify-start" onClick={() => onChangeType(field.id, type)}>
-                                        <svelte:fragment>{fieldIcons[type]({ className: 'mr-2 h-4 w-4' })}</svelte:fragment>
-                                        <span className="capitalize">{type}</span>
-                                    </Button>
-                                ))}
+                                {(['text', 'signature', 'date'] as const).map(type => {
+                                    const Icon = fieldIcons[type];
+                                    return (
+                                        <Button key={type} variant="ghost" className="w-full justify-start" onClick={() => onChangeType(field.id, type)}>
+                                            <Icon className="mr-2 h-4 w-4" />
+                                            <span className="capitalize">{type}</span>
+                                        </Button>
+                                    );
+                                })}
                             </PopoverContent>
                         </Popover>
                         
