@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -65,7 +64,7 @@ export default function PdfFormsPage() {
     const result = await deletePdfForm(formToDelete.id, formToDelete.storagePath, user.uid);
     
     if (result.success) {
-      toast({ title: 'PDF Form Deleted' });
+      toast({ title: 'Document Deleted' });
     } else {
       toast({ variant: 'destructive', title: 'Error', description: result.error });
     }
@@ -89,8 +88,8 @@ export default function PdfFormsPage() {
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-between gap-4 mb-8">
             <div>
-                <h1 className="text-2xl font-bold tracking-tight">PDF Forms</h1>
-                <p className="text-muted-foreground">Manage your dynamic PDF forms for public filling.</p>
+                <h1 className="text-2xl font-bold tracking-tight">Doc Signing</h1>
+                <p className="text-muted-foreground">Manage your documents for signing and filling.</p>
             </div>
             <UploadPDFButton />
         </div>
@@ -161,8 +160,8 @@ export default function PdfFormsPage() {
                 <TableRow>
                   <TableCell colSpan={4} className="h-48 text-center">
                     <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No PDF Forms Yet</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Upload your first PDF to get started.</p>
+                    <h3 className="mt-4 text-lg font-semibold">No Documents Yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
                   </TableCell>
                 </TableRow>
               )}
@@ -175,7 +174,7 @@ export default function PdfFormsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the PDF form <span className="font-bold">"{formToDelete?.name}"</span> and its associated file.
+              This action cannot be undone. This will permanently delete the document <span className="font-bold">"{formToDelete?.name}"</span> and its associated file.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

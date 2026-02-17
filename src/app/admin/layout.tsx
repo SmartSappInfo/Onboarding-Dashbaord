@@ -46,7 +46,7 @@ const navItems = [
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
-  { href: '/admin/pdfs', icon: FileText, label: 'PDFs' },
+  { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing' },
   { href: '/admin/activities', icon: History, label: 'Activities' },
 ];
 

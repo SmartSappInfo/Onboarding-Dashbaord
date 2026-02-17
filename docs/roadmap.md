@@ -58,16 +58,16 @@
 [ ] Implement a school-specific activity view (`NotesSection.tsx`) to be embedded in the school details modal.
 [ ] Implement server actions (`updateNote`, `deleteNote`) to allow users to edit or delete their own `'note'` type activities.
 
-### Feature: Dynamic PDF Forms (Management)
+### Feature: Doc Signing (Management)
 [*] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
-[*] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
+[*] Implement the document management page (`/admin/pdfs` route) with a data table for all documents.
 [*] Implement the file upload mechanism to Firebase Storage for new PDFs.
 
 ## Phase 3: Document Rendering & Interaction Layer
 
 [ ] Build the client-side capabilities for visually editing and filling documents.
 
-### Feature: Dynamic PDF Forms (Editing & Filling)
+### Feature: Doc Signing (Editing & Filling)
 [*] Integrate PDF.js library for client-side PDF rendering in the admin UI.
 [*] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
     [*] Create a canvas-based interface to display PDF pages.
@@ -93,7 +93,7 @@
 [ ] Implement the `generateSurveySummary` flow.
 [ ] Implement the `querySurveyData` flow.
 
-### Feature: Dynamic PDF Forms (Backend & AI)
+### Feature: Doc Signing (Backend & AI)
 [ ] Implement the `detectPdfFields` Genkit flow.
     [ ] Instruct the AI model to analyze a PDF's visual layout and return field suggestions.
     [ ] Ensure the output is a structured JSON array with percentage-based coordinates.

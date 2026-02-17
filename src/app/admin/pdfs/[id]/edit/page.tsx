@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -28,7 +27,7 @@ export default function EditPdfPage() {
       <div className="flex-shrink-0">
           <Button variant="ghost" onClick={() => router.push('/admin/pdfs')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to PDF Forms
+            Back to Doc Signing
           </Button>
       </div>
 
@@ -44,7 +43,7 @@ export default function EditPdfPage() {
         )}
         {!isLoading && !pdf && (
           <div className="text-center py-20">
-            <p>PDF Form not found.</p>
+            <p>Document not found.</p>
           </div>
         )}
       </div>
