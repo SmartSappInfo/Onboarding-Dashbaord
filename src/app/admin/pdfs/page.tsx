@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { format } from 'date-fns';
+import Link from 'next/link';
 
 import type { PDFForm } from '@/lib/types';
 import { deletePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
@@ -42,6 +42,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
+import SubmissionCount from './components/SubmissionCount';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -116,6 +117,7 @@ export default function PdfFormsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
                 <TableHead className="w-[100px] text-center">Fields</TableHead>
+                <TableHead className="w-[120px] text-center">Responses</TableHead>
                 <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
                 <TableHead className="w-[160px] text-right">Actions</TableHead>
               </TableRow>
@@ -126,6 +128,7 @@ export default function PdfFormsPage() {
                   <TableRow key={i}>
                     <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                     <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
@@ -139,6 +142,13 @@ export default function PdfFormsPage() {
                       <Badge variant={getStatusVariant(pdf.status)} className="capitalize">{pdf.status}</Badge>
                     </TableCell>
                     <TableCell className="text-center font-medium">{pdf.fields?.length || 0}</TableCell>
+                    <TableCell className="text-center">
+                        <Button variant="link" asChild className="font-semibold">
+                            <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
+                                <SubmissionCount pdfId={pdf.id} />
+                            </Link>
+                        </Button>
+                    </TableCell>
                     <TableCell className="hidden md:table-cell">{format(new Date(pdf.createdAt), "PPP")}</TableCell>
                     <TableCell className="text-right">
                        <div className="flex items-center justify-end gap-1">
@@ -215,7 +225,7 @@ export default function PdfFormsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center">
+                  <TableCell colSpan={6} className="h-48 text-center">
                     <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
                     <h3 className="mt-4 text-lg font-semibold">No Documents Yet</h3>
                     <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
