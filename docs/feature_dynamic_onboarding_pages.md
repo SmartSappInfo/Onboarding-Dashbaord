@@ -75,29 +75,29 @@
 
 ## Phase 4: Public-Facing Features & User Interaction
 
-[ ] Build the public-facing interfaces that allow users (parents, staff, respondents) to interact with the data managed by administrators.
+[x] Build the public-facing interfaces that allow users (parents, staff, respondents) to interact with the data managed by administrators.
 
 ### Feature: Dynamic Onboarding Pages
 
-[ ] Create dynamic Next.js routes for different meeting types (e.g., `/meetings/parent-engagement/[schoolSlug]`).
-[ ] Implement the `SchoolMeetingLoader` client component.
-    [ ] Fetch the `School` document based on the `schoolSlug` from the URL.
-    [ ] Fetch all associated `Meeting` documents for that school.
-    [ ] Filter and sort meetings on the client to find the most relevant one (soonest upcoming or most recent past).
-[ ] Implement hero components (`MeetingHero`, `KickoffMeetingHero`) with time-based logic.
-    [ ] Display a countdown timer before the meeting starts.
-    [ ] Disable the "Join Meeting" button until 5 minutes before the meeting.
-    [ ] After 2 hours have passed, display an "ended" message.
-    [ ] If a `recordingUrl` is present, display a "Watch Meeting Recording" button that links to the recording section.
-[ ] Implement the `JoinMeetingForm` to capture attendee names and write them to the `/meetings/{meetingId}/attendees` subcollection in Firestore.
-[ ] Implement the `RecordingSection` component, which is conditionally rendered only when a `recordingUrl` is available in the `Meeting` document.
+[x] Create dynamic Next.js routes for different meeting types (e.g., `/meetings/parent-engagement/[schoolSlug]`).
+[x] Implement the `SchoolMeetingLoader` client component.
+    [x] Fetch the `School` document based on the `schoolSlug` from the URL.
+    [x] Fetch all associated `Meeting` documents for that school.
+    [x] Filter and sort meetings on the client to find the most relevant one (soonest upcoming or most recent past).
+[x] Implement hero components (`MeetingHero`, `KickoffMeetingHero`) with time-based logic.
+    [x] Display a countdown timer before the meeting starts.
+    [x] Disable the "Join Meeting" button until 5 minutes before the meeting.
+    [x] After 2 hours have passed, display an "ended" message.
+    [x] If a `recordingUrl` is present, display a "Watch Meeting Recording" button that links to the recording section.
+[x] Implement the `JoinMeetingForm` to capture attendee names and write them to the `/meetings/{meetingId}/attendees` subcollection in Firestore.
+[x] Implement the `RecordingSection` component, which is conditionally rendered only when a `recordingUrl` is available in the `Meeting` document.
 
 ### Feature: Survey Engine
 
-[ ] Implement the public survey page (`/surveys/[slug]` route).
-    [ ] Fetch the survey document where `slug` matches the URL and `status` is 'published'.
-[ ] Implement the `SurveyDisplay` and `SurveyForm` components.
-    [ ] Dynamically render form fields based on the survey's `elements` array.
-    [ ] Implement client-side logic to handle conditional visibility and requirements based on `SurveyLogicBlock` rules.
-[ ] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection containing the user's answers.
-[ ] Implement the post-submission "Thank You" page display.
+[x] Implement the public survey page (`/surveys/[slug]` route).
+    [x] Fetch the survey document where `slug` matches the URL and `status` is 'published'.
+[x] Implement the `SurveyDisplay` and `SurveyForm` components.
+    [x] Dynamically render form fields based on the survey's `elements` array.
+    [x] Implement client-side logic to handle conditional visibility and requirements based on `SurveyLogicBlock` rules.
+[x] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection containing the user's answers.
+[x] Implement the post-submission "Thank You" page display.

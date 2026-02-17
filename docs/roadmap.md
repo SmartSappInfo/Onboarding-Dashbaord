@@ -40,10 +40,10 @@
 [x] Integrate the AI flow into the PDF Field Mapping editor.
 
 ## Phase 5: Public-Facing Features & User Interaction (Other)
-[ ] Build other public-facing interfaces like meeting pages and surveys.
+[x] Build other public-facing interfaces like meeting pages and surveys.
 
 ### Feature: Dynamic Onboarding Pages
-[ ] Implement dynamic meeting pages based on school and meeting type.
+[x] Implement dynamic meeting pages based on school and meeting type.
 
 ### Feature: Survey Engine
-[ ] Implement the public survey-taking experience.
+[x] Implement the public survey-taking experience.
