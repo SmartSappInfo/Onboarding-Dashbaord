@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -90,6 +91,11 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             onClose();
         }
     }
+    
+    const isSignatureProvided = 
+        (activeTab === 'draw' && sigPadRef.current && !sigPadRef.current.isEmpty()) ||
+        (activeTab === 'type' && typedInitials.length > 0) ||
+        (activeTab === 'upload' && uploadedImage !== null);
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -118,14 +124,13 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                     </TabsContent>
                     <TabsContent value="type">
                         <div className="mt-4 space-y-4">
-                            <Label htmlFor="initials-input">Type your initials</Label>
+                            <Label htmlFor="initials-input">Type your name or initials</Label>
                             <Input
                                 id="initials-input"
                                 value={typedInitials}
-                                onChange={(e) => setTypedInitials(e.target.value.substring(0, 4))}
-                                maxLength={4}
+                                onChange={(e) => setTypedInitials(e.target.value)}
                                 className="text-4xl text-center font-serif italic h-auto py-4"
-                                placeholder="J.D."
+                                placeholder="J. Doe"
                             />
                              <canvas ref={initialsCanvasRef} width="400" height="150" className="hidden" />
                         </div>
@@ -136,43 +141,43 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                 <div className="flex flex-col items-center justify-center pt-5 pb-6">
                                     <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                                     <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                    <p className="text-xs text-muted-foreground">PNG, JPG, or GIF</p>
-                                    <p className="text-xs text-muted-foreground mt-1">You can also use your phone's camera.</p>
+                                    <p className="text-xs text-muted-foreground">PNG or JPG</p>
                                 </div>
-                                <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg, image/gif" />
+                                <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                             </label>
 
                              {uploadedImage && (
-                                <div className="mt-4 p-2 border rounded-md relative">
-                                    <p className="text-sm font-medium mb-2">Preview:</p>
-                                    <img src={uploadedImage} alt="Signature Preview" className="max-h-32 mx-auto" />
+                                <div className="mt-4 p-2 border rounded-md relative flex items-center justify-center bg-muted h-32">
+                                    <img src={uploadedImage} alt="Signature Preview" className="max-h-full max-w-full" />
                                 </div>
                             )}
                          </div>
                     </TabsContent>
                 </Tabs>
                 
-                <div className="flex justify-end mt-2">
-                    <Button variant="ghost" onClick={handleClear} size="sm">Clear</Button>
+                <div className="flex justify-end mt-2 -mb-2">
+                    <Button variant="ghost" onClick={handleClear} size="sm" disabled={!isSignatureProvided}>Clear</Button>
                 </div>
+                
+                <Separator className="my-6" />
 
-                <DialogFooter className="flex-col items-start gap-4 mt-6">
+                <DialogFooter className="flex-col items-start gap-4">
                     <Alert variant="default" className="text-xs text-muted-foreground">
                         <AlertDescription>
-                            By selecting “Sign Now” you consent to electronically sign this document. This signature is equivalent to a handwritten signature under applicable electronic transaction laws.
-                            <br/><br/>
-                            Ensure all details are accurate before continuing. This action cannot be undone.
+                            By selecting “Sign Now” you consent to electronically sign this document. This signature is equivalent to a handwritten signature under applicable electronic transaction laws. Ensure all details are accurate before continuing. This action cannot be undone.
                         </AlertDescription>
                     </Alert>
-                    <div className="flex items-center space-x-2">
-                        <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} />
-                        <Label htmlFor="consent-toggle" className="text-sm">
-                            I have reviewed all the details and I consent to sign.
-                        </Label>
-                    </div>
-                    <div className="flex w-full justify-end gap-2">
-                        <Button variant="outline" onClick={onClose}>Review Again</Button>
-                        <Button onClick={handleSave} disabled={!isConsented}>Sign Now</Button>
+                    <div className="flex items-center space-x-3 w-full justify-between">
+                        <div className="flex items-center space-x-2">
+                            <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} />
+                            <Label htmlFor="consent-toggle" className="text-sm font-medium">
+                                I have reviewed and I consent to sign.
+                            </Label>
+                        </div>
+                         <div className="flex justify-end gap-2">
+                            <Button variant="outline" onClick={onClose}>Review Document</Button>
+                            <Button onClick={handleSave} disabled={!isConsented || !isSignatureProvided}>Sign Now</Button>
+                        </div>
                     </div>
                 </DialogFooter>
             </DialogContent>
