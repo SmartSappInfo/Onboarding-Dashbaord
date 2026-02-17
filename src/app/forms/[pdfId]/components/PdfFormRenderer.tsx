@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -116,14 +115,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
   
   const renderField = (field: PDFFormField) => {
-    const style: React.CSSProperties = {
-        position: 'absolute',
-        left: `${field.position.x}%`,
-        top: `${field.position.y}%`,
-        width: `${field.dimensions.width}%`,
-        height: `${field.dimensions.height}%`,
-    };
-    
     const commonProps = {
         ...register(field.id),
         style: { width: '100%', height: '100%', padding: '2px 4px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '2px' }
@@ -140,7 +131,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                  <button
                     type="button"
                     onClick={() => setActiveSignatureField(field.id)}
-                    style={{...style, border: '1px dashed #9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}
+                    style={{ width: '100%', height: '100%', border: '1px dashed #9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb', borderRadius: '2px' }}
                 >
                     {signatureValue ? (
                         <img src={signatureValue} alt="Signature" style={{ width: '100%', height: '100%', objectFit: 'contain' }}/>
