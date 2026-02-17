@@ -202,10 +202,14 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             </TabsList>
                             <TabsContent value="draw">
                                 <div className="border rounded-md bg-white mt-4 relative">
-                                    <SignatureCanvas 
-                                        ref={sigPadRef} 
-                                        penColor='black' 
-                                        canvasProps={{ className: 'w-full h-48 rounded-md' }} 
+                                    <SignatureCanvas
+                                        ref={sigPadRef}
+                                        penColor="black"
+                                        canvasProps={{
+                                            className: 'w-full h-48 rounded-md',
+                                            willReadFrequently: true,
+                                        }}
+                                        backgroundColor="white"
                                         onBegin={() => setHasDrawn(true)}
                                     />
                                 </div>
