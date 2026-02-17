@@ -75,10 +75,10 @@
     [*] Implement logic to calculate and store field coordinates and dimensions as percentages.
     [*] Create a toolbar for selecting and adding new field types (text, signature, date).
     [*] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
-[ ] Implement the public-facing route at `/forms/[pdfId]`.
-[ ] Develop the public rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
+[*] Implement the public-facing route at `/forms/[pdfId]`.
+[*] Develop the public rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
 [ ] Implement real-time state synchronization to show a live preview of user input on the form.
-[ ] Create the signature capture modal and component using a library like `react-signature-canvas`.
+[*] Create the signature capture modal and component using a library like `react-signature-canvas`.
 
 
 ## Phase 4: Server-Side Processing & Automation
