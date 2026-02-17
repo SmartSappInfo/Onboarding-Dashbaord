@@ -18,7 +18,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { useIsMobile } from '@/hooks/use-is-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet';
 
 interface PageDetail {
@@ -613,4 +613,3 @@ export default function FieldMapper({ pdf, fields, setFields, onSave, isSaving, 
     </div>
   );
 }
-
