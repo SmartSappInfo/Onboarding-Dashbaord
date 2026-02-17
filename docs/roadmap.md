@@ -37,7 +37,6 @@
 [ ] Define `Meeting` schema in Firestore with fields for type, time, and links to a school.
 [ ] Define `MediaAsset` schema in Firestore for storing metadata about uploaded files and links.
 [ ] Define `Survey` schema in Firestore, including a flexible `elements` array for questions and layout blocks.
-[ ] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
 [ ] Implement the base administrative layout (`/admin/layout.tsx`) with sidebar navigation.
 [ ] Implement the main dashboard page (`/admin/page.tsx`) to fetch and display aggregated data.
 [ ] Implement the draggable dashboard grid (`DashboardGrid.tsx`).
@@ -46,8 +45,6 @@
 [ ] Implement the meeting management page (`/admin/meetings` route) with a data table for all meetings.
 [ ] Implement the media library page (`/admin/media` route) with a grid view for all media assets.
 [ ] Implement the survey management page (`/admin/surveys` route) with a data table for all surveys.
-[ ] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
-    [ ] Implement the file upload mechanism to Firebase Storage for new PDFs.
 [ ] Implement the pipeline Kanban board (`/admin/pipeline` route).
     [ ] Render columns based on `OnboardingStage` documents.
     [ ] Render school cards within their respective stage columns.
@@ -61,11 +58,16 @@
 [ ] Implement a school-specific activity view (`NotesSection.tsx`) to be embedded in the school details modal.
 [ ] Implement server actions (`updateNote`, `deleteNote`) to allow users to edit or delete their own `'note'` type activities.
 
+### Feature: Dynamic PDF Forms (Management)
+[ ] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
+[ ] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
+[ ] Implement the file upload mechanism to Firebase Storage for new PDFs.
+
 ## Phase 3: Document Rendering & Interaction Layer
 
 [ ] Build the client-side capabilities for visually editing and filling documents.
 
-### Feature: PDF Field Mapping
+### Feature: Dynamic PDF Forms (Editing & Filling)
 [ ] Integrate PDF.js library for client-side PDF rendering in the admin UI.
 [ ] Implement the visual field mapping editor (`/admin/pdfs/[id]/edit`).
     [ ] Create a canvas-based interface to display PDF pages.
@@ -73,12 +75,11 @@
     [ ] Implement logic to calculate and store field coordinates and dimensions as percentages.
     [ ] Create a toolbar for selecting and adding new field types (text, signature, date).
     [ ] Implement the save mechanism to update the `fieldMapping` array in the `PDFForm` document.
-
-### Feature: Public PDF Form Engine
 [ ] Implement the public-facing route at `/forms/[pdfId]`.
-[ ] Develop the rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
+[ ] Develop the public rendering engine that combines a PDF.js base layer with an HTML overlay for interactive fields.
 [ ] Implement real-time state synchronization to show a live preview of user input on the form.
 [ ] Create the signature capture modal and component using a library like `react-signature-canvas`.
+
 
 ## Phase 4: Server-Side Processing & Automation
 
@@ -91,18 +92,24 @@
 [ ] Implement the `getLinkMetadata` flow.
 [ ] Implement the `generateSurveySummary` flow.
 [ ] Implement the `querySurveyData` flow.
-[ ] Implement the `detectPdfFields` flow.
+
+### Feature: Dynamic PDF Forms (Backend & AI)
+[ ] Implement the `detectPdfFields` Genkit flow.
     [ ] Instruct the AI model to analyze a PDF's visual layout and return field suggestions.
     [ ] Ensure the output is a structured JSON array with percentage-based coordinates.
 [ ] Integrate the `detectPdfFields` flow into the PDF Field Mapping editor via an "Auto-detect" button.
-
-### Feature: PDF Generation Pipeline
 [ ] Create a server-side Cloud Function (`generateFilledPdf`).
 [ ] Integrate the `pdf-lib` library for PDF manipulation.
 [ ] Implement logic to fetch the original PDF from Storage and its `fieldMapping` from Firestore.
 [ ] Develop the core logic to draw text and signature images onto the PDF canvas based on percentage-based coordinates.
 [ ] Implement logic to save the final, mutated PDF to a `/submissions` path in Firebase Storage.
 [ ] Secure the function to be callable only from the application.
+[ ] Implement the client-side submission handler for public PDF forms.
+    [ ] The handler will first call the `generateFilledPdf` Cloud Function.
+    [ ] On success, it will create a new document in the `/pdfs/{pdfId}/submissions` subcollection.
+    [ ] This new document will store the user's raw input and the URL of the generated PDF.
+    [ ] Implement the post-submission "Thank You" page display.
+
 
 ## Phase 5: Public-Facing Features & User Interaction
 
@@ -123,9 +130,3 @@
 [ ] Implement client-side logic for conditional visibility based on `SurveyLogicBlock` rules.
 [ ] On form submission, create a new document in the `/surveys/{surveyId}/responses` subcollection.
 
-### Feature: Public PDF Form Engine (Submission)
-[ ] Implement the client-side submission handler for public PDF forms.
-    [ ] The handler will first call the `generateFilledPdf` Cloud Function.
-    [ ] On success, it will create a new document in the `/pdfs/{pdfId}/submissions` subcollection.
-    [ ] This new document will store the user's raw input and the URL of the generated PDF.
-    [ ] Implement the post-submission "Thank You" page display.
