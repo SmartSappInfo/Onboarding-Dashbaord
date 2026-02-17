@@ -11,12 +11,28 @@ import SignaturePadModal from './SignaturePadModal';
 import { Loader2, Download } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { generateFilledPdf } from '@/lib/pdf-actions';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { SmartSappLogo } from '@/components/icons';
 
 interface PageDetail {
   dataUrl: string;
   width: number;
   height: number;
 }
+
+const generateValidationSchema = (fields: PDFFormField[]) => {
+    const schemaObject = fields.reduce((acc, field) => {
+        if (field.required) {
+            acc[field.id] = z.string({
+                required_error: `${field.label || 'This field'} is required.`
+            }).min(1, { message: `${field.label || 'This field'} is required.` });
+        }
+        return acc;
+    }, {} as Record<string, z.ZodTypeAny>);
+    return z.object(schemaObject);
+}
+
 
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const [pages, setPages] = React.useState<PageDetail[]>([]);
@@ -27,7 +43,13 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const pdfjsRef = React.useRef<any>(null);
   const { toast } = useToast();
 
-  const { register, handleSubmit, watch, setValue } = useForm();
+  const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
+
+  const { register, handleSubmit, watch, setValue, formState: { isValid } } = useForm({
+    resolver: zodResolver(validationSchema),
+    mode: 'onChange',
+  });
+
 
   React.useEffect(() => {
     const loadAndRenderPdf = async () => {
@@ -120,14 +142,18 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         style: { width: '100%', height: '100%', padding: '2px 4px', fontSize: '14px', border: '1px solid #d1d5db', borderRadius: '2px' }
     };
     
+    let fieldElement;
+    
     switch(field.type) {
         case 'text':
-            return <Input {...commonProps} style={{ ...commonProps.style }} />;
+            fieldElement = <Input {...commonProps} style={{ ...commonProps.style }} />;
+            break;
         case 'date':
-             return <Input type="date" {...commonProps} style={{ ...commonProps.style }} />;
+             fieldElement = <Input type="date" {...commonProps} style={{ ...commonProps.style }} />;
+             break;
         case 'signature':
             const signatureValue = watch(field.id);
-            return (
+            fieldElement = (
                  <button
                     type="button"
                     onClick={() => setActiveSignatureField(field.id)}
@@ -140,9 +166,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     )}
                 </button>
             );
+            break;
         default:
             return null;
     }
+
+     return (
+        <div className="relative h-full w-full">
+            {field.required && <span className="absolute -top-1.5 -right-1.5 z-10 text-red-500 font-bold text-lg">*</span>}
+            {fieldElement}
+        </div>
+    );
   }
 
   if (submissionResult) {
@@ -161,50 +195,59 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-        {isLoadingPdf && (
-             <div className="space-y-4">
-                <Skeleton className="w-full h-[80vh] bg-gray-300" />
+    <div className="flex flex-col h-screen bg-gray-100">
+       <header className="sticky top-0 z-10 bg-white shadow-sm p-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+                <SmartSappLogo className="h-8" />
+                <span className="hidden sm:inline-block font-semibold truncate">{pdfForm.name}</span>
             </div>
-        )}
-        
-        {!isLoadingPdf && pages.length > 0 && (
-            <form onSubmit={handleSubmit(onSubmit)}>
-                <div className="space-y-4">
-                    {pages.map((page, index) => (
-                        <div key={index} className="relative mx-auto shadow-lg bg-white" style={{ width: page.width, height: page.height }}>
-                             <Image
-                                src={page.dataUrl}
-                                width={page.width}
-                                height={page.height}
-                                alt={`Page ${index + 1}`}
-                                priority
-                            />
-                             <div className="absolute inset-0">
-                                {pdfForm.fields.filter(f => f.pageNumber === index + 1).map(field => (
-                                   <div key={field.id} style={{position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`}}>
-                                       {renderField(field)}
-                                   </div>
-                                ))}
-                            </div>
+            <Button type="button" size="lg" disabled={isSubmitting || (!isValid && !isPreview)} onClick={handleSubmit(onSubmit)}>
+                {isSubmitting && !isPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                {isSubmitting && !isPreview ? 'Submitting...' : 'Submit & Download'}
+            </Button>
+        </header>
+
+        <main className="flex-grow overflow-y-auto p-4 sm:p-8">
+            <div className="max-w-4xl mx-auto">
+                {isLoadingPdf && (
+                     <div className="space-y-4">
+                        <Skeleton className="w-full h-[80vh] bg-gray-300" />
+                    </div>
+                )}
+                
+                {!isLoadingPdf && pages.length > 0 && (
+                    <form id="pdf-form" onSubmit={handleSubmit(onSubmit)}>
+                        <div className="space-y-4">
+                            {pages.map((page, index) => (
+                                <div key={index} className="relative mx-auto shadow-lg bg-white" style={{ width: page.width, height: page.height }}>
+                                     <Image
+                                        src={page.dataUrl}
+                                        width={page.width}
+                                        height={page.height}
+                                        alt={`Page ${index + 1}`}
+                                        priority
+                                    />
+                                     <div className="absolute inset-0">
+                                        {pdfForm.fields.filter(f => f.pageNumber === index + 1).map(field => (
+                                           <div key={field.id} style={{position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`}}>
+                                               {renderField(field)}
+                                           </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    ))}
-                </div>
-                 <div className="mt-8 flex justify-end">
-                    <Button type="submit" size="lg" disabled={isSubmitting}>
-                        {isSubmitting && !isPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {isSubmitting && !isPreview ? 'Submitting...' : 'Submit Document'}
-                    </Button>
-                </div>
-            </form>
-        )}
+                    </form>
+                )}
+            </div>
+        </main>
         
          <SignaturePadModal
             open={!!activeSignatureField}
             onClose={() => setActiveSignatureField(null)}
             onSave={(dataUrl) => {
                 if (activeSignatureField) {
-                    setValue(activeSignatureField, dataUrl, { shouldDirty: true });
+                    setValue(activeSignatureField, dataUrl, { shouldDirty: true, shouldValidate: true });
                 }
                 setActiveSignatureField(null);
             }}

@@ -145,40 +145,23 @@ const ResizableField = ({
 
 
 interface PropertiesSidebarProps {
-  pdf: PDFForm;
   fields: LocalPDFFormField[];
   selectedFieldId: string | null;
   setSelectedFieldId: (id: string | null) => void;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   pagesLength: number;
-  password: string;
-  setPassword: (password: string) => void;
-  passwordProtected: boolean;
-  setPasswordProtected: (enabled: boolean) => void;
-  onStatusChange: (status: PDFForm['status']) => void;
-  isStatusChanging: boolean;
-  onPreview: () => void;
 }
 
 const PropertiesSidebar = ({
-  pdf,
   fields,
   selectedFieldId,
   setSelectedFieldId,
   updateField,
   removeField,
   pagesLength,
-  password,
-  setPassword,
-  passwordProtected,
-  setPasswordProtected,
-  onStatusChange,
-  isStatusChanging,
-  onPreview,
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
-  const [showPassword, setShowPassword] = React.useState(false);
 
   return (
     <>
@@ -207,6 +190,7 @@ const PropertiesSidebar = ({
                                   >
                                       <Icon className="h-4 w-4 text-muted-foreground" />
                                       <span className="truncate text-sm flex-1">{field.label || field.id}</span>
+                                      {field.required && <span className="text-destructive font-bold text-lg">*</span>}
                                   </button>
                               );
                           })}
@@ -235,6 +219,16 @@ const PropertiesSidebar = ({
                             <Label>Type</Label>
                             <Input value={selectedField.type} disabled className="capitalize" />
                         </div>
+                         <div className="flex items-center justify-between rounded-lg border p-3">
+                            <Label htmlFor={`required-toggle-${selectedField.id}`} className="text-sm">
+                                Required
+                            </Label>
+                            <Switch
+                                id={`required-toggle-${selectedField.id}`}
+                                checked={!!selectedField.required}
+                                onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })}
+                            />
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor={`page-${selectedField.id}`}>Page Number</Label>
                             <Input id={`page-${selectedField.id}`} type="number" min="1" max={pagesLength} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} />
@@ -261,71 +255,9 @@ const PropertiesSidebar = ({
                         </div>
                     </CardContent>
                 </Card>
-            ) : (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><Lock className="h-4 w-4"/> Security</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                      <div className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <div className="space-y-0.5">
-                              <Label>Password Protection</Label>
-                              <p className="text-xs text-muted-foreground">
-                                  Require a password to view the form.
-                              </p>
-                          </div>
-                          <Switch
-                              checked={passwordProtected}
-                              onCheckedChange={setPasswordProtected}
-                          />
-                      </div>
-                      {passwordProtected && (
-                          <div className="space-y-2">
-                              <Label htmlFor="form-password">Form Password</Label>
-                              <div className="relative">
-                                <Input
-                                    id="form-password"
-                                    type={showPassword ? 'text' : 'password'}
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
-                                  onClick={() => setShowPassword(p => !p)}
-                                >
-                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                </Button>
-                              </div>
-                          </div>
-                      )}
-                  </CardContent>
-                </Card>
-            )}
+            ) : null}
         </div>
       </ScrollArea>
-      <div className="flex-shrink-0 border-t p-4 space-y-2 bg-background">
-        <Select
-            value={pdf.status}
-            onValueChange={(value: PDFForm['status']) => onStatusChange(value)}
-            disabled={isStatusChanging}
-        >
-            <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-                <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-        </Select>
-        <Button variant="outline" onClick={onPreview} className="w-full">
-            <Eye className="mr-2 h-4 w-4" />
-            Preview
-        </Button>
-      </div>
     </>
   );
 };
@@ -336,16 +268,9 @@ interface FieldMapperProps {
   pdf: PDFForm;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
-  password: string;
-  setPassword: (password: string) => void;
-  passwordProtected: boolean;
-  setPasswordProtected: (enabled: boolean) => void;
-  onStatusChange: (status: PDFForm['status']) => void;
-  isStatusChanging: boolean;
-  onPreview: () => void;
 }
 
-export default function FieldMapper({ pdf, fields, setFields, password, setPassword, passwordProtected, setPasswordProtected, onStatusChange, isStatusChanging, onPreview }: FieldMapperProps) {
+export default function FieldMapper({ pdf, fields, setFields }: FieldMapperProps) {
   const { toast } = useToast();
   const [pages, setPages] = React.useState<PageDetail[]>([]);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
@@ -441,6 +366,7 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
       pageNumber: 1, // Default to first page
       position: { x: 5, y: 5 },
       dimensions: { width: 20, height: 5 },
+      required: false,
     };
     setFields(prev => [...prev, newField]);
     setSelectedFieldId(newField.id);
@@ -674,20 +600,12 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
             </div>
             
             {!isCollapsed && <PropertiesSidebar 
-                pdf={pdf}
                 fields={fields} 
                 selectedFieldId={selectedFieldId} 
                 setSelectedFieldId={setSelectedFieldId} 
                 updateField={updateField} 
                 removeField={removeField} 
                 pagesLength={pages.length}
-                password={password}
-                setPassword={setPassword}
-                passwordProtected={passwordProtected}
-                setPasswordProtected={setPasswordProtected}
-                onStatusChange={onStatusChange}
-                isStatusChanging={isStatusChanging}
-                onPreview={onPreview}
             />}
             
             {isCollapsed && (
@@ -708,20 +626,12 @@ export default function FieldMapper({ pdf, fields, setFields, password, setPassw
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden" side="right">
           <PropertiesSidebar 
-            pdf={pdf}
             fields={fields} 
             selectedFieldId={selectedFieldId} 
             setSelectedFieldId={setSelectedFieldId} 
             updateField={updateField} 
             removeField={removeField} 
             pagesLength={pages.length}
-            password={password}
-            setPassword={setPassword}
-            passwordProtected={passwordProtected}
-            setPasswordProtected={setPasswordProtected}
-            onStatusChange={onStatusChange}
-            isStatusChanging={isStatusChanging}
-            onPreview={onPreview}
           />
         </SheetContent>
       </Sheet>

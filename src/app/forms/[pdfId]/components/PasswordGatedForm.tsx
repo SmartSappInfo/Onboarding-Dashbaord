@@ -45,7 +45,7 @@ export default function PasswordGatedForm({ pdfForm }: PasswordGatedFormProps) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[50vh]">
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
       <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

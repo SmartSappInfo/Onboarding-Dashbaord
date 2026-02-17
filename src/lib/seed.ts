@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday } from 'date-fns';
@@ -231,15 +231,57 @@ export async function seedPdfForms(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'pdfs');
   const batch = writeBatch(firestore);
   const pdfsCollection = collection(firestore, 'pdfs');
+
+  const sampleFields: PDFFormField[] = [
+    {
+      id: 'fld_fullname',
+      type: 'text',
+      label: 'Full Name',
+      pageNumber: 1,
+      position: { x: 15, y: 25 },
+      dimensions: { width: 70, height: 4 },
+      required: true,
+    },
+    {
+      id: 'fld_date',
+      type: 'date',
+      label: 'Date of Birth',
+      pageNumber: 1,
+      position: { x: 15, y: 35 },
+      dimensions: { width: 30, height: 4 },
+      required: true,
+    },
+     {
+      id: 'fld_notes',
+      type: 'text',
+      label: 'Additional Notes',
+      pageNumber: 1,
+      position: { x: 15, y: 50 },
+      dimensions: { width: 70, height: 10 },
+      required: false,
+    },
+    {
+      id: 'fld_signature',
+      type: 'signature',
+      label: 'Applicant Signature',
+      pageNumber: 1,
+      position: { x: 15, y: 75 },
+      dimensions: { width: 40, height: 8 },
+      required: true,
+    },
+  ];
+
   pdfFormData.forEach((pdf, index) => {
     const docRef = doc(pdfsCollection);
     const completePdfData: Omit<PDFForm, 'id'> = {
       ...pdf,
       status: index === 0 ? 'published' : 'draft',
-      fields: [],
+      fields: pdf.name.includes('Enrollment') ? sampleFields : [],
       createdBy: 'system-seed',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      passwordProtected: index === 1, // Make the second one password protected
+      password: index === 1 ? 'password' : '',
     };
     batch.set(docRef, completePdfData);
   });

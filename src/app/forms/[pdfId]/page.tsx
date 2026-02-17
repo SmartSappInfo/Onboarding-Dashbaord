@@ -23,26 +23,10 @@ export default async function PublicPdfFormPage({ params }: { params: { pdfId: s
     if (!pdfForm) {
         notFound();
     }
+    
+    if (pdfForm.passwordProtected && pdfForm.password) {
+        return <PasswordGatedForm pdfForm={pdfForm} />;
+    }
 
-    const formContent = (
-      pdfForm.passwordProtected ? (
-        <PasswordGatedForm pdfForm={pdfForm} />
-      ) : (
-        <PdfFormRenderer pdfForm={pdfForm} />
-      )
-    );
-
-    return (
-        <div className="bg-gray-100 min-h-screen">
-            <header className="bg-white shadow-sm p-4 text-center">
-                <h1 className="text-xl font-semibold">{pdfForm.name}</h1>
-            </header>
-            <main className="p-4 sm:p-8">
-                {formContent}
-            </main>
-             <footer className="py-8 text-center text-sm text-gray-500">
-                <p>Powered by SmartSapp</p>
-            </footer>
-        </div>
-    );
+    return <PdfFormRenderer pdfForm={pdfForm} />;
 }
