@@ -61,18 +61,25 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
         }
         setPages(pageDetails);
       } catch (error: any) {
-        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", {
+        const debugInfo = {
           errorMessage: error.message,
           errorName: error.name,
           errorStack: error.stack,
           pdfUrl: pdfForm.downloadUrl,
           isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
-        });
+        };
+        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", JSON.stringify(debugInfo, null, 2));
+
+        let description = 'Could not load document. Check the browser console for details.';
+        if (debugInfo.isCorsError) {
+            description = 'This is a CORS issue. The server holding the PDF is not configured to allow your app to fetch it. The server administrator must update the CORS policy.';
+        }
+
         toast({ 
             variant: 'destructive', 
             title: 'Error Loading PDF',
-            description: 'Could not load document. This may be a CORS issue. Please check the browser console.',
-            duration: 10000,
+            description: description,
+            duration: 15000,
         });
       } finally {
         setIsLoadingPdf(false);
@@ -184,6 +191,4 @@ export default function PdfFormRenderer({ pdfForm }: { pdfForm: PDFForm }) {
     </div>
   );
 }
-    
-
     

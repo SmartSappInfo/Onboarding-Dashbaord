@@ -163,18 +163,25 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
         }
         setPages(pageDetails);
       } catch (error: any) {
-        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", {
+        const debugInfo = {
           errorMessage: error.message,
           errorName: error.name,
           errorStack: error.stack,
           pdfUrl: pdf.downloadUrl,
           isCorsError: error.name === 'NetworkError' || (error.message && error.message.includes('CORS')),
-        });
+        };
+        console.error("DEBUG: PDF Loading Failed. Root Cause Analysis:", JSON.stringify(debugInfo, null, 2));
+        
+        let description = 'Could not load document. Check the browser console for details.';
+        if (debugInfo.isCorsError) {
+            description = 'This is a CORS issue. Please run the `gcloud` command provided previously to update your Firebase Storage bucket configuration.';
+        }
+
         toast({ 
             variant: 'destructive', 
             title: 'Error Loading PDF',
-            description: 'This is likely a CORS issue. Please check the browser console for details and apply the CORS configuration to your Firebase Storage bucket.',
-            duration: 10000,
+            description: description,
+            duration: 15000,
         });
       } finally {
         setIsLoadingPdf(false);
@@ -343,6 +350,4 @@ export default function FieldMapper({ pdf }: { pdf: PDFForm }) {
     </div>
   );
 }
-    
-
     
