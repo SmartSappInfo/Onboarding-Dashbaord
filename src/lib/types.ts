@@ -1,5 +1,6 @@
 
 
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -209,11 +210,14 @@ export interface Activity {
 }
 
 export interface PDFFormField {
-    id: string;
-    type: 'text' | 'signature' | 'date';
-    pageNumber: number;
-    position: { x: number; y: number }; // as percentages
-    dimensions: { width: number; height: number }; // as percentages
+  id: string;
+  type: 'text' | 'signature' | 'date';
+  label?: string;
+  pageNumber: number;
+  position: { x: number; y: number };
+  dimensions: { width: number; height: number };
+  fontSize?: number;
+  required?: boolean;
 }
     
 export interface PDFForm {
@@ -225,6 +229,15 @@ export interface PDFForm {
     status: 'draft' | 'published' | 'archived';
     createdAt: string; // ISO String
     updatedAt: string; // ISO String
-    fieldMapping: PDFFormField[];
+    fieldMapping: PDFFormField[]; // This will be renamed to 'fields' but let's keep it for now to avoid breaking changes, then rename
+    fields: PDFFormField[];
+    pages: { width: number, height: number }[];
 }
-    
+
+export interface Submission {
+  id: string;
+  formId: string;
+  values: { [key: string]: string };
+  signedPdfPath: string;
+  createdAt: string; // ISO String
+}

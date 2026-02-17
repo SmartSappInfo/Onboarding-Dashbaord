@@ -1,119 +1,218 @@
 
 # Feature: Doc Signing
 
-## Purpose
+## 1. High-Level Flow
 
-To provide a complete, end-to-end system for administrators to upload PDF documents, visually map interactive fields onto them, publish them for public access, and for end-users to fill out and sign these documents, resulting in a finalized, flattened PDF document. This feature automates the entire lifecycle of a document, from creation to submission and generation.
+**ADMIN (Authenticated)**
+   ↓
+Upload PDF → Define Fields (with AI Assist) → Publish Form
+   ↓
+*Firestore stores field schema & metadata*
+*Storage stores the original PDF template*
+   ↓
+**PUBLIC USER (No Login)**
+   ↓
+Loads public form URL → Fills interactive fields
+   ↓
+*Client-side state provides a real-time overlay preview*
+   ↓
+User clicks "Submit"
+   ↓
+*Cloud Function generates the final, flattened PDF*
+   ↓
+User can download the final PDF / Admin sees submission record
 
-## Actors
+---
 
-- **Administrator:** The user who manages all aspects of the documents, including upload, field mapping, AI-assisted field detection, and publishing.
-- **Public User:** Any user with the direct link to a published document who can fill it out and sign it without needing to log in.
-- **System (Cloud Function & Genkit Flow):** Server-side processes that handle the final PDF generation and optional AI field detection.
+## 2. Tech Stack Responsibilities
 
-## Entry Points
+| Concern                 | Tool / Library         |
+| ----------------------- | ---------------------- |
+| Frontend Rendering      | Next.js (App Router)   |
+| PDF Viewer (Client)     | `pdfjs-dist`           |
+| PDF Generation (Server) | `pdf-lib`              |
+| Field Layout System     | Custom React Overlay   |
+| Backend State           | Firebase Firestore     |
+| File Storage            | Firebase Storage       |
+| Server-Side Logic       | Firebase Cloud Functions (or Server Actions) |
+| AI Field Detection      | Genkit (Google AI)     |
 
-- **Management:** An administrator navigates to `/admin/pdfs` to view and manage all documents.
-- **Upload:** An administrator clicks an "Upload Document" button, which opens a file selection dialog.
-- **Field Mapping:** An administrator navigates to `/admin/pdfs/[id]/edit` to use the visual field editor.
-- **AI-Assisted Detection:** An administrator clicks the "Auto-detect Fields" button within the field mapping editor.
-- **Publishing:** An administrator changes the status of a document to `published`.
-- **Public Access:** A public user navigates to a public URL, typically `/forms/[pdfId]`.
-- **Submission:** A public user clicks the "Submit" button on the form, triggering the server-side PDF generation pipeline.
+---
 
-## Data Model
+## 3. Folder Structure
 
-This feature uses both Firestore for metadata and Firebase Storage for file binaries.
+```
+/app
+   /admin
+      /pdfs
+         page.tsx              # List & manage all PDF forms
+         /[id]/edit/
+            page.tsx           # Main editor page
+            /components/
+               FieldMapper.tsx # The core drag-and-drop editor
+   /forms/[pdfId]/
+      page.tsx                 # Public-facing page for filling the form
+      /components/
+         PdfFormRenderer.tsx   # Renders the PDF and interactive inputs
+         SignaturePadModal.tsx # Captures user signatures
 
-- **Firestore Collection: `/pdfs`**
-  - **Document ID:** Auto-generated unique ID.
-  - **Schema (`PDFForm`):**
-    - `id` (string): The document ID.
-    - `name` (string): The user-defined name for the document.
-    - `originalFileName` (string): The name of the file upon upload.
-    - `storagePath` (string): The full path to the original PDF file in Firebase Storage.
-    - `downloadUrl` (string): The public URL to access the original PDF from Firebase Storage.
-    - `status` (enum string): `draft`, `published`, `archived`.
-    - `createdAt` (ISO string): Timestamp of creation.
-    - `updatedAt` (ISO string): Timestamp of the last update.
-    - **`fieldMapping` (array):** An array of field definition objects, each with:
-      - `id` (string): Client-generated unique ID.
-      - `type` (enum string): `text`, `signature`, `date`.
-      - `pageNumber` (number): The 1-based index of the page.
-      - `position` (object): `{ x: number, y: number }` stored as percentages (0.0 to 1.0).
-      - `dimensions` (object): `{ width: number, height: number }` stored as percentages (0.0 to 1.0).
+/src
+   /ai
+      /flows
+         /detect-pdf-fields-flow.ts # Genkit flow for AI
+   /lib
+      pdf-actions.ts           # Server actions (create, update, generate)
+      types.ts                 # All TypeScript type definitions
 
-- **Firestore Subcollection: `/pdfs/{pdfId}/submissions`**
-  - **Document ID:** Auto-generated unique ID.
-  - **Schema (`Submission`):** Stores `submittedAt`, `formData`, and `generatedPdfUrl`.
+/functions
+   /src
+      index.ts                 # (Future) Location for Cloud Function
+```
 
-- **Firebase Storage**
-  - **Original Templates:** `/pdfs/{unique_id}-{original_filename}.pdf`
-  - **Generated Submissions:** `/submissions/{submissionId}.pdf`
+---
 
-## Workflow
+## 4. Firebase Structure
 
-- [*] **Upload & Management:** An admin uploads a PDF to Firebase Storage. A new `PDFForm` document is created in Firestore with `status: 'draft'`, containing the `storagePath` and `downloadUrl`.
-- [*] **Field Mapping:** The admin navigates to the editor (`/admin/pdfs/[id]/edit`). The `FieldMapper.tsx` component renders the PDF using PDF.js. The admin adds, moves, and resizes field overlays. All positions and dimensions are calculated and stored as percentages of the page size to ensure responsiveness.
-- [*] **AI Field Detection (Optional):** The admin can click "Auto-detect Fields". This triggers the `detectPdfFields` Genkit flow. The flow sends the PDF's data URI to the Gemini model, which analyzes the layout and returns a JSON array of suggested field locations and types (e.g., text, signature), also using percentage-based coordinates. The editor displays these as temporary suggestions for the admin to confirm or discard.
-- [*] **Publish:** The admin changes the document's status to `published`.
-- [*] **Public Filling:** A user accesses the public URL (`/forms/[pdfId]`). The `PdfFormRenderer.tsx` component fetches the PDF and its `fieldMapping`. It renders the PDF onto a `<canvas>` and creates an HTML overlay with interactive inputs (`<input>`, signature pads) positioned precisely using the stored percentages.
-- [*] **Submission & Generation:** Upon submission, the client calls a server-side Cloud Function (`generateFilledPdf`), passing the form data. This function uses the `pdf-lib` library. It fetches the original PDF template, iterates through the `fieldMapping`, and draws the user's submitted text and signature images onto a new PDF at the exact percentage-based coordinates.
-- [*] **Storage:** The newly generated, filled PDF is uploaded to `/submissions/...` in Firebase Storage. The function returns the new file's URL. The client then creates a new submission document in the `/pdfs/{pdfId}/submissions` subcollection, storing the user's input and the URL to the final, generated PDF.
+### Firestore Collections
 
-## Business Rules
+-   `/pdfs/{pdfId}`
+-   `/pdfs/{pdfId}/submissions/{submissionId}`
 
-- Only authenticated administrators can manage documents.
-- A document must have a status of `published` to be publicly accessible.
-- All field positions and dimensions MUST be stored as percentages to ensure accurate rendering on any screen size.
-- The AI's field detection role is purely assistive; its suggestions are never saved automatically and require explicit admin confirmation.
-- The PDF generation process is strictly server-side to prevent tampering.
+### `PDFForm` Schema (`/pdfs/{pdfId}`)
 
-## Integrations
+```json
+{
+  "name": "Admission Form",
+  "originalFileName": "admission.pdf",
+  "storagePath": "pdfs/form123/original.pdf",
+  "downloadUrl": "https://firebasestorage.googleapis.com/...",
+  "status": "draft" | "published",
+  "createdAt": "2024-01-01T12:00:00Z",
+  "updatedAt": "2024-01-02T14:30:00Z",
+  "fieldMapping": [
+    {
+      "id": "fld_1",
+      "type": "text",
+      "pageNumber": 1,
+      "position": { "x": 32.5, "y": 48.2 },
+      "dimensions": { "width": 22.1, "height": 3.5 }
+    }
+  ]
+}
+```
 
-- **Firebase Firestore:** Source of truth for all PDF metadata, field configurations, and submission records.
-- **Firebase Storage:** Stores all PDF file binaries (templates and generated submissions).
-- **Firebase Cloud Functions:** Provides the server-side execution environment for the `pdf-lib` generation pipeline.
-- **Genkit & Google AI:** Powers the optional AI-assisted field detection.
-- **PDF.js:** A client-side library used to render PDF documents in the browser for both the editor and the public form.
-- **`pdf-lib`:** A server-side JavaScript library used for programmatically creating and modifying PDF documents.
-- **React-dnd (or similar):** Used in the admin editor to handle drag-and-drop and resizing of field overlays.
-- **`react-signature-canvas` (or similar):** Used in the public form to capture user signatures.
+**CRITICAL:** Field `position` and `dimensions` **MUST** be stored as percentages (0-100) to ensure responsive rendering on different screen sizes.
 
-## State Changes
+### `Submission` Schema (`/pdfs/{pdfId}/submissions/{submissionId}`)
 
-- **Create:** A new document is created in `/pdfs` upon upload. A new document is created in `/pdfs/{pdfId}/submissions` upon successful submission. A new binary file is created in Firebase Storage for each upload and each generated submission.
-- **Update:** The `fieldMapping`, `status`, and other metadata fields of a `/pdfs` document are updated by the administrator.
-- **Delete:** Deleting a `PDFForm` document is a hard delete and also removes the associated file from Firebase Storage.
+```json
+{
+  "submittedAt": "2024-01-03T10:00:00Z",
+  "formData": {
+    "fld_1": "John Doe"
+  },
+  "generatedPdfUrl": "https://firebasestorage.googleapis.com/..."
+}
+```
 
-## Files Involved
+---
 
-- **Management & Upload:**
-  - `src/app/admin/pdfs/page.tsx`: Main data table for listing and managing documents.
-  - `src/app/admin/pdfs/components/UploadPDFButton.tsx`: Handles file selection and upload to Firebase Storage.
-- **Field Mapping & AI:**
-  - `src/app/admin/pdfs/[id]/edit/page.tsx`: The main page for the PDF editor.
-  - `src/app/admin/pdfs/[id]/edit/components/FieldMapper.tsx`: The core UI for rendering the PDF and managing field overlays.
-  - `src/ai/flows/detect-pdf-fields-flow.ts`: The Genkit flow for AI-assisted field detection.
-- **Public Form Engine:**
-  - `src/app/forms/[pdfId]/page.tsx`: The main public-facing page for filling a form.
-  - `src/app/forms/[pdfId]/components/PdfFormRenderer.tsx`: Renders the PDF and the interactive HTML overlay.
-  - `src/app/forms/[pdfId]/components/SignaturePadModal.tsx`: Component for capturing user signatures.
-- **Generation & Actions:**
-  - `functions/src/index.ts` (or similar): Contains the `generateFilledPdf` Cloud Function.
-  - `src/lib/pdf-actions.ts`: Contains server actions for creating, updating, and deleting PDF data in Firestore.
+## 5. Firebase Storage Layout
 
-## What This Feature Does NOT Do
+-   **Original Templates**: `/pdfs/{unique_id}-{original_filename}.pdf`
+-   **Generated Submissions**: `/submissions/{submissionId}.pdf`
 
-- It does not automatically route or process the data from the submitted PDF beyond saving it.
-- It does not provide an edit history or versioning for the `fieldMapping`.
-- It does not have a built-in workflow for approving or rejecting submissions.
+---
 
-## Extension Guidelines
+## 6. Admin Editor Architecture (`FieldMapper.tsx`)
 
-- To add a new field type (e.g., 'Checkbox'):
-  1.  Update the `fieldMapping` schema to include the new type.
-  2.  Add a new tool to the `FieldToolbar.tsx` in the admin editor.
-  3.  Update `FieldMapper.tsx` to render the new field overlay.
-  4.  Update `PdfFormRenderer.tsx` to render the corresponding interactive HTML element (e.g., a checkbox input).
-  5.  Update the `generateFilledPdf` Cloud Function with logic to draw the new field type's state onto the final PDF (e.g., drawing a checkmark).
+-   **Rendering**: The component uses `pdfjs-dist` to render each page of the PDF into an `Image` component. This is a stable and performant approach.
+-   **Field Overlays**: The interactive fields (`text`, `signature`, etc.) are React components absolutely positioned over the rendered page images.
+-   **Interaction**: The `dnd-kit` library handles dragging, and custom logic on the resize handles calculates the new percentage-based dimensions.
+-   **State Management**: Field data (`position`, `dimensions`, etc.) is managed in React state and is saved to Firestore via a server action (`updatePdfFormMapping`).
+-   **AI Assist**: A button triggers the `detectPdfFields` Genkit flow, which analyzes the PDF and returns an array of suggested field locations. The editor then displays these as temporary overlays for the admin to confirm.
+
+---
+
+## 7. Public Filling Page (`PdfFormRenderer.tsx`)
+
+-   **Load Sequence**: The page fetches the `published` `PDFForm` document from Firestore.
+-   **Rendering**: Like the editor, it renders the PDF pages as images.
+-   **Interactive Overlay**: It maps over the `fieldMapping` array and renders the appropriate HTML inputs (`<input>`, `SignaturePadModal`, etc.) precisely positioned on top of the PDF images using the stored percentage values.
+-   **Real-Time Preview**: Each input is bound to `react-hook-form` state. As the user types or signs, the state is updated, providing a fast, real-time preview directly in the HTML overlay without regenerating the PDF.
+
+---
+
+## 8. Signature Handling
+
+1.  User clicks a signature field, opening the `SignaturePadModal`.
+2.  The user draws their signature on the `<canvas>`.
+3.  On save, `react-signature-canvas` exports the signature as a `data:image/png;base64,...` data URL.
+4.  This data URL is stored in the form's state. The signature field now displays this image instead of the "Click to Sign" prompt.
+5.  During final submission, this data URL is sent to the backend generation function.
+
+---
+
+## 9. Final PDF Generation (Server Action)
+
+A server action `generateFilledPdf` is triggered on form submission.
+
+**Payload:**
+
+-   `pdfId`: The ID of the form document.
+-   `formData`: An object mapping field IDs to their values (e.g., `{ fld_1: "John Doe" }`).
+
+**Workflow:**
+
+1.  **Fetch Data**: The function loads the `PDFForm` document from Firestore and the original PDF template from Firebase Storage.
+2.  **Load PDF Engine**: It initializes the `pdf-lib` library with the original PDF's buffer.
+3.  **Draw Fields**: It iterates through the `formData`. For each field:
+    -   It looks up the field's properties (`position`, `dimensions`, `pageNumber`) from the `fieldMapping`.
+    -   It **converts percentage coordinates to PDF points**, flipping the Y-axis (`y = pageHeight - (y_percent * pageHeight)`).
+    -   For text fields, it uses `page.drawText()`.
+    -   For signature fields, it embeds the PNG data URL using `page.drawImage()`.
+4.  **Save & Upload**: The modified PDF is saved as a `Uint8Array` and uploaded to the `/submissions/{submissionId}.pdf` path in Firebase Storage.
+5.  **Record Submission**: The function gets the `downloadUrl` of the new PDF and creates a new document in the `/pdfs/{pdfId}/submissions` collection containing the `formData` and the `generatedPdfUrl`.
+6.  **Return URL**: The function returns the URL of the newly created, finalized PDF to the client.
+
+---
+
+## 10. AI Field Detection (Genkit Flow)
+
+-   **Flow**: `detectPdfFields`
+-   **Input**: The PDF file as a data URI string.
+-   **Process**: The flow sends the PDF data to the Gemini model with a prompt instructing it to identify potential form fields (inputs, signature lines, date fields).
+-   **Output**: The model returns a structured JSON array of suggested fields, including `type`, `pageNumber`, and percentage-based `position` and `dimensions`.
+-   **Integration**: The admin editor receives this array and renders the suggestions as temporary overlays, which the admin can then accept, modify, or delete before saving.
+
+---
+
+## 11. Security Rules (`firestore.rules`)
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /pdfs/{pdfId} {
+      // Public can read a published form to fill it out.
+      // Admins can read any form.
+      allow get: if resource.data.status == 'published' || isAuthorized();
+      
+      // Admins can list, create, and update forms.
+      allow list, write: if isAuthorized();
+
+      // Rules for the submissions subcollection
+      match /submissions/{submissionId} {
+        // Anyone can create a submission for a published document.
+        allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
+        
+        // Only admins can read submission records.
+        allow read, list: if isAuthorized();
+
+        // Submissions are immutable once created.
+        allow update, delete: if false;
+      }
+    }
+  }
+}
+```

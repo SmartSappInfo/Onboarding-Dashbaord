@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 // Re-deploying rules to ensure synchronization with project studio-9220106300-f74cb.
@@ -71,7 +72,7 @@ service cloud.firestore {
       // Users can create their own profile on signup.
       allow create: if isSignedIn() && request.auth.uid == userId;
       // Users can read their own profile, and admins can read any profile.
-      allow get: if (isSignedIn() && request.auth.uid == userId) || isAuthorized();
+      allow get: (isSignedIn() && request.auth.uid == userId) || isAuthorized();
     }
     
     // --- Survey Rules ---
@@ -79,7 +80,7 @@ service cloud.firestore {
       // Admins can create, update, delete surveys.
       allow write: if isAuthorized();
       // Anyone can read a published survey, and admins can read any survey.
-      allow get: if resource.data.status == 'published' || isAuthorized();
+      allow get: resource.data.status == 'published' || isAuthorized();
       // Admins can list all surveys.
       allow list: if isAuthorized();
     }
@@ -101,7 +102,7 @@ service cloud.firestore {
       // Admins can manage all aspects of documents for signing
       allow write, list: if isAuthorized();
       // Public can read a single published document to fill it out
-      allow get: if resource.data.status == 'published' || isAuthorized();
+      allow get: resource.data.status == 'published' || isAuthorized();
       
       // Submissions subcollection
       match /submissions/{submissionId} {
