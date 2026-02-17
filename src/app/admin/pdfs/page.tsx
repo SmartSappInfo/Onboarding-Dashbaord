@@ -39,7 +39,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2 } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
@@ -200,6 +200,10 @@ export default function PdfFormsPage() {
                               <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 <span>Map Fields</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/submissions`)}>
+                                <BarChart2 className="mr-2 h-4 w-4" />
+                                <span>View Responses</span>
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
