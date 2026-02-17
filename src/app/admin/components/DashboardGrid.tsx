@@ -63,8 +63,8 @@ const componentGridConfig: Record<string, string> = {
 const DEFAULT_LAYOUT = [
     'userAssignments',
     'pipelinePieChart',
-    'recentActivity',
     'upcomingMeetings',
+    'recentActivity',
     'moduleRadarChart',
     'latestSurveys',
     'monthlySchoolsChart',
