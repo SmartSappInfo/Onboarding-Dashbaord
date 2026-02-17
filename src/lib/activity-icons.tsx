@@ -11,6 +11,7 @@ import {
   Bell,
   User,
   Bot,
+  FileText,
 } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 
@@ -27,6 +28,9 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     notification_sent: Bell,
     school_created: PenSquare,
     school_assigned: User,
+    pdf_uploaded: FileText,
+    pdf_published: FileText,
+    pdf_form_submitted: FileText,
   };
   return iconMap[type] || Bot;
 };

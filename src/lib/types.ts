@@ -194,8 +194,8 @@ export interface Activity {
   id: string;
   schoolId: string;
   userId?: string | null;
-  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent';
-  source: 'manual' | 'user_action' | 'system';
+  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted';
+  source: 'manual' | 'user_action' | 'system' | 'public';
   timestamp: string; // ISO string
   description: string;
   metadata?: {
@@ -208,4 +208,23 @@ export interface Activity {
   };
 }
 
+export interface PDFFormField {
+    id: string;
+    type: 'text' | 'signature' | 'date';
+    pageNumber: number;
+    position: { x: number; y: number }; // as percentages
+    dimensions: { width: number; height: number }; // as percentages
+}
+    
+export interface PDFForm {
+    id: string;
+    name: string;
+    originalFileName: string;
+    storagePath: string;
+    downloadUrl: string;
+    status: 'draft' | 'published' | 'archived';
+    createdAt: string; // ISO String
+    updatedAt: string; // ISO String
+    fieldMapping: PDFFormField[];
+}
     

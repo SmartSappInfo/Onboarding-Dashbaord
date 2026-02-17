@@ -59,9 +59,9 @@
 [ ] Implement server actions (`updateNote`, `deleteNote`) to allow users to edit or delete their own `'note'` type activities.
 
 ### Feature: Dynamic PDF Forms (Management)
-[ ] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
-[ ] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
-[ ] Implement the file upload mechanism to Firebase Storage for new PDFs.
+[*] Define `PDFForm` schema in Firestore, including `name`, `storagePath`, `status`, and `fieldMapping`.
+[*] Implement the PDF form management page (`/admin/pdfs` route) with a data table for all PDF forms.
+[*] Implement the file upload mechanism to Firebase Storage for new PDFs.
 
 ## Phase 3: Document Rendering & Interaction Layer
 
