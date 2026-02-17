@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
@@ -53,6 +52,8 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
     const annotationLayerRef = React.useRef<HTMLDivElement>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [pageDimensions, setPageDimensions] = React.useState({ width: 0, height: 0 });
+    const pdfjsRef = React.useRef<any | null>(null);
+    const pdfjsViewerRef = React.useRef<any | null>(null);
 
     React.useEffect(() => {
         let isMounted = true;
@@ -61,7 +62,15 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
              setIsLoading(true);
              
              try {
-                const [pdfjs, pdfjsViewer] = await Promise.all([pdfjsPromise, pdfjsViewerPromise]);
+                if (!pdfjsRef.current || !pdfjsViewerRef.current) {
+                    const [pdfjsModule, pdfjsViewerModule] = await Promise.all([pdfjsPromise, pdfjsViewerPromise]);
+                    pdfjsRef.current = pdfjsModule;
+                    pdfjsViewerRef.current = pdfjsViewerModule;
+                    (window as any).pdfjsLib = pdfjsModule;
+                }
+                const pdfjs = pdfjsRef.current;
+                const pdfjsViewer = pdfjsViewerRef.current;
+
                 if (!isMounted) return;
                 
                 const page = await pdf.getPage(pageNumber);
@@ -310,6 +319,7 @@ const PropertiesSidebar = ({
   onSave, isSaving, onPreview, isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
+  const [showPassword, setShowPassword] = React.useState(false);
 
   return (
     <>
@@ -403,7 +413,23 @@ const PropertiesSidebar = ({
                     {passwordProtected && (
                          <div className="space-y-2">
                             <Label htmlFor="form-password">Form Password</Label>
-                            <Input id="form-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                             <div className="relative">
+                                <Input 
+                                    id="form-password" 
+                                    type={showPassword ? 'text' : 'password'} 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)} 
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground"
+                                    onClick={() => setShowPassword(prev => !prev)}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </CardContent>
@@ -472,6 +498,7 @@ export default function FieldMapper({
   const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
   
   const viewportRef = React.useRef<HTMLDivElement>(null);
+  const pdfjsRef = React.useRef<any | null>(null);
   
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey) {
@@ -487,10 +514,14 @@ export default function FieldMapper({
   React.useEffect(() => {
     const loadPdf = async () => {
         try {
-            const [pdfjs, pdfjsViewer] = await Promise.all([pdfjsPromise, pdfjsViewerPromise]);
-            (window as any).pdfjsLib = pdfjs;
-            const pdfjsVersion = '4.4.168';
-            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            if (!pdfjsRef.current) {
+                const [pdfjsModule] = await Promise.all([pdfjsPromise]);
+                pdfjsRef.current = pdfjsModule;
+                (window as any).pdfjsLib = pdfjsModule;
+                 const pdfjsVersion = '4.4.168';
+                pdfjsModule.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            }
+            const pdfjs = pdfjsRef.current;
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
             const loadedPdf = await loadingTask.promise;
             setPdfDoc(loadedPdf);
