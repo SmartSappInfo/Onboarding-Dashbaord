@@ -1,6 +1,7 @@
 
 rules_version = '2';
 
+// Triggering synchronization. This comment forces a redeployment.
 // This is a trigger for redeployment.
 // Triggering synchronization again to be certain.
 
