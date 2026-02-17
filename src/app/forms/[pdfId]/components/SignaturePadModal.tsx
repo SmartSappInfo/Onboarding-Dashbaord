@@ -126,7 +126,17 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         if (activeTab === 'draw' && sigPadRef.current && !sigPadRef.current.isEmpty()) {
             dataUrl = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
         } else if (activeTab === 'type' && initialsCanvasRef.current && typedInitials) {
-            dataUrl = initialsCanvasRef.current.toDataURL('image/png');
+            const canvas = initialsCanvasRef.current;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous content
+                ctx.font = 'italic 60px serif';
+                ctx.fillStyle = 'black';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(typedInitials, canvas.width / 2, canvas.height / 2);
+                dataUrl = canvas.toDataURL('image/png');
+            }
         } else if (activeTab === 'upload' && uploadedImage) {
             dataUrl = uploadedImage;
         } else if (activeTab === 'photo' && capturedImage) {
@@ -136,6 +146,12 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         if (dataUrl) {
             setSignatureData(dataUrl);
             setStep('confirm');
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'No Signature Provided',
+                description: 'Please create a signature before proceeding.',
+            });
         }
     };
 
@@ -256,7 +272,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                         </div>
 
                         <DialogFooter>
-                            <Button variant="outline" onClick={() => setStep('input')}>Change Signature</Button>
+                            <Button variant="outline" onClick={() => setStep('input')}>Back</Button>
                             <Button onClick={handleFinalSign} disabled={!isConsented || !signatureData}>Sign Now</Button>
                         </DialogFooter>
                     </>
