@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/sheet';
 import PdfUploader from './PdfUploader';
 import { useRouter } from 'next/navigation';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function UploadPDFButton() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -24,10 +25,20 @@ export default function UploadPDFButton() {
 
   return (
     <>
-      <Button onClick={() => setIsSheetOpen(true)}>
-        <Upload className="mr-2 h-4 w-4" />
-        Upload Document
-      </Button>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button onClick={() => setIsSheetOpen(true)} size="icon" className="shrink-0">
+              <Upload className="h-4 w-4" />
+              <span className="sr-only">Upload Document</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Upload New Document</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+
       <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent className="w-full sm:max-w-2xl p-0 flex flex-col h-full">
           <SheetHeader className="px-6 pt-6 pb-4 border-b">

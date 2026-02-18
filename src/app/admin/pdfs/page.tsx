@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -27,6 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Ey
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -100,6 +101,84 @@ export default function PdfFormsPage() {
     }
   }
 
+  const renderActions = (pdf: PDFForm) => (
+    <div className="flex items-center justify-end gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                const url = `${window.location.origin}/forms/${pdf.id}`;
+                navigator.clipboard.writeText(url);
+                toast({
+                  title: "Link Copied",
+                  description: "Public form URL copied to clipboard.",
+                });
+              }
+            }}
+          >
+            <Copy className="h-4 w-4" />
+            <span className="sr-only">Copy link</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Copy Public Link</p>
+        </TooltipContent>
+      </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+            <a href={`/forms/${pdf.id}`} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-4 w-4" />
+              <span className="sr-only">View public page</span>
+            </a>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>View Public Page</p>
+        </TooltipContent>
+      </Tooltip>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <span className="sr-only">Open menu</span>
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
+            <Edit className="mr-2 h-4 w-4" />
+            <span>Map Fields</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/submissions`)}>
+            <BarChart2 className="mr-2 h-4 w-4" />
+            <span>View Responses</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
+              {pdf.status === 'published' ? (
+                  <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
+              ) : (
+                  <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
+              )}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            className="text-destructive focus:bg-destructive/10"
+            onClick={() => setFormToDelete(pdf)}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            <span>Delete</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
@@ -111,7 +190,8 @@ export default function PdfFormsPage() {
             <UploadPDFButton />
         </div>
 
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -144,7 +224,7 @@ export default function PdfFormsPage() {
                     </TableCell>
                     <TableCell className="text-center font-medium">{pdf.fields?.length || 0}</TableCell>
                     <TableCell className="text-center">
-                        <Button variant="link" asChild className="font-semibold">
+                        <Button variant="link" asChild className="h-auto p-0 font-semibold">
                             <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
                                 <SubmissionCount pdfId={pdf.id} />
                             </Link>
@@ -152,79 +232,7 @@ export default function PdfFormsPage() {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">{format(new Date(pdf.createdAt), "PPP")}</TableCell>
                     <TableCell className="text-right">
-                       <div className="flex items-center justify-end gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(
-                                    `${window.location.origin}/forms/${pdf.id}`
-                                  );
-                                  toast({
-                                    title: "Link Copied",
-                                    description: "Public form URL copied to clipboard.",
-                                  });
-                                }}
-                              >
-                                <Copy className="h-4 w-4" />
-                                <span className="sr-only">Copy link</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Copy Public Link</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                                <a href={`/forms/${pdf.id}`} target="_blank" rel="noopener noreferrer">
-                                  <ExternalLink className="h-4 w-4" />
-                                  <span className="sr-only">View public page</span>
-                                </a>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>View Public Page</p>
-                            </TooltipContent>
-                          </Tooltip>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                <span>Map Fields</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/submissions`)}>
-                                <BarChart2 className="mr-2 h-4 w-4" />
-                                <span>View Responses</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
-                                  {pdf.status === 'published' ? (
-                                      <><EyeOff className="mr-2 h-4 w-4" /><span>Unpublish</span></>
-                                  ) : (
-                                      <><Eye className="mr-2 h-4 w-4" /><span>Publish</span></>
-                                  )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                className="text-destructive focus:bg-destructive/10"
-                                onClick={() => setFormToDelete(pdf)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                <span>Delete</span>
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                       </div>
+                       {renderActions(pdf)}
                     </TableCell>
                   </TableRow>
                 ))
@@ -239,6 +247,56 @@ export default function PdfFormsPage() {
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+            ) : pdfs && pdfs.length > 0 ? (
+                pdfs.map((pdf) => (
+                    <Card key={pdf.id}>
+                        <CardHeader className="pb-2">
+                            <div className="flex items-start justify-between">
+                                <div className="space-y-1">
+                                    <CardTitle className="text-lg">{pdf.name}</CardTitle>
+                                    <CardDescription>
+                                        Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
+                                    </CardDescription>
+                                </div>
+                                <Badge variant={getStatusVariant(pdf.status)} className="capitalize">
+                                    {pdf.status}
+                                </Badge>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="pb-4">
+                            <div className="flex items-center justify-between text-sm">
+                                <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50 flex-1 mr-2">
+                                    <span className="text-muted-foreground text-xs uppercase font-semibold">Fields</span>
+                                    <span className="text-lg font-bold">{pdf.fields?.length || 0}</span>
+                                </div>
+                                <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50 flex-1 ml-2">
+                                    <span className="text-muted-foreground text-xs uppercase font-semibold">Responses</span>
+                                    <Button variant="link" asChild className="h-auto p-0 font-bold text-lg">
+                                        <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
+                                            <SubmissionCount pdfId={pdf.id} />
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="flex justify-end pt-0">
+                            {renderActions(pdf)}
+                        </CardFooter>
+                    </Card>
+                ))
+            ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-lg bg-muted/20">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-semibold">No Documents Yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
+                </div>
+            )}
         </div>
       </div>
        <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
