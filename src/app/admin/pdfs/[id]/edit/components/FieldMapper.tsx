@@ -270,15 +270,13 @@ const ResizableField = ({
                     {resizeHandles.map(handle => (
                          <div key={handle}
                             onMouseDown={(e) => handleResizeStart(e, handle)}
-                            className={cn('absolute bg-primary rounded-full w-2.5 h-2.5 -m-1.5 z-20',
-                                handle.includes('top') && 'top-0',
-                                handle.includes('bottom') && 'bottom-0',
-                                handle.includes('left') && 'left-0',
-                                handle.includes('right') && 'right-0',
-                                handle === 'top' && 'left-1/2 -translate-x-1/2 cursor-n-resize',
-                                handle === 'bottom' && 'left-1/2 -translate-x-1/2 cursor-s-resize',
-                                handle === 'left' && 'top-1/2 -translate-y-1/2 cursor-w-resize',
-                                handle === 'right' && 'top-1/2 -translate-y-1/2 cursor-e-resize',
+                            className={cn('absolute bg-primary rounded-full w-2.5 h-2.5 z-20 -translate-x-1/2 -translate-y-1/2',
+                                handle.includes('top') ? 'top-0' : handle.includes('bottom') ? 'top-full' : 'top-1/2',
+                                handle.includes('left') ? 'left-0' : handle.includes('right') ? 'left-full' : 'left-1/2',
+                                handle === 'top' && 'cursor-n-resize',
+                                handle === 'bottom' && 'cursor-s-resize',
+                                handle === 'left' && 'cursor-w-resize',
+                                handle === 'right' && 'cursor-e-resize',
                                 handle === 'top-left' && 'cursor-nw-resize',
                                 handle === 'top-right' && 'cursor-ne-resize',
                                 handle === 'bottom-left' && 'cursor-sw-resize',
@@ -680,7 +678,7 @@ export default function FieldMapper({
                     style={{ minWidth: 'fit-content' }}
                     onClick={() => setSelectedFieldId(null)}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
