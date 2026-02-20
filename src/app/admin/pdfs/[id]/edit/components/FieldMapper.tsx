@@ -62,16 +62,21 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   date: Calendar,
 };
 
-function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, zoom }: {
+function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom }: {
     pdf: PDFDocumentProxy;
     pageNumber: number;
     fields: LocalPDFFormField[];
     selectedFieldIds: string[];
+    anchorFieldId: string | null;
     onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
     onDelete: (id: string) => void;
     onDuplicate: (id: string) => void;
     onChangeType: (id: string, newType: PDFFormField['type']) => void;
+    alignFields: (type: 'left' | 'right' | 'top' | 'bottom' | 'center-h' | 'center-v') => void;
+    distributeFields: (type: 'horizontal' | 'vertical') => void;
+    bulkDuplicate: () => void;
+    bulkRemove: () => void;
     zoom: number;
 }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -140,12 +145,17 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, onSelect, onU
                     field={field}
                     pageDimensions={pageDimensions}
                     isSelected={selectedFieldIds.includes(field.id)}
+                    isAnchor={field.id === anchorFieldId}
                     showHandles={selectedFieldIds.length <= 1}
                     onSelect={onSelect}
                     onUpdate={onUpdate}
                     onDelete={onDelete}
                     onDuplicate={onDuplicate}
                     onChangeType={onChangeType}
+                    alignFields={alignFields}
+                    distributeFields={distributeFields}
+                    bulkDuplicate={bulkDuplicate}
+                    bulkRemove={bulkRemove}
                     zoom={zoom}
                 />
             ))}
@@ -156,17 +166,22 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, onSelect, onU
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 
 const ResizableField = ({
-    field, pageDimensions, isSelected, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType
+    field, pageDimensions, isSelected, isAnchor, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove
 }: {
     field: LocalPDFFormField;
     pageDimensions: { width: number, height: number };
     isSelected: boolean;
+    isAnchor: boolean;
     showHandles: boolean;
     onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
     onDelete: (id: string) => void;
     onDuplicate: (id: string) => void;
     onChangeType: (id: string, type: PDFFormField['type']) => void;
+    alignFields: (type: 'left' | 'right' | 'top' | 'bottom' | 'center-h' | 'center-v') => void;
+    distributeFields: (type: 'horizontal' | 'vertical') => void;
+    bulkDuplicate: () => void;
+    bulkRemove: () => void;
     zoom: number;
 }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: field.id });
@@ -248,6 +263,74 @@ const ResizableField = ({
             className={`absolute border-2 ${borderColorClass} transition-colors group/field`}
         >
             <div {...listeners} className="w-full h-full cursor-grab" onMouseDown={(e) => e.stopPropagation()}></div>
+            
+            {/* Batch Action Toolbar (Multi-Select) */}
+            {isAnchor && (
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
+                    <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm">
+                        <CardContent className="p-1 flex items-center gap-1">
+                            <TooltipProvider>
+                                {/* Alignment Dropdown */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <AlignStartVertical className="h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                        </Button>
+                                        <div className="h-px bg-border my-1" />
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                        </Button>
+                                    </PopoverContent>
+                                </Popover>
+
+                                {/* Distribution Dropdown */}
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <DistributeHorizontal className="h-4 w-4" />
+                                        </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('horizontal')}>
+                                            <DistributeHorizontal className="mr-2 h-4 w-4" /> Distribute Horizontally
+                                        </Button>
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('vertical')}>
+                                            <DistributeVertical className="mr-2 h-4 w-4" /> Distribute Vertically
+                                        </Button>
+                                    </PopoverContent>
+                                </Popover>
+                                
+                                <div className="w-px h-4 bg-border mx-1" />
+                                
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
+                                
+                                <div className="w-px h-4 bg-border mx-1" />
+                                
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
+                            </TooltipProvider>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
+            {/* Single Select Action Bar */}
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
@@ -496,7 +579,7 @@ const PropertiesSidebar = ({
                         <CardDescription className="text-[10px]">{selectedFieldIds.length} items selected</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar to align or duplicate items.</p>
+                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar above the selection to align or duplicate items.</p>
                     </CardContent>
                 </Card>
             ) : null}
@@ -620,6 +703,17 @@ export default function FieldMapper({
     if (pdf.downloadUrl) loadPdf();
   }, [pdf.downloadUrl, toast]);
 
+  const anchorFieldId = React.useMemo(() => {
+    if (selectedFieldIds.length < 2) return null;
+    const selectedFields = fields.filter(f => selectedFieldIds.includes(f.id));
+    if (selectedFields.length === 0) return null;
+    return selectedFields.reduce((prev, curr) => {
+        if (curr.pageNumber < prev.pageNumber) return curr;
+        if (curr.pageNumber === prev.pageNumber && curr.position.y < prev.position.y) return curr;
+        return prev;
+    }).id;
+  }, [fields, selectedFieldIds]);
+
   const handleSelect = React.useCallback((id: string, multi: boolean = false, toggle: boolean = false) => {
     setSelectedFieldIds(prev => {
         if (toggle) return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
@@ -673,7 +767,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Snap vertical positions to a center horizontal axis
+        case 'center-v': // Vertical Middle Axis (mapping to AlignCenterHorizontal logic)
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
@@ -685,7 +779,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Snap horizontal positions to a center vertical axis
+        case 'center-h': // Horizontal Middle Axis (mapping to AlignCenterVertical logic)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
@@ -694,7 +788,7 @@ export default function FieldMapper({
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
     }
-    // Release selection so items can be moved independently immediately
+    // Release selection
     setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields]);
 
@@ -929,9 +1023,15 @@ export default function FieldMapper({
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
                             fields={fields.filter(f => f.pageNumber === index + 1)}
-                            selectedFieldIds={selectedFieldIds} onSelect={handleSelect}
+                            selectedFieldIds={selectedFieldIds} 
+                            anchorFieldId={anchorFieldId}
+                            onSelect={handleSelect}
                             onUpdate={updateField} onDelete={removeField} onDuplicate={bulkDuplicate}
                             onChangeType={(id, type) => setFields(prev => prev.map(f => f.id === id ? {...f, type} : f))} 
+                            alignFields={alignFields}
+                            distributeFields={distributeFields}
+                            bulkDuplicate={bulkDuplicate}
+                            bulkRemove={bulkRemove}
                             zoom={displayZoom} 
                         />
                     ))}
@@ -964,70 +1064,6 @@ export default function FieldMapper({
                           </div>
                           <Progress value={undefined} className="h-1" />
                           <p className="text-[9px] text-muted-foreground text-center">Detecting lines, boxes and signatures...</p>
-                      </CardContent>
-                  </Card>
-              )}
-
-              {/* Multi-Select Context Toolbar */}
-              {selectedFieldIds.length > 1 && (
-                  <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in zoom-in-95 mb-2">
-                      <CardContent className="p-1 flex items-center gap-1">
-                          <TooltipProvider>
-                              {/* Alignment Dropdown */}
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <AlignStartVertical className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                        <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
-                                    </Button>
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                        <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
-                                    </Button>
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                        <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
-                                    </Button>
-                                    <div className="h-px bg-border my-1" />
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                        <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
-                                    </Button>
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                        <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
-                                    </Button>
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                        <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
-                                    </Button>
-                                </PopoverContent>
-                              </Popover>
-
-                              {/* Distribution Dropdown */}
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                        <DistributeHorizontal className="h-4 w-4" />
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('horizontal')}>
-                                        <DistributeHorizontal className="mr-2 h-4 w-4" /> Distribute Horizontally
-                                    </Button>
-                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('vertical')}>
-                                        <DistributeVertical className="mr-2 h-4 w-4" /> Distribute Vertically
-                                    </Button>
-                                </PopoverContent>
-                              </Popover>
-                              
-                              <div className="w-px h-4 bg-border mx-1" />
-                              
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
-                              
-                              <div className="w-px h-4 bg-border mx-1" />
-                              
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
-                          </TooltipProvider>
                       </CardContent>
                   </Card>
               )}
@@ -1115,7 +1151,7 @@ export default function FieldMapper({
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-            onDetect={onDetect} onDetect={onDetect} isDetecting={isDetecting}
+            onDetect={onDetect} isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
