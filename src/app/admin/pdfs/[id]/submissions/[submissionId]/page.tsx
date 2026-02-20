@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { regenerateSubmissionPdf } from '@/lib/pdf-actions';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,20 +61,22 @@ export default function SubmissionDetailPage() {
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-        const result = await regenerateSubmissionPdf(pdfId as string, submissionId as string);
-        if (result.success && result.pdfDataUri) {
-            const link = document.createElement('a');
-            link.href = result.pdfDataUri;
-            link.download = `${pdfForm?.name || 'signed'}-submission.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast({ title: 'Download Started' });
-        } else {
-            toast({ variant: 'destructive', title: 'Error generating PDF', description: result.error });
-        }
-    } catch (e) {
-        toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred during generation.' });
+        const response = await fetch(`/api/pdfs/${pdfId}/generate/${submissionId}`);
+        if (!response.ok) throw new Error('Failed to generate PDF');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${pdfForm?.name || 'signed'}-submission.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({ title: 'Download Successful' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
     } finally {
         setIsDownloading(false);
     }

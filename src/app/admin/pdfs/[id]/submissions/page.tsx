@@ -11,7 +11,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
 import { ArrowLeft, Eye, Download, Loader2 } from 'lucide-react';
-import { regenerateSubmissionPdf } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 
@@ -41,20 +40,22 @@ export default function SubmissionsPage() {
   const handleDownload = async (submissionId: string) => {
     setDownloadingId(submissionId);
     try {
-        const result = await regenerateSubmissionPdf(pdfId as string, submissionId);
-        if (result.success && result.pdfDataUri) {
-            const link = document.createElement('a');
-            link.href = result.pdfDataUri;
-            link.download = `submission-${submissionId}.pdf`;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            toast({ title: 'Download Started' });
-        } else {
-            toast({ variant: 'destructive', title: 'Download Failed', description: result.error });
-        }
-    } catch (e) {
-        toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+        const response = await fetch(`/api/pdfs/${pdfId}/generate/${submissionId}`);
+        if (!response.ok) throw new Error('Failed to generate PDF');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `submission-${submissionId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({ title: 'Download Successful' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
     } finally {
         setDownloadingId(null);
     }
@@ -62,13 +63,11 @@ export default function SubmissionsPage() {
 
   const handleDownloadAll = async () => {
     if (!submissions || submissions.length === 0) return;
-    toast({ title: 'Preparing Batch Download', description: 'Generating all signed documents. Your browser may prompt you to allow multiple downloads.' });
+    toast({ title: 'Preparing Batch Download', description: 'Generating all signed documents sequentially.' });
     
-    // Process in sequence to avoid browser throttling or server overload
     for (const sub of submissions) {
         await handleDownload(sub.id);
-        // Small delay between downloads
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
   };
 
@@ -84,7 +83,7 @@ export default function SubmissionsPage() {
             {isLoadingPdf ? <Skeleton className="h-8 w-64" /> : `Submissions for "${pdf?.name}"`}
           </h1>
           <p className="text-muted-foreground">
-            View all completed submissions for this document.
+            View and download all completed submissions for this document.
           </p>
         </div>
         {!isLoading && submissions && submissions.length > 0 && (

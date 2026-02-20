@@ -10,10 +10,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, Save, CheckCircle2 } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { regenerateSubmissionPdf, savePdfSubmission } from '@/lib/pdf-actions';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -31,14 +31,18 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
 }
 
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDownloading, setIsDownloading] = React.useState(false);
-  const [submissionId, setSubmissionId] = React.useState<string | null>(null);
-  const [isSubmitted, setIsSubmitted] = React.useState(false);
+  const [submissionId, setSubmissionId] = React.useState<string | null>(searchParams.get('submissionId'));
+  const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const [scale, setScale] = React.useState(1.5);
-  const { toast } = useToast();
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -50,7 +54,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   // Responsive scaling
   React.useEffect(() => {
     const updateScale = () => {
-        const containerWidth = window.innerWidth - 64; // Account for padding
+        const containerWidth = window.innerWidth - 64; 
         if (containerWidth < 600) setScale(containerWidth / 600);
         else setScale(1.5);
     };
@@ -71,7 +75,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             setPdfDoc(loadedPdf);
         } catch (error: any) {
             console.error("PDF Loading Error:", error);
-            toast({ variant: 'destructive', title: 'Error Loading PDF', description: 'Could not load document template.', duration: 10000 });
+            toast({ variant: 'destructive', title: 'Error Loading PDF', description: 'Could not load document template.' });
         }
     };
     if (pdfForm.downloadUrl) {
@@ -79,45 +83,70 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
   }, [pdfForm.downloadUrl, toast]);
   
-  const handleSave = async (data: any) => {
+  const handleFinalSubmit = async (formData: any) => {
     if (isPreview) {
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
     }
+    
     setIsSubmitting(true);
-    const result = await savePdfSubmission(pdfForm.id, data);
-    if (result.success && result.submissionId) {
-        toast({ title: 'Success!', description: 'Your submission has been saved.' });
-        setSubmissionId(result.submissionId);
-    } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to save your submission.' });
+    try {
+        const response = await fetch('/api/pdfs/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pdfId: pdfForm.id, formData }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.submissionId) {
+            setSubmissionId(data.submissionId);
+            setIsSubmitted(true);
+            toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
+            
+            // Persist state in URL so refresh doesn't lose the "download" access
+            const params = new URLSearchParams(searchParams);
+            params.set('submissionId', data.submissionId);
+            router.replace(`${pathname}?${params.toString()}`);
+        } else {
+            throw new Error(data.error || 'Failed to submit form.');
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
+    } finally {
+        setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
   
   const handleDownload = async () => {
-    if (!submissionId) {
-        toast({ title: 'Please Save First', description: 'You must save your submission before you can download it.' });
-        return;
-    }
+    if (!submissionId) return;
+    
     setIsDownloading(true);
-    const result = await regenerateSubmissionPdf(pdfForm.id, submissionId);
-    if (result.success && result.pdfDataUri) {
-        const link = document.createElement('a');
-        link.href = result.pdfDataUri;
-        link.download = `${pdfForm.name}-signed.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setIsSubmitted(true);
-    } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error || 'Failed to generate the PDF.' });
+    try {
+        const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submissionId}`);
+        if (!response.ok) throw new Error('Failed to generate PDF');
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${pdfForm.name}-signed.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({ title: 'Download Complete' });
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
+    } finally {
+        setIsDownloading(false);
     }
-    setIsDownloading(false);
   };
   
   const renderField = (field: PDFFormField) => {
-    const error = errors[field.id];
+    const signatureValue = watch(field.id);
+    const isLocked = isSubmitted || isSubmitting;
     
     let fieldElement;
     switch(field.type) {
@@ -125,7 +154,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             fieldElement = (
                 <input 
                     {...register(field.id)}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors"
+                    disabled={isLocked}
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 disabled:bg-gray-50"
                 />
             );
             break;
@@ -134,22 +164,23 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <input 
                     type="date" 
                     {...register(field.id)}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors" 
+                    disabled={isLocked}
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 disabled:bg-gray-50" 
                 />
              );
              break;
         case 'signature':
-            const signatureValue = watch(field.id);
             fieldElement = (
                  <button
                     type="button"
+                    disabled={isLocked}
                     onClick={() => setActiveSignatureField(field.id)}
-                    className="w-full h-full border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden"
+                    className="w-full h-full border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden disabled:cursor-default"
                 >
                     {signatureValue ? (
                         <img src={signatureValue} alt="Signature" className="w-full h-full object-contain" />
                     ) : (
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">Sign</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">Sign Here</span>
                     )}
                 </button>
             );
@@ -165,47 +196,34 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     );
   }
 
-  if (isSubmitted) {
-    return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-            <div className="text-center py-12 px-8 bg-card rounded-xl shadow-2xl max-w-md w-full border border-border">
-                <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h2 className="text-2xl font-bold text-foreground">All Done!</h2>
-                <p className="text-muted-foreground mt-3 mb-8">Your signed document has been generated and downloaded. You can now securely close this window.</p>
-                <Button onClick={() => window.close()} variant="outline" className="w-full">Close Window</Button>
-            </div>
-        </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-screen bg-muted/20 overflow-hidden">
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center shadow-sm shrink-0">
-            <div className="flex-1 flex justify-center">
+            <div className="absolute left-1/2 -translate-x-1/2">
                 <span className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">{pdfForm.name}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="ml-auto flex items-center gap-2">
                 <Button 
                     type="button" 
                     size="sm" 
-                    variant={submissionId ? "outline" : "default"}
-                    disabled={isSubmitting || isDownloading || !isValid || !!submissionId || isPreview} 
-                    onClick={handleSubmit(handleSave)}
+                    variant={isSubmitted ? "outline" : "default"}
+                    disabled={isSubmitting || isSubmitted || !isValid || isPreview} 
+                    onClick={handleSubmit(handleFinalSubmit)}
                 >
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {submissionId ? 'Saved' : 'Save'}
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    {isSubmitted ? 'Submitted' : 'Submit Form'}
                 </Button>
-                <Button 
-                    type="button" 
-                    size="sm" 
-                    disabled={isDownloading || !submissionId || isPreview} 
-                    onClick={handleDownload}
-                >
-                    {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Submit
-                </Button>
+                {isSubmitted && (
+                    <Button 
+                        type="button" 
+                        size="sm" 
+                        disabled={isDownloading} 
+                        onClick={handleDownload}
+                    >
+                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                        Download Filled PDF
+                    </Button>
+                )}
             </div>
         </header>
 
@@ -268,7 +286,6 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
             setIsRendering(true);
             try {
                 const page = await pdf.getPage(pageNumber);
-                // Use intrinsic rotation from the PDF metadata
                 const viewport = page.getViewport({ scale, rotation: page.rotate });
                 
                 if (!isMounted) return;
@@ -280,7 +297,6 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
                     if (context) {
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        // Render standard canvas using PDF.js native coordinate system
                         await page.render({ canvasContext: context, viewport }).promise;
                     }
                 }
