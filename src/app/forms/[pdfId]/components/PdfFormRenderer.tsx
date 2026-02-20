@@ -13,6 +13,7 @@ import SignaturePadModal from './SignaturePadModal';
 import { Loader2, Download, Save, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { regenerateSubmissionPdf, savePdfSubmission } from '@/lib/pdf-actions';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -180,8 +181,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }
 
   return (
-    <div className="flex flex-col h-screen bg-muted/20">
-       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center shadow-sm">
+    <div className="flex flex-col h-screen bg-muted/20 overflow-hidden">
+       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center shadow-sm shrink-0">
             <div className="flex-1 flex justify-center">
                 <span className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">{pdfForm.name}</span>
             </div>
@@ -208,27 +209,32 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </header>
 
-        <main className="flex-grow overflow-auto p-4 sm:p-8">
-            <div className="max-w-fit mx-auto">
-                {!pdfDoc ? (
-                     <div className="space-y-4">
-                        <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-8 pb-20">
-                        {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                            <PageRenderer
-                                key={index}
-                                pdf={pdfDoc}
-                                pageNumber={index + 1}
-                                fields={pdfForm.fields}
-                                renderField={renderField}
-                                scale={scale}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
+        <main className="flex-grow relative overflow-hidden">
+            <ScrollArea className="h-full w-full">
+                <div 
+                    className="p-4 sm:p-8 flex flex-col items-center min-w-full" 
+                    style={{ minWidth: 'fit-content' }}
+                >
+                    {!pdfDoc ? (
+                         <div className="space-y-4">
+                            <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-8 pb-20">
+                            {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                                <PageRenderer
+                                    key={index}
+                                    pdf={pdfDoc}
+                                    pageNumber={index + 1}
+                                    fields={pdfForm.fields}
+                                    renderField={renderField}
+                                    scale={scale}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </ScrollArea>
         </main>
         
          <SignaturePadModal
@@ -290,7 +296,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
 
     return (
         <div 
-            className="relative shadow-2xl bg-white border border-border transition-all duration-300" 
+            className="relative shadow-2xl bg-white border border-border transition-all duration-300 flex-shrink-0" 
             style={{ width: dimensions.width, height: dimensions.height }}
         >
             {isRendering && <Skeleton className="absolute inset-0 z-10" />}

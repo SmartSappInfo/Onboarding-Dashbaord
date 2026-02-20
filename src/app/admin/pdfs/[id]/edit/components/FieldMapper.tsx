@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField } from '@/lib/types';
+import type { PDFForm, PDFFormField, MediaAsset } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -95,7 +95,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
     return (
         <div 
             data-page-number={pageNumber}
-            className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all"
+            className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0"
             style={{ 
                 width: pageDimensions.width / 1.5, 
                 height: pageDimensions.height / 1.5,
@@ -653,9 +653,13 @@ export default function FieldMapper({
     <div className="flex h-full overflow-hidden bg-muted/30">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full" onWheel={handleWheel} viewportRef={viewportRef}>
-                <div className="p-12 space-y-12 pb-32 flex flex-col items-center min-w-max md:min-w-0" onClick={() => setSelectedFieldId(null)}>
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg" />)}
+              <ScrollArea className="h-full w-full" onWheel={handleWheel} viewportRef={viewportRef}>
+                <div 
+                    className="p-12 pb-32 flex flex-col items-center min-w-full" 
+                    style={{ minWidth: 'fit-content' }}
+                    onClick={() => setSelectedFieldId(null)}
+                >
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}

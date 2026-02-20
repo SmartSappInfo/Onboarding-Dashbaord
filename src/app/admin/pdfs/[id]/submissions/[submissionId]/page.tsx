@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { regenerateSubmissionPdf } from '@/lib/pdf-actions';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Dynamically import pdfjs-dist
 const pdfjsPromise = import('pdfjs-dist');
@@ -102,26 +103,33 @@ export default function SubmissionDetailPage() {
           </Button>
         </div>
       </div>
-      <div className="flex-grow bg-muted overflow-y-auto p-4 sm:p-8">
-        <div className="max-w-4xl mx-auto space-y-4">
-            {isLoading ? (
-                Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-full aspect-[1/1.41] bg-white shadow-md mb-4" />)
-            ) : pdfDoc && pdfForm && submission ? (
-                Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                    <SubmissionPageRenderer
-                        key={index}
-                        pdf={pdfDoc}
-                        pageNumber={index + 1}
-                        fields={pdfForm.fields}
-                        formData={submission.formData}
-                    />
-                ))
-            ) : (
-                <div className="flex items-center justify-center h-full py-20 text-center">
-                    <p className="text-muted-foreground">Submission not found or failed to load template.</p>
+      <div className="flex-grow bg-muted overflow-hidden relative">
+        <ScrollArea className="h-full w-full">
+            <div 
+                className="p-4 sm:p-8 flex flex-col items-center min-w-full"
+                style={{ minWidth: 'fit-content' }}
+            >
+                <div className="max-w-4xl mx-auto space-y-4">
+                    {isLoading ? (
+                        Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-full aspect-[1/1.41] bg-white shadow-md mb-4 flex-shrink-0" />)
+                    ) : pdfDoc && pdfForm && submission ? (
+                        Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                            <SubmissionPageRenderer
+                                key={index}
+                                pdf={pdfDoc}
+                                pageNumber={index + 1}
+                                fields={pdfForm.fields}
+                                formData={submission.formData}
+                            />
+                        ))
+                    ) : (
+                        <div className="flex items-center justify-center h-full py-20 text-center">
+                            <p className="text-muted-foreground">Submission not found or failed to load template.</p>
+                        </div>
+                    )}
                 </div>
-            )}
-        </div>
+            </div>
+        </ScrollArea>
       </div>
     </div>
   );
@@ -137,7 +145,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
             setIsRendering(true);
             try {
                 const page = await pdf.getPage(pageNumber);
-                const viewport = page.getViewport({ scale: 1.5 });
+                const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
                 setDimensions({ width: viewport.width, height: viewport.height });
 
                 if (canvasRef.current) {
@@ -159,7 +167,10 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
     }, [pdf, pageNumber]);
 
     return (
-        <div className="relative mx-auto shadow-xl bg-white border border-border" style={{ width: dimensions.width, height: dimensions.height }}>
+        <div 
+            className="relative mx-auto shadow-xl bg-white border border-border flex-shrink-0" 
+            style={{ width: dimensions.width, height: dimensions.height }}
+        >
             {isRendering && <Skeleton className="absolute inset-0" />}
             <canvas ref={canvasRef} className="w-full h-full" />
             {!isRendering && (
