@@ -190,7 +190,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             <DialogContent className="sm:max-w-2xl">
                 {step === 'input' && (
                     <>
-                        <DialogHeader>
+                        <DialogHeader className="text-center sm:text-center">
                             <DialogTitle>Provide Your Signature</DialogTitle>
                             <DialogDescription>Choose one of the methods below to create your signature.</DialogDescription>
                         </DialogHeader>
@@ -217,7 +217,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             </TabsContent>
                             <TabsContent value="type">
                                 <div className="mt-4 space-y-4">
-                                    <Label htmlFor="initials-input">Type your name or initials</Label>
+                                    <Label htmlFor="initials-input" className="block text-center">Type your name or initials</Label>
                                     <Input id="initials-input" value={typedInitials} onChange={(e) => setTypedInitials(e.target.value)} className="text-4xl text-center font-serif italic h-auto py-4" placeholder="J. Doe" />
                                     <canvas ref={initialsCanvasRef} width="400" height="150" className="hidden" />
                                 </div>
@@ -240,7 +240,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             </TabsContent>
                             <TabsContent value="photo">
                                 <div className="mt-4 space-y-4">
-                                    {hasCameraPermission === false && <Alert variant="destructive"><AlertDescription>Camera access is required. Please enable it in your browser settings and refresh.</AlertDescription></Alert>}
+                                    {hasCameraPermission === false && <Alert variant="destructive"><AlertDescription className="text-center">Camera access is required. Please enable it in your browser settings and refresh.</AlertDescription></Alert>}
                                     {hasCameraPermission && !capturedImage && <video ref={videoRef} className="w-full aspect-video rounded-md bg-black" autoPlay muted playsInline />}
                                     {capturedImage && <Image src={capturedImage} alt="Captured signature" width={400} height={225} className="w-full aspect-video object-contain rounded-md border bg-muted" />}
                                     
@@ -266,7 +266,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
 
                 {step === 'confirm' && (
                     <>
-                        <DialogHeader>
+                        <DialogHeader className="text-center sm:text-center">
                             <DialogTitle>Confirm Your Signature</DialogTitle>
                             <DialogDescription>Please review your signature and provide consent to sign.</DialogDescription>
                         </DialogHeader>
@@ -276,11 +276,11 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                 {signatureData && <Image src={signatureData} alt="Final signature preview" width={200} height={100} className="object-contain" />}
                             </div>
                             <Alert variant="default">
-                                <AlertDescription className="text-xs">
+                                <AlertDescription className="text-xs text-center">
                                     By selecting “Sign Now” you consent to electronically sign this document. This signature is equivalent to a handwritten signature under applicable electronic transaction laws. Ensure all details are accurate before continuing. This action cannot be undone.
                                 </AlertDescription>
                             </Alert>
-                             <div className="flex items-center space-x-2">
+                             <div className="flex items-center justify-center space-x-2 w-full">
                                 <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} />
                                 <Label htmlFor="consent-toggle" className="text-sm font-medium">I have reviewed and I consent to sign.</Label>
                             </div>
