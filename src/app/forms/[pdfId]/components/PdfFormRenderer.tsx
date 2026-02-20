@@ -84,22 +84,32 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }, [pdfForm.downloadUrl, toast]);
   
   const handleFinalSubmit = async (formData: any) => {
+    console.log(">>> [SUBMISSION INITIATED]");
+    console.log(">>> Target PDF Form ID:", pdfForm.id);
+    
+    // Log keys being submitted (useful for checking if all fields are picked up)
+    console.log(">>> Fields being submitted:", Object.keys(formData));
+
     if (isPreview) {
+        console.log(">>> [INFO] Submission ignored: Running in preview mode.");
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
     }
     
     setIsSubmitting(true);
     try {
+        console.log(">>> Sending data to /api/pdfs/submit...");
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ pdfId: pdfForm.id, formData }),
         });
 
+        console.log(">>> API Response status:", response.status);
         const data = await response.json();
 
         if (response.ok && data.submissionId) {
+            console.log(">>> [SUCCESS] Form data and signatures saved. Submission ID:", data.submissionId);
             setSubmissionId(data.submissionId);
             setIsSubmitted(true);
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
@@ -109,9 +119,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             params.set('submissionId', data.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
         } else {
+            console.error(">>> [ERROR] Server-side failure:", data.error);
             throw new Error(data.error || 'Failed to submit form.');
         }
     } catch (e: any) {
+        console.error(">>> [CRITICAL] Client-side catch block triggered:", e.message);
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
         setIsSubmitting(false);
@@ -121,12 +133,18 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const handleDownload = async () => {
     if (!submissionId) return;
     
+    console.log(">>> [DOWNLOAD INITIATED] Recomposing PDF for submission:", submissionId);
     setIsDownloading(true);
     try {
         const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submissionId}`);
-        if (!response.ok) throw new Error('Failed to generate PDF');
+        if (!response.ok) {
+            console.error(">>> [DOWNLOAD ERROR] Generation route failed with status:", response.status);
+            throw new Error('Failed to generate PDF');
+        }
 
         const blob = await response.blob();
+        console.log(">>> [SUCCESS] PDF buffer received. Blob size:", blob.size);
+        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -138,6 +156,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         
         toast({ title: 'Download Complete' });
     } catch (e: any) {
+        console.error(">>> [DOWNLOAD CRITICAL] Catch block:", e.message);
         toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
     } finally {
         setIsDownloading(false);
@@ -259,6 +278,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             open={!!activeSignatureField}
             onClose={() => setActiveSignatureField(null)}
             onSave={(dataUrl) => {
+                console.log(`>>> [SIGNATURE CAPTURED] Field: ${activeSignatureField}`);
                 if (activeSignatureField) {
                     setValue(activeSignatureField, dataUrl, { shouldDirty: true, shouldValidate: true });
                 }
