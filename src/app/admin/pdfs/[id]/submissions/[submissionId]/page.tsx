@@ -7,7 +7,7 @@ import { doc } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Monitor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -26,6 +26,9 @@ export default function SubmissionDetailPage() {
 
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isDownloading, setIsDownloading] = React.useState(false);
+  const [isFrontEndDownloading, setIsFrontEndDownloading] = React.useState(false);
+  
+  const pageContainerRef = React.useRef<HTMLDivElement>(null);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -85,6 +88,65 @@ export default function SubmissionDetailPage() {
     }
   };
 
+  const handleFrontEndDownload = async () => {
+    setIsFrontEndDownloading(true);
+    try {
+        const html2canvas = (await import('html2canvas')).default;
+        const { PDFDocument } = await import('pdf-lib');
+        
+        const pdfDoc = await PDFDocument.create();
+        const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
+        
+        if (!pageElements || !pageElements.length) {
+            throw new Error("No pages found to capture. Please ensure the document is fully loaded.");
+        }
+
+        toast({ title: 'Preparing Front-end Download', description: 'Capturing pages as images...' });
+
+        for (let i = 0; i < pageElements.length; i++) {
+            const el = pageElements[i] as HTMLElement;
+            
+            // Capture the element as a canvas with high scale for quality
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+            const image = await pdfDoc.embedJpg(imgBytes);
+            
+            const page = pdfDoc.addPage([image.width, image.height]);
+            page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: image.width,
+                height: image.height,
+            });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${pdfForm?.name || 'signed'}-frontend-capture.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        toast({ title: 'Front-end Download Successful' });
+    } catch (e: any) {
+        console.error("Front-end download error:", e);
+        toast({ variant: 'destructive', title: 'Front-end Download Failed', description: e.message });
+    } finally {
+        setIsFrontEndDownloading(false);
+    }
+  };
+
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
   return (
@@ -101,6 +163,10 @@ export default function SubmissionDetailPage() {
             </h1>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading}>
+            {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
+            Front-end Download
+          </Button>
           <Button onClick={handleDownload} disabled={isLoading || isDownloading}>
             {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
             Download Signed PDF
@@ -110,6 +176,7 @@ export default function SubmissionDetailPage() {
       <div className="flex-grow bg-muted overflow-hidden relative">
         <ScrollArea className="h-full w-full">
             <div 
+                ref={pageContainerRef}
                 className="p-4 sm:p-8 flex flex-col items-center min-w-full"
                 style={{ minWidth: 'fit-content' }}
             >
@@ -118,13 +185,14 @@ export default function SubmissionDetailPage() {
                         Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-full aspect-[1/1.41] bg-white shadow-md mb-4 flex-shrink-0" />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                            <SubmissionPageRenderer
-                                key={index}
-                                pdf={pdfDoc}
-                                pageNumber={index + 1}
-                                fields={pdfForm.fields}
-                                formData={submission.formData}
-                            />
+                            <div key={index} className="page-capture-wrapper mb-4">
+                                <SubmissionPageRenderer
+                                    pdf={pdfDoc}
+                                    pageNumber={index + 1}
+                                    fields={pdfForm.fields}
+                                    formData={submission.formData}
+                                />
+                            </div>
                         ))
                     ) : (
                         <div className="flex items-center justify-center h-full py-20 text-center">
@@ -220,7 +288,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                 }}
                             >
                                 {field.type === 'signature' ? (
-                                    <img src={value} alt="Signature" className="w-full h-full object-contain" />
+                                    <img src={value} alt="Signature" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                 ) : (
                                     <span className="text-[14px] px-1 font-medium text-black truncate w-full">
                                         {field.type === 'date' ? format(new Date(value), 'PPP') : value}
