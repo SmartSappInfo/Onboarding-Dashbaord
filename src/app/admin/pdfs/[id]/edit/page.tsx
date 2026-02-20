@@ -246,9 +246,13 @@ export default function EditPdfPage() {
             )}
         </div>
         <div className="flex items-center gap-2">
-            <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-4">
-                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                AI-Detect Fields
+            <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-3 sm:px-4">
+                {isDetecting ? (
+                    <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
+                ) : (
+                    <Sparkles className="h-4 w-4 sm:mr-2" />
+                )}
+                <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect Fields'}</span>
             </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4 sm:mr-2" />}
