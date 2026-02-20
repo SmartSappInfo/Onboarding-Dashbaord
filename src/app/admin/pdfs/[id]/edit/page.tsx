@@ -7,7 +7,7 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Undo, Redo } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -15,6 +15,9 @@ import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { useUndoRedo } from '@/hooks/use-undo-redo';
+import { useDebounce } from '@/hooks/use-debounce';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function EditPdfPage() {
   const params = useParams();
@@ -34,6 +37,20 @@ export default function EditPdfPage() {
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
   const [editableTitle, setEditableTitle] = React.useState('');
 
+  // Undo/Redo Logic
+  const {
+    state: historyState,
+    set: setHistory,
+    undo: undoHistory,
+    redo: redoHistory,
+    canUndo,
+    canRedo,
+    reset: resetHistory
+  } = useUndoRedo<PDFFormField[]>([]);
+
+  const isProgrammaticChange = React.useRef(false);
+  const debouncedFields = useDebounce(fields, 800); // 800ms debounce for history snapshots
+
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
     return doc(firestore, 'pdfs', pdfId);
@@ -43,13 +60,66 @@ export default function EditPdfPage() {
   
   React.useEffect(() => {
     if (pdf) {
-      // Deep copy to avoid direct mutation of props and ensure editor state is independent
-      setFields(JSON.parse(JSON.stringify(pdf.fields || [])));
+      const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
+      setFields(initialFields);
+      resetHistory(initialFields);
       setPassword(pdf.password || '');
       setPasswordProtected(pdf.passwordProtected || false);
       setEditableTitle(pdf.name);
     }
-  }, [pdf]);
+  }, [pdf, resetHistory]);
+
+  // Sync fields to history
+  React.useEffect(() => {
+    if (isProgrammaticChange.current) return;
+    setHistory(debouncedFields);
+  }, [debouncedFields, setHistory]);
+
+  // Apply history changes back to fields
+  React.useEffect(() => {
+    if (isProgrammaticChange.current) {
+        setFields(historyState);
+        // We set programmatic change to false after the state has been updated.
+        // Since setFields is async (batched), we use a small timeout or just rely on the next render loop.
+        // Actually, setting it to false right here is usually enough because the effect above (debouncedFields)
+        // won't run until the debounce period ends.
+        isProgrammaticChange.current = false;
+    }
+  }, [historyState]);
+
+  const handleUndo = React.useCallback(() => {
+    if (canUndo) {
+        isProgrammaticChange.current = true;
+        undoHistory();
+    }
+  }, [canUndo, undoHistory]);
+
+  const handleRedo = React.useCallback(() => {
+    if (canRedo) {
+        isProgrammaticChange.current = true;
+        redoHistory();
+    }
+  }, [canRedo, redoHistory]);
+
+  // Global Keyboard Shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) {
+                handleRedo();
+            } else {
+                handleUndo();
+            }
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+            e.preventDefault();
+            handleRedo();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -179,6 +249,27 @@ export default function EditPdfPage() {
                 </Button>
               </div>
             )}
+
+            <div className="hidden sm:flex items-center gap-1 border-l pl-2 ml-2">
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo} className="h-8 w-8">
+                                <Undo className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo} className="h-8 w-8">
+                                <Redo className="h-4 w-4" />
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            </div>
         </div>
         <div className="flex items-center gap-2">
             <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-4">
@@ -186,7 +277,7 @@ export default function EditPdfPage() {
                 AI-Detect Fields
             </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Save className="h-4 w-4 sm:mr-2" />}
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4 sm:mr-2" />}
                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
             </Button>
         </div>
