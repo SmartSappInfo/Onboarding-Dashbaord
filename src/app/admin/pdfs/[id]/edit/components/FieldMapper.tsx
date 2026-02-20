@@ -70,9 +70,8 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                 const pdfjs = await pdfjsPromise;
                 const pdfjsVersion = '4.4.168';
                 
-                // Suppress non-critical font warnings
+                // Set worker source
                 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-                (pdfjs as any).verbosity = 0;
 
                 if (!isMounted) return;
                 
@@ -571,9 +570,8 @@ export default function FieldMapper({
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
             
-            // Suppress font warnings
+            // Set worker source
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-            (pdfjs as any).verbosity = 0;
             
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
             const loadedPdf = await loadingTask.promise;

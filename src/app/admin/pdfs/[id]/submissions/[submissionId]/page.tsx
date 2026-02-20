@@ -17,7 +17,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionDetailPage() {
-  const params = useParams();
+  const params = React.use(useParams() as any);
   const router = useRouter();
   const { toast } = useToast();
   const pdfId = params.id as string;
@@ -47,9 +47,8 @@ export default function SubmissionDetailPage() {
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
             
-            // Set worker and suppress warnings
+            // Set worker source
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-            (pdfjs as any).verbosity = 0;
             
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
             const loadedPdf = await loadingTask.promise;
