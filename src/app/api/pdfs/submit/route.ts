@@ -6,14 +6,16 @@ import { logActivity } from '@/lib/activity-logger';
 export async function POST(req: Request) {
   console.log(">>> [API: SUBMIT] POST Request Received");
   try {
-    const { pdfId, formData } = await req.json();
+    const body = await req.json();
+    const { pdfId, formData } = body;
 
     if (!pdfId || !formData) {
-      console.error(">>> [API: SUBMIT] Error: pdfId or formData is missing");
+      console.error(">>> [API: SUBMIT] Error: pdfId or formData is missing from body");
       return Response.json({ error: 'Missing required data' }, { status: 400 });
     }
 
-    console.log(`>>> [API: SUBMIT] Processing submission for PDF: ${pdfId}`);
+    const fieldCount = Object.keys(formData).length;
+    console.log(`>>> [API: SUBMIT] Processing ${fieldCount} fields for PDF: ${pdfId}`);
     
     const db = getDb();
     
@@ -26,15 +28,16 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Form not found' }, { status: 404 });
     }
 
-    if (pdfFormSnap.data().status !== 'published') {
-      console.warn(`>>> [API: SUBMIT] Access Denied: Form ${pdfId} is in ${pdfFormSnap.data().status} status`);
+    const formStatus = pdfFormSnap.data().status;
+    if (formStatus !== 'published') {
+      console.warn(`>>> [API: SUBMIT] Access Denied: Form ${pdfId} is in ${formStatus} status`);
       return Response.json({ error: 'Form is not published' }, { status: 403 });
     }
 
     const submissionData = {
       pdfId,
       submittedAt: new Date().toISOString(),
-      formData, // This contains text and base64 signature strings
+      formData, // Contains all captured text and base64 images
       status: 'submitted',
     };
 

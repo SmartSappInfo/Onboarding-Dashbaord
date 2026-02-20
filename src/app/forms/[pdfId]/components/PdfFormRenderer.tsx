@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, Database, Eye, Code } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, Database, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -91,9 +91,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
   }, [pdfForm.downloadUrl, toast]);
   
-  const handleFinalSubmit = async (formData: any) => {
-    console.log(">>> [SUBMISSION INITIATED]");
-    console.log(">>> Target PDF Form ID:", pdfForm.id);
+  const handleFinalSubmit = async () => {
+    console.log(">>> [PROCESS: SUBMISSION INITIATED]");
     
     if (isPreview) {
         console.log(">>> [INFO] Submission ignored: Running in preview mode.");
@@ -102,21 +101,39 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
     
     setIsSubmitting(true);
-    setIsPreviewModalOpen(false); // Close preview modal if it was open
+    setIsPreviewModalOpen(false);
 
     try {
-        console.log(">>> Sending data to /api/pdfs/submit...");
+        // Explicitly construct the payload from ALL defined fields
+        // This ensures data is not lost if handleSubmit misses dynamic fields
+        const currentValues = getValues();
+        const formData: Record<string, any> = {};
+        
+        pdfForm.fields.forEach(field => {
+            formData[field.id] = currentValues[field.id] !== undefined ? currentValues[field.id] : null;
+        });
+
+        console.log(">>> [PROCESS: PAYLOAD CONSTRUCTED]", { 
+            pdfId: pdfForm.id, 
+            fieldCount: Object.keys(formData).length 
+        });
+
+        const payload = { pdfId: pdfForm.id, formData };
+        const jsonPayload = JSON.stringify(payload);
+        
+        console.log(`>>> [PROCESS: SENDING] Payload size: ${(jsonPayload.length / 1024).toFixed(2)} KB`);
+
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfId: pdfForm.id, formData }),
+            body: jsonPayload,
         });
 
-        console.log(">>> API Response status:", response.status);
+        console.log(">>> [PROCESS: API RESPONSE]", { status: response.status });
         const data = await response.json();
 
         if (response.ok && data.submissionId) {
-            console.log(">>> [SUCCESS] Form data and signatures saved. Submission ID:", data.submissionId);
+            console.log(">>> [PROCESS: SUCCESS] Submission ID:", data.submissionId);
             setSubmissionId(data.submissionId);
             setIsSubmitted(true);
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
@@ -125,11 +142,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             params.set('submissionId', data.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
         } else {
-            console.error(">>> [ERROR] Server-side failure:", data.error);
+            console.error(">>> [PROCESS: SERVER ERROR]", data.error);
             throw new Error(data.error || 'Failed to submit form.');
         }
     } catch (e: any) {
-        console.error(">>> [CRITICAL] Client-side catch block triggered:", e.message);
+        console.error(">>> [PROCESS: CRITICAL FAILURE]", e.message);
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
         setIsSubmitting(false);
@@ -141,7 +158,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       const payload: Record<string, any> = {};
       
       pdfForm.fields.forEach(field => {
-          payload[field.id] = currentValues[field.id] || null;
+          payload[field.id] = currentValues[field.id] !== undefined ? currentValues[field.id] : null;
       });
 
       return JSON.stringify(payload, null, 2);
@@ -150,18 +167,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const handleDownload = async () => {
     if (!submissionId) return;
     
-    console.log(">>> [DOWNLOAD INITIATED] Recomposing PDF for submission:", submissionId);
     setIsDownloading(true);
     try {
         const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submissionId}`);
-        if (!response.ok) {
-            console.error(">>> [DOWNLOAD ERROR] Generation route failed with status:", response.status);
-            throw new Error('Failed to generate PDF');
-        }
+        if (!response.ok) throw new Error('Failed to generate PDF');
 
         const blob = await response.blob();
-        console.log(">>> [SUCCESS] PDF buffer received. Blob size:", blob.size);
-        
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -173,7 +184,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         
         toast({ title: 'Download Complete' });
     } catch (e: any) {
-        console.error(">>> [DOWNLOAD CRITICAL] Catch block:", e.message);
         toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
     } finally {
         setIsDownloading(false);
@@ -251,7 +261,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
             
             <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
-                <span className="font-semibold text-foreground truncate max-w-[150px] sm:max-w-md">{pdfForm.name}</span>
+                <span className="font-semibold text-foreground truncate max-w-[150px] sm:max-w-md text-center">{pdfForm.name}</span>
             </div>
 
             <div className="flex-1 flex items-center justify-end gap-2">
@@ -259,8 +269,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     <Button 
                         type="button" 
                         size="sm" 
-                        disabled={isSubmitting || !isValid || isPreview} 
-                        onClick={handleSubmit(handleFinalSubmit)}
+                        disabled={isSubmitting || isPreview} 
+                        onClick={handleFinalSubmit}
                     >
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Submit Form
@@ -314,7 +324,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             open={!!activeSignatureField}
             onClose={() => setActiveSignatureField(null)}
             onSave={(dataUrl) => {
-                console.log(`>>> [SIGNATURE CAPTURED] Field: ${activeSignatureField}`);
                 if (activeSignatureField) {
                     setValue(activeSignatureField, dataUrl, { shouldDirty: true, shouldValidate: true });
                 }
@@ -345,8 +354,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         Close
                     </Button>
                     <Button 
-                        onClick={handleSubmit(handleFinalSubmit)}
-                        disabled={isSubmitting || !isValid || isPreview}
+                        onClick={handleFinalSubmit}
+                        disabled={isSubmitting || isPreview}
                     >
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Save and Submit Data

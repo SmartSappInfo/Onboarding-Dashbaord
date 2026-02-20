@@ -10,6 +10,7 @@ import {
     browserLocalPersistence
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
+import { usePathname } from 'next/navigation';
 
 
 interface FirebaseClientProviderProps {
@@ -17,6 +18,7 @@ interface FirebaseClientProviderProps {
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const pathname = usePathname();
   const firebaseServices = useMemo(() => {
     // Initialize Firebase on the client side, once per component mount.
     return initializeFirebase();
@@ -25,7 +27,9 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   // This useEffect hook will create a default admin user for development purposes.
   useEffect(() => {
     const seedAdminUser = async () => {
-      if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development') {
+      // Disable background auth attempts on public form pages to prevent 
+      // network-request-failed errors during large payload submissions.
+      if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development' || pathname?.startsWith('/forms/')) {
         return;
       }
       
@@ -72,7 +76,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     if (firebaseServices.auth && firebaseServices.firestore) {
         seedAdminUser();
     }
-  }, [firebaseServices]);
+  }, [firebaseServices, pathname]);
 
   return (
     <FirebaseProvider
