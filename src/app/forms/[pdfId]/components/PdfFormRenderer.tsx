@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,10 +9,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, Database, Eye, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -43,10 +50,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const [scale, setScale] = React.useState(1.5);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = React.useState(false);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
-  const { register, handleSubmit, watch, setValue, formState: { isValid, errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = useForm({
     resolver: zodResolver(validationSchema),
     mode: 'onChange',
   });
@@ -87,9 +95,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     console.log(">>> [SUBMISSION INITIATED]");
     console.log(">>> Target PDF Form ID:", pdfForm.id);
     
-    // Log keys being submitted (useful for checking if all fields are picked up)
-    console.log(">>> Fields being submitted:", Object.keys(formData));
-
     if (isPreview) {
         console.log(">>> [INFO] Submission ignored: Running in preview mode.");
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
@@ -97,6 +102,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
     
     setIsSubmitting(true);
+    setIsPreviewModalOpen(false); // Close preview modal if it was open
+
     try {
         console.log(">>> Sending data to /api/pdfs/submit...");
         const response = await fetch('/api/pdfs/submit', {
@@ -114,7 +121,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             setIsSubmitted(true);
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
             
-            // Persist state in URL so refresh doesn't lose the "download" access
             const params = new URLSearchParams(searchParams);
             params.set('submissionId', data.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
@@ -128,6 +134,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     } finally {
         setIsSubmitting(false);
     }
+  };
+
+  const getFullFormDataJson = () => {
+      const currentValues = getValues();
+      const payload: Record<string, any> = {};
+      
+      pdfForm.fields.forEach(field => {
+          payload[field.id] = currentValues[field.id] || null;
+      });
+
+      return JSON.stringify(payload, null, 2);
   };
   
   const handleDownload = async () => {
@@ -218,30 +235,49 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   return (
     <div className="flex flex-col h-screen bg-muted/20 overflow-hidden">
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center shadow-sm shrink-0">
-            <div className="absolute left-1/2 -translate-x-1/2">
-                <span className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">{pdfForm.name}</span>
+            <div className="flex-1 flex items-center gap-2">
+                {!isSubmitted && (
+                    <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => setIsPreviewModalOpen(true)}
+                        className="text-muted-foreground hover:text-foreground"
+                    >
+                        <Code className="mr-2 h-4 w-4" />
+                        Review Data
+                    </Button>
+                )}
             </div>
-            <div className="ml-auto flex items-center gap-2">
-                <Button 
-                    type="button" 
-                    size="sm" 
-                    variant={isSubmitted ? "outline" : "default"}
-                    disabled={isSubmitting || isSubmitted || !isValid || isPreview} 
-                    onClick={handleSubmit(handleFinalSubmit)}
-                >
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    {isSubmitted ? 'Submitted' : 'Submit Form'}
-                </Button>
-                {isSubmitted && (
+            
+            <div className="absolute left-1/2 -translate-x-1/2 pointer-events-none">
+                <span className="font-semibold text-foreground truncate max-w-[150px] sm:max-w-md">{pdfForm.name}</span>
+            </div>
+
+            <div className="flex-1 flex items-center justify-end gap-2">
+                {!isSubmitted ? (
                     <Button 
                         type="button" 
                         size="sm" 
-                        disabled={isDownloading} 
-                        onClick={handleDownload}
+                        disabled={isSubmitting || !isValid || isPreview} 
+                        onClick={handleSubmit(handleFinalSubmit)}
                     >
-                        {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                        Download Filled PDF
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Submit Form
                     </Button>
+                ) : (
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600 hidden sm:block" />
+                        <Button 
+                            type="button" 
+                            size="sm" 
+                            disabled={isDownloading} 
+                            onClick={handleDownload}
+                        >
+                            {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            Download PDF
+                        </Button>
+                    </div>
                 )}
             </div>
         </header>
@@ -285,6 +321,39 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 setActiveSignatureField(null);
             }}
         />
+
+        <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <Database className="h-5 w-5 text-primary" />
+                        Submission Payload Preview
+                    </DialogTitle>
+                    <DialogDescription>
+                        This is the raw structured data that will be stored in Firestore for this document.
+                    </DialogDescription>
+                </DialogHeader>
+                
+                <ScrollArea className="flex-grow bg-zinc-950 rounded-md p-4 mt-4 font-mono text-xs text-green-400">
+                    <pre className="whitespace-pre-wrap break-all">
+                        {getFullFormDataJson()}
+                    </pre>
+                </ScrollArea>
+
+                <DialogFooter className="mt-6 gap-2">
+                    <Button variant="ghost" onClick={() => setIsPreviewModalOpen(false)}>
+                        Close
+                    </Button>
+                    <Button 
+                        onClick={handleSubmit(handleFinalSubmit)}
+                        disabled={isSubmitting || !isValid || isPreview}
+                    >
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Save and Submit Data
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
