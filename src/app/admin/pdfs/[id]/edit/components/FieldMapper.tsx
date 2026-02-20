@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,6 +8,16 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField, MediaAsset } from '@/lib/types';
@@ -295,6 +304,7 @@ const PropertiesSidebar = ({
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const hasSuggestions = fields.some(f => f.isSuggestion);
 
   const acceptAllSuggestions = () => {
@@ -308,6 +318,7 @@ const PropertiesSidebar = ({
   const deleteAllFields = () => {
     setFields([]);
     setSelectedFieldId(null);
+    setIsDeleteDialogOpen(false);
   };
 
   return (
@@ -346,7 +357,7 @@ const PropertiesSidebar = ({
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={deleteAllFields}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
                                     <Trash2 className="h-4 w-4" />
                                 </Button>
                             </TooltipTrigger>
@@ -482,6 +493,23 @@ const PropertiesSidebar = ({
                 {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
         </SheetFooter>
+
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will permanently delete all mapped fields for this document. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={deleteAllFields} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete All
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </>
   );
 };
