@@ -638,7 +638,7 @@ export default function FieldMapper({
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full bg-muted" onWheel={handleWheel} viewportRef={viewportRef}>
-                <div className="p-4 space-y-4 pb-24 flex flex-col items-center" onClick={() => setSelectedFieldId(null)}>
+                <div className="p-4 space-y-4 pb-24 flex flex-col items-center min-w-max md:min-w-0" onClick={() => setSelectedFieldId(null)}>
                     {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-white shadow-lg" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer

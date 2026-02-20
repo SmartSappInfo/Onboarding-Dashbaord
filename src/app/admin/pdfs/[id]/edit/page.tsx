@@ -122,7 +122,7 @@ export default function EditPdfPage() {
         <div className="flex items-center gap-2 min-w-0">
             <Button variant="ghost" onClick={() => router.push('/admin/pdfs')}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Back
+                <span className="hidden sm:inline">Back</span>
             </Button>
             {isEditingTitle ? (
               <Input
@@ -143,9 +143,9 @@ export default function EditPdfPage() {
             )}
         </div>
         <div className="flex items-center gap-2">
-            <Button onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Changes'}
+            <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Save className="h-4 w-4 sm:mr-2" />}
+                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Changes'}</span>
             </Button>
         </div>
       </div>
