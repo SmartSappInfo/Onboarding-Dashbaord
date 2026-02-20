@@ -20,13 +20,12 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField, MediaAsset } from '@/lib/types';
+import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
@@ -287,9 +286,6 @@ interface PropertiesSidebarProps {
   removeField: (id: string) => void;
   pagesLength: number;
   pdf: PDFForm;
-  onSave: () => void;
-  isSaving: boolean;
-  onPreview: () => void;
   isStatusChanging: boolean;
   onStatusChange: (status: PDFForm['status']) => void;
   password: string;
@@ -300,7 +296,7 @@ interface PropertiesSidebarProps {
 
 const PropertiesSidebar = ({
   fields, setFields, selectedFieldId, setSelectedFieldId, updateField, removeField, pagesLength, pdf,
-  onSave, isSaving, onPreview, isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected
+  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -323,10 +319,6 @@ const PropertiesSidebar = ({
 
   return (
     <>
-      <SheetHeader className="p-4 border-b md:hidden">
-        <SheetTitle>Fields & Properties</SheetTitle>
-        <SheetDescription className="sr-only">Edit form field properties and document settings.</SheetDescription>
-      </SheetHeader>
       <ScrollArea className="flex-grow">
         <div className="space-y-4 p-4">
             <Card>
@@ -487,13 +479,6 @@ const PropertiesSidebar = ({
             </Card>
         </div>
       </ScrollArea>
-       <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
-            <Button onClick={onSave} disabled={isSaving} size="sm">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-        </SheetFooter>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
@@ -545,7 +530,6 @@ export default function FieldMapper({
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
   const isResizing = React.useRef(false);
-  const isMobile = useIsMobile();
   const [isPropertiesSheetOpen, setIsPropertiesSheetOpen] = React.useState(false);
   
   const [displayZoom, setDisplayZoom] = React.useState(1);
@@ -766,7 +750,33 @@ export default function FieldMapper({
                  {!isCollapsed && <span className="font-bold text-xs uppercase tracking-widest text-muted-foreground ml-2">Properties</span>}
                  <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)} className="h-8 w-8">{isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</Button>
             </div>
-            {!isCollapsed && <PropertiesSidebar fields={fields} setFields={setFields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />}
+            {!isCollapsed && (
+                <>
+                    <PropertiesSidebar 
+                        fields={fields} 
+                        setFields={setFields} 
+                        selectedFieldId={selectedFieldId} 
+                        setSelectedFieldId={setSelectedFieldId} 
+                        updateField={updateField} 
+                        removeField={removeField} 
+                        pagesLength={pdfDoc?.numPages || 0} 
+                        pdf={pdf} 
+                        isStatusChanging={isStatusChanging} 
+                        onStatusChange={onStatusChange} 
+                        password={password} 
+                        setPassword={setPassword} 
+                        passwordProtected={passwordProtected} 
+                        setPasswordProtected={setPasswordProtected} 
+                    />
+                    <div className="p-4 border-t flex flex-col gap-2">
+                        <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+                        <Button onClick={onSave} disabled={isSaving} size="sm">
+                            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                            {isSaving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </div>
+                </>
+            )}
             {isCollapsed && (
                 <div className="flex flex-col items-center gap-4 py-4"><TooltipProvider>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}><List /></Button></TooltipTrigger><TooltipContent side="left"><p>Fields</p></TooltipContent></Tooltip>
@@ -779,7 +789,33 @@ export default function FieldMapper({
 
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden w-full max-w-sm" side="right">
-          <PropertiesSidebar fields={fields} setFields={setFields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Fields & Properties</SheetTitle>
+            <SheetDescription className="sr-only">Edit form field properties and document settings.</SheetDescription>
+          </SheetHeader>
+          <PropertiesSidebar 
+            fields={fields} 
+            setFields={setFields} 
+            selectedFieldId={selectedFieldId} 
+            setSelectedFieldId={setSelectedFieldId} 
+            updateField={updateField} 
+            removeField={removeField} 
+            pagesLength={pdfDoc?.numPages || 0} 
+            pdf={pdf} 
+            isStatusChanging={isStatusChanging} 
+            onStatusChange={onStatusChange} 
+            password={password} 
+            setPassword={setPassword} 
+            passwordProtected={passwordProtected} 
+            setPasswordProtected={setPasswordProtected} 
+          />
+          <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
+            <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+            <Button onClick={onSave} disabled={isSaving} size="sm">
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </div>
