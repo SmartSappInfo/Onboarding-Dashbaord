@@ -56,6 +56,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
     zoom: number;
 }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const renderTaskRef = React.useRef<any>(null);
     const [isLoading, setIsLoading] = React.useState(true);
     const [pageDimensions, setPageDimensions] = React.useState({ width: 0, height: 0 });
 
@@ -76,18 +77,30 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                 
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: zoom * 1.5, rotation: page.rotate });
+                
+                if (!isMounted) return;
                 setPageDimensions({ width: viewport.width, height: viewport.height });
 
                 if (canvasRef.current) {
                     const canvas = canvasRef.current;
                     const context = canvas.getContext('2d');
                     if (context) {
+                        // Cancel previous render task if any
+                        if (renderTaskRef.current) {
+                            renderTaskRef.current.cancel();
+                        }
+
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport }).promise;
+                        
+                        const renderTask = page.render({ canvasContext: context, viewport });
+                        renderTaskRef.current = renderTask;
+                        
+                        await renderTask.promise;
                     }
                 }
-            } catch (error) {
+            } catch (error: any) {
+                if (error.name === 'RenderingCancelledException') return;
                 console.error(`Error rendering page ${pageNumber}:`, error);
             } finally {
                 if (isMounted) {
@@ -98,7 +111,12 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
 
         renderPage();
         
-        return () => { isMounted = false; };
+        return () => { 
+            isMounted = false; 
+            if (renderTaskRef.current) {
+                renderTaskRef.current.cancel();
+            }
+        };
     }, [pdf, pageNumber, zoom]);
     
     return (

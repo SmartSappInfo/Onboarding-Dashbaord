@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -282,6 +281,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
     scale: number;
 }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const renderTaskRef = React.useRef<any>(null);
     const [isRendering, setIsRendering] = React.useState(true);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
 
@@ -290,6 +290,10 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
         const render = async () => {
             setIsRendering(true);
             try {
+                if (renderTaskRef.current) {
+                    renderTaskRef.current.cancel();
+                }
+
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale, rotation: page.rotate });
                 
@@ -302,17 +306,27 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
                     if (context) {
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        await page.render({ canvasContext: context, viewport }).promise;
+                        
+                        const renderTask = page.render({ canvasContext: context, viewport });
+                        renderTaskRef.current = renderTask;
+                        
+                        await renderTask.promise;
                     }
                 }
-            } catch (e) {
+            } catch (e: any) {
+                if (e.name === 'RenderingCancelledException') return;
                 console.error(`Failed to render page ${pageNumber}`, e);
             } finally {
                 if (isMounted) setIsRendering(false);
             }
         };
         render();
-        return () => { isMounted = false; };
+        return () => { 
+            isMounted = false; 
+            if (renderTaskRef.current) {
+                renderTaskRef.current.cancel();
+            }
+        };
     }, [pdf, pageNumber, scale]);
 
     return (

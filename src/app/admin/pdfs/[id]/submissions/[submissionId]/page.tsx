@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -143,33 +142,55 @@ export default function SubmissionDetailPage() {
 
 function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any } }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const renderTaskRef = React.useRef<any>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [isRendering, setIsRendering] = React.useState(true);
 
     React.useEffect(() => {
+        let isCancelled = false;
+
         const render = async () => {
             setIsRendering(true);
             try {
+                // Cancel any existing task on this canvas
+                if (renderTaskRef.current) {
+                    renderTaskRef.current.cancel();
+                }
+
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
+                
+                if (isCancelled) return;
                 setDimensions({ width: viewport.width, height: viewport.height });
 
                 if (canvasRef.current) {
                     const canvas = canvasRef.current;
                     const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
                     if (context) {
-                        await page.render({ canvasContext: context, viewport }).promise;
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        
+                        const renderTask = page.render({ canvasContext: context, viewport });
+                        renderTaskRef.current = renderTask;
+                        
+                        await renderTask.promise;
                     }
                 }
-            } catch (e) {
+            } catch (e: any) {
+                if (e.name === 'RenderingCancelledException') return;
                 console.error("Failed to render page", e);
             } finally {
-                setIsRendering(false);
+                if (!isCancelled) setIsRendering(false);
             }
         };
         render();
+
+        return () => {
+            isCancelled = true;
+            if (renderTaskRef.current) {
+                renderTaskRef.current.cancel();
+            }
+        };
     }, [pdf, pageNumber]);
 
     return (
