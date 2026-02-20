@@ -11,7 +11,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
  * Shared logic to generate a PDF buffer from a template and form data.
- * This is used by both API routes and the Admin dashboard.
+ * This is used by Route Handlers to provide stateless generation.
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     const storage = getServerStorage();
@@ -24,12 +24,9 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     const pages = pdfDoc.getPages();
 
     // Draw fields onto the PDF
-    for (const fieldId in formData) {
-        const value = formData[fieldId];
-        if (!value) continue;
-
-        const field = pdfForm.fields.find((f) => f.id === fieldId);
-        if (!field || field.pageNumber > pages.length) continue;
+    for (const field of pdfForm.fields) {
+        const value = formData[field.id];
+        if (!value || field.pageNumber > pages.length) continue;
 
         const page = pages[field.pageNumber - 1];
         const { width: pageWidth, height: pageHeight } = page.getSize();
@@ -65,7 +62,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     height: pngImage.height * scale,
                 });
             } catch (e) {
-                console.error(`Failed to embed signature image for field ${fieldId}:`, e);
+                console.error(`Failed to embed signature image for field ${field.id}:`, e);
             }
         }
     }
@@ -241,80 +238,5 @@ export async function deletePdfForm(pdfId: string, storagePath: string, userId: 
              }
         }
         return { error: 'Failed to delete the PDF form or its associated file.' };
-    }
-}
-
-export async function savePdfSubmission(pdfId: string, formData: { [key: string]: any }) {
-  if (!pdfId || !formData) {
-    return { error: 'Invalid input data.' };
-  }
-
-  const db = getDb();
-
-  try {
-    const pdfFormRef = doc(db, 'pdfs', pdfId);
-    const pdfFormSnap = await getDoc(pdfFormRef);
-
-    if (!pdfFormSnap.exists() || pdfFormSnap.data().status !== 'published') {
-      return { error: 'This form is not available for submission.' };
-    }
-    const pdfForm = pdfFormSnap.data() as PDFForm;
-
-    const submissionData = {
-        pdfId,
-        submittedAt: new Date().toISOString(),
-        formData,
-    };
-    const submissionRef = await addDoc(collection(db, `pdfs/${pdfId}/submissions`), submissionData);
-    
-    await logActivity({
-        schoolId: '', 
-        userId: null, 
-        type: 'pdf_form_submitted',
-        source: 'public',
-        description: `A submission for form "${pdfForm.name}" was received.`,
-        metadata: { pdfId, submissionId: submissionRef.id }
-    });
-
-    return { success: true, submissionId: submissionRef.id };
-  } catch (error: any) {
-    console.error("Failed to save submission:", error);
-    return { error: `An unexpected error occurred: ${error.message}` };
-  }
-}
-
-export async function regenerateSubmissionPdf(pdfId: string, submissionId: string) {
-    if (!pdfId || !submissionId) {
-        return { error: 'Invalid input data.' };
-    }
-
-    const db = getDb();
-
-    try {
-        const pdfFormRef = doc(db, 'pdfs', pdfId);
-        const submissionRef = doc(db, `pdfs/${pdfId}/submissions`, submissionId);
-
-        const [pdfFormSnap, submissionSnap] = await Promise.all([
-            getDoc(pdfFormRef),
-            getDoc(submissionRef)
-        ]);
-
-        if (!pdfFormSnap.exists() || !submissionSnap.exists()) {
-            return { error: 'Form or submission not found.' };
-        }
-
-        const pdfForm = { id: pdfFormSnap.id, ...pdfFormSnap.data() } as PDFForm;
-        const submission = submissionSnap.data() as Submission;
-
-        const pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
-        
-        // Convert Uint8Array to Base64 Data URI for client-side download
-        const base64 = Buffer.from(pdfBytes).toString('base64');
-        const pdfDataUri = `data:application/pdf;base64,${base64}`;
-
-        return { success: true, pdfDataUri };
-    } catch (error: any) {
-        console.error("Failed to regenerate PDF:", error);
-        return { error: `An unexpected error occurred: ${error.message}` };
     }
 }
