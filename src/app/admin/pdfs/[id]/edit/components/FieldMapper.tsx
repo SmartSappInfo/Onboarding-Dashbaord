@@ -24,6 +24,7 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import PdfPreviewDialog from './PdfPreviewDialog';
+import { Progress } from '@/components/ui/progress';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -588,24 +589,34 @@ export default function FieldMapper({
   };
 
   const handleDetectFields = async () => {
+    if (isDetecting) return;
     setIsDetecting(true);
     toast({ title: 'AI Field Detection', description: 'Analyzing your PDF. This might take a moment...' });
+    
     try {
         const response = await fetch(pdf.downloadUrl);
+        if (!response.ok) throw new Error("Failed to fetch PDF data.");
         const blob = await response.blob();
-        const reader = new FileReader();
-        reader.readAsDataURL(blob);
-        reader.onloadend = async () => {
-            const base64data = reader.result as string;
-            const result = await detectPdfFields({ pdfDataUri: base64data });
-            if (result.fields && result.fields.length > 0) {
-                const newFields: LocalPDFFormField[] = result.fields.map(suggestion => ({ ...suggestion, id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, isSuggestion: true, }));
-                setFields(prev => [...prev.filter(f => !f.isSuggestion), ...newFields]);
-                toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
-            } else {
-                toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
-            }
-        };
+        
+        const base64data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("Failed to read file."));
+            reader.readAsDataURL(blob);
+        });
+
+        const result = await detectPdfFields({ pdfDataUri: base64data });
+        if (result.fields && result.fields.length > 0) {
+            const newFields: LocalPDFFormField[] = result.fields.map(suggestion => ({ 
+                ...suggestion, 
+                id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
+                isSuggestion: true, 
+            }));
+            setFields(prev => [...prev.filter(f => !f.isSuggestion), ...newFields]);
+            toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
+        } else {
+            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
+        }
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
     } finally {
@@ -672,8 +683,24 @@ export default function FieldMapper({
               </ScrollArea>
           </DndContext>
           
-           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30">
-              <Card className="shadow-2xl border-primary/20"><CardContent className="p-2 flex items-center gap-1 sm:gap-2">
+           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-none">
+              {isDetecting && (
+                  <Card className="shadow-xl border-primary/20 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in slide-in-from-bottom-2 w-64 overflow-hidden">
+                      <CardContent className="p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
+                                  <Sparkles className="h-3 w-3 animate-pulse" />
+                                  AI analyzing
+                              </span>
+                              <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                          </div>
+                          <Progress value={undefined} className="h-1" />
+                          <p className="text-[9px] text-muted-foreground text-center">Detecting lines, boxes and signatures...</p>
+                      </CardContent>
+                  </Card>
+              )}
+              <Card className="shadow-2xl border-primary/20 pointer-events-auto">
+                <CardContent className="p-2 flex items-center gap-1 sm:gap-2">
                   <TooltipProvider>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('text')}><Text className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('signature')}><Signature className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
@@ -695,7 +722,8 @@ export default function FieldMapper({
                         </TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
-              </CardContent></Card>
+                </CardContent>
+              </Card>
           </div>
       </div>
       
