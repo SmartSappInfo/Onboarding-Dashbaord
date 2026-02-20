@@ -136,7 +136,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.font = '60px "League Script"';
+                ctx.font = '60px "Mrs Saint Delafield"';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
