@@ -21,7 +21,7 @@ import {
 import { 
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
-    EyeOff, Check, X, AlignLeft, AlignRight, AlignTop, AlignBottom, 
+    EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
     AlignCenterHorizontal, AlignCenterVertical, GripVertical 
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -35,6 +35,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -765,13 +766,13 @@ export default function FieldMapper({
                   <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in zoom-in-95 mb-2">
                       <CardContent className="p-1 flex items-center gap-1">
                           <TooltipProvider>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('left')}><AlignLeft className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center H</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('right')}><AlignRight className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
                               <div className="w-px h-4 bg-border mx-1" />
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('top')}><AlignTop className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Top</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Top</p></TooltipContent></Tooltip>
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center V</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('bottom')}><AlignBottom className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('bottom')}><AlignEndVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
                               <div className="w-px h-4 bg-border mx-1" />
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
