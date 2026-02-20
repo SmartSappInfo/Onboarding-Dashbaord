@@ -10,13 +10,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2 } from 'lucide-react';
+import { regenerateSubmissionPdf } from '@/lib/pdf-actions';
+import { useToast } from '@/hooks/use-toast';
+import * as React from 'react';
 
 export default function SubmissionsPage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const { id: pdfId } = params;
   const firestore = useFirestore();
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -33,6 +38,40 @@ export default function SubmissionsPage() {
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
 
+  const handleDownload = async (submissionId: string) => {
+    setDownloadingId(submissionId);
+    try {
+        const result = await regenerateSubmissionPdf(pdfId as string, submissionId);
+        if (result.success && result.pdfDataUri) {
+            const link = document.createElement('a');
+            link.href = result.pdfDataUri;
+            link.download = `submission-${submissionId}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            toast({ title: 'Download Started' });
+        } else {
+            toast({ variant: 'destructive', title: 'Download Failed', description: result.error });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error', description: 'An unexpected error occurred.' });
+    } finally {
+        setDownloadingId(null);
+    }
+  };
+
+  const handleDownloadAll = async () => {
+    if (!submissions || submissions.length === 0) return;
+    toast({ title: 'Preparing Batch Download', description: 'Generating all signed documents. Your browser may prompt you to allow multiple downloads.' });
+    
+    // Process in sequence to avoid browser throttling or server overload
+    for (const sub of submissions) {
+        await handleDownload(sub.id);
+        // Small delay between downloads
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
       <div className="flex items-center justify-between gap-4 mb-8">
@@ -48,6 +87,12 @@ export default function SubmissionsPage() {
             View all completed submissions for this document.
           </p>
         </div>
+        {!isLoading && submissions && submissions.length > 0 && (
+            <Button onClick={handleDownloadAll} variant="outline">
+                <Download className="mr-2 h-4 w-4" />
+                Download All PDFs
+            </Button>
+        )}
       </div>
       
       <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
@@ -55,7 +100,8 @@ export default function SubmissionsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Submission Date</TableHead>
-              <TableHead className="w-[120px] text-right">Actions</TableHead>
+              <TableHead>Submission ID</TableHead>
+              <TableHead className="w-[200px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -63,7 +109,8 @@ export default function SubmissionsPage() {
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
                   <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : submissions && submissions.length > 0 ? (
@@ -71,6 +118,9 @@ export default function SubmissionsPage() {
                 <TableRow key={submission.id}>
                   <TableCell className="font-medium">
                     {format(new Date(submission.submittedAt), 'PPP p')}
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">
+                    {submission.id}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -80,13 +130,26 @@ export default function SubmissionsPage() {
                                 View
                             </Link>
                         </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDownload(submission.id)}
+                            disabled={downloadingId === submission.id}
+                        >
+                            {downloadingId === submission.id ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : (
+                                <Download className="mr-2 h-4 w-4" />
+                            )}
+                            Download
+                        </Button>
                     </div>
                   </TableCell>
                 </TableRow>
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={2} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
                   No submissions have been received for this document yet.
                 </TableCell>
               </TableRow>

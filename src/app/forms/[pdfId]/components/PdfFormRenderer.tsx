@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,6 @@ import { useToast } from '@/hooks/use-toast';
 import { regenerateSubmissionPdf, savePdfSubmission } from '@/lib/pdf-actions';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { SmartSappLogo } from '@/components/icons';
 
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
@@ -174,29 +173,28 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   return (
     <div className="flex flex-col h-screen bg-gray-100">
        <header className="sticky top-0 z-10 bg-white shadow-sm p-2 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-                <SmartSappLogo className="h-8" />
-                <span className="hidden sm:inline-block font-semibold truncate">{pdfForm.name}</span>
+            <div className="flex-1 text-center relative px-12">
+                <span className="font-semibold text-lg truncate block mx-auto max-w-[200px] sm:max-w-md">{pdfForm.name}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
                 <Button 
                     type="button" 
-                    size="lg" 
+                    size="sm" 
                     variant="outline"
                     disabled={isSubmitting || isDownloading || !isValid || !!submissionId || isPreview} 
                     onClick={handleSubmit(handleSave)}
                 >
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                    {submissionId ? 'Saved' : 'Save Submission'}
+                    {submissionId ? 'Saved' : 'Save'}
                 </Button>
                 <Button 
                     type="button" 
-                    size="lg" 
+                    size="sm" 
                     disabled={isDownloading || !submissionId || isPreview} 
                     onClick={handleDownload}
                 >
                     {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                    Download PDF
+                    Download
                 </Button>
             </div>
         </header>
@@ -316,5 +314,3 @@ function PageRenderer({ pdf, pageNumber, fields, renderField }: { pdf: PDFDocume
         </div>
     );
 }
-
-    

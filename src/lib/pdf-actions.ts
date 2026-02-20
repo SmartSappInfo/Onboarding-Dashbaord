@@ -205,6 +205,7 @@ async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: 
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
         // Convert percentage-based coordinates to PDF points
+        // PDF points origin is bottom-left
         const x = (field.position.x / 100) * pageWidth;
         const y = pageHeight - ((field.position.y / 100) * pageHeight);
 
@@ -214,7 +215,7 @@ async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: 
         if (field.type === 'text' || field.type === 'date') {
             page.drawText(String(value), {
                 x: x + 2, // Small padding
-                y: y - (fieldHeight / 2) - (fontSize / 3), // Center vertically
+                y: y - (fieldHeight / 2) - (fontSize / 3), // Center vertically relative to field box
                 font,
                 size: fontSize,
                 color: rgb(0, 0, 0),
@@ -224,6 +225,7 @@ async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: 
             const pngImage = await pdfDoc.embedPng(pngImageBytes);
             const fieldWidth = (field.dimensions.width / 100) * pageWidth;
 
+            // Fit image into the field box while maintaining aspect ratio
             const scale = Math.min(fieldWidth / pngImage.width, fieldHeight / pngImage.height);
 
             page.drawImage(pngImage, {
@@ -235,7 +237,7 @@ async function generatePdfFromData(pdfForm: PDFForm, formData: { [key: string]: 
         }
     }
 
-    // Return the modified PDF bytes
+    // Return the modified PDF bytes as base64 data URI
     return await pdfDoc.saveAsBase64({ dataUri: true });
 }
 
