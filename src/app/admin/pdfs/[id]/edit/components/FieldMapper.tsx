@@ -22,7 +22,8 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo 
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo,
+    DistributeHorizontal, DistributeVertical
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -595,10 +596,6 @@ export default function FieldMapper({
     setSelectedFieldIds([]);
   }, [setFields, selectedFieldIds]);
 
-  const updateField = React.useCallback((id: string, newProps: Partial<PDFFormField>) => {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
-  }, [setFields]);
-
   const bulkDuplicate = React.useCallback(() => {
     const toDuplicate = fields.filter(f => selectedFieldIds.includes(f.id));
     const newElements = toDuplicate.map(f => ({
@@ -617,34 +614,85 @@ export default function FieldMapper({
 
     let target: number;
     switch(type) {
-        case 'left': 
-            target = Math.min(...sel.map(f => f.position.x));
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
-            break;
-        case 'right':
-            target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
-            break;
-        case 'top':
+        case 'top': 
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
+            break;
+        case 'center-v': // Align horizontally H (Vertical center line)
+            const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
         case 'bottom':
             target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
-        case 'center-h': // Aligns vertical centers relative to each other (forming a column line)
+        case 'left':
+            target = Math.min(...sel.map(f => f.position.x));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
+            break;
+        case 'center-h': // Vertical align V (Horizontal center line)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'center-v': // Aligns horizontal centers relative to each other (forming a row line)
-            const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
+        case 'right':
+            target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
     }
     // Release selection so items can be moved independently immediately
     setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields]);
+
+  // Distribution functions
+  const distributeFields = React.useCallback((type: 'horizontal' | 'vertical') => {
+    const sel = fields.filter(f => selectedFieldIds.includes(f.id));
+    if (sel.length < 3) {
+        toast({ title: 'Distribution', description: 'Select at least 3 fields to distribute.' });
+        return;
+    }
+
+    if (type === 'horizontal') {
+        const sorted = [...sel].sort((a, b) => a.position.x - b.position.x);
+        const minX = sorted[0].position.x;
+        const lastItem = sorted[sorted.length - 1];
+        const maxX = lastItem.position.x + lastItem.dimensions.width;
+        
+        const totalItemsWidth = sorted.reduce((acc, f) => acc + f.dimensions.width, 0);
+        const totalSpace = maxX - minX;
+        const totalGap = totalSpace - totalItemsWidth;
+        const gap = totalGap / (sorted.length - 1);
+
+        let currentX = minX;
+        const newPositions = new Map<string, number>();
+        sorted.forEach((f) => {
+            newPositions.set(f.id, currentX);
+            currentX += f.dimensions.width + gap;
+        });
+
+        setFields(prev => prev.map(f => newPositions.has(f.id) ? { ...f, position: { ...f.position, x: newPositions.get(f.id)! } } : f));
+    } else {
+        const sorted = [...sel].sort((a, b) => a.position.y - b.position.y);
+        const minY = sorted[0].position.y;
+        const lastItem = sorted[sorted.length - 1];
+        const maxY = lastItem.position.y + lastItem.dimensions.height;
+        
+        const totalItemsHeight = sorted.reduce((acc, f) => acc + f.dimensions.height, 0);
+        const totalSpace = maxY - minY;
+        const totalGap = totalSpace - totalItemsHeight;
+        const gap = totalGap / (sorted.length - 1);
+
+        let currentY = minY;
+        const newPositions = new Map<string, number>();
+        sorted.forEach((f) => {
+            newPositions.set(f.id, currentY);
+            currentY += f.dimensions.height + gap;
+        });
+
+        setFields(prev => prev.map(f => newPositions.has(f.id) ? { ...f, position: { ...f.position, y: newPositions.get(f.id)! } } : f));
+    }
+    // Release selection
+    setSelectedFieldIds([]);
+  }, [fields, selectedFieldIds, setFields, toast]);
 
   // Keydown handler for nudge and delete
   React.useEffect(() => {
@@ -734,7 +782,7 @@ export default function FieldMapper({
                     style={{ minWidth: 'fit-content' }}
                     onClick={() => setSelectedFieldIds([])}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
@@ -771,21 +819,55 @@ export default function FieldMapper({
                   <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in zoom-in-95 mb-2">
                       <CardContent className="p-1 flex items-center gap-1">
                           <TooltipProvider>
-                              {/* Group 1: Vertical positioning (Align to Top, Align Horizontally H, Align Bottom) */}
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align to Top</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Horizontally H</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('bottom')}><AlignEndVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                              {/* Alignment Dropdown */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <AlignStartVertical className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
+                                        <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                    </Button>
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
+                                        <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
+                                    </Button>
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
+                                        <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                    </Button>
+                                    <div className="h-px bg-border my-1" />
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
+                                        <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                    </Button>
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
+                                        <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
+                                    </Button>
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
+                                        <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                    </Button>
+                                </PopoverContent>
+                              </Popover>
+
+                              {/* Distribution Dropdown */}
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <DistributeHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('horizontal')}>
+                                        <DistributeHorizontal className="mr-2 h-4 w-4" /> Distribute Horizontally
+                                    </Button>
+                                    <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('vertical')}>
+                                        <DistributeVertical className="mr-2 h-4 w-4" /> Distribute Vertically
+                                    </Button>
+                                </PopoverContent>
+                              </Popover>
                               
                               <div className="w-px h-4 bg-border mx-1" />
                               
-                              {/* Group 2: Horizontal positioning (Left Align, Vertical Align V, Right Align) */}
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Left Aligned</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Vertical Align V</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Right Align</p></TooltipContent></Tooltip>
-                              
-                              <div className="w-px h-4 bg-border mx-1" />
-                              
-                              {/* Group 3: Actions */}
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
                               
                               <div className="w-px h-4 bg-border mx-1" />
