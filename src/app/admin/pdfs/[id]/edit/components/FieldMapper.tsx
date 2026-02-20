@@ -745,7 +745,7 @@ export default function FieldMapper({
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleZoomOut}><ZoomOut className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
                       <span className="text-xs font-mono w-12 text-center text-muted-foreground">{Math.round(displayZoom * 100)}%</span>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleZoomIn}><ZoomIn className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
-                      <div className="md:hidden">
+                      <div className="md:hidden flex items-center">
                         <div className="w-px h-6 bg-border mx-1" />
                         <Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-5 w-5" /></Button>
