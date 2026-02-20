@@ -607,6 +607,10 @@ export default function FieldMapper({
     setSelectedFieldIds(prev => prev.filter(i => i !== id));
   }, [setFields]);
 
+  const updateField = React.useCallback((id: string, newProps: Partial<LocalPDFFormField>) => {
+    setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
+  }, [setFields]);
+
   const bulkRemove = React.useCallback(() => {
     setFields(prev => prev.filter(f => !selectedFieldIds.includes(f.id)));
     setSelectedFieldIds([]);
@@ -634,7 +638,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Align horizontally H (Vertical center line)
+        case 'center-v': // Vertical center line (Horizontal adjustment)
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
@@ -646,7 +650,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Vertical align V (Horizontal center line)
+        case 'center-h': // Horizontal center line (Vertical adjustment)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
