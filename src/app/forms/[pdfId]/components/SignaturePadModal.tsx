@@ -207,7 +207,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                         penColor="black"
                                         canvasProps={{
                                             className: 'w-full h-48 rounded-md',
-                                            willReadFrequently: true,
+                                            // Removed willReadFrequently to prevent React warning as it's a context option, not a prop.
                                         }}
                                         backgroundColor="white"
                                         onBegin={() => setHasDrawn(true)}

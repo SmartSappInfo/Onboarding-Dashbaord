@@ -54,9 +54,19 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
+  // Ensure all fields have a default value so getValues() returns them immediately
+  const defaultValues = React.useMemo(() => {
+    const defaults: Record<string, any> = {};
+    pdfForm.fields.forEach(f => {
+        defaults[f.id] = '';
+    });
+    return defaults;
+  }, [pdfForm.fields]);
+
   const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = useForm({
     resolver: zodResolver(validationSchema),
     mode: 'onChange',
+    defaultValues,
   });
 
   // Responsive scaling
@@ -105,17 +115,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
     try {
         // Explicitly construct the payload from ALL defined fields
-        // This ensures data is not lost if handleSubmit misses dynamic fields
         const currentValues = getValues();
         const formData: Record<string, any> = {};
         
         pdfForm.fields.forEach(field => {
-            formData[field.id] = currentValues[field.id] !== undefined ? currentValues[field.id] : null;
+            formData[field.id] = currentValues[field.id] !== undefined && currentValues[field.id] !== '' ? currentValues[field.id] : null;
         });
 
         console.log(">>> [PROCESS: PAYLOAD CONSTRUCTED]", { 
             pdfId: pdfForm.id, 
-            fieldCount: Object.keys(formData).length 
+            fieldCount: Object.keys(formData).length,
+            fields: Object.keys(formData)
         });
 
         const payload = { pdfId: pdfForm.id, formData };
@@ -158,7 +168,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       const payload: Record<string, any> = {};
       
       pdfForm.fields.forEach(field => {
-          payload[field.id] = currentValues[field.id] !== undefined ? currentValues[field.id] : null;
+          payload[field.id] = currentValues[field.id] !== undefined && currentValues[field.id] !== '' ? currentValues[field.id] : null;
       });
 
       return JSON.stringify(payload, null, 2);

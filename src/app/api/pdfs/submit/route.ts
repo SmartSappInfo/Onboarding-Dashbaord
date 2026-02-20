@@ -1,4 +1,3 @@
-
 import { collection, addDoc, doc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/server-only-firestore';
 import { logActivity } from '@/lib/activity-logger';
@@ -14,8 +13,9 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });
     }
 
-    const fieldCount = Object.keys(formData).length;
-    console.log(`>>> [API: SUBMIT] Processing ${fieldCount} fields for PDF: ${pdfId}`);
+    const fieldKeys = Object.keys(formData);
+    console.log(`>>> [API: SUBMIT] Processing ${fieldKeys.length} fields for PDF: ${pdfId}`);
+    console.log(`>>> [API: SUBMIT] Fields Received: ${fieldKeys.join(', ')}`);
     
     const db = getDb();
     
