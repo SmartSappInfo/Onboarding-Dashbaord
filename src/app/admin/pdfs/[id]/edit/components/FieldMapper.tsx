@@ -633,15 +633,17 @@ export default function FieldMapper({
             target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
-        case 'center-h':
+        case 'center-h': // Aligns horizontal centers relative to each other (forming a vertical column line)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'center-v':
+        case 'center-v': // Aligns vertical centers relative to each other (forming a horizontal row line)
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
     }
+    // Release selection so items can be moved independently immediately
+    setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields]);
 
   // Keydown handler for nudge and delete
@@ -732,7 +734,7 @@ export default function FieldMapper({
                     style={{ minWidth: 'fit-content' }}
                     onClick={() => setSelectedFieldIds([])}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
@@ -769,15 +771,25 @@ export default function FieldMapper({
                   <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in zoom-in-95 mb-2">
                       <CardContent className="p-1 flex items-center gap-1">
                           <TooltipProvider>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('top'); setSelectedFieldIds([]); }}><AlignStartVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Top</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('center-v'); setSelectedFieldIds([]); }}><AlignCenterVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center V</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('bottom'); setSelectedFieldIds([]); }}><AlignEndVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                              {/* Group 1: Horizontal Alignment functions mapped to icons */}
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Centre Vertically V</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
+                              
                               <div className="w-px h-4 bg-border mx-1" />
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('left'); setSelectedFieldIds([]); }}><AlignStartHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('center-h'); setSelectedFieldIds([]); }}><AlignCenterHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center H</p></TooltipContent></Tooltip>
-                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { alignFields('right'); setSelectedFieldIds([]); }}><AlignEndHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
+                              
+                              {/* Group 2: Vertical Alignment functions mapped to icons */}
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align to Top</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Centre Horizontally H</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('bottom')}><AlignEndVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                              
                               <div className="w-px h-4 bg-border mx-1" />
+                              
+                              {/* Group 3: Actions */}
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
+                              
+                              <div className="w-px h-4 bg-border mx-1" />
+                              
                               <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
                           </TooltipProvider>
                       </CardContent>
