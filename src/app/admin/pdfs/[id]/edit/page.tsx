@@ -7,13 +7,14 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2, Sparkles } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
-
+import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 
 export default function EditPdfPage() {
   const params = useParams();
@@ -27,6 +28,7 @@ export default function EditPdfPage() {
   const [password, setPassword] = React.useState('');
   const [passwordProtected, setPasswordProtected] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isDetecting, setIsDetecting] = React.useState(false);
   const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
@@ -63,6 +65,42 @@ export default function EditPdfPage() {
     }
     setIsSaving(false);
   };
+
+  const handleDetectFields = async () => {
+    if (isDetecting || !pdf?.downloadUrl) return;
+    setIsDetecting(true);
+    toast({ title: 'AI Field Detection', description: 'Analyzing your PDF. This might take a moment...' });
+    
+    try {
+        const response = await fetch(pdf.downloadUrl);
+        if (!response.ok) throw new Error("Failed to fetch PDF data.");
+        const blob = await response.blob();
+        
+        const base64data = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("Failed to read file."));
+            reader.readAsDataURL(blob);
+        });
+
+        const result = await detectPdfFields({ pdfDataUri: base64data });
+        if (result.fields && result.fields.length > 0) {
+            const newFields: (PDFFormField & { isSuggestion?: boolean })[] = result.fields.map(suggestion => ({ 
+                ...suggestion, 
+                id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
+                isSuggestion: true, 
+            }));
+            setFields(prev => [...prev.filter((f: any) => !f.isSuggestion), ...newFields]);
+            toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
+        } else {
+            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
+        }
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
+    } finally {
+        setIsDetecting(false);
+    }
+  };
   
   const handleStatusChange = async (newStatus: PDFForm['status']) => {
     if (!user) {
@@ -70,7 +108,7 @@ export default function EditPdfPage() {
         return;
     }
     setIsStatusChanging(true);
-    const result = await updatePdfFormStatus(pdf.id, newStatus, user.uid);
+    const result = await updatePdfFormStatus(pdf!.id, newStatus, user.uid);
     if (result.success) {
         toast({ title: 'Status Updated' });
     } else {
@@ -137,15 +175,19 @@ export default function EditPdfPage() {
               <div className="flex items-center gap-1 group min-w-0">
                 <h1 className="text-lg font-semibold truncate" title={pdf.name}>{pdf.name}</h1>
                 <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => setIsEditingTitle(true)}>
-                  <Pencil className="h-4 w-4" />
+                  < Pencil className="h-4 w-4" />
                 </Button>
               </div>
             )}
         </div>
         <div className="flex items-center gap-2">
+            <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-4">
+                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                AI-Detect Fields
+            </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Save className="h-4 w-4 sm:mr-2" />}
-                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Changes'}</span>
+                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
             </Button>
         </div>
       </div>
@@ -162,6 +204,10 @@ export default function EditPdfPage() {
             onStatusChange={handleStatusChange}
             isStatusChanging={isStatusChanging}
             onPreview={() => setIsPreviewOpen(true)}
+            onSave={handleSave}
+            isSaving={isSaving}
+            onDetect={handleDetectFields}
+            isDetecting={isDetecting}
         />
       </div>
 

@@ -21,7 +21,6 @@ import {
 import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
-import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -31,8 +30,8 @@ import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescrip
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import PdfPreviewDialog from './PdfPreviewDialog';
 import { Progress } from '@/components/ui/progress';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -310,11 +309,13 @@ interface PropertiesSidebarProps {
   setPassword: (password: string) => void;
   passwordProtected: boolean;
   setPasswordProtected: (isProtected: boolean) => void;
+  onDetect: () => void;
+  isDetecting: boolean;
 }
 
 const PropertiesSidebar = ({
   fields, setFields, selectedFieldId, setSelectedFieldId, updateField, removeField, pagesLength, pdf,
-  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected
+  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
   const [showPassword, setShowPassword] = React.useState(false);
@@ -343,7 +344,7 @@ const PropertiesSidebar = ({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
-                    {hasSuggestions && (
+                    {hasSuggestions ? (
                         <>
                             <TooltipProvider>
                                 <Tooltip>
@@ -364,6 +365,17 @@ const PropertiesSidebar = ({
                                 </Tooltip>
                             </TooltipProvider>
                         </>
+                    ) : (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10" onClick={onDetect} disabled={isDetecting}>
+                                        {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>AI-Detect Fields</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     )}
                     <TooltipProvider>
                         <Tooltip>
@@ -533,17 +545,18 @@ interface FieldMapperProps {
   setPasswordProtected: (isProtected: boolean) => void;
   isStatusChanging: boolean;
   onStatusChange: (status: PDFForm['status']) => void;
+  onDetect: () => void;
+  isDetecting: boolean;
 }
 
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 export default function FieldMapper({
-  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange,
+  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting
 }: FieldMapperProps) {
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
-  const [isDetecting, setIsDetecting] = React.useState(false);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
@@ -619,42 +632,6 @@ export default function FieldMapper({
 
   const handleChangeFieldType = (id: string, newType: PDFFormField['type']) => {
     setFields(prev => prev.map(f => (f.id === id ? { ...f, type: newType } : f)));
-  };
-
-  const handleDetectFields = async () => {
-    if (isDetecting) return;
-    setIsDetecting(true);
-    toast({ title: 'AI Field Detection', description: 'Analyzing your PDF. This might take a moment...' });
-    
-    try {
-        const response = await fetch(pdf.downloadUrl);
-        if (!response.ok) throw new Error("Failed to fetch PDF data.");
-        const blob = await response.blob();
-        
-        const base64data = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error("Failed to read file."));
-            reader.readAsDataURL(blob);
-        });
-
-        const result = await detectPdfFields({ pdfDataUri: base64data });
-        if (result.fields && result.fields.length > 0) {
-            const newFields: LocalPDFFormField[] = result.fields.map(suggestion => ({ 
-                ...suggestion, 
-                id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
-                isSuggestion: true, 
-            }));
-            setFields(prev => [...prev.filter(f => !f.isSuggestion), ...newFields]);
-            toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
-        } else {
-            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
-        }
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
-    } finally {
-        setIsDetecting(false);
-    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -740,7 +717,7 @@ export default function FieldMapper({
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('date')}><Calendar className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
                       <div className="w-px h-6 bg-border mx-1" />
                       <Tooltip><TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10" onClick={handleDetectFields} disabled={isDetecting}>
+                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10" onClick={onDetect} disabled={isDetecting}>
                               {isDetecting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
                           </Button>
                       </TooltipTrigger><TooltipContent><p>AI Detect Fields</p></TooltipContent></Tooltip>
@@ -785,12 +762,14 @@ export default function FieldMapper({
                         setPassword={setPassword} 
                         passwordProtected={passwordProtected} 
                         setPasswordProtected={setPasswordProtected} 
+                        onDetect={onDetect}
+                        isDetecting={isDetecting}
                     />
                     <div className="p-4 border-t flex flex-col gap-2">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
                         <Button onClick={onSave} disabled={isSaving} size="sm">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            {isSaving ? 'Saving...' : 'Save Changes'}
+                            {isSaving ? 'Saving...' : 'Save'}
                         </Button>
                     </div>
                 </>
@@ -826,12 +805,14 @@ export default function FieldMapper({
             setPassword={setPassword} 
             passwordProtected={passwordProtected} 
             setPasswordProtected={setPasswordProtected} 
+            onDetect={onDetect}
+            isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
             <Button onClick={onSave} disabled={isSaving} size="sm">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                {isSaving ? 'Saving...' : 'Save'}
             </Button>
           </SheetFooter>
         </SheetContent>
