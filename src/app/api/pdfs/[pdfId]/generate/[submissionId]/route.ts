@@ -9,22 +9,22 @@ export async function GET(
 ) {
   const { pdfId, submissionId } = await params;
 
-  console.log(`>>> [API:GEN] Request received for PDF: ${pdfId}, Submission: ${submissionId}`);
+  console.log(`>>> [API:GEN] Incoming Request - PDF: ${pdfId}, Submission: ${submissionId}`);
 
   try {
     const db = getDb();
     
-    console.log(`>>> [API:GEN] Fetching records from Firestore...`);
     const pdfFormRef = doc(db, 'pdfs', pdfId);
     const submissionRef = doc(db, `pdfs/${pdfId}/submissions`, submissionId);
 
+    console.log(`>>> [API:GEN] Fetching records from Firestore...`);
     const [pdfFormSnap, submissionSnap] = await Promise.all([
       getDoc(pdfFormRef),
       getDoc(submissionRef)
     ]);
 
     if (!pdfFormSnap.exists()) {
-        console.error(`>>> [API:GEN] ERROR: PDF Form ${pdfId} not found in database.`);
+        console.error(`>>> [API:GEN] 404: PDF Form not found.`);
         return new Response(JSON.stringify({ error: 'PDF Form not found' }), { 
             status: 404,
             headers: { 'Content-Type': 'application/json' }
@@ -32,7 +32,7 @@ export async function GET(
     }
     
     if (!submissionSnap.exists()) {
-        console.error(`>>> [API:GEN] ERROR: Submission ${submissionId} not found in database.`);
+        console.error(`>>> [API:GEN] 404: Submission not found.`);
         return new Response(JSON.stringify({ error: 'Submission not found' }), { 
             status: 404,
             headers: { 'Content-Type': 'application/json' }
@@ -42,11 +42,10 @@ export async function GET(
     const pdfForm = { id: pdfFormSnap.id, ...pdfFormSnap.data() } as PDFForm;
     const submission = submissionSnap.data() as Submission;
 
-    console.log(`>>> [API:GEN] Records found. Starting buffer generation...`);
-    
+    console.log(`>>> [API:GEN] Starting byte generation...`);
     const pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
 
-    console.log(`>>> [API:GEN] SUCCESS: PDF generated successfully. Returning stream...`);
+    console.log(`>>> [API:GEN] Generation SUCCESS. Returning binary stream.`);
 
     return new Response(pdfBytes, {
       headers: {
@@ -56,10 +55,10 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error('>>> [API:GEN] CRITICAL ERROR:', error);
+    console.error('>>> [API:GEN] CRITICAL SERVER ERROR:', error);
     return new Response(JSON.stringify({ 
         error: error.message || 'Internal server error',
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        phase: 'generation'
     }), { 
         status: 500,
         headers: { 'Content-Type': 'application/json' }

@@ -21,7 +21,8 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     let pdfBuffer: ArrayBuffer;
     try {
         console.log(`>>> [PDF:GEN] STEP 1: Fetching template from Storage: ${pdfForm.storagePath}`);
-        pdfBuffer = await getBytes(fileRef);
+        const bytes = await getBytes(fileRef);
+        pdfBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
         console.log(`>>> [PDF:GEN] SUCCESS: Fetched ${pdfBuffer.byteLength} bytes from Storage.`);
     } catch (e: any) {
         console.error(`>>> [PDF:GEN] FAIL: Storage Fetch Error:`, e);
@@ -47,24 +48,23 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
     // Draw fields onto the PDF
     for (const field of fields) {
-        const rawValue = formData[field.id];
-        
-        // Skip empty fields or fields referencing non-existent pages
-        if (rawValue === undefined || rawValue === null || field.pageNumber > pages.length) {
-            continue;
-        }
-
-        const page = pages[field.pageNumber - 1];
-        const { width: pageWidth, height: pageHeight } = page.getSize();
-
-        // Convert percentage-based coordinates to PDF points (origin is bottom-left)
-        const x = (field.position.x / 100) * pageWidth;
-        const y_top = pageHeight - ((field.position.y / 100) * pageHeight);
-
-        const fieldHeight = (field.dimensions.height / 100) * pageHeight;
-        const fontSize = field.fontSize || Math.max(8, fieldHeight * 0.6);
-
         try {
+            const rawValue = formData[field.id];
+            
+            // Skip empty fields or fields referencing non-existent pages
+            if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {
+                continue;
+            }
+
+            const page = pages[field.pageNumber - 1];
+            const { width: pageWidth, height: pageHeight } = page.getSize();
+
+            // Convert percentage-based coordinates to PDF points (origin is bottom-left)
+            const x = (field.position.x / 100) * pageWidth;
+            const y_top = pageHeight - ((field.position.y / 100) * pageHeight);
+            const fieldHeight = (field.dimensions.height / 100) * pageHeight;
+            const fieldWidth = (field.dimensions.width / 100) * pageWidth;
+
             if (field.type === 'text' || field.type === 'date') {
                 let displayValue = '';
                 if (Array.isArray(rawValue)) {
@@ -80,25 +80,28 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
                 if (!displayValue) continue;
 
+                const fontSize = field.fontSize || 11;
+                
                 page.drawText(displayValue, {
                     x: x + 2,
-                    y: y_top - (fieldHeight / 2) - (fontSize / 4), 
+                    y: y_top - fontSize - 2, // Simple baseline adjustment
                     font,
                     size: fontSize,
                     color: rgb(0, 0, 0),
+                    maxWidth: fieldWidth - 4,
                 });
             } else if (field.type === 'signature') {
-                if (typeof rawValue === 'string' && rawValue.startsWith('data:image/png;base64,')) {
-                    console.log(`>>> [PDF:GEN] Drawing signature for field: ${field.id}`);
-                    const base64Data = rawValue.split(',')[1];
-                    if (!base64Data) {
-                        console.warn(`>>> [PDF:GEN] WARNING: Signature field ${field.id} has invalid data URL.`);
-                        continue;
-                    }
-                    const pngImageBytes = Buffer.from(base64Data, 'base64');
-                    const pngImage = await pdfDoc.embedPng(pngImageBytes);
-                    const fieldWidth = (field.dimensions.width / 100) * pageWidth;
+                if (typeof rawValue === 'string' && rawValue.includes('base64,')) {
+                    const base64Data = rawValue.split('base64,')[1];
+                    if (!base64Data) continue;
 
+                    const binaryString = atob(base64Data);
+                    const bytes = new Uint8Array(binaryString.length);
+                    for (let i = 0; i < binaryString.length; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+
+                    const pngImage = await pdfDoc.embedPng(bytes);
                     const scale = Math.min(fieldWidth / pngImage.width, fieldHeight / pngImage.height);
 
                     page.drawImage(pngImage, {
@@ -107,13 +110,10 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                         width: pngImage.width * scale,
                         height: pngImage.height * scale,
                     });
-                } else {
-                    console.warn(`>>> [PDF:GEN] WARNING: Signature field ${field.id} is not a valid PNG Data URL.`);
                 }
             }
         } catch (fieldError: any) {
-            console.error(`>>> [PDF:GEN] ERROR processing field ${field.id} (${field.type}):`, fieldError);
-            // We don't throw here to allow other fields to attempt to render
+            console.warn(`>>> [PDF:GEN] Skipping field ${field.id} due to error:`, fieldError.message);
         }
     }
 
