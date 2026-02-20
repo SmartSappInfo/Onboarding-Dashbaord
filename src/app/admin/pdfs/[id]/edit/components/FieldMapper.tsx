@@ -798,8 +798,8 @@ export default function FieldMapper({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return; // Only left click
     
-    // If target is a field, don't start marquee (stop propagation on fields is used too)
-    if ((e.target as HTMLElement).closest('.group/field')) return;
+    // If target is a field container, don't start marquee
+    if ((e.target as HTMLElement).closest('[data-field-id]')) return;
 
     const viewport = viewportRef.current;
     if (!viewport) return;
