@@ -1,3 +1,4 @@
+
 import { doc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/server-only-firestore';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
