@@ -18,15 +18,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
+import { 
+    Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
+    PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
+    EyeOff, Check, X, AlignLeft, AlignRight, AlignTop, AlignBottom, 
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical 
+} from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -42,12 +45,12 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   date: Calendar,
 };
 
-function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, zoom }: {
+function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, zoom }: {
     pdf: PDFDocumentProxy;
     pageNumber: number;
     fields: LocalPDFFormField[];
-    selectedFieldId: string | null;
-    onSelect: (id: string | null) => void;
+    selectedFieldIds: string[];
+    onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
     onDelete: (id: string) => void;
     onDuplicate: (id: string) => void;
@@ -68,12 +71,9 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
              try {
                 const pdfjs = await pdfjsPromise;
                 const pdfjsVersion = '4.4.168';
-                
-                // Set worker source
                 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
 
                 if (!isMounted) return;
-                
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: zoom * 1.5, rotation: page.rotate });
                 
@@ -84,17 +84,13 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                     const canvas = canvasRef.current;
                     const context = canvas.getContext('2d');
                     if (context) {
-                        // Cancel previous render task if any
                         if (renderTaskRef.current) {
                             renderTaskRef.current.cancel();
                         }
-
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        
                         const renderTask = page.render({ canvasContext: context, viewport });
                         renderTaskRef.current = renderTask;
-                        
                         await renderTask.promise;
                     }
                 }
@@ -102,19 +98,13 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                 if (error.name === 'RenderingCancelledException') return;
                 console.error(`Error rendering page ${pageNumber}:`, error);
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                if (isMounted) setIsLoading(false);
             }
         };
-
         renderPage();
-        
         return () => { 
             isMounted = false; 
-            if (renderTaskRef.current) {
-                renderTaskRef.current.cancel();
-            }
+            if (renderTaskRef.current) renderTaskRef.current.cancel();
         };
     }, [pdf, pageNumber, zoom]);
     
@@ -122,10 +112,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
         <div 
             data-page-number={pageNumber}
             className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0"
-            style={{ 
-                width: pageDimensions.width / 1.5, 
-                height: pageDimensions.height / 1.5,
-            }}
+            style={{ width: pageDimensions.width / 1.5, height: pageDimensions.height / 1.5 }}
         >
             {isLoading && <Skeleton className="absolute inset-0 z-10" />}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
@@ -135,7 +122,8 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                     key={field.id}
                     field={field}
                     pageDimensions={pageDimensions}
-                    isSelected={selectedFieldId === field.id}
+                    isSelected={selectedFieldIds.includes(field.id)}
+                    showHandles={selectedFieldIds.length <= 1}
                     onSelect={onSelect}
                     onUpdate={onUpdate}
                     onDelete={onDelete}
@@ -151,12 +139,13 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 
 const ResizableField = ({
-    field, pageDimensions, isSelected, onSelect, onUpdate, onDelete, onDuplicate, onChangeType
+    field, pageDimensions, isSelected, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType
 }: {
     field: LocalPDFFormField;
     pageDimensions: { width: number, height: number };
     isSelected: boolean;
-    onSelect: (id: string | null) => void;
+    showHandles: boolean;
+    onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
     onDelete: (id: string) => void;
     onDuplicate: (id: string) => void;
@@ -203,13 +192,12 @@ const ResizableField = ({
             const displayWidth = pageDimensions.width / 1.5;
             const displayHeight = pageDimensions.height / 1.5;
             onUpdate(field.id, {
-                position: { x: (newX / displayWidth) * 100, y: (newY / displayHeight) * 100, },
-                dimensions: { width: (newWidth / displayWidth) * 100, height: (newHeight / displayHeight) * 100, },
+                position: { x: (newX / displayWidth) * 100, y: (newY / displayHeight) * 100 },
+                dimensions: { width: (newWidth / displayWidth) * 100, height: (newHeight / displayHeight) * 100 },
                 isSuggestion: false,
             });
         };
         const handleMouseUp = () => { setIsResizing(false); resizeHandleRef.current = null; };
-        
         if (isResizing) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
@@ -227,13 +215,21 @@ const ResizableField = ({
     };
 
     const borderColorClass = isSelected ? 'border-primary' : field.isSuggestion ? 'border-green-500' : 'border-dashed border-primary/50 hover:border-primary';
-
     const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} onClick={(e) => { e.stopPropagation(); onSelect(field.id); }} className={`absolute border-2 ${borderColorClass} transition-colors group/field`}>
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            {...attributes} 
+            onClick={(e) => { 
+                e.stopPropagation(); 
+                onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
+            }} 
+            className={`absolute border-2 ${borderColorClass} transition-colors group/field`}
+        >
             <div {...listeners} className="w-full h-full cursor-grab"></div>
-            {isSelected && (
+            {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
                         <Tooltip><TooltipTrigger asChild>
@@ -273,14 +269,10 @@ const ResizableField = ({
                             className={cn('absolute bg-primary rounded-full w-2.5 h-2.5 z-20 -translate-x-1/2 -translate-y-1/2',
                                 handle.includes('top') ? 'top-0' : handle.includes('bottom') ? 'top-full' : 'top-1/2',
                                 handle.includes('left') ? 'left-0' : handle.includes('right') ? 'left-full' : 'left-1/2',
-                                handle === 'top' && 'cursor-n-resize',
-                                handle === 'bottom' && 'cursor-s-resize',
-                                handle === 'left' && 'cursor-w-resize',
-                                handle === 'right' && 'cursor-e-resize',
-                                handle === 'top-left' && 'cursor-nw-resize',
-                                handle === 'top-right' && 'cursor-ne-resize',
-                                handle === 'bottom-left' && 'cursor-sw-resize',
-                                handle === 'bottom-right' && 'cursor-se-resize'
+                                handle === 'top' && 'cursor-n-resize', handle === 'bottom' && 'cursor-s-resize',
+                                handle === 'left' && 'cursor-w-resize', handle === 'right' && 'cursor-e-resize',
+                                handle === 'top-left' && 'cursor-nw-resize', handle === 'top-right' && 'cursor-ne-resize',
+                                handle === 'bottom-left' && 'cursor-sw-resize', handle === 'bottom-right' && 'cursor-se-resize'
                             )}
                         />
                     ))}
@@ -291,12 +283,11 @@ const ResizableField = ({
     );
 };
 
-
 interface PropertiesSidebarProps {
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
-  selectedFieldId: string | null;
-  setSelectedFieldId: (id: string | null) => void;
+  selectedFieldIds: string[];
+  setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   pagesLength: number;
@@ -312,27 +303,17 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, setFields, selectedFieldId, setSelectedFieldId, updateField, removeField, pagesLength, pdf,
+  fields, setFields, selectedFieldIds, setSelectedFieldIds, updateField, removeField, pagesLength, pdf,
   isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
-  const selectedField = fields.find(f => f.id === selectedFieldId);
+  const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const [showPassword, setShowPassword] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
   const hasSuggestions = fields.some(f => f.isSuggestion);
 
-  const acceptAllSuggestions = () => {
-    setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })));
-  };
-
-  const rejectAllSuggestions = () => {
-    setFields(prev => prev.filter(f => !f.isSuggestion));
-  };
-
-  const deleteAllFields = () => {
-    setFields([]);
-    setSelectedFieldId(null);
-    setIsDeleteDialogOpen(false);
-  };
+  const acceptAllSuggestions = () => setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })));
+  const rejectAllSuggestions = () => setFields(prev => prev.filter(f => !f.isSuggestion));
+  const deleteAllFields = () => { setFields([]); setSelectedFieldIds([]); setIsDeleteDialogOpen(false); };
 
   return (
     <>
@@ -392,9 +373,10 @@ const PropertiesSidebar = ({
                       <div className="space-y-1">
                           {fields.map((field) => {
                               const Icon = fieldIcons[field.type];
+                              const isSel = selectedFieldIds.includes(field.id);
                               return (
-                                  <button key={field.id} onClick={() => setSelectedFieldId(field.id)}
-                                      className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", selectedFieldId === field.id && 'bg-muted ring-1 ring-primary')}>
+                                  <button key={field.id} onClick={() => setSelectedFieldIds([field.id])}
+                                      className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", isSel && 'bg-muted ring-1 ring-primary')}>
                                       <Icon className="h-4 w-4 text-muted-foreground" />
                                       <span className={cn("truncate text-sm flex-1", field.isSuggestion && "text-green-600 font-medium")}>{field.label || field.id}</span>
                                       {field.required && <span className="text-destructive font-bold text-lg">*</span>}
@@ -456,6 +438,16 @@ const PropertiesSidebar = ({
                         </div>
                     </CardContent>
                 </Card>
+            ) : selectedFieldIds.length > 1 ? (
+                <Card>
+                    <CardHeader className="py-4">
+                        <CardTitle className="text-sm font-semibold">Bulk Editing</CardTitle>
+                        <CardDescription className="text-[10px]">{selectedFieldIds.length} items selected</CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 text-center">
+                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar to align or duplicate items.</p>
+                    </CardContent>
+                </Card>
             ) : null}
             <Card>
                 <CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Security</CardTitle></CardHeader>
@@ -471,20 +463,8 @@ const PropertiesSidebar = ({
                          <div className="space-y-2">
                             <Label htmlFor="form-password" className="text-xs">Form Password</Label>
                              <div className="relative">
-                                <Input 
-                                    id="form-password" 
-                                    type={showPassword ? 'text' : 'password'} 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    className="h-8 text-sm pr-8"
-                                />
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground"
-                                    onClick={() => setShowPassword(prev => !prev)}
-                                >
+                                <Input id="form-password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-sm pr-8" />
+                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 text-muted-foreground" onClick={() => setShowPassword(prev => !prev)}>
                                     {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                                 </Button>
                             </div>
@@ -512,23 +492,17 @@ const PropertiesSidebar = ({
             <AlertDialogContent>
                 <AlertDialogHeader>
                     <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This will permanently delete all mapped fields for this document. This action cannot be undone.
-                    </AlertDialogDescription>
+                    <AlertDialogDescription>This will permanently delete all mapped fields for this document. This action cannot be undone.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={deleteAllFields} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Delete All
-                    </AlertDialogAction>
+                    <AlertDialogAction onClick={deleteAllFields} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Delete All</AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     </>
   );
 };
-
-
 
 interface FieldMapperProps {
   pdf: PDFForm;
@@ -554,25 +528,21 @@ export default function FieldMapper({
 }: FieldMapperProps) {
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
-  const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
+  const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
   const isResizing = React.useRef(false);
   const [isPropertiesSheetOpen, setIsPropertiesSheetOpen] = React.useState(false);
-  
   const [displayZoom, setDisplayZoom] = React.useState(1);
-  const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 2));
-  const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
-  
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
+  const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
   const handleWheel = (e: React.WheelEvent) => {
     if (e.ctrlKey) {
       e.preventDefault();
-      const zoomFactor = 0.1;
-      const { deltaY } = e;
-      setDisplayZoom(prev => Math.max(0.5, Math.min(prev - (deltaY > 0 ? zoomFactor : -zoomFactor), 2)));
+      setDisplayZoom(prev => Math.max(0.5, Math.min(prev - (e.deltaY > 0 ? 0.1 : -0.1), 2)));
     }
   };
 
@@ -582,55 +552,129 @@ export default function FieldMapper({
     const loadPdf = async () => {
         try {
             const pdfjs = await pdfjsPromise;
-            const pdfjsVersion = '4.4.168';
-            
-            // Set worker source
-            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-            
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
             const loadedPdf = await loadingTask.promise;
             setPdfDoc(loadedPdf);
         } catch (error: any) {
             console.error("PDF Loading Error:", error);
-            toast({ variant: 'destructive', title: 'Error Loading PDF', description: 'Could not load document template.', duration: 15000 });
+            toast({ variant: 'destructive', title: 'Error Loading PDF', description: 'Could not load document template.' });
         }
     };
     if (pdf.downloadUrl) loadPdf();
   }, [pdf.downloadUrl, toast]);
-  
+
+  const handleSelect = React.useCallback((id: string, multi: boolean = false, toggle: boolean = false) => {
+    setSelectedFieldIds(prev => {
+        if (toggle) return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+        if (multi) return prev.includes(id) ? prev : [...prev, id];
+        return [id];
+    });
+  }, []);
+
   const addField = (type: PDFFormField['type']) => {
     const newField: LocalPDFFormField = {
       id: `field_${Date.now()}`, label: `New ${type} field`, type, pageNumber: 1,
       position: { x: 5, y: 5 }, dimensions: { width: 20, height: 5 }, required: false,
     };
     setFields(prev => [...prev, newField]);
-    setSelectedFieldId(newField.id);
+    setSelectedFieldIds([newField.id]);
   };
   
-  const removeField = (id: string) => {
+  const removeField = React.useCallback((id: string) => {
     setFields(prev => prev.filter(f => f.id !== id));
-    if (selectedFieldId === id) setSelectedFieldId(null);
-  };
+    setSelectedFieldIds(prev => prev.filter(i => i !== id));
+  }, [setFields]);
+
+  const bulkRemove = React.useCallback(() => {
+    setFields(prev => prev.filter(f => !selectedFieldIds.includes(f.id)));
+    setSelectedFieldIds([]);
+  }, [setFields, selectedFieldIds]);
 
   const updateField = React.useCallback((id: string, newProps: Partial<PDFFormField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
   }, [setFields]);
 
-  const handleDuplicateField = (id: string) => {
-    const fieldToDuplicate = fields.find(f => f.id === id);
-    if (!fieldToDuplicate) return;
-    const newField: LocalPDFFormField = {
-      ...JSON.parse(JSON.stringify(fieldToDuplicate)),
-      id: `field_${Date.now()}`,
-      position: { x: fieldToDuplicate.position.x + 2, y: fieldToDuplicate.position.y + 2 },
-    };
-    setFields(prev => [...prev, newField]);
-    setSelectedFieldId(newField.id);
-  };
+  const bulkDuplicate = React.useCallback(() => {
+    const toDuplicate = fields.filter(f => selectedFieldIds.includes(f.id));
+    const newElements = toDuplicate.map(f => ({
+        ...JSON.parse(JSON.stringify(f)),
+        id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        position: { x: Math.min(95, f.position.x + 2), y: Math.min(95, f.position.y + 2) }
+    }));
+    setFields(prev => [...prev, ...newElements]);
+    setSelectedFieldIds(newElements.map(n => n.id));
+  }, [fields, selectedFieldIds, setFields]);
 
-  const handleChangeFieldType = (id: string, newType: PDFFormField['type']) => {
-    setFields(prev => prev.map(f => (f.id === id ? { ...f, type: newType } : f)));
-  };
+  // Alignment functions
+  const alignFields = React.useCallback((type: 'left' | 'right' | 'top' | 'bottom' | 'center-h' | 'center-v') => {
+    const sel = fields.filter(f => selectedFieldIds.includes(f.id));
+    if (sel.length < 2) return;
+
+    let target: number;
+    switch(type) {
+        case 'left': 
+            target = Math.min(...sel.map(f => f.position.x));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
+            break;
+        case 'right':
+            target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
+            break;
+        case 'top':
+            target = Math.min(...sel.map(f => f.position.y));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
+            break;
+        case 'bottom':
+            target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
+            break;
+        case 'center-h':
+            const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
+            break;
+        case 'center-v':
+            const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
+            break;
+    }
+  }, [fields, selectedFieldIds, setFields]);
+
+  // Keydown handler for nudge and delete
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if (selectedFieldIds.length === 0) return;
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            bulkRemove();
+            return;
+        }
+
+        const nudge = e.shiftKey ? 1 : 0.1;
+        const nudgeX = e.key === 'ArrowLeft' ? -nudge : e.key === 'ArrowRight' ? nudge : 0;
+        const nudgeY = e.key === 'ArrowUp' ? -nudge : e.key === 'ArrowDown' ? nudge : 0;
+
+        if (nudgeX !== 0 || nudgeY !== 0) {
+            e.preventDefault();
+            setFields(prev => prev.map(f => {
+                if (selectedFieldIds.includes(f.id)) {
+                    return {
+                        ...f,
+                        position: {
+                            x: Math.max(0, Math.min(100 - f.dimensions.width, f.position.x + nudgeX)),
+                            y: Math.max(0, Math.min(100 - f.dimensions.height, f.position.y + nudgeY))
+                        }
+                    };
+                }
+                return f;
+            }));
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFieldIds, setFields, bulkRemove]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
@@ -639,34 +683,40 @@ export default function FieldMapper({
     const pageContainer = viewportRef.current?.querySelector(`[data-page-number="${fieldToMove.pageNumber}"]`);
     if (!pageContainer) return;
     const { width, height } = pageContainer.getBoundingClientRect();
-    const newX = fieldToMove.position.x + (delta.x / width) * 100;
-    const newY = fieldToMove.position.y + (delta.y / height) * 100;
-    updateField(active.id as string, {
-        position: {
-            x: Math.max(0, Math.min(100 - fieldToMove.dimensions.width, newX)),
-            y: Math.max(0, Math.min(100 - fieldToMove.dimensions.height, newY)),
-        },
-        isSuggestion: false,
-    });
+    const dX = (delta.x / width) * 100;
+    const dY = (delta.y / height) * 100;
+
+    setFields(prev => prev.map(f => {
+        if (selectedFieldIds.includes(f.id) && f.pageNumber === fieldToMove.pageNumber) {
+            return {
+                ...f,
+                position: {
+                    x: Math.max(0, Math.min(100 - f.dimensions.width, f.position.x + dX)),
+                    y: Math.max(0, Math.min(100 - f.dimensions.height, f.position.y + dY)),
+                },
+                isSuggestion: false,
+            };
+        }
+        return f;
+    }));
   };
   
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => { e.preventDefault(); isResizing.current = true; };
-  const handleMouseUp = React.useCallback(() => { isResizing.current = false; }, []);
-  const handleMouseMove = React.useCallback((e: MouseEvent) => {
-    if (isResizing.current) {
-        const newWidth = window.innerWidth - e.clientX;
-        if (newWidth > 320 && newWidth < 600) setSidebarWidth(newWidth);
-    }
-  }, []);
-
+  const handleSidebarMouseDown = (e: React.MouseEvent) => { e.preventDefault(); isResizing.current = true; };
   React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+        if (isResizing.current) {
+            const newWidth = window.innerWidth - e.clientX;
+            if (newWidth > 320 && newWidth < 600) setSidebarWidth(newWidth);
+        }
+    };
+    const handleMouseUp = () => { isResizing.current = false; };
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [handleMouseMove, handleMouseUp]);
+  }, []);
 
   return (
     <div className="flex h-full overflow-hidden bg-muted/30">
@@ -676,16 +726,18 @@ export default function FieldMapper({
                 <div 
                     className="p-12 pb-32 flex flex-col items-center min-w-full" 
                     style={{ minWidth: 'fit-content' }}
-                    onClick={() => setSelectedFieldId(null)}
+                    onClick={() => setSelectedFieldIds([])}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
                             fields={fields.filter(f => f.pageNumber === index + 1)}
-                            selectedFieldId={selectedFieldId} onSelect={setSelectedFieldId}
-                            onUpdate={updateField} onDelete={removeField} onDuplicate={handleDuplicateField}
-                            onChangeType={handleChangeFieldType} zoom={displayZoom} />
+                            selectedFieldIds={selectedFieldIds} onSelect={handleSelect}
+                            onUpdate={updateField} onDelete={removeField} onDuplicate={bulkDuplicate}
+                            onChangeType={(id, type) => setFields(prev => prev.map(f => f.id === id ? {...f, type} : f))} 
+                            zoom={displayZoom} 
+                        />
                     ))}
                 </div>
               </ScrollArea>
@@ -707,6 +759,27 @@ export default function FieldMapper({
                       </CardContent>
                   </Card>
               )}
+
+              {/* Multi-Select Context Toolbar */}
+              {selectedFieldIds.length > 1 && (
+                  <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm pointer-events-auto animate-in fade-in zoom-in-95 mb-2">
+                      <CardContent className="p-1 flex items-center gap-1">
+                          <TooltipProvider>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('left')}><AlignLeft className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center H</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('right')}><AlignRight className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
+                              <div className="w-px h-4 bg-border mx-1" />
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('top')}><AlignTop className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Top</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Center V</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => alignFields('bottom')}><AlignBottom className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                              <div className="w-px h-4 bg-border mx-1" />
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
+                              <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
+                          </TooltipProvider>
+                      </CardContent>
+                  </Card>
+              )}
+
               <Card className="shadow-2xl border-primary/20 pointer-events-auto">
                 <CardContent className="p-2 flex items-center gap-1 sm:gap-2">
                   <TooltipProvider>
@@ -735,7 +808,7 @@ export default function FieldMapper({
           </div>
       </div>
       
-      <div className="w-1 cursor-col-resize bg-border hover:bg-primary transition-colors items-center justify-center hidden md:flex z-40" onMouseDown={handleMouseDown}></div>
+      <div className="w-1 cursor-col-resize bg-border hover:bg-primary transition-colors items-center justify-center hidden md:flex z-40" onMouseDown={handleSidebarMouseDown}></div>
 
       <div className="h-full bg-card border-l transition-all hidden md:flex flex-col z-30 shadow-xl" style={{ width: isCollapsed ? "56px" : `${sidebarWidth}px` }}>
         <div className="flex flex-col h-full overflow-hidden">
@@ -746,22 +819,14 @@ export default function FieldMapper({
             {!isCollapsed && (
                 <>
                     <PropertiesSidebar 
-                        fields={fields} 
-                        setFields={setFields} 
-                        selectedFieldId={selectedFieldId} 
-                        setSelectedFieldId={setSelectedFieldId} 
-                        updateField={updateField} 
-                        removeField={removeField} 
-                        pagesLength={pdfDoc?.numPages || 0} 
-                        pdf={pdf} 
-                        isStatusChanging={isStatusChanging} 
-                        onStatusChange={onStatusChange} 
-                        password={password} 
-                        setPassword={setPassword} 
-                        passwordProtected={passwordProtected} 
-                        setPasswordProtected={setPasswordProtected} 
-                        onDetect={onDetect}
-                        isDetecting={isDetecting}
+                        fields={fields} setFields={setFields} 
+                        selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+                        updateField={updateField} removeField={removeField} 
+                        pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
+                        isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
+                        password={password} setPassword={setPassword} 
+                        passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
+                        onDetect={onDetect} isDetecting={isDetecting}
                     />
                     <div className="p-4 border-t flex flex-col gap-2">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
@@ -773,11 +838,13 @@ export default function FieldMapper({
                 </>
             )}
             {isCollapsed && (
-                <div className="flex flex-col items-center gap-4 py-4"><TooltipProvider>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}><List /></Button></TooltipTrigger><TooltipContent side="left"><p>Fields</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onPreview}><Eye /></Button></TooltipTrigger><TooltipContent side="left"><p>Preview</p></TooltipContent></Tooltip>
-                    <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onSave} disabled={isSaving} className="text-primary"><Save /></Button></TooltipTrigger><TooltipContent side="left"><p>Save</p></TooltipContent></Tooltip>
-                </TooltipProvider></div>
+                <div className="flex flex-col items-center gap-4 py-4">
+                    <TooltipProvider>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}><List /></Button></TooltipTrigger><TooltipContent side="left"><p>Fields</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onPreview}><Eye /></Button></TooltipTrigger><TooltipContent side="left"><p>Preview</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={onSave} disabled={isSaving} className="text-primary"><Save /></Button></TooltipTrigger><TooltipContent side="left"><p>Save</p></TooltipContent></Tooltip>
+                    </TooltipProvider>
+                </div>
             )}
         </div>
       </div>
@@ -786,25 +853,16 @@ export default function FieldMapper({
         <SheetContent className="p-0 flex flex-col md:hidden w-full max-w-sm" side="right">
           <SheetHeader className="p-4 border-b">
             <SheetTitle>Fields & Properties</SheetTitle>
-            <SheetDescription className="sr-only">Edit form field properties and document settings.</SheetDescription>
           </SheetHeader>
           <PropertiesSidebar 
-            fields={fields} 
-            setFields={setFields} 
-            selectedFieldId={selectedFieldId} 
-            setSelectedFieldId={setSelectedFieldId} 
-            updateField={updateField} 
-            removeField={removeField} 
-            pagesLength={pdfDoc?.numPages || 0} 
-            pdf={pdf} 
-            isStatusChanging={isStatusChanging} 
-            onStatusChange={onStatusChange} 
-            password={password} 
-            setPassword={setPassword} 
-            passwordProtected={passwordProtected} 
-            setPasswordProtected={setPasswordProtected} 
-            onDetect={onDetect}
-            isDetecting={isDetecting}
+            fields={fields} setFields={setFields} 
+            selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+            updateField={updateField} removeField={removeField} 
+            pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
+            isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
+            password={password} setPassword={setPassword} 
+            passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
+            onDetect={onDetect} isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
