@@ -1,3 +1,4 @@
+
 'use server';
 
 import { doc, addDoc, collection, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
@@ -9,8 +10,9 @@ import type { PDFForm, PDFFormField, Submission } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
- * Shared logic to generate a PDF buffer from a template and form data.
- * This is used by Route Handlers to provide stateless generation.
+ * Generates a PDF buffer by overlaying form data onto a template.
+ * @param pdfForm The form metadata containing field definitions.
+ * @param formData The user-submitted values (text and base64 signatures).
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     console.log(`>>> [PDF:GEN] START: "${pdfForm.name}" (ID: ${pdfForm.id})`);
@@ -22,19 +24,18 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     try {
         console.log(`>>> [PDF:GEN] STEP 1: Fetching template from Storage: ${pdfForm.storagePath}`);
         const bytes = await getBytes(fileRef);
+        // Ensure we have a clean ArrayBuffer from the storage bytes
         pdfBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-        console.log(`>>> [PDF:GEN] SUCCESS: Fetched ${pdfBuffer.byteLength} bytes from Storage.`);
+        console.log(`>>> [PDF:GEN] SUCCESS: Fetched ${pdfBuffer.byteLength} bytes.`);
     } catch (e: any) {
         console.error(`>>> [PDF:GEN] FAIL: Storage Fetch Error:`, e);
-        throw new Error(`Failed to fetch PDF template from storage: ${e.message}`);
+        throw new Error(`Failed to fetch PDF template: ${e.message}`);
     }
 
-    // Load PDF with pdf-lib
     let pdfDoc: PDFDocument;
     try {
         console.log(`>>> [PDF:GEN] STEP 2: Loading buffer into pdf-lib...`);
         pdfDoc = await PDFDocument.load(pdfBuffer);
-        console.log(`>>> [PDF:GEN] SUCCESS: Document loaded into engine.`);
     } catch (e: any) {
         console.error(`>>> [PDF:GEN] FAIL: pdf-lib Load Error:`, e);
         throw new Error(`Failed to parse PDF template: ${e.message}`);
@@ -44,14 +45,13 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     const pages = pdfDoc.getPages();
     const fields = pdfForm.fields || [];
     
-    console.log(`>>> [PDF:GEN] STEP 3: Processing ${fields.length} mapped fields on ${pages.length} pages.`);
+    console.log(`>>> [PDF:GEN] STEP 3: Processing ${fields.length} fields.`);
 
-    // Draw fields onto the PDF
     for (const field of fields) {
         try {
             const rawValue = formData[field.id];
             
-            // Skip empty fields or fields referencing non-existent pages
+            // Validation: Skip if no value or invalid page reference
             if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {
                 continue;
             }
@@ -59,7 +59,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             const page = pages[field.pageNumber - 1];
             const { width: pageWidth, height: pageHeight } = page.getSize();
 
-            // Convert percentage-based coordinates to PDF points (origin is bottom-left)
+            // Coordinate Mapping: Percentage (Top-Left) -> PDF Points (Bottom-Left)
             const x = (field.position.x / 100) * pageWidth;
             const y_top = pageHeight - ((field.position.y / 100) * pageHeight);
             const fieldHeight = (field.dimensions.height / 100) * pageHeight;
@@ -71,7 +71,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     displayValue = rawValue.join(', ');
                 } else if (typeof rawValue === 'object') {
                     const parts = [];
-                    if (rawValue.options && Array.isArray(rawValue.options)) parts.push(rawValue.options.join(', '));
+                    if (rawValue.options) parts.push(rawValue.options.join(', '));
                     if (rawValue.other) parts.push(`Other: ${rawValue.other}`);
                     displayValue = parts.join('; ');
                 } else {
@@ -84,7 +84,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 
                 page.drawText(displayValue, {
                     x: x + 2,
-                    y: y_top - fontSize - 2, // Simple baseline adjustment
+                    y: y_top - fontSize - 2, // Offset baseline
                     font,
                     size: fontSize,
                     color: rgb(0, 0, 0),
@@ -93,15 +93,9 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             } else if (field.type === 'signature') {
                 if (typeof rawValue === 'string' && rawValue.includes('base64,')) {
                     const base64Data = rawValue.split('base64,')[1];
-                    if (!base64Data) continue;
-
-                    const binaryString = atob(base64Data);
-                    const bytes = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
-                    }
-
-                    const pngImage = await pdfDoc.embedPng(bytes);
+                    const signatureBuffer = Buffer.from(base64Data, 'base64');
+                    
+                    const pngImage = await pdfDoc.embedPng(signatureBuffer);
                     const scale = Math.min(fieldWidth / pngImage.width, fieldHeight / pngImage.height);
 
                     page.drawImage(pngImage, {
@@ -113,14 +107,12 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 }
             }
         } catch (fieldError: any) {
-            console.warn(`>>> [PDF:GEN] Skipping field ${field.id} due to error:`, fieldError.message);
+            console.warn(`>>> [PDF:GEN] Skipping field ${field.id}:`, fieldError.message);
         }
     }
 
-    console.log(`>>> [PDF:GEN] FINAL: Saving PDF bytes...`);
-    const finalBytes = await pdfDoc.save();
-    console.log(`>>> [PDF:GEN] COMPLETED: Generated ${finalBytes.length} bytes.`);
-    return finalBytes;
+    console.log(`>>> [PDF:GEN] FINAL: Serializing bytes...`);
+    return await pdfDoc.save();
 }
 
 type CreatePdfFormData = Pick<PDFForm, 'name' | 'originalFileName' | 'storagePath' | 'downloadUrl'>;
