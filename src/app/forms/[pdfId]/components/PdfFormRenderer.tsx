@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, Database, Code } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, Database, Code, RotateCcw, History } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -21,6 +21,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -51,6 +61,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const [scale, setScale] = React.useState(1.5);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = React.useState(false);
+  
+  // Autosave states
+  const [showRestoreDialog, setShowRestoreDialog] = React.useState(false);
+  const [cachedData, setCachedData] = React.useState<Record<string, any> | null>(null);
+  const STORAGE_KEY = `pdf-form-cache-${pdfForm.id}`;
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -62,11 +77,62 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     return defaults;
   }, [pdfForm.fields]);
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, getValues, reset, formState: { isValid, errors } } = useForm({
     resolver: zodResolver(validationSchema),
     mode: 'onChange',
     defaultValues,
   });
+
+  const watchedValues = watch();
+
+  // 1. Check for cached data on mount
+  React.useEffect(() => {
+    if (isSubmitted || isPreview) return;
+
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            // Only show if there's actual data (at least one non-empty field)
+            const hasData = Object.values(parsed).some(v => v !== '' && v !== null);
+            if (hasData) {
+                setCachedData(parsed);
+                setShowRestoreDialog(true);
+            }
+        } catch (e) {
+            console.error("Failed to parse cached form data", e);
+            localStorage.removeItem(STORAGE_KEY);
+        }
+    }
+  }, [STORAGE_KEY, isSubmitted, isPreview]);
+
+  // 2. Autosave on change
+  React.useEffect(() => {
+    if (isSubmitted || isPreview) return;
+    
+    const timer = setTimeout(() => {
+        const currentData = getValues();
+        const hasData = Object.values(currentData).some(v => v !== '' && v !== null);
+        if (hasData) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(currentData));
+        }
+    }, 1000); // Debounce save
+
+    return () => clearTimeout(timer);
+  }, [watchedValues, STORAGE_KEY, isSubmitted, isPreview, getValues]);
+
+  const handleRestore = () => {
+    if (cachedData) {
+        reset(cachedData);
+        toast({ title: "Progress Restored", description: "Your previous entries have been loaded." });
+    }
+    setShowRestoreDialog(false);
+  };
+
+  const handleStartFresh = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setShowRestoreDialog(false);
+  };
 
   React.useEffect(() => {
     const updateScale = () => {
@@ -102,6 +168,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }, [pdfForm.downloadUrl, toast]);
   
   const handleFinalSubmit = async () => {
+    console.log(">>> [PROCESS] Initiating Final Submit");
     if (isPreview) {
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
@@ -114,8 +181,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         const currentValues = getValues();
         const formData: Record<string, any> = {};
         
+        console.log(">>> [PROCESS] Collecting Form Data...");
         pdfForm.fields.forEach(field => {
-            formData[field.id] = currentValues[field.id] !== undefined && currentValues[field.id] !== '' ? currentValues[field.id] : null;
+            const val = currentValues[field.id];
+            formData[field.id] = (val !== undefined && val !== '') ? val : null;
+        });
+
+        console.log(">>> [PROCESS] Transmission Payload Ready", { 
+            fieldsCount: Object.keys(formData).length,
+            sampleKeys: Object.keys(formData).slice(0, 3) 
         });
 
         const payload = { pdfId: pdfForm.id, formData };
@@ -128,17 +202,24 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         const data = await response.json();
 
         if (response.ok && data.submissionId) {
+            console.log(">>> [PROCESS] Server Success! Submission ID:", data.submissionId);
             setSubmissionId(data.submissionId);
             setIsSubmitted(true);
+            
+            // Clear local cache on success
+            localStorage.removeItem(STORAGE_KEY);
+            
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
             
             const params = new URLSearchParams(searchParams);
             params.set('submissionId', data.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
         } else {
+            console.error(">>> [PROCESS] Server Rejected Submission:", data.error);
             throw new Error(data.error || 'Failed to submit form.');
         }
     } catch (e: any) {
+        console.error(">>> [PROCESS] Critical Failure During Submission:", e);
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
         setIsSubmitting(false);
@@ -150,15 +231,14 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       const payload: Record<string, any> = {};
       
       pdfForm.fields.forEach(field => {
-          payload[field.id] = currentValues[field.id] !== undefined && currentValues[field.id] !== '' ? currentValues[field.id] : null;
+          const val = currentValues[field.id];
+          payload[field.id] = (val !== undefined && val !== '') ? val : null;
       });
 
       return JSON.stringify(payload, null, 2);
   };
   
   const handleDownload = async () => {
-    if (!submissionId) return;
-    
     setIsDownloading(true);
     try {
         const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submissionId}`);
@@ -183,7 +263,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
   
   const renderField = (field: PDFFormField) => {
-    const signatureValue = watch(field.id);
+    const signatureValue = watchedValues[field.id];
     const isLocked = isSubmitted || isSubmitting;
     
     let fieldElement;
@@ -324,6 +404,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             }}
         />
 
+        {/* Payload Inspection Modal */}
         <Dialog open={isPreviewModalOpen} onOpenChange={setIsPreviewModalOpen}>
             <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
                 <DialogHeader>
@@ -356,6 +437,32 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Restore Progress Dialog */}
+        <AlertDialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <div className="flex items-center gap-2 text-primary mb-2">
+                        <History className="h-5 w-5" />
+                        <span className="font-bold uppercase tracking-wider text-xs">Unsaved Changes Found</span>
+                    </div>
+                    <AlertDialogTitle>Would you like to restore your progress?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        We found a partially completed version of this form on your device. You can restore your entries or start a fresh form.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="sm:justify-between">
+                    <Button variant="ghost" onClick={handleStartFresh} className="text-muted-foreground hover:text-destructive">
+                        <RotateCcw className="mr-2 h-4 w-4" />
+                        Start Fresh
+                    </Button>
+                    <div className="flex gap-2">
+                        <AlertDialogCancel onClick={handleStartFresh}>No, Thanks</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRestore}>Yes, Restore Progress</AlertDialogAction>
+                    </div>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
