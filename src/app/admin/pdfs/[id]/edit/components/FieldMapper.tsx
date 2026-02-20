@@ -673,7 +673,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Vertical center line (Horizontal adjustment)
+        case 'center-v': // Snap vertical positions to a center horizontal axis
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
@@ -685,7 +685,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Horizontal center line (Vertical adjustment)
+        case 'center-h': // Snap horizontal positions to a center vertical axis
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
@@ -922,7 +922,9 @@ export default function FieldMapper({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={() => setMarquee(null)}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />
+                    ))}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
@@ -1113,7 +1115,7 @@ export default function FieldMapper({
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-            onDetect={onDetect} isDetecting={isDetecting}
+            onDetect={onDetect} onDetect={onDetect} isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
