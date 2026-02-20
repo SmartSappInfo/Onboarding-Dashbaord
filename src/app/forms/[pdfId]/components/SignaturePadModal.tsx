@@ -13,6 +13,7 @@ import { Upload, Camera, Eraser } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -129,15 +130,13 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         let dataUrl: string | null = null;
 
         if (activeTab === 'draw' && sigPadRef.current && !sigPadRef.current.isEmpty()) {
-            // getTrimmedCanvas preserves transparency of the original canvas
             dataUrl = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
         } else if (activeTab === 'type' && initialsCanvasRef.current && typedInitials) {
             const canvas = initialsCanvasRef.current;
             const ctx = canvas.getContext('2d');
             if (ctx) {
-                // Clear to transparent
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.font = 'italic 60px serif';
+                ctx.font = '60px "League Script"';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -210,15 +209,20 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                         canvasProps={{
                                             className: 'w-full h-48 rounded-md',
                                         }}
-                                        // Omitting backgroundColor makes it transparent by default
                                         onBegin={() => setHasDrawn(true)}
                                     />
                                 </div>
                             </TabsContent>
                             <TabsContent value="type">
                                 <div className="mt-4 space-y-4">
-                                    <Label htmlFor="initials-input" className="block text-center">Type your name or initials</Label>
-                                    <Input id="initials-input" value={typedInitials} onChange={(e) => setTypedInitials(e.target.value)} className="text-4xl text-center font-serif italic h-auto py-4" placeholder="J. Doe" />
+                                    <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-xs tracking-widest">Type your name or initials</Label>
+                                    <Input 
+                                        id="initials-input" 
+                                        value={typedInitials} 
+                                        onChange={(e) => setTypedInitials(e.target.value)} 
+                                        className="text-5xl text-center font-signature h-auto py-6 border-none shadow-none focus-visible:ring-0 bg-transparent" 
+                                        placeholder="Jane Doe" 
+                                    />
                                     <canvas ref={initialsCanvasRef} width="400" height="150" className="hidden" />
                                 </div>
                             </TabsContent>

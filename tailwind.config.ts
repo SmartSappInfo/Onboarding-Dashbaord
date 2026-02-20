@@ -14,6 +14,7 @@ export default {
         headline: ['Poppins', 'sans-serif'],
         quote: ['Raleway', 'serif'],
         code: ['monospace'],
+        signature: ['"League Script"', 'cursive'],
       },
       colors: {
         background: 'hsl(var(--background))',
