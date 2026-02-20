@@ -14,42 +14,82 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
  * This is used by Route Handlers to provide stateless generation.
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
+    console.log(`>>> [PDF:GEN] Starting generation for "${pdfForm.name}" (ID: ${pdfForm.id})`);
+    
     const storage = getServerStorage();
     const fileRef = ref(storage, pdfForm.storagePath);
-    const pdfBuffer = await getBytes(fileRef);
+    
+    let pdfBuffer: ArrayBuffer;
+    try {
+        console.log(`>>> [PDF:GEN] Fetching template from Storage: ${pdfForm.storagePath}`);
+        pdfBuffer = await getBytes(fileRef);
+    } catch (e: any) {
+        console.error(`>>> [PDF:GEN] Storage Fetch Error:`, e);
+        throw new Error(`Failed to fetch PDF template from storage: ${e.message}`);
+    }
 
     // Load PDF with pdf-lib
-    const pdfDoc = await PDFDocument.load(pdfBuffer);
+    let pdfDoc: PDFDocument;
+    try {
+        pdfDoc = await PDFDocument.load(pdfBuffer);
+    } catch (e: any) {
+        console.error(`>>> [PDF:GEN] pdf-lib Load Error:`, e);
+        throw new Error(`Failed to parse PDF template: ${e.message}`);
+    }
+
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const pages = pdfDoc.getPages();
+    console.log(`>>> [PDF:GEN] Document loaded. Pages: ${pages.length}. Processing ${pdfForm.fields?.length || 0} fields.`);
 
     // Draw fields onto the PDF
-    for (const field of pdfForm.fields) {
-        const value = formData[field.id];
-        if (!value || field.pageNumber > pages.length) continue;
+    const fields = pdfForm.fields || [];
+    for (const field of fields) {
+        const rawValue = formData[field.id];
+        if (rawValue === undefined || rawValue === null || field.pageNumber > pages.length) continue;
 
         const page = pages[field.pageNumber - 1];
         const { width: pageWidth, height: pageHeight } = page.getSize();
 
         // Convert percentage-based coordinates to PDF points (origin is bottom-left)
         const x = (field.position.x / 100) * pageWidth;
-        const y = pageHeight - ((field.position.y / 100) * pageHeight);
+        const y_top = pageHeight - ((field.position.y / 100) * pageHeight);
 
         const fieldHeight = (field.dimensions.height / 100) * pageHeight;
         const fontSize = field.fontSize || Math.max(8, fieldHeight * 0.6);
 
         if (field.type === 'text' || field.type === 'date') {
-            // Adjust Y for vertical centering: move down slightly based on font size
-            page.drawText(String(value), {
+            // Handle different data types (arrays for checkboxes, strings for text)
+            let displayValue = '';
+            if (Array.isArray(rawValue)) {
+                displayValue = rawValue.join(', ');
+            } else if (typeof rawValue === 'object') {
+                const parts = [];
+                if (rawValue.options && Array.isArray(rawValue.options)) parts.push(rawValue.options.join(', '));
+                if (rawValue.other) parts.push(`Other: ${rawValue.other}`);
+                displayValue = parts.join('; ');
+            } else {
+                displayValue = String(rawValue);
+            }
+
+            if (!displayValue) continue;
+
+            // Draw text aligned vertically centered in the defined box
+            // PDF-lib draws from the baseline, so we offset from the top points
+            page.drawText(displayValue, {
                 x: x + 2,
-                y: y - (fieldHeight / 2) - (fontSize / 4), 
+                y: y_top - (fieldHeight / 2) - (fontSize / 4), 
                 font,
                 size: fontSize,
                 color: rgb(0, 0, 0),
             });
-        } else if (field.type === 'signature' && typeof value === 'string' && value.startsWith('data:image/png;base64,')) {
+        } else if (field.type === 'signature' && typeof rawValue === 'string' && rawValue.startsWith('data:image/png;base64,')) {
             try {
-                const pngImageBytes = Buffer.from(value.split(',')[1], 'base64');
+                const base64Data = rawValue.split(',')[1];
+                if (!base64Data) {
+                    console.warn(`>>> [PDF:GEN] Signature field ${field.id} has invalid data URL structure.`);
+                    continue;
+                }
+                const pngImageBytes = Buffer.from(base64Data, 'base64');
                 const pngImage = await pdfDoc.embedPng(pngImageBytes);
                 const fieldWidth = (field.dimensions.width / 100) * pageWidth;
 
@@ -57,16 +97,17 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
                 page.drawImage(pngImage, {
                     x: x,
-                    y: y - fieldHeight,
+                    y: y_top - fieldHeight,
                     width: pngImage.width * scale,
                     height: pngImage.height * scale,
                 });
             } catch (e) {
-                console.error(`Failed to embed signature image for field ${field.id}:`, e);
+                console.error(`>>> [PDF:GEN] Failed to embed signature image for field ${field.id}:`, e);
             }
         }
     }
 
+    console.log(`>>> [PDF:GEN] Saving final PDF bytes...`);
     return await pdfDoc.save();
 }
 

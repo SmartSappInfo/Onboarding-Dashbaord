@@ -13,6 +13,8 @@ export async function GET(
   try {
     const db = getDb();
     
+    console.log(`>>> [API:GEN] GET request for PDF: ${pdfId}, Submission: ${submissionId}`);
+    
     const pdfFormRef = doc(db, 'pdfs', pdfId);
     const submissionRef = doc(db, `pdfs/${pdfId}/submissions`, submissionId);
 
@@ -21,14 +23,22 @@ export async function GET(
       getDoc(submissionRef)
     ]);
 
-    if (!pdfFormSnap.exists() || !submissionSnap.exists()) {
-      return new Response('Not found', { status: 404 });
+    if (!pdfFormSnap.exists()) {
+        console.error(`>>> [API:GEN] PDF Form ${pdfId} not found.`);
+        return new Response('PDF Form not found', { status: 404 });
+    }
+    
+    if (!submissionSnap.exists()) {
+        console.error(`>>> [API:GEN] Submission ${submissionId} not found.`);
+        return new Response('Submission not found', { status: 404 });
     }
 
     const pdfForm = { id: pdfFormSnap.id, ...pdfFormSnap.data() } as PDFForm;
     const submission = submissionSnap.data() as Submission;
 
     const pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
+
+    console.log(`>>> [API:GEN] PDF generated successfully. Bytes: ${pdfBytes.length}`);
 
     return new Response(pdfBytes, {
       headers: {
@@ -38,7 +48,10 @@ export async function GET(
       },
     });
   } catch (error: any) {
-    console.error('Generation API Error:', error);
-    return new Response(error.message || 'Internal server error', { status: 500 });
+    console.error('>>> [API:GEN] Critical Generation API Error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
