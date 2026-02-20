@@ -7,7 +7,7 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Undo, Redo } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2, Sparkles } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +17,6 @@ import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function EditPdfPage() {
   const params = useParams();
@@ -79,10 +78,6 @@ export default function EditPdfPage() {
   React.useEffect(() => {
     if (isProgrammaticChange.current) {
         setFields(historyState);
-        // We set programmatic change to false after the state has been updated.
-        // Since setFields is async (batched), we use a small timeout or just rely on the next render loop.
-        // Actually, setting it to false right here is usually enough because the effect above (debouncedFields)
-        // won't run until the debounce period ends.
         isProgrammaticChange.current = false;
     }
   }, [historyState]);
@@ -249,27 +244,6 @@ export default function EditPdfPage() {
                 </Button>
               </div>
             )}
-
-            <div className="hidden sm:flex items-center gap-1 border-l pl-2 ml-2">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo} className="h-8 w-8">
-                                <Undo className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo} className="h-8 w-8">
-                                <Redo className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
         </div>
         <div className="flex items-center gap-2">
             <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-4">
@@ -299,6 +273,10 @@ export default function EditPdfPage() {
             isSaving={isSaving}
             onDetect={handleDetectFields}
             isDetecting={isDetecting}
+            undo={handleUndo}
+            redo={handleRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
         />
       </div>
 

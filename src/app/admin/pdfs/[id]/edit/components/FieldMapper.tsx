@@ -22,7 +22,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical 
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo 
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -34,7 +34,6 @@ import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 
 // Shared PDF.js promise
@@ -520,12 +519,16 @@ interface FieldMapperProps {
   onStatusChange: (status: PDFForm['status']) => void;
   onDetect: () => void;
   isDetecting: boolean;
+  undo: () => void;
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 export default function FieldMapper({
-  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting
+  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting, undo, redo, canUndo, canRedo
 }: FieldMapperProps) {
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
@@ -782,25 +785,26 @@ export default function FieldMapper({
               )}
 
               <Card className="shadow-2xl border-primary/20 pointer-events-auto">
-                <CardContent className="p-2 flex items-center gap-1 sm:gap-2">
+                <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('text')}><Text className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('signature')}><Signature className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => addField('date')}><Calendar className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('text')}><Text className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('signature')}><Signature className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('date')}><Calendar className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
+                      
                       <div className="w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild>
-                          <Button variant="ghost" size="icon" className="text-primary hover:bg-primary/10" onClick={onDetect} disabled={isDetecting}>
-                              {isDetecting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                          </Button>
-                      </TooltipTrigger><TooltipContent><p>AI Detect Fields</p></TooltipContent></Tooltip>
-                      <div className="w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleZoomOut}><ZoomOut className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
-                      <span className="text-xs font-mono w-12 text-center text-muted-foreground">{Math.round(displayZoom * 100)}%</span>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={handleZoomIn}><ZoomIn className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
+                      
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
+                      
+                      <div className="w-px h-6 bg-border mx-1 hidden sm:block" />
+                      
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomOut}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
+                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground">{Math.round(displayZoom * 100)}%</span>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomIn}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
+                      
                       <div className="md:hidden flex items-center">
-                        <div className="w-px h-6 bg-border mx-1" />
                         <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-5 w-5" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-4 w-4" /></Button>
                         </TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
