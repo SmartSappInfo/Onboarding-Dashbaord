@@ -239,13 +239,15 @@ const ResizableField = ({
             ref={setNodeRef} 
             style={style} 
             {...attributes} 
+            data-field-id={field.id}
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { 
                 e.stopPropagation(); 
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
             className={`absolute border-2 ${borderColorClass} transition-colors group/field`}
         >
-            <div {...listeners} className="w-full h-full cursor-grab"></div>
+            <div {...listeners} className="w-full h-full cursor-grab" onMouseDown={(e) => e.stopPropagation()}></div>
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
@@ -550,6 +552,7 @@ export default function FieldMapper({
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
+  const [marquee, setMarquee] = React.useState<{ startX: number, startY: number, endX: number, endY: number } | null>(null);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
   const [sidebarWidth, setSidebarWidth] = React.useState(384);
@@ -792,15 +795,100 @@ export default function FieldMapper({
     };
   }, []);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Only left click
+    
+    // If target is a field, don't start marquee (stop propagation on fields is used too)
+    if ((e.target as HTMLElement).closest('.group/field')) return;
+
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const rect = viewport.getBoundingClientRect();
+    const x = e.clientX - rect.left + viewport.scrollLeft;
+    const y = e.clientY - rect.top + viewport.scrollTop;
+
+    setMarquee({ startX: x, startY: y, endX: x, endY: y });
+
+    // Clear selection on new click unless modifier keys are held
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      setSelectedFieldIds([]);
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!marquee) return;
+
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const rect = viewport.getBoundingClientRect();
+    const x = e.clientX - rect.left + viewport.scrollLeft;
+    const y = e.clientY - rect.top + viewport.scrollTop;
+
+    setMarquee(prev => prev ? { ...prev, endX: x, endY: y } : null);
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    if (!marquee) return;
+
+    const mLeft = Math.min(marquee.startX, marquee.endX);
+    const mTop = Math.min(marquee.startY, marquee.endY);
+    const mRight = Math.max(marquee.startX, marquee.endX);
+    const mBottom = Math.max(marquee.startY, marquee.endY);
+
+    // Don't do anything for tiny clicks
+    if (Math.abs(marquee.endX - marquee.startX) < 5 && Math.abs(marquee.endY - marquee.startY) < 5) {
+        setMarquee(null);
+        return;
+    }
+
+    const viewport = viewportRef.current;
+    const newSelectedIds = e.shiftKey || e.ctrlKey || e.metaKey ? [...selectedFieldIds] : [];
+
+    if (viewport) {
+        const fieldElements = viewport.querySelectorAll('[data-field-id]');
+        fieldElements.forEach(el => {
+            const id = el.getAttribute('data-field-id');
+            if (!id) return;
+
+            const fRect = el.getBoundingClientRect();
+            const vRect = viewport.getBoundingClientRect();
+            
+            // Calculate coordinates relative to the same reference as the marquee
+            const fLeft = fRect.left - vRect.left + viewport.scrollLeft;
+            const fTop = fRect.top - vRect.top + viewport.scrollTop;
+            const fRight = fLeft + fRect.width;
+            const fBottom = fTop + fRect.height;
+
+            const isOverlapping = !(fLeft > mRight || fRight < mLeft || fTop > mBottom || fBottom < mTop);
+
+            if (isOverlapping && !newSelectedIds.includes(id)) {
+                newSelectedIds.push(id);
+            }
+        });
+    }
+
+    setSelectedFieldIds(newSelectedIds);
+    setMarquee(null);
+  };
+
   return (
     <div className="flex h-full overflow-hidden bg-muted/30">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full w-full" onWheel={handleWheel} viewportRef={viewportRef}>
+              <ScrollArea 
+                className="h-full w-full" 
+                onWheel={handleWheel} 
+                viewportRef={viewportRef}
+              >
                 <div 
-                    className="p-12 pb-32 flex flex-col items-center min-w-full" 
+                    className="p-12 pb-32 flex flex-col items-center min-w-full relative" 
                     style={{ minWidth: 'fit-content' }}
-                    onClick={() => setSelectedFieldIds([])}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={() => setMarquee(null)}
                 >
                     {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
@@ -813,6 +901,18 @@ export default function FieldMapper({
                             zoom={displayZoom} 
                         />
                     ))}
+
+                    {marquee && (
+                        <div 
+                            className="absolute border border-primary bg-primary/10 pointer-events-none z-50"
+                            style={{
+                                left: Math.min(marquee.startX, marquee.endX),
+                                top: Math.min(marquee.startY, marquee.endY),
+                                width: Math.abs(marquee.endX - marquee.startX),
+                                height: Math.abs(marquee.endY - marquee.startY),
+                            }}
+                        />
+                    )}
                 </div>
               </ScrollArea>
           </DndContext>
@@ -851,7 +951,7 @@ export default function FieldMapper({
                                         <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                     </Button>
                                     <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                        <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
+                                        <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                     </Button>
                                     <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
                                         <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
@@ -861,7 +961,7 @@ export default function FieldMapper({
                                         <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                     </Button>
                                     <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                        <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
+                                        <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                     </Button>
                                     <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
                                         <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
