@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff } from 'lucide-react';
+import { Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, GripVertical, PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, EyeOff, Check, X } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
@@ -297,6 +297,7 @@ const ResizableField = ({
 
 interface PropertiesSidebarProps {
   fields: LocalPDFFormField[];
+  setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   selectedFieldId: string | null;
   setSelectedFieldId: (id: string | null) => void;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
@@ -315,11 +316,25 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, selectedFieldId, setSelectedFieldId, updateField, removeField, pagesLength, pdf,
+  fields, setFields, selectedFieldId, setSelectedFieldId, updateField, removeField, pagesLength, pdf,
   onSave, isSaving, onPreview, isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected
 }: PropertiesSidebarProps) => {
   const selectedField = fields.find(f => f.id === selectedFieldId);
   const [showPassword, setShowPassword] = React.useState(false);
+  const hasSuggestions = fields.some(f => f.isSuggestion);
+
+  const acceptAllSuggestions = () => {
+    setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })));
+  };
+
+  const rejectAllSuggestions = () => {
+    setFields(prev => prev.filter(f => !f.isSuggestion));
+  };
+
+  const deleteAllFields = () => {
+    setFields([]);
+    setSelectedFieldId(null);
+  };
 
   return (
     <>
@@ -329,7 +344,43 @@ const PropertiesSidebar = ({
       <ScrollArea className="flex-grow">
         <div className="space-y-4 p-4">
             <Card>
-              <CardHeader><CardTitle>Fields ({fields.length})</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
+                <div className="flex items-center gap-1">
+                    {hasSuggestions && (
+                        <>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={acceptAllSuggestions}>
+                                            <Check className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Accept All AI Suggestions</p></TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={rejectAllSuggestions}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Reject All AI Suggestions</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </>
+                    )}
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={deleteAllFields}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Delete All Fields</p></TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+              </CardHeader>
               <CardContent>
                   <ScrollArea className="h-48">
                       <div className="space-y-1">
@@ -339,7 +390,7 @@ const PropertiesSidebar = ({
                                   <button key={field.id} onClick={() => setSelectedFieldId(field.id)}
                                       className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted", selectedFieldId === field.id && 'bg-muted ring-1 ring-primary')}>
                                       <Icon className="h-4 w-4 text-muted-foreground" />
-                                      <span className="truncate text-sm flex-1">{field.label || field.id}</span>
+                                      <span className={cn("truncate text-sm flex-1", field.isSuggestion && "text-green-600 font-medium")}>{field.label || field.id}</span>
                                       {field.required && <span className="text-destructive font-bold text-lg">*</span>}
                                   </button>
                               );
@@ -689,7 +740,7 @@ export default function FieldMapper({
             <div className="p-2 border-b flex-shrink-0">
                  <Button variant="ghost" size="icon" onClick={() => setIsCollapsed(!isCollapsed)}>{isCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}</Button>
             </div>
-            {!isCollapsed && <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />}
+            {!isCollapsed && <PropertiesSidebar fields={fields} setFields={setFields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />}
             {isCollapsed && (
                 <div className="flex flex-col items-center gap-4 py-4"><TooltipProvider>
                     <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => setIsCollapsed(false)}><List /></Button></TooltipTrigger><TooltipContent side="left"><p>Fields</p></TooltipContent></Tooltip>
@@ -702,7 +753,7 @@ export default function FieldMapper({
 
        <Sheet open={isPropertiesSheetOpen} onOpenChange={setIsPropertiesSheetOpen}>
         <SheetContent className="p-0 flex flex-col md:hidden" side="right">
-          <PropertiesSidebar fields={fields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />
+          <PropertiesSidebar fields={fields} setFields={setFields} selectedFieldId={selectedFieldId} setSelectedFieldId={setSelectedFieldId} updateField={updateField} removeField={removeField} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} onSave={onSave} isSaving={isSaving} onPreview={onPreview} isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} />
         </SheetContent>
       </Sheet>
     </div>
