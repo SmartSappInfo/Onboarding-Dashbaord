@@ -22,7 +22,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -309,6 +309,7 @@ interface PropertiesSidebarProps {
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
+  addField: (type: PDFFormField['type']) => void;
   pagesLength: number;
   pdf: PDFForm;
   isStatusChanging: boolean;
@@ -322,7 +323,7 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, setFields, selectedFieldIds, setSelectedFieldIds, updateField, removeField, pagesLength, pdf,
+  fields, setFields, selectedFieldIds, setSelectedFieldIds, updateField, removeField, addField, pagesLength, pdf,
   isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -342,6 +343,37 @@ const PropertiesSidebar = ({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Add Field</p></TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-48 p-1" align="end">
+                            <div className="flex flex-col gap-1">
+                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('text')}>
+                                    <Text className="mr-2 h-4 w-4" />
+                                    <span>Text Field</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('signature')}>
+                                    <Signature className="mr-2 h-4 w-4" />
+                                    <span>Signature Field</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('date')}>
+                                    <Calendar className="mr-2 h-4 w-4" />
+                                    <span>Date Field</span>
+                                </Button>
+                            </div>
+                        </PopoverContent>
+                    </Popover>
+
                     {hasSuggestions ? (
                         <>
                             <TooltipProvider>
@@ -890,7 +922,7 @@ export default function FieldMapper({
                     onMouseUp={handleMouseUp}
                     onMouseLeave={() => setMarquee(null)}
                 >
-                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
+                    {!pdfDoc && Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />)}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
                             key={index} pdf={pdfDoc} pageNumber={index + 1}
@@ -1040,7 +1072,7 @@ export default function FieldMapper({
                     <PropertiesSidebar 
                         fields={fields} setFields={setFields} 
                         selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
-                        updateField={updateField} removeField={removeField} 
+                        updateField={updateField} removeField={removeField} addField={addField}
                         pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
                         isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
                         password={password} setPassword={setPassword} 
@@ -1076,7 +1108,7 @@ export default function FieldMapper({
           <PropertiesSidebar 
             fields={fields} setFields={setFields} 
             selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
-            updateField={updateField} removeField={removeField} 
+            updateField={updateField} removeField={removeField} addField={addField}
             pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
