@@ -129,12 +129,14 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         let dataUrl: string | null = null;
 
         if (activeTab === 'draw' && sigPadRef.current && !sigPadRef.current.isEmpty()) {
+            // getTrimmedCanvas preserves transparency of the original canvas
             dataUrl = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
         } else if (activeTab === 'type' && initialsCanvasRef.current && typedInitials) {
             const canvas = initialsCanvasRef.current;
             const ctx = canvas.getContext('2d');
             if (ctx) {
-                ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear previous content
+                // Clear to transparent
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.font = 'italic 60px serif';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
@@ -207,9 +209,8 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                         penColor="black"
                                         canvasProps={{
                                             className: 'w-full h-48 rounded-md',
-                                            // Removed willReadFrequently to prevent React warning as it's a context option, not a prop.
                                         }}
-                                        backgroundColor="white"
+                                        // Omitting backgroundColor makes it transparent by default
                                         onBegin={() => setHasDrawn(true)}
                                     />
                                 </div>
