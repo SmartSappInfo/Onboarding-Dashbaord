@@ -285,12 +285,13 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                     height: `${field.dimensions.height}%`,
                                     display: 'flex',
                                     alignItems: 'center',
+                                    overflow: 'visible', // Ensure text descenders aren't clipped during capture
                                 }}
                             >
                                 {field.type === 'signature' ? (
                                     <img src={value} alt="Signature" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                 ) : (
-                                    <span className="text-[14px] px-1 font-medium text-black truncate w-full">
+                                    <span className="text-[14px] px-1 font-medium text-black w-full whitespace-nowrap">
                                         {field.type === 'date' ? format(new Date(value), 'PPP') : value}
                                     </span>
                                 )}
