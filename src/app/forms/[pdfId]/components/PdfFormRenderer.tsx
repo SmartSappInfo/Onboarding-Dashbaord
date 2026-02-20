@@ -9,10 +9,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, Monitor } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { format } from 'date-fns';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -42,6 +43,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const [scale, setScale] = React.useState(1.5);
+  
+  const pageContainerRef = React.useRef<HTMLDivElement>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -123,21 +126,55 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-        const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submissionId}`);
-        if (!response.ok) throw new Error('Failed to generate PDF');
+        const html2canvas = (await import('html2canvas')).default;
+        const { PDFDocument } = await import('pdf-lib');
+        
+        const pdfDoc = await PDFDocument.create();
+        const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
+        
+        if (!pageElements || !pageElements.length) {
+            throw new Error("No pages found to capture. Please ensure the document is fully loaded.");
+        }
 
-        const blob = await response.blob();
+        toast({ title: 'Preparing Download', description: 'Processing document pages...' });
+
+        for (let i = 0; i < pageElements.length; i++) {
+            const el = pageElements[i] as HTMLElement;
+            
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+            const image = await pdfDoc.embedJpg(imgBytes);
+            
+            const page = pdfDoc.addPage([image.width, image.height]);
+            page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: image.width,
+                height: image.height,
+            });
+        }
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${pdfForm.name}-signed.pdf`;
+        a.download = `${pdfForm.name || 'signed'}-document.pdf`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
         
-        toast({ title: 'Download Complete' });
+        toast({ title: 'Download Successful' });
     } catch (e: any) {
+        console.error("Download error:", e);
         toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
     } finally {
         setIsDownloading(false);
@@ -145,17 +182,30 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
   
   const renderField = (field: PDFFormField) => {
-    const signatureValue = watchedValues[field.id];
-    const isLocked = isSubmitted || isSubmitting;
+    const value = watchedValues[field.id];
     
+    if (isSubmitted) {
+        return (
+            <div className="w-full h-full flex items-start justify-start overflow-visible">
+                {field.type === 'signature' ? (
+                    value && <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                ) : (
+                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
+                    </span>
+                )}
+            </div>
+        );
+    }
+
     let fieldElement;
     switch(field.type) {
         case 'text':
             fieldElement = (
                 <input 
                     {...register(field.id)}
-                    disabled={isLocked}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 disabled:bg-gray-50"
+                    disabled={isSubmitting}
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80"
                 />
             );
             break;
@@ -164,8 +214,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <input 
                     type="date" 
                     {...register(field.id)}
-                    disabled={isLocked}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 disabled:bg-gray-50" 
+                    disabled={isSubmitting}
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80" 
                 />
              );
              break;
@@ -173,12 +223,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             fieldElement = (
                  <button
                     type="button"
-                    disabled={isLocked}
+                    disabled={isSubmitting}
                     onClick={() => setActiveSignatureField(field.id)}
-                    className="w-full h-full border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden disabled:cursor-default"
+                    className="w-full h-full border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden"
                 >
-                    {signatureValue ? (
-                        <img src={signatureValue} alt="Signature" className="w-full h-full object-contain" />
+                    {value ? (
+                        <img src={value} alt="Signature" className="w-full h-full object-contain" />
                     ) : (
                         <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">Sign Here</span>
                     )}
@@ -223,7 +273,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             onClick={handleDownload}
                         >
                             {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            Download PDF
+                            Download Signed PDF
                         </Button>
                     </div>
                 )}
@@ -233,6 +283,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         <main className="flex-grow relative overflow-hidden">
             <ScrollArea className="h-full w-full">
                 <div 
+                    ref={pageContainerRef}
                     className="p-4 sm:p-8 flex flex-col items-center min-w-full" 
                     style={{ minWidth: 'fit-content' }}
                 >
@@ -243,14 +294,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     ) : (
                         <div className="flex flex-col gap-8 pb-20">
                             {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                                <PageRenderer
-                                    key={index}
-                                    pdf={pdfDoc}
-                                    pageNumber={index + 1}
-                                    fields={pdfForm.fields}
-                                    renderField={renderField}
-                                    scale={scale}
-                                />
+                                <div key={index} className="page-capture-wrapper">
+                                    <PageRenderer
+                                        pdf={pdfDoc}
+                                        pageNumber={index + 1}
+                                        fields={pdfForm.fields}
+                                        renderField={renderField}
+                                        scale={scale}
+                                    />
+                                </div>
                             ))}
                         </div>
                     )}
@@ -277,7 +329,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
     pdf: PDFDocumentProxy; 
     pageNumber: number; 
     fields: PDFFormField[]; 
-    renderField: (field: PDFFormField) => React.ReactNode;
+    renderField: (field: PDFFormField) => React.KeepNode;
     scale: number;
 }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
