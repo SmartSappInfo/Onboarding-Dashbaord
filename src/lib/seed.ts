@@ -1,3 +1,4 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
@@ -5,7 +6,7 @@ import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
-import { addDays, format, isAfter, startOfToday } from 'date-fns';
+import { addDays, format, isAfter, startOfToday, subDays } from 'date-fns';
 
 // --- SEED DATA ---
 
@@ -49,14 +50,6 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
     type: 'image', mimeType: 'image/jpeg', size: 310000, width: 1200, height: 800,
     uploadedBy: 'system-seed', createdAt: new Date('2024-01-03T09:00:00Z').toISOString(),
   },
-   {
-    name: 'school-event.jpg',
-    url: 'https://picsum.photos/seed/school-event/1200/800',
-    originalName: 'school-event.jpg',
-    fullPath: 'seed/school-event.jpg',
-    type: 'image', mimeType: 'image/jpeg', size: 450000, width: 1200, height: 800,
-    uploadedBy: 'system-seed', createdAt: new Date('2024-01-04T14:00:00Z').toISOString(),
-  },
 ];
 
 const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules'>[] = [
@@ -67,6 +60,9 @@ const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'cre
   { name: 'Wesley Girls\' High School', initials: 'WGHS', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
   { name: 'Presbyterian Boys\' Secondary School (PRESEC)', initials: 'PRESEC', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
   { name: 'Galaxy International School', initials: 'Galaxy', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
+  { name: 'Tema International School', initials: 'TIS', slogan: 'Service, Strength and Stability.', location: 'Tema, Ghana', nominalRoll: 500, includeDroneFootage: false, referee: 'IB Network', contactPerson: 'Admissions Dean', email: 'admissions@tis.edu.gh', phone: '+233 30 330 5134' },
+  { name: 'Ridge School', initials: 'Ridge', slogan: 'Loyalty and Service.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: false, referee: 'Parent Alumni', contactPerson: 'Mrs. S. Nelson', email: 'info@ridgeschool.edu.gh', phone: '+233 30 222 2962' },
+  { name: 'Faith Montessori School', initials: 'Faith', slogan: 'Godliness and Academic Excellence.', location: 'Gbawe, Accra', nominalRoll: 1000, includeDroneFootage: true, referee: 'SmartSapp Support', contactPerson: 'Mr. Oswald Amoo', email: 'admin@faithmontessori.edu.gh', phone: '+233 30 231 2345' },
 ];
 
 const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
@@ -94,6 +90,20 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
       { id: 'q_contact_permission', type: 'dropdown', title: 'May we contact you for a follow-up interview?', isRequired: false, options: ['Yes, by email', 'Yes, by phone', 'No, thank you'], },
     ],
   },
+  {
+    title: 'Staff Onboarding Feedback',
+    description: 'We want to know how your first week went. Your feedback helps us improve the process for future team members.',
+    status: 'published',
+    thankYouTitle: 'Welcome to the Team!',
+    thankYouDescription: 'Your feedback has been recorded. We are excited to have you with us!',
+    bannerImageUrl: 'https://picsum.photos/seed/staff-banner/1200/400',
+    elements: [
+      { id: 'q_role', type: 'dropdown', title: 'What is your department?', isRequired: true, options: ['Administration', 'Teaching', 'Finance', 'Support Staff', 'IT'] },
+      { id: 'q_clarity', type: 'rating', title: 'How clear were your responsibilities explained?', isRequired: true },
+      { id: 'q_mentor', type: 'yes-no', title: 'Have you been assigned a mentor?', isRequired: true },
+      { id: 'q_comments', type: 'long-text', title: 'Any additional comments about the onboarding process?', isRequired: false }
+    ]
+  }
 ];
 
 const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fields' | 'status' | 'createdBy'>[] = [
@@ -104,9 +114,9 @@ const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fields' | '
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
   },
   {
-    name: 'Field Trip Permission Slip',
-    originalFileName: 'permission.pdf',
-    storagePath: 'seed/permission.pdf',
+    name: 'Medical Release Waiver',
+    originalFileName: 'medical.pdf',
+    storagePath: 'seed/medical.pdf',
     downloadUrl: 'https://www.antennahouse.com/hubfs/xsl-fo-sample/pdf/basic-link-1.pdf',
   },
 ];
@@ -171,29 +181,28 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
 
   schools.forEach((school, schoolIndex) => {
     const creationUser = users[schoolIndex % users.length];
+    const creationDate = new Date(school.createdAt);
 
     // 1. School Created
-    const creationDate = new Date(school.createdAt);
-    const creationActivity: Omit<Activity, 'id'> = {
+    batch.set(doc(activitiesCollection), {
       schoolId: school.id,
       userId: creationUser.id,
       type: 'school_created',
       source: 'user_action',
       timestamp: creationDate.toISOString(),
       description: `${creationUser.name} created school "${school.name}".`,
-    };
-    batch.set(doc(activitiesCollection), creationActivity);
+    });
     activitiesCount++;
 
-    // 2. Stage Changes
+    // 2. Stage Changes (Simulate progress)
     if (stages.length > 1 && school.stage) {
       const currentStageIndex = stages.findIndex(s => s.id === school.stage!.id);
       if (currentStageIndex > 0) {
-        for (let i = 0; i < currentStageIndex; i++) {
+        for (let i = 0; i < Math.min(currentStageIndex, 3); i++) {
           const fromStage = stages[i];
           const toStage = stages[i+1];
-          const activityDate = new Date(creationDate.getTime() + (i + 1) * 3 * 24 * 60 * 60 * 1000); // 3 days later
-          const stageChangeActivity: Omit<Activity, 'id'> = {
+          const activityDate = addDays(creationDate, (i + 1) * 2);
+          batch.set(doc(activitiesCollection), {
             schoolId: school.id,
             userId: users[(schoolIndex + i) % users.length].id,
             type: 'pipeline_stage_changed',
@@ -201,26 +210,25 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
             timestamp: activityDate.toISOString(),
             description: `${users[(schoolIndex + i) % users.length].name} moved school "${school.name}" from "${fromStage.name}" to "${toStage.name}".`,
             metadata: { from: fromStage.name, to: toStage.name },
-          };
-          batch.set(doc(activitiesCollection), stageChangeActivity);
+          });
           activitiesCount++;
         }
       }
     }
 
-    // 3. Manual Note
-    const noteDate = new Date(creationDate.getTime() + 2 * 24 * 60 * 60 * 1000); // 2 days after creation
-    const noteActivity: Omit<Activity, 'id'> = {
-      schoolId: school.id,
-      userId: creationUser.id,
-      type: 'note',
-      source: 'manual',
-      timestamp: noteDate.toISOString(),
-      description: `${creationUser.name} added a note to "${school.name}".`,
-      metadata: { content: `Initial follow-up call made with ${school.contactPerson}. They are very interested in the Fee Collection and Communication modules.`}
-    };
-    batch.set(doc(activitiesCollection), noteActivity);
-    activitiesCount++;
+    // 3. Interaction Log (Call/Visit)
+    if (schoolIndex % 2 === 0) {
+        batch.set(doc(activitiesCollection), {
+            schoolId: school.id,
+            userId: creationUser.id,
+            type: 'call',
+            source: 'manual',
+            timestamp: addDays(creationDate, 1).toISOString(),
+            description: `${creationUser.name} called the school.`,
+            metadata: { content: `Spoke with ${school.contactPerson}. They are ready to begin data collection.`}
+        });
+        activitiesCount++;
+    }
   });
 
   await batch.commit();
@@ -251,15 +259,6 @@ export async function seedPdfForms(firestore: Firestore): Promise<number> {
       dimensions: { width: 30, height: 4 },
       required: true,
     },
-     {
-      id: 'fld_notes',
-      type: 'text',
-      label: 'Additional Notes',
-      pageNumber: 1,
-      position: { x: 15, y: 50 },
-      dimensions: { width: 70, height: 10 },
-      required: false,
-    },
     {
       id: 'fld_signature',
       type: 'signature',
@@ -280,7 +279,7 @@ export async function seedPdfForms(firestore: Firestore): Promise<number> {
       createdBy: 'system-seed',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      passwordProtected: index === 1, // Make the second one password protected
+      passwordProtected: index === 1,
       password: index === 1 ? 'password' : '',
     };
     batch.set(docRef, completePdfData);
@@ -332,17 +331,13 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
     const modulesSnapshot = await getDocs(query(collection(firestore, 'modules'), orderBy('order')));
     const allModules = modulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Module));
 
-    if (stages.length === 0) {
-        console.warn("No onboarding stages found. Please seed stages first. Schools will be un-staged.");
-    }
-
     baseSchoolData.forEach((schoolBase, index) => {
         const docRef = doc(schoolsCollection);
         const slug = schoolBase.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
         const schoolModulesForSchool: Module[] = [];
         if (allModules.length > 0) {
-            const moduleCount = (index % 3) + 1; // Assign 1, 2, or 3 modules
+            const moduleCount = (index % 3) + 1;
             for (let i = 0; i < moduleCount; i++) {
                 const moduleIndex = (index + i * 2) % allModules.length;
                 if (!schoolModulesForSchool.find(m => m.id === allModules[moduleIndex].id)) {
@@ -364,8 +359,8 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
                     email: authorizedUsers[index % authorizedUsers.length].email,
                   }
                 : { userId: null, name: null, email: null },
-            createdAt: new Date(Date.now() - index * 24 * 60 * 60 * 1000).toISOString(), // Stagger creation dates
-            implementationDate: new Date(Date.now() + (index + 1) * 7 * 24 * 60 * 60 * 1000).toISOString(),
+            createdAt: subDays(new Date(), index * 3).toISOString(),
+            implementationDate: addDays(new Date(), (index + 1) * 7).toISOString(),
             modules: schoolModulesForSchool.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
         };
         batch.set(docRef, school);
@@ -381,10 +376,7 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
   const batch = writeBatch(firestore);
 
   const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
-  if (schoolsSnapshot.empty) {
-    console.warn("Seeding meetings failed: No schools found. Please seed schools first.");
-    return 0;
-  }
+  if (schoolsSnapshot.empty) return 0;
   
   let meetingsCount = 0;
   schoolsSnapshot.forEach((schoolDoc, index) => {
@@ -392,9 +384,7 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
     
     MEETING_TYPES.forEach((type, typeIndex) => {
         const docRef = doc(meetingsCollection);
-        
-        const daysInFuture = (index * 7) + (typeIndex * 2) + 1;
-        const meetingDate = addDays(new Date(), daysInFuture);
+        const meetingDate = addDays(new Date(), (index * 2) + typeIndex);
         
         const meeting: Omit<Meeting, 'id'> = {
             schoolId: school.id,
@@ -402,9 +392,9 @@ export async function seedMeetings(firestore: Firestore): Promise<number> {
             schoolSlug: school.slug,
             type: type,
             meetingTime: meetingDate.toISOString(),
-            meetingLink: `https://meet.google.com/${school.slug.substring(0,3)}-${type.slug.substring(0,3)}-${Math.random().toString(36).substring(2,5)}`,
-            recordingUrl: type.id === 'parent' ? 'https://youtu.be/dQw4w9WgXcQ' : '',
-            brochureUrl: type.id === 'parent' ? mediaData.find(m=>m.type==='document')?.url : '',
+            meetingLink: `https://meet.google.com/${school.slug.substring(0,3)}-${type.slug.substring(0,3)}`,
+            recordingUrl: type.id === 'parent' ? 'https://youtu.be/M6MUlDkfZOg' : '',
+            brochureUrl: type.id === 'parent' ? 'https://smartsapp.com/downloads/brochure.pdf' : '',
         };
         batch.set(docRef, meeting);
         meetingsCount++;
@@ -423,13 +413,12 @@ export async function seedSurveys(firestore: Firestore): Promise<number> {
   surveyData.forEach((survey) => {
     const docRef = doc(surveysCollection);
     const slug = survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-    const completeSurvey = {
+    batch.set(docRef, {
       ...survey,
       slug,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    };
-    batch.set(docRef, completeSurvey);
+    });
   });
   
   await batch.commit();
@@ -444,18 +433,14 @@ export async function seedUserAvatars(firestore: Firestore): Promise<number> {
 
   querySnapshot.forEach((docSnap) => {
     const user = docSnap.data() as UserProfile;
-    // Only update if photoURL is missing
     if (!user.photoURL) {
       const seed = user.name ? user.name.replace(/\s+/g, '-').toLowerCase() : docSnap.id;
-      const photoURL = `https://i.pravatar.cc/150?u=${seed}`;
-      batch.update(docSnap.ref, { photoURL: photoURL });
+      batch.update(docSnap.ref, { photoURL: `https://i.pravatar.cc/150?u=${seed}` });
       updatedCount++;
     }
   });
 
-  if (updatedCount > 0) {
-    await batch.commit();
-  }
+  if (updatedCount > 0) await batch.commit();
   return updatedCount;
 }
 
@@ -464,56 +449,32 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
     const schoolsCollection = collection(firestore, 'schools');
     const batch = writeBatch(firestore);
 
-    // 1. Clear existing stages
     const oldStagesSnapshot = await getDocs(stagesCollection);
     oldStagesSnapshot.forEach((doc) => batch.delete(doc.ref));
 
-    // 2. Create new stages from default data
     const newStagesMap = new Map<string, OnboardingStage>();
     defaultStages.forEach((stageData) => {
         const id = stageData.name.toLowerCase().replace(/\s+/g, '-');
         const docRef = doc(stagesCollection, id);
-        const newStage: OnboardingStage = { id, ...stageData };
         batch.set(docRef, stageData);
-        newStagesMap.set(id, newStage);
+        newStagesMap.set(id, { id, ...stageData });
     });
     
-    // 3. Update schools with new stage data or move to Welcome
     const schoolsSnapshot = await getDocs(schoolsCollection);
     let schoolsUpdated = 0;
     const welcomeStage = newStagesMap.get('welcome');
 
-    if (!welcomeStage) {
-        throw new Error("Welcome stage not found in default seed data.");
-    }
-
     schoolsSnapshot.forEach(schoolDoc => {
         const school = schoolDoc.data() as School;
         const currentStageId = school.stage?.id;
-        
-        let newStageData;
+        let newStageData = (currentStageId && newStagesMap.has(currentStageId)) ? newStagesMap.get(currentStageId) : welcomeStage;
 
-        if (currentStageId && newStagesMap.has(currentStageId)) {
-            // Stage still exists, update the school's copy of it
-            newStageData = newStagesMap.get(currentStageId);
-        } else {
-            // Stage was deleted or never existed, assign to Welcome
-            newStageData = welcomeStage;
-        }
-
-        if (
-            !school.stage ||
-            school.stage.id !== newStageData!.id ||
-            school.stage.name !== newStageData!.name ||
-            school.stage.order !== newStageData!.order ||
-            school.stage.color !== newStageData!.color
-        ) {
-            batch.update(schoolDoc.ref, { stage: { id: newStageData!.id, name: newStageData!.name, order: newStageData!.order, color: newStageData!.color } });
+        if (newStageData) {
+            batch.update(schoolDoc.ref, { stage: { id: newStageData.id, name: newStageData.name, order: newStageData.order, color: newStageData.color } });
             schoolsUpdated++;
         }
     });
     
     await batch.commit();
-
     return { stagesCreated: defaultStages.length, schoolsUpdated };
 }

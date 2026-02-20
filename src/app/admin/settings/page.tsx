@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms } from '@/lib/seed';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import { Separator } from '@/components/ui/separator';
@@ -16,8 +16,8 @@ type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
 type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs';
 
 const DEFAULT_LAYOUT = [
-    'userAssignments', 'pipelinePieChart', 'quickActions', 'upcomingMeetings', 
-    'latestSurveys', 'monthlySchoolsChart'
+    'userAssignments', 'pipelinePieChart', 'upcomingMeetings', 
+    'recentActivity', 'moduleRadarChart', 'latestSurveys', 'monthlySchoolsChart',
 ];
 
 export default function SettingsPage() {
@@ -25,150 +25,113 @@ export default function SettingsPage() {
   const { user } = useUser();
   const { toast } = useToast();
   const [seedingStatus, setSeedingStatus] = useState<Record<Seeder, SeedingState>>({
-    media: 'idle',
-    schools: 'idle',
-    meetings: 'idle',
-    surveys: 'idle',
-    users: 'idle',
-    stages: 'idle',
-    layout: 'idle',
-    modules: 'idle',
-    activities: 'idle',
-    pdfs: 'idle',
+    media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
+    users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
+    activities: 'idle', pdfs: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
-    if (!firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Firestore is not available.',
-      });
-      return;
-    }
-
+    if (!firestore) return;
     setSeedingStatus(prev => ({ ...prev, [seeder]: 'seeding' }));
 
     try {
       if (seeder === 'layout') {
-          if (!user) {
-            toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
-            setSeedingStatus(prev => ({ ...prev, [seeder]: 'error' }));
-            return;
-          }
+          if (!user) throw new Error('Not logged in');
           await setDoc(doc(firestore, 'dashboardLayouts', user.uid), { componentIds: DEFAULT_LAYOUT });
           toast({ title: 'Layout Reset', description: 'Dashboard layout has been reset to default.' });
       } else {
         let count = 0;
         let name = '';
         
-        if (seeder === 'media') {
-          count = await seedMedia(firestore);
-          name = 'Media Assets';
-        } else if (seeder === 'schools') {
-          count = await seedSchools(firestore);
-          name = 'Schools';
-        } else if (seeder === 'meetings') {
-          count = await seedMeetings(firestore);
-          name = 'Meetings';
-        } else if (seeder === 'surveys') {
-          count = await seedSurveys(firestore);
-          name = 'Surveys';
-        } else if (seeder === 'activities') {
-            count = await seedActivities(firestore);
-            name = 'Activities';
-        } else if (seeder === 'users') {
-          count = await seedUserAvatars(firestore);
-          toast({
-              title: 'Update Complete',
-              description: count > 0 ? `${count} user profiles updated with new avatars.` : 'All users already have avatars.',
-          });
-        } else if (seeder === 'stages') {
-          const { stagesCreated, schoolsUpdated } = await seedOnboardingStages(firestore);
-          toast({
-              title: 'Pipeline Stages Updated',
-              description: `${stagesCreated} default stages were created/reset. ${schoolsUpdated} schools were updated.`,
-          });
-        } else if (seeder === 'modules') {
-            count = await seedModules(firestore);
-            name = 'Modules';
-        } else if (seeder === 'pdfs') {
-            count = await seedPdfForms(firestore);
-            name = 'Doc Signing Forms';
+        if (seeder === 'media') { count = await seedMedia(firestore); name = 'Media Assets'; }
+        else if (seeder === 'schools') { count = await seedSchools(firestore); name = 'Schools'; }
+        else if (seeder === 'meetings') { count = await seedMeetings(firestore); name = 'Meetings'; }
+        else if (seeder === 'surveys') { count = await seedSurveys(firestore); name = 'Surveys'; }
+        else if (seeder === 'activities') { count = await seedActivities(firestore); name = 'Activities'; }
+        else if (seeder === 'users') { count = await seedUserAvatars(firestore); name = 'User Avatars'; }
+        else if (seeder === 'modules') { count = await seedModules(firestore); name = 'Modules'; }
+        else if (seeder === 'pdfs') { count = await seedPdfForms(firestore); name = 'Doc Signing Forms'; }
+        else if (seeder === 'stages') {
+          const { stagesCreated } = await seedOnboardingStages(firestore);
+          count = stagesCreated;
+          name = 'Pipeline Stages';
         }
 
-        if (name) {
-          toast({
-              title: 'Seeding Successful',
-              description: `${count} ${name} seeded into the database.`,
-          });
-        }
+        toast({ title: 'Success', description: `${count} ${name} processed.` });
       }
-      
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'success' }));
-      setTimeout(() => setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' })), 3000);
-
+      setTimeout(() => setSeedingStatus(prev => ({ ...prev, [seeder]: 'idle' })), 2000);
     } catch (error: any) {
-      console.error(`Error processing ${seeder}:`, error);
+      console.error(error);
       setSeedingStatus(prev => ({ ...prev, [seeder]: 'error' }));
-      toast({
-        variant: 'destructive',
-        title: 'Operation Failed',
-        description: `Could not process ${seeder}. Check the console for details.`,
-      });
+      toast({ variant: 'destructive', title: 'Error', description: `Could not process ${seeder}.` });
     }
-  };
-
-  const SeedingButton = ({ seeder, children }: { seeder: Seeder, children: React.ReactNode }) => {
-    const status = seedingStatus[seeder];
-    const isLoading = status === 'seeding';
-    return (
-      <Button onClick={() => handleSeed(seeder)} disabled={isLoading}>
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {children}
-      </Button>
-    );
   };
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-8">
       <Card>
         <CardHeader>
-          <CardTitle>Data Seeding</CardTitle>
-          <CardDescription>
-            Use these actions to manage sample data in your Firestore database.
-          </CardDescription>
+          <CardTitle className="flex items-center gap-2"><Database className="h-5 w-5" /> Data Seeding</CardTitle>
+          <CardDescription>Populate your database with sample data for testing and development.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-8">
           <div>
-              <h3 className="text-base font-semibold mb-2">Destructive Actions</h3>
-              <p className="text-sm text-muted-foreground mb-4">These actions will first delete all existing data in the respective collections before adding the sample data.</p>
-              <div className="flex flex-wrap gap-4">
-                  <SeedingButton seeder="media">Seed Media Assets</SeedingButton>
-                  <SeedingButton seeder="schools">Seed Schools</SeedingButton>
-                  <SeedingButton seeder="meetings">Seed Meetings</SeedingButton>
-                  <SeedingButton seeder="surveys">Seed Surveys</SeedingButton>
-                  <SeedingButton seeder="activities">Seed Activities</SeedingButton>
-                  <SeedingButton seeder="pdfs">Seed Doc Signing Forms</SeedingButton>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Core Infrastructure</h3>
+              <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" size="sm" onClick={() => handleSeed('stages')} disabled={seedingStatus.stages === 'seeding'}>
+                    {seedingStatus.stages === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Seed Stages
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSeed('modules')} disabled={seedingStatus.modules === 'seeding'}>
+                    {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Seed Modules
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'}>
+                    {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Update Avatars
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'}>
+                    {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Reset Layout
+                  </Button>
               </div>
           </div>
+
           <div>
-              <h3 className="text-base font-semibold mb-2">Non-Destructive & Update Actions</h3>
-              <p className="text-sm text-muted-foreground mb-4">These actions update existing data or add/reset default configurations.</p>
-              <div className="flex flex-wrap gap-4">
-                  <SeedingButton seeder="users">Update User Avatars</SeedingButton>
-                  <SeedingButton seeder="stages">Reset & Seed Pipeline Stages</SeedingButton>
-                  <SeedingButton seeder="modules">Seed Modules</SeedingButton>
-                  <SeedingButton seeder="layout">Reset Dashboard Layout</SeedingButton>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">Sample Content</h3>
+              <div className="flex flex-wrap gap-3">
+                  <Button onClick={() => handleSeed('schools')} disabled={seedingStatus.schools === 'seeding'}>
+                    {seedingStatus.schools === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SchoolIcon className="mr-2 h-4 w-4" />}
+                    Seed Schools
+                  </Button>
+                  <Button onClick={() => handleSeed('meetings')} disabled={seedingStatus.meetings === 'seeding'}>
+                    {seedingStatus.meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                    Seed Meetings
+                  </Button>
+                  <Button onClick={() => handleSeed('media')} disabled={seedingStatus.media === 'seeding'}>
+                    {seedingStatus.media === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Film className="mr-2 h-4 w-4" />}
+                    Seed Media
+                  </Button>
+                  <Button onClick={() => handleSeed('surveys')} disabled={seedingStatus.surveys === 'seeding'}>
+                    {seedingStatus.surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardList className="mr-2 h-4 w-4" />}
+                    Seed Surveys
+                  </Button>
+                  <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'}>
+                    {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                    Seed Doc Signing
+                  </Button>
+                  <Button onClick={() => handleSeed('activities')} disabled={seedingStatus.activities === 'seeding'}>
+                    {seedingStatus.activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
+                    Seed Activity Feed
+                  </Button>
               </div>
           </div>
         </CardContent>
       </Card>
       
       <Separator />
-
       <ModuleEditor />
-
     </div>
   );
 }
