@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -14,14 +13,15 @@ import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-// Dynamically import pdfjs-dist
+// Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { id: pdfId, submissionId } = params;
+  const pdfId = params.id as string;
+  const submissionId = params.submissionId as string;
   const firestore = useFirestore();
 
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
@@ -29,12 +29,12 @@ export default function SubmissionDetailPage() {
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
-    return doc(firestore, 'pdfs', pdfId as string);
+    return doc(firestore, 'pdfs', pdfId);
   }, [firestore, pdfId]);
 
   const submissionDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId || !submissionId) return null;
-    return doc(firestore, `pdfs/${pdfId}/submissions`, submissionId as string);
+    return doc(firestore, `pdfs/${pdfId}/submissions`, submissionId);
   }, [firestore, pdfId, submissionId]);
 
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
@@ -46,7 +46,11 @@ export default function SubmissionDetailPage() {
         try {
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
+            
+            // Set worker and suppress warnings
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            (pdfjs as any).verbosity = 0;
+            
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
             const loadedPdf = await loadingTask.promise;
             setPdfDoc(loadedPdf);

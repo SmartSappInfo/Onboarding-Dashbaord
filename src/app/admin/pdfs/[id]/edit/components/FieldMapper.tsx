@@ -69,12 +69,14 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
              try {
                 const pdfjs = await pdfjsPromise;
                 const pdfjsVersion = '4.4.168';
+                
+                // Suppress non-critical font warnings
                 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+                (pdfjs as any).verbosity = 0;
 
                 if (!isMounted) return;
                 
                 const page = await pdf.getPage(pageNumber);
-                // HONOR INTRINSIC ROTATION
                 const viewport = page.getViewport({ scale: zoom * 1.5, rotation: page.rotate });
                 setPageDimensions({ width: viewport.width, height: viewport.height });
 
@@ -84,7 +86,6 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldId, onSelect, onUp
                     if (context) {
                         canvas.height = viewport.height;
                         canvas.width = viewport.width;
-                        // Use native PDF.js rendering coordinates
                         await page.render({ canvasContext: context, viewport }).promise;
                     }
                 }
@@ -569,7 +570,10 @@ export default function FieldMapper({
         try {
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
+            
+            // Suppress font warnings
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            (pdfjs as any).verbosity = 0;
             
             const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
             const loadedPdf = await loadingTask.promise;

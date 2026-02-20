@@ -54,7 +54,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
-  // Ensure all fields have a default value so getValues() returns them immediately
   const defaultValues = React.useMemo(() => {
     const defaults: Record<string, any> = {};
     pdfForm.fields.forEach(f => {
@@ -69,7 +68,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     defaultValues,
   });
 
-  // Responsive scaling
   React.useEffect(() => {
     const updateScale = () => {
         const containerWidth = window.innerWidth - 64; 
@@ -86,7 +84,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         try {
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
+            
+            // Set worker and suppress non-critical font warnings
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+            (pdfjs as any).verbosity = 0; 
             
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
             const loadedPdf = await loadingTask.promise;
@@ -102,10 +103,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }, [pdfForm.downloadUrl, toast]);
   
   const handleFinalSubmit = async () => {
-    console.log(">>> [PROCESS: SUBMISSION INITIATED]");
-    
     if (isPreview) {
-        console.log(">>> [INFO] Submission ignored: Running in preview mode.");
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
     }
@@ -114,7 +112,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     setIsPreviewModalOpen(false);
 
     try {
-        // Explicitly construct the payload from ALL defined fields
         const currentValues = getValues();
         const formData: Record<string, any> = {};
         
@@ -122,28 +119,16 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             formData[field.id] = currentValues[field.id] !== undefined && currentValues[field.id] !== '' ? currentValues[field.id] : null;
         });
 
-        console.log(">>> [PROCESS: PAYLOAD CONSTRUCTED]", { 
-            pdfId: pdfForm.id, 
-            fieldCount: Object.keys(formData).length,
-            fields: Object.keys(formData)
-        });
-
         const payload = { pdfId: pdfForm.id, formData };
-        const jsonPayload = JSON.stringify(payload);
-        
-        console.log(`>>> [PROCESS: SENDING] Payload size: ${(jsonPayload.length / 1024).toFixed(2)} KB`);
-
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: jsonPayload,
+            body: JSON.stringify(payload),
         });
 
-        console.log(">>> [PROCESS: API RESPONSE]", { status: response.status });
         const data = await response.json();
 
         if (response.ok && data.submissionId) {
-            console.log(">>> [PROCESS: SUCCESS] Submission ID:", data.submissionId);
             setSubmissionId(data.submissionId);
             setIsSubmitted(true);
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
@@ -152,11 +137,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             params.set('submissionId', data.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
         } else {
-            console.error(">>> [PROCESS: SERVER ERROR]", data.error);
             throw new Error(data.error || 'Failed to submit form.');
         }
     } catch (e: any) {
-        console.error(">>> [PROCESS: CRITICAL FAILURE]", e.message);
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
         setIsSubmitting(false);
