@@ -33,12 +33,8 @@ async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     return { ...surveyDoc.data(), id: surveyDoc.id } as Survey;
 }
 
-type Props = {
-  params: { slug: string }
-}
-
-export async function generateMetadata({ params }: Props, parent: ResolvingMetadata): Promise<Metadata> {
-  const slug = params.slug;
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }, parent: ResolvingMetadata): Promise<Metadata> {
+  const { slug } = await params;
   const survey = await getSurveyBySlug(slug);
 
   if (!survey) {
@@ -61,8 +57,9 @@ export async function generateMetadata({ params }: Props, parent: ResolvingMetad
 }
 
 
-export default async function PublicSurveyPage({ params }: Props) {
-    const survey = await getSurveyBySlug(params.slug);
+export default async function PublicSurveyPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    const survey = await getSurveyBySlug(slug);
 
     if (!survey) {
         notFound();

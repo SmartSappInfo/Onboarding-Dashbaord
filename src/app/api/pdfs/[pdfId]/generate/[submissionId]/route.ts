@@ -1,4 +1,3 @@
-
 import { doc, getDoc } from 'firebase/firestore';
 import { getDb } from '@/lib/server-only-firestore';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
@@ -6,9 +5,9 @@ import type { PDFForm, Submission } from '@/lib/types';
 
 export async function GET(
   req: Request,
-  { params }: { params: { pdfId: string; submissionId: string } }
+  { params }: { params: Promise<{ pdfId: string; submissionId: string }> }
 ) {
-  const { pdfId, submissionId } = params;
+  const { pdfId, submissionId } = await params;
 
   try {
     const db = getDb();

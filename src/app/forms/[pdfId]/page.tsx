@@ -17,8 +17,9 @@ async function getPdfForm(id: string): Promise<PDFForm | null> {
     return { ...docSnap.data(), id: docSnap.id } as PDFForm;
 }
 
-export default async function PublicPdfFormPage({ params }: { params: { pdfId: string } }) {
-    const pdfForm = await getPdfForm(params.pdfId);
+export default async function PublicPdfFormPage({ params }: { params: Promise<{ pdfId: string }> }) {
+    const { pdfId } = await params;
+    const pdfForm = await getPdfForm(pdfId);
 
     if (!pdfForm) {
         notFound();
