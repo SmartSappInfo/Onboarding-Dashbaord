@@ -1,41 +1,36 @@
 
 'use server';
 
-import { doc, addDoc, collection, deleteDoc, updateDoc, getDoc } from 'firebase/firestore';
-import { ref, deleteObject, getBytes } from 'firebase/storage';
-import { getDb, getServerStorage } from './server-only-firestore';
+import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { PDFForm, PDFFormField, Submission } from './types';
+import type { PDFForm, PDFFormField } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
- * Generates a PDF buffer by overlaying form data onto a template.
+ * Generates a PDF buffer by overlaying form data onto a template using Firebase Admin.
  * @param pdfForm The form metadata containing field definitions.
- * @param formData The user-submitted values (text and base64 signatures).
+ * @param formData The user-submitted values.
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     console.log(`>>> [PDF:GEN] START: "${pdfForm.name}" (ID: ${pdfForm.id})`);
     
-    const storage = getServerStorage();
-    const fileRef = ref(storage, pdfForm.storagePath);
-    
-    let pdfBuffer: ArrayBuffer;
+    let pdfBuffer: Buffer;
     try {
-        console.log(`>>> [PDF:GEN] STEP 1: Fetching template from Storage: ${pdfForm.storagePath}`);
-        const bytes = await getBytes(fileRef);
-        // Ensure we have a clean ArrayBuffer from the storage bytes
-        pdfBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-        console.log(`>>> [PDF:GEN] SUCCESS: Fetched ${pdfBuffer.byteLength} bytes.`);
+        console.log(`>>> [PDF:GEN] STEP 1: Downloading template from Admin Storage: ${pdfForm.storagePath}`);
+        const file = adminStorage.file(pdfForm.storagePath);
+        const [downloadedBuffer] = await file.download();
+        pdfBuffer = downloadedBuffer;
+        console.log(`>>> [PDF:GEN] SUCCESS: Downloaded ${pdfBuffer.length} bytes.`);
     } catch (e: any) {
-        console.error(`>>> [PDF:GEN] FAIL: Storage Fetch Error:`, e);
-        throw new Error(`Failed to fetch PDF template: ${e.message}`);
+        console.error(`>>> [PDF:GEN] FAIL: Storage Download Error:`, e);
+        throw new Error(`Failed to download PDF template: ${e.message}`);
     }
 
     let pdfDoc: PDFDocument;
     try {
         console.log(`>>> [PDF:GEN] STEP 2: Loading buffer into pdf-lib...`);
-        pdfDoc = await PDFDocument.load(pdfBuffer);
+        pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
     } catch (e: any) {
         console.error(`>>> [PDF:GEN] FAIL: pdf-lib Load Error:`, e);
         throw new Error(`Failed to parse PDF template: ${e.message}`);
@@ -51,7 +46,6 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
         try {
             const rawValue = formData[field.id];
             
-            // Validation: Skip if no value or invalid page reference
             if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {
                 continue;
             }
@@ -59,32 +53,22 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             const page = pages[field.pageNumber - 1];
             const { width: pageWidth, height: pageHeight } = page.getSize();
 
-            // Coordinate Mapping: Percentage (Top-Left) -> PDF Points (Bottom-Left)
+            // Coordinate Mapping: Percent (Top-Left) -> PDF Points (Bottom-Left)
             const x = (field.position.x / 100) * pageWidth;
             const y_top = pageHeight - ((field.position.y / 100) * pageHeight);
             const fieldHeight = (field.dimensions.height / 100) * pageHeight;
             const fieldWidth = (field.dimensions.width / 100) * pageWidth;
 
             if (field.type === 'text' || field.type === 'date') {
-                let displayValue = '';
-                if (Array.isArray(rawValue)) {
-                    displayValue = rawValue.join(', ');
-                } else if (typeof rawValue === 'object') {
-                    const parts = [];
-                    if (rawValue.options) parts.push(rawValue.options.join(', '));
-                    if (rawValue.other) parts.push(`Other: ${rawValue.other}`);
-                    displayValue = parts.join('; ');
-                } else {
-                    displayValue = String(rawValue);
-                }
-
-                if (!displayValue) continue;
+                let displayValue = String(rawValue);
+                if (Array.isArray(rawValue)) displayValue = rawValue.join(', ');
+                
+                if (!displayValue || displayValue === 'undefined') continue;
 
                 const fontSize = field.fontSize || 11;
-                
                 page.drawText(displayValue, {
                     x: x + 2,
-                    y: y_top - fontSize - 2, // Offset baseline
+                    y: y_top - fontSize - 2,
                     font,
                     size: fontSize,
                     color: rgb(0, 0, 0),
@@ -111,177 +95,97 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
         }
     }
 
-    console.log(`>>> [PDF:GEN] FINAL: Serializing bytes...`);
+    console.log(`>>> [PDF:GEN] FINAL: Saving PDF...`);
     return await pdfDoc.save();
 }
 
-type CreatePdfFormData = Pick<PDFForm, 'name' | 'originalFileName' | 'storagePath' | 'downloadUrl'>;
-
-export async function createPdfForm(data: CreatePdfFormData, userId: string) {
-  if (!data.name || !data.originalFileName || !data.storagePath || !data.downloadUrl || !userId) {
-    return { error: 'Invalid input data.' };
-  }
-  
-  const db = getDb();
-  const pdfCollection = collection(db, 'pdfs');
-
-  const newPdfData: Omit<PDFForm, 'id'> = {
+export async function createPdfForm(data: any, userId: string) {
+  const docRef = await adminDb.collection('pdfs').add({
     ...data,
     status: 'draft',
     fields: [],
     createdBy: userId,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  });
+  
+  await logActivity({
+      schoolId: '', 
+      userId,
+      type: 'pdf_uploaded',
+      source: 'user_action',
+      description: `uploaded a new PDF form: "${data.name}"`,
+      metadata: { pdfId: docRef.id }
+  });
 
-  try {
-    const docRef = await addDoc(pdfCollection, newPdfData);
-    
-    await logActivity({
-        schoolId: '', 
-        userId,
-        type: 'pdf_uploaded',
-        source: 'user_action',
-        description: `uploaded a new PDF form: "${data.name}"`,
-        metadata: { pdfId: docRef.id }
-    });
-
-    revalidatePath('/admin/pdfs');
-    return { success: true, id: docRef.id };
-  } catch (error) {
-    console.error('Failed to create PDF form document:', error);
-    return { error: 'Could not create the PDF form in the database.' };
-  }
+  revalidatePath('/admin/pdfs');
+  return { success: true, id: docRef.id };
 }
 
 export async function updatePdfFormName(pdfId: string, newName: string) {
-  if (!pdfId || !newName.trim()) {
-    return { error: 'Invalid input.' };
-  }
-  const db = getDb();
-  const pdfRef = doc(db, 'pdfs', pdfId);
-  try {
-    await updateDoc(pdfRef, {
-      name: newName.trim(),
-      updatedAt: new Date().toISOString(),
-    });
-    revalidatePath(`/admin/pdfs/${pdfId}/edit`);
-    revalidatePath('/admin/pdfs');
-    return { success: true };
-  } catch (error) {
-    console.error('Failed to update PDF form name:', error);
-    return { error: 'Could not update the document name.' };
-  }
+  await adminDb.collection('pdfs').doc(pdfId).update({
+    name: newName.trim(),
+    updatedAt: new Date().toISOString(),
+  });
+  revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+  revalidatePath('/admin/pdfs');
+  return { success: true };
 }
 
-export async function updatePdfFormMapping(
-  pdfId: string,
-  data: {
-    fields: PDFFormField[];
-    password?: string;
-    passwordProtected?: boolean;
-  }
-) {
-  if (!pdfId) {
-    return { error: 'Invalid input provided.' };
-  }
+export async function updatePdfFormMapping(pdfId: string, data: any) {
+  await adminDb.collection('pdfs').doc(pdfId).update({
+    fields: data.fields,
+    password: data.password || null,
+    passwordProtected: data.passwordProtected || false,
+    updatedAt: new Date().toISOString(),
+  });
+  revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+  return { success: true };
+}
 
-  const db = getDb();
-  const pdfRef = doc(db, 'pdfs', pdfId);
-
-  try {
-    await updateDoc(pdfRef, {
-      fields: data.fields,
-      password: data.password || null,
-      passwordProtected: data.passwordProtected || false,
-      updatedAt: new Date().toISOString(),
-    });
+export async function updatePdfFormStatus(pdfId: string, status: string, userId: string) {
+    const pdfRef = adminDb.collection('pdfs').doc(pdfId);
+    const pdfSnap = await pdfRef.get();
     
+    if (!pdfSnap.exists) return { error: 'Document not found.' };
+    const pdfData = pdfSnap.data();
+
+    await pdfRef.update({
+      status: status,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await logActivity({
+      schoolId: '', 
+      userId,
+      type: 'pdf_status_changed',
+      source: 'user_action',
+      description: `changed status of PDF "${pdfData?.name}" to ${status}`,
+      metadata: { pdfId: pdfId, from: pdfData?.status, to: status },
+    });
+
+    revalidatePath('/admin/pdfs');
     revalidatePath(`/admin/pdfs/${pdfId}/edit`);
     return { success: true };
-  } catch (error) {
-    console.error('Failed to update PDF form mapping:', error);
-    return { error: 'You do not have permission to edit this form or the form does not exist.' };
-  }
 }
-
-export async function updatePdfFormStatus(pdfId: string, status: PDFForm['status'], userId: string) {
-    if (!pdfId || !status || !userId) {
-      return { error: 'Invalid arguments.' };
-    }
-  
-    const db = getDb();
-    const pdfRef = doc(db, 'pdfs', pdfId);
-  
-    try {
-      const pdfSnap = await getDoc(pdfRef);
-      if (!pdfSnap.exists()) {
-        return { error: 'Document not found.' };
-      }
-      const pdfData = pdfSnap.data() as PDFForm;
-  
-      await updateDoc(pdfRef, {
-        status: status,
-        updatedAt: new Date().toISOString(),
-      });
-  
-      await logActivity({
-        schoolId: '', 
-        userId,
-        type: 'pdf_status_changed',
-        source: 'user_action',
-        description: `changed status of PDF "${pdfData.name}" to ${status}`,
-        metadata: { pdfId: pdfId, from: pdfData.status, to: status },
-      });
-  
-      revalidatePath('/admin/pdfs');
-      revalidatePath(`/admin/pdfs/${pdfId}/edit`);
-  
-      return { success: true };
-    } catch (error) {
-      console.error('Failed to update PDF form status:', error);
-      return { error: 'Could not update the document status.' };
-    }
-  }
-
 
 export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
-    if (!pdfId || !storagePath || !userId) {
-        return { error: 'Invalid arguments for deletion.' };
-    }
-
-    const db = getDb();
-    const storage = getServerStorage();
-
-    const docRef = doc(db, 'pdfs', pdfId);
-    const fileRef = ref(storage, storagePath);
-
+    await adminDb.collection('pdfs').doc(pdfId).delete();
     try {
-        await deleteDoc(docRef);
-        await deleteObject(fileRef);
-
-        await logActivity({
-            schoolId: '',
-            userId,
-            type: 'pdf_uploaded', 
-            source: 'user_action',
-            description: `deleted PDF form (ID: ${pdfId})`,
-            metadata: { pdfId: pdfId, storagePath: storagePath }
-        });
-
-        revalidatePath('/admin/pdfs');
-        return { success: true };
-    } catch(error: any) {
-        console.error('Failed to delete PDF form:', error);
-        if (error.code === 'storage/object-not-found') {
-             try {
-                await deleteDoc(docRef);
-                revalidatePath('/admin/pdfs');
-                return { success: true, warning: 'File not found in storage, but database record was deleted.' };
-             } catch (dbError) {
-                return { error: 'File not found in storage, and failed to delete database record.' };
-             }
-        }
-        return { error: 'Failed to delete the PDF form or its associated file.' };
+        await adminStorage.file(storagePath).delete();
+    } catch (e) {
+        console.warn("Storage file not found during deletion:", storagePath);
     }
+
+    await logActivity({
+        schoolId: '',
+        userId,
+        type: 'pdf_uploaded', 
+        source: 'user_action',
+        description: `deleted PDF form (ID: ${pdfId})`,
+        metadata: { pdfId: pdfId, storagePath: storagePath }
+    });
+
+    revalidatePath('/admin/pdfs');
+    return { success: true };
 }
