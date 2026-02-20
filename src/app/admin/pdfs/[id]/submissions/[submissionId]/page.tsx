@@ -18,7 +18,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionDetailPage() {
-  const params = React.use(useParams() as any);
+  const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
   const pdfId = params.id as string;
