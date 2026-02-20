@@ -28,7 +28,7 @@ import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Sheet, SheetContent, SheetHeader, SheetFooter } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -324,7 +324,8 @@ const PropertiesSidebar = ({
   return (
     <>
       <SheetHeader className="p-4 border-b md:hidden">
-        <CardTitle>Fields & Properties</CardTitle>
+        <SheetTitle>Fields & Properties</SheetTitle>
+        <SheetDescription className="sr-only">Edit form field properties and document settings.</SheetDescription>
       </SheetHeader>
       <ScrollArea className="flex-grow">
         <div className="space-y-4 p-4">
