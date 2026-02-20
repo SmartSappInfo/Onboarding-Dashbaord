@@ -11,7 +11,7 @@ import { ArrowLeft, Download, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -133,6 +133,7 @@ export default function SubmissionDetailPage() {
                     )}
                 </div>
             </div>
+            <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
     </div>

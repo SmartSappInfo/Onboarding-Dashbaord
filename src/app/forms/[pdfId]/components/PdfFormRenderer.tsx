@@ -11,7 +11,7 @@ import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import { Loader2, Download, CheckCircle2, Send, Database, Code } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import {
   Dialog,
@@ -309,6 +309,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         </div>
                     )}
                 </div>
+                <ScrollBar orientation="horizontal" />
             </ScrollArea>
         </main>
         
