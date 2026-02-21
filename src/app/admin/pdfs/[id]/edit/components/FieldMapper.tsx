@@ -188,6 +188,7 @@ const ResizableField = ({
 }) => {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: field.id });
     const [isResizing, setIsResizing] = React.useState(false);
+    const [isEditingPlaceholder, setIsEditingPlaceholder] = React.useState(false);
     const resizeHandleRef = React.useRef<ResizeHandle | null>(null);
     const initialResizeState = React.useRef<{
         startX: number; startY: number; startWidth: number; startHeight: number; startFieldX: number; startFieldY: number;
@@ -207,6 +208,11 @@ const ResizableField = ({
             startFieldY: (field.position.y / 100) * displayHeight,
         };
         onSelect(field.id);
+    };
+
+    const handleDoubleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsEditingPlaceholder(true);
     };
 
     React.useEffect(() => {
@@ -262,6 +268,7 @@ const ResizableField = ({
                 e.stopPropagation(); 
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
+            onDoubleClick={handleDoubleClick}
             className={cn(
                 "absolute border-2 transition-colors flex",
                 borderColorClass,
@@ -270,13 +277,29 @@ const ResizableField = ({
         >
             <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
             
-            {field.placeholder && (
-                <span className={cn(
-                    "text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none",
-                    field.type === 'signature' ? "text-center w-full" : "text-left"
-                )}>
-                    {field.placeholder}
-                </span>
+            {isEditingPlaceholder ? (
+                <textarea
+                    autoFocus
+                    className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 text-[10px] sm:text-xs italic text-muted-foreground z-20 overflow-hidden"
+                    value={field.placeholder || ''}
+                    onChange={(e) => onUpdate(field.id, { placeholder: e.target.value, isSuggestion: false })}
+                    onBlur={() => setIsEditingPlaceholder(false)}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            setIsEditingPlaceholder(false);
+                        }
+                    }}
+                />
+            ) : (
+                field.placeholder && (
+                    <span className={cn(
+                        "text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none",
+                        field.type === 'signature' ? "text-center w-full" : "text-left"
+                    )}>
+                        {field.placeholder}
+                    </span>
+                )
             )}
 
             {field.type === 'dropdown' && (
@@ -355,30 +378,16 @@ const ResizableField = ({
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
-                        <Popover onOpenChange={(e) => e.stopPropagation?.()}>
-                            <PopoverTrigger asChild>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-7 w-7"><ALargeSmall className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Edit Placeholder</p></TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
-                                <div className="space-y-2">
-                                    <Label className="text-xs">Placeholder Text</Label>
-                                    <Input 
-                                        value={field.placeholder || ''} 
-                                        onChange={(e) => onUpdate(field.id, { placeholder: e.target.value })}
-                                        placeholder="e.g. Enter name..."
-                                        className="h-8 text-sm"
-                                        autoFocus
-                                    />
-                                </div>
-                            </PopoverContent>
-                        </Popover>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setIsEditingPlaceholder(true); }}>
+                                        <ALargeSmall className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Edit Placeholder</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
 
                         <TooltipProvider>
                             <Tooltip>
