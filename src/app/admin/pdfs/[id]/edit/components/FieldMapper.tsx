@@ -1129,10 +1129,38 @@ export default function FieldMapper({
               <Card className="shadow-2xl border-primary/20 pointer-events-auto">
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('text')}><Text className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('signature')}><Signature className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('date')}><Calendar className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Dropdown</p></TooltipContent></Tooltip>
+                      <Popover>
+                          <PopoverTrigger asChild>
+                              <Tooltip>
+                                  <TooltipTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+                                          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                      </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent><p>Add Field</p></TooltipContent>
+                              </Tooltip>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-48 p-1" align="center" side="top">
+                              <div className="flex flex-col gap-1">
+                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('text')}>
+                                      <Text className="mr-2 h-4 w-4" />
+                                      <span>Text Field</span>
+                                  </Button>
+                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('signature')}>
+                                      <Signature className="mr-2 h-4 w-4" />
+                                      <span>Signature Field</span>
+                                  </Button>
+                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('date')}>
+                                      <Calendar className="mr-2 h-4 w-4" />
+                                      <span>Date Field</span>
+                                  </Button>
+                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('dropdown')}>
+                                      <ChevronDownSquare className="mr-2 h-4 w-4" />
+                                      <span>Dropdown Field</span>
+                                  </Button>
+                              </div>
+                          </PopoverContent>
+                      </Popover>
                       <div className="w-px h-6 bg-border mx-1" />
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
