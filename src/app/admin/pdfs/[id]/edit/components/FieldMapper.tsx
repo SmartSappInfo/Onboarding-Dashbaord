@@ -280,7 +280,7 @@ const ResizableField = ({
             className={cn(
                 "absolute border-2 transition-colors flex",
                 borderColorClass,
-                field.type === 'signature' ? "items-center justify-center" : "items-start justify-start p-1"
+                field.type === 'signature' ? "items-center justify-center text-center" : "items-start justify-start p-1 text-left"
             )}
         >
             <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
@@ -304,8 +304,8 @@ const ResizableField = ({
                 field.placeholder && (
                     <span 
                         className={cn(
-                            "text-muted-foreground italic z-10 select-none",
-                            field.type === 'signature' ? "text-center w-full" : "text-left"
+                            "text-muted-foreground italic z-10 select-none pointer-events-none",
+                            field.type === 'signature' ? "w-full" : "text-left"
                         )}
                         style={{ fontSize: scaledFontSize }}
                     >
@@ -323,7 +323,7 @@ const ResizableField = ({
             {/* Contextual Batch Action Toolbar (Top-most selected field) */}
             {isAnchor && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
-                    <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm">
+                    <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm" onMouseDown={(e) => e.stopPropagation()}>
                         <CardContent className="p-1 flex items-center gap-1">
                             <TooltipProvider>
                                 {/* Alignment Group Dropdown */}
@@ -331,8 +331,8 @@ const ResizableField = ({
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <AlignStartVertical className="h-4 w-4" />
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onMouseDown={(e) => e.stopPropagation()}>
+                                                    <AlignStartHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                         </TooltipTrigger>
@@ -343,7 +343,7 @@ const ResizableField = ({
                                             <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned (Top Line Icon)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H (Vert. Mid)
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H (Horiz. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
                                             <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align (Bottom Line Icon)
@@ -353,7 +353,7 @@ const ResizableField = ({
                                             <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top (Left Line Icon)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V (Horiz. Mid)
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V (Vert. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
                                             <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom (Right Line Icon)
@@ -366,7 +366,7 @@ const ResizableField = ({
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" onMouseDown={(e) => e.stopPropagation()}>
                                                     <DistributeHorizontal className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -385,11 +385,11 @@ const ResizableField = ({
                                 
                                 <div className="w-px h-4 bg-border mx-1" />
                                 
-                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={bulkDuplicate} onMouseDown={(e) => e.stopPropagation()}><Copy className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Duplicate Selection</p></TooltipContent></Tooltip>
                                 
                                 <div className="w-px h-4 bg-border mx-1" />
                                 
-                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
+                                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={bulkRemove} onMouseDown={(e) => e.stopPropagation()}><Trash2 className="h-4 w-4"/></Button></TooltipTrigger><TooltipContent><p>Delete Selection</p></TooltipContent></Tooltip>
                             </TooltipProvider>
                         </CardContent>
                     </Card>
@@ -399,7 +399,7 @@ const ResizableField = ({
             {/* Single Select Handles & Properties */}
             {isSelected && showHandles && (
                 <>
-                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md" onMouseDown={(e) => e.stopPropagation()}>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -984,27 +984,27 @@ export default function FieldMapper({
 
     let target: number;
     switch(type) {
-        case 'left': // Icon with line at Top (swapped logic)
+        case 'left': // Icon with line at TOP (Line at Top icon maps to Left Align per visual request)
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Icon with Vertical Middle Line (Align Horizontally H)
+        case 'center-h': // Icon with Horizontal Middle Line (Align Horizontally H)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'right': // Icon with line at Bottom (swapped logic)
+        case 'right': // Icon with line at BOTTOM (Line at Bottom icon maps to Right Align)
             target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
-        case 'top': // Icon with line at Left (swapped logic)
+        case 'top': // Icon with line at LEFT (Line at Left icon maps to Align Top)
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Icon with Horizontal Middle Line (Vertical Align V)
+        case 'center-v': // Icon with Vertical Middle Line (Vertical Align V)
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
-        case 'bottom': // Icon with line at Right (swapped logic)
+        case 'bottom': // Icon with line at RIGHT (Line at Right icon maps to Align Bottom)
             target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
@@ -1236,14 +1236,14 @@ export default function FieldMapper({
                       </CardContent>
                   </Card>
               )}
-              <Card className="shadow-2xl border-primary/20 pointer-events-auto">
+              <Card className="shadow-2xl border-primary/20 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
                       <DropdownMenu>
                           <Tooltip>
                               <TooltipTrigger asChild>
                                   <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onMouseDown={(e) => e.stopPropagation()}>
                                           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </Button>
                                   </DropdownMenuTrigger>
@@ -1270,14 +1270,14 @@ export default function FieldMapper({
                           </DropdownMenuContent>
                       </DropdownMenu>
                       <div className="w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo} onMouseDown={(e) => e.stopPropagation()}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo} onMouseDown={(e) => e.stopPropagation()}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
                       <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomOut}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
-                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground">{Math.round(displayZoom * 100)}%</span>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomIn}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomOut} onMouseDown={(e) => e.stopPropagation()}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
+                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground select-none">{Math.round(displayZoom * 100)}%</span>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomIn} onMouseDown={(e) => e.stopPropagation()}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
                       <div className="md:hidden flex items-center">
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)} onMouseDown={(e) => e.stopPropagation()}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
                 </CardContent>
