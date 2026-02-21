@@ -279,23 +279,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -390,6 +390,7 @@ interface PropertiesSidebarProps {
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   selectedFieldIds: string[];
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
+  handleSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   addField: (type: PDFFormField['type']) => void;
@@ -406,7 +407,7 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, setFields, selectedFieldIds, setSelectedFieldIds, updateField, removeField, addField, pagesLength, pdf,
+  fields, setFields, selectedFieldIds, setSelectedFieldIds, handleSelect, updateField, removeField, addField, pagesLength, pdf,
   isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -426,7 +427,6 @@ const PropertiesSidebar = ({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
-                    {/* Add Field Group Dropdown */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
@@ -503,7 +503,7 @@ const PropertiesSidebar = ({
                               const Icon = fieldIcons[field.type];
                               const isSel = selectedFieldIds.includes(field.id);
                               return (
-                                  <button key={field.id} onClick={() => setSelectedFieldIds([field.id])}
+                                  <button key={field.id} onClick={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
                                       className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", isSel && 'bg-muted ring-1 ring-primary')}>
                                       <Icon className="h-4 w-4 text-muted-foreground" />
                                       <span className={cn("truncate text-sm flex-1", field.isSuggestion && "text-green-600 font-medium")}>{field.label || field.id}</span>
@@ -661,6 +661,7 @@ export default function FieldMapper({
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
+  const [lastSelectedId, setLastSelectedId] = React.useState<string | null>(null);
   const [marquee, setMarquee] = React.useState<{ startX: number, startY: number, endX: number, endY: number } | null>(null);
 
   const [isCollapsed, setIsCollapsed] = React.useState(false);
@@ -710,11 +711,28 @@ export default function FieldMapper({
 
   const handleSelect = React.useCallback((id: string, multi: boolean = false, toggle: boolean = false) => {
     setSelectedFieldIds(prev => {
-        if (toggle) return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
-        if (multi) return prev.includes(id) ? prev : [...prev, id];
+        // Range selection (Shift)
+        if (multi && lastSelectedId) {
+            const allIds = fields.map(f => f.id);
+            const start = allIds.indexOf(lastSelectedId);
+            const end = allIds.indexOf(id);
+            if (start !== -1 && end !== -1) {
+                const range = allIds.slice(Math.min(start, end), Math.max(start, end) + 1);
+                return Array.from(new Set([...prev, ...range]));
+            }
+        }
+        
+        // Toggle selection (Ctrl/Cmd)
+        if (toggle) {
+            setLastSelectedId(id);
+            return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
+        }
+        
+        // Single selection
+        setLastSelectedId(id);
         return [id];
     });
-  }, []);
+  }, [fields, lastSelectedId]);
 
   const addField = (type: PDFFormField['type']) => {
     const newField: LocalPDFFormField = {
@@ -723,6 +741,7 @@ export default function FieldMapper({
     };
     setFields(prev => [...prev, newField]);
     setSelectedFieldIds([newField.id]);
+    setLastSelectedId(newField.id);
   };
   
   const removeField = React.useCallback((id: string) => {
@@ -896,7 +915,10 @@ export default function FieldMapper({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
+    
+    // Avoid syntax errors with group/field slashes by using standard attribute checks
     if ((e.target as HTMLElement).closest('[data-field-id]')) return;
+    
     const viewport = viewportRef.current;
     if (!viewport) return;
     const rect = viewport.getBoundingClientRect();
@@ -1042,6 +1064,7 @@ export default function FieldMapper({
                     <PropertiesSidebar 
                         fields={fields} setFields={setFields} 
                         selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+                        handleSelect={handleSelect}
                         updateField={updateField} removeField={removeField} addField={addField}
                         pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
                         isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
@@ -1078,6 +1101,7 @@ export default function FieldMapper({
           <PropertiesSidebar 
             fields={fields} setFields={setFields} 
             selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+            handleSelect={handleSelect}
             updateField={updateField} removeField={removeField} addField={addField}
             pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
