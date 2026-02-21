@@ -573,7 +573,7 @@ const PropertiesSidebar = ({
                         <CardDescription className="text-[10px]">{selectedFieldIds.length} items selected</CardDescription>
                     </CardHeader>
                     <CardContent className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar above the selection to align or duplicate items.</p>
+                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar above the selection to align or distribute items.</p>
                     </CardContent>
                 </Card>
             ) : null}
@@ -800,7 +800,6 @@ export default function FieldMapper({
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
     }
-    setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields]);
 
   const distributeFields = React.useCallback((type: 'horizontal' | 'vertical') => {
@@ -841,7 +840,6 @@ export default function FieldMapper({
         });
         setFields(prev => prev.map(f => newPositions.has(f.id) ? { ...f, position: { ...f.position, y: newPositions.get(f.id)! } } : f));
     }
-    setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields, toast]);
 
   React.useEffect(() => {
