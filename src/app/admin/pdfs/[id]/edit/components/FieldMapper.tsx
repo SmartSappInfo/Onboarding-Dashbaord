@@ -319,7 +319,7 @@ const ResizableField = ({
                     <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm">
                         <CardContent className="p-1 flex items-center gap-1">
                             <TooltipProvider>
-                                {/* Alignment Group */}
+                                {/* Alignment Group Dropdown */}
                                 <DropdownMenu>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -331,11 +331,11 @@ const ResizableField = ({
                                         </TooltipTrigger>
                                         <TooltipContent><p>Alignment</p></TooltipContent>
                                     </Tooltip>
-                                    <DropdownMenuContent className="w-auto p-1" align="center">
+                                    <DropdownMenuContent className="w-auto p-1" align="center" side="top">
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('left')}>
                                             <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned (Left Line)
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H (Vert. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
@@ -345,7 +345,7 @@ const ResizableField = ({
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('top')}>
                                             <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top (Top Line)
                                         </DropdownMenuItem>
-                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V (Horiz. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
@@ -354,7 +354,7 @@ const ResizableField = ({
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
-                                {/* Distribution Group */}
+                                {/* Distribution Group Dropdown */}
                                 <DropdownMenu>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -366,7 +366,7 @@ const ResizableField = ({
                                         </TooltipTrigger>
                                         <TooltipContent><p>Distribution</p></TooltipContent>
                                     </Tooltip>
-                                    <DropdownMenuContent className="w-auto p-1" align="center">
+                                    <DropdownMenuContent className="w-auto p-1" align="center" side="top">
                                         <DropdownMenuItem className="text-xs" onClick={() => distributeFields('horizontal')}>
                                             <DistributeHorizontal className="mr-2 h-4 w-4" /> Distribute Horizontally
                                         </DropdownMenuItem>
