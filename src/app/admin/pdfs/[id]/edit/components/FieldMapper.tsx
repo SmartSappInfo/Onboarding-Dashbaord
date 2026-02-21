@@ -26,7 +26,7 @@ import {
     AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField } from '@/lib/types';
+import type { PDFForm, PDFFormField, MediaAsset } from '@/lib/types';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
@@ -263,7 +263,7 @@ const ResizableField = ({
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
             className={cn(
-                "absolute border-2 transition-colors flex overflow-hidden",
+                "absolute border-2 transition-colors flex",
                 borderColorClass,
                 field.type === 'signature' ? "items-center justify-center" : "items-start justify-start p-1"
             )}
@@ -285,7 +285,7 @@ const ResizableField = ({
                 </div>
             )}
 
-            {/* Contextual Batch Action Toolbar */}
+            {/* Contextual Batch Action Toolbar (Top-most selected field) */}
             {isAnchor && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
                     <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm">
@@ -300,23 +300,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -351,15 +351,20 @@ const ResizableField = ({
                 </div>
             )}
 
-            {/* Single Select Handles */}
+            {/* Single Select Handles & Properties */}
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
-                        <Popover onOpenChange={(e) => e.stopPropagation()}>
+                        <Popover onOpenChange={(e) => e.stopPropagation?.()}>
                             <PopoverTrigger asChild>
-                                <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7"><ALargeSmall className="h-4 w-4" /></Button>
-                                </TooltipTrigger><TooltipContent><p>Edit Placeholder</p></TooltipContent></Tooltip>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7"><ALargeSmall className="h-4 w-4" /></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Edit Placeholder</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </PopoverTrigger>
                             <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
                                 <div className="space-y-2">
@@ -375,17 +380,27 @@ const ResizableField = ({
                             </PopoverContent>
                         </Popover>
 
-                        <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDuplicate(field.id); }}>
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger><TooltipContent><p>Duplicate</p></TooltipContent></Tooltip>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDuplicate(field.id); }}>
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Duplicate</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                         
-                        <Popover onOpenChange={(e) => e.stopPropagation()}>
+                        <Popover onOpenChange={(e) => e.stopPropagation?.()}>
                             <PopoverTrigger asChild>
-                                <Tooltip><TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-7 w-7"><Replace className="h-4 w-4" /></Button>
-                                </TooltipTrigger><TooltipContent><p>Change Type</p></TooltipContent></Tooltip>
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-7 w-7"><Replace className="h-4 w-4" /></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Change Type</p></TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
                                 {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
@@ -400,11 +415,16 @@ const ResizableField = ({
                             </PopoverContent>
                         </Popover>
                         
-                        <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }}>
-                                <Trash2 className="h-4 w-4" />
-                            </Button>
-                        </TooltipTrigger><TooltipContent><p>Delete</p></TooltipContent></Tooltip>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Delete</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                     {resizeHandles.map(handle => (
                          <div key={handle}
@@ -1012,7 +1032,6 @@ export default function FieldMapper({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     
-    // Check if clicked target or parent is a field to avoid triggering marquee
     const target = e.target as HTMLElement;
     if (target.closest('[data-field-id]')) return;
     
