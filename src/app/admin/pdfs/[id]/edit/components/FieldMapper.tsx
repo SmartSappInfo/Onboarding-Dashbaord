@@ -278,24 +278,24 @@ const ResizableField = ({
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -428,28 +428,21 @@ const PropertiesSidebar = ({
                 <div className="flex items-center gap-1">
                     <Popover>
                         <PopoverTrigger asChild>
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
-                                            <Plus className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Add Field</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+                                <Plus className="h-4 w-4" />
+                            </Button>
                         </PopoverTrigger>
                         <PopoverContent className="w-48 p-1" align="end">
                             <div className="flex flex-col gap-1">
-                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('text')}>
+                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('text')}>
                                     <Text className="mr-2 h-4 w-4" />
                                     <span>Text Field</span>
                                 </Button>
-                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('signature')}>
+                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('signature')}>
                                     <Signature className="mr-2 h-4 w-4" />
                                     <span>Signature Field</span>
                                 </Button>
-                                <Button variant="ghost" className="justify-start px-2 h-9" onClick={() => addField('date')}>
+                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('date')}>
                                     <Calendar className="mr-2 h-4 w-4" />
                                     <span>Date Field</span>
                                 </Button>
@@ -1115,7 +1108,7 @@ export default function FieldMapper({
                         isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
                         password={password} setPassword={setPassword} 
                         passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-                        onDetect={onDetect} isDetecting={isDetecting}
+                        onDetect={handleDetectFields} isDetecting={isDetecting}
                     />
                     <div className="p-4 border-t flex flex-col gap-2">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
@@ -1151,7 +1144,7 @@ export default function FieldMapper({
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-            onDetect={onDetect} isDetecting={isDetecting}
+            onDetect={handleDetectFields} isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
