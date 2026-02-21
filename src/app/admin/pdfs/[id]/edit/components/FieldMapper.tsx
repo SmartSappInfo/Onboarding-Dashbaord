@@ -35,6 +35,12 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -314,51 +320,61 @@ const ResizableField = ({
                         <CardContent className="p-1 flex items-center gap-1">
                             <TooltipProvider>
                                 {/* Alignment Group */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <AlignStartVertical className="h-4 w-4" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
-                                        </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
-                                        </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
-                                        </Button>
+                                <DropdownMenu>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <AlignStartVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Alignment</p></TooltipContent>
+                                    </Tooltip>
+                                    <DropdownMenuContent className="w-auto p-1" align="center">
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('left')}>
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned (Top Line)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H (Vert. Mid)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align (Bottom Line)
+                                        </DropdownMenuItem>
                                         <div className="h-px bg-border my-1" />
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
-                                        </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
-                                        </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
-                                        </Button>
-                                    </PopoverContent>
-                                </Popover>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('top')}>
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top (Left Line)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V (Horiz. Mid)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom (Right Line)
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
 
                                 {/* Distribution Group */}
-                                <Popover>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <DistributeHorizontal className="h-4 w-4" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('horizontal')}>
+                                <DropdownMenu>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <DistributeHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent><p>Distribution</p></TooltipContent>
+                                    </Tooltip>
+                                    <DropdownMenuContent className="w-auto p-1" align="center">
+                                        <DropdownMenuItem className="text-xs" onClick={() => distributeFields('horizontal')}>
                                             <DistributeHorizontal className="mr-2 h-4 w-4" /> Distribute Horizontally
-                                        </Button>
-                                        <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => distributeFields('vertical')}>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem className="text-xs" onClick={() => distributeFields('vertical')}>
                                             <DistributeVertical className="mr-2 h-4 w-4" /> Distribute Vertically
-                                        </Button>
-                                    </PopoverContent>
-                                </Popover>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 
                                 <div className="w-px h-4 bg-border mx-1" />
                                 
@@ -396,29 +412,27 @@ const ResizableField = ({
                                 <TooltipContent><p>Duplicate</p></TooltipContent>
                             </Tooltip>
                             
-                            <Popover>
+                            <DropdownMenu>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <PopoverTrigger asChild>
+                                        <DropdownMenuTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-7 w-7"><Replace className="h-4 w-4" /></Button>
-                                        </PopoverTrigger>
+                                        </DropdownMenuTrigger>
                                     </TooltipTrigger>
                                     <TooltipContent><p>Change Type</p></TooltipContent>
                                 </Tooltip>
-                                <PopoverContent className="w-auto p-1" side="top">
-                                    <div className="flex flex-col gap-1">
-                                        {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
-                                            const Icon = fieldIcons[type];
-                                            return (
-                                                <Button key={type} variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
-                                                    <Icon className="mr-2 h-4 w-4" />
-                                                    <span className="capitalize">{type}</span>
-                                                </Button>
-                                            );
-                                        })}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
+                                <DropdownMenuContent className="w-auto p-1" side="top">
+                                    {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
+                                        const Icon = fieldIcons[type];
+                                        return (
+                                            <DropdownMenuItem key={type} className="text-xs capitalize" onClick={() => onChangeType(field.id, type)}>
+                                                <Icon className="mr-2 h-4 w-4" />
+                                                <span>{type}</span>
+                                            </DropdownMenuItem>
+                                        );
+                                    })}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                             
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -511,33 +525,38 @@ const PropertiesSidebar = ({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-48 p-1" align="end">
-                            <div className="flex flex-col gap-1">
-                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('text')}>
-                                    <Text className="mr-2 h-4 w-4" />
-                                    <span>Text Field</span>
-                                </Button>
-                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('signature')}>
-                                    <Signature className="mr-2 h-4 w-4" />
-                                    <span>Signature Field</span>
-                                </Button>
-                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('date')}>
-                                    <Calendar className="mr-2 h-4 w-4" />
-                                    <span>Date Field</span>
-                                </Button>
-                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('dropdown')}>
-                                    <ChevronDownSquare className="mr-2 h-4 w-4" />
-                                    <span>Dropdown Field</span>
-                                </Button>
-                            </div>
-                        </PopoverContent>
-                    </Popover>
+                    <DropdownMenu>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Add Field</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <DropdownMenuContent className="w-48 p-1" align="end">
+                            <DropdownMenuItem className="text-xs" onClick={() => addField('text')}>
+                                <Text className="mr-2 h-4 w-4" />
+                                <span>Text Field</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs" onClick={() => addField('signature')}>
+                                <Signature className="mr-2 h-4 w-4" />
+                                <span>Signature Field</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs" onClick={() => addField('date')}>
+                                <Calendar className="mr-2 h-4 w-4" />
+                                <span>Date Field</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs" onClick={() => addField('dropdown')}>
+                                <ChevronDownSquare className="mr-2 h-4 w-4" />
+                                <span>Dropdown Field</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     {hasSuggestions ? (
                         <TooltipProvider>
@@ -1158,38 +1177,36 @@ export default function FieldMapper({
               <Card className="shadow-2xl border-primary/20 pointer-events-auto">
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
-                      <Popover>
+                      <DropdownMenu>
                           <Tooltip>
                               <TooltipTrigger asChild>
-                                  <PopoverTrigger asChild>
+                                  <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
                                           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </Button>
-                                  </PopoverTrigger>
+                                  </DropdownMenuTrigger>
                               </TooltipTrigger>
                               <TooltipContent><p>Add Field</p></TooltipContent>
                           </Tooltip>
-                          <PopoverContent className="w-48 p-1" align="center" side="top">
-                              <div className="flex flex-col gap-1">
-                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('text')}>
-                                      <Text className="mr-2 h-4 w-4" />
-                                      <span>Text Field</span>
-                                  </Button>
-                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('signature')}>
-                                      <Signature className="mr-2 h-4 w-4" />
-                                      <span>Signature Field</span>
-                                  </Button>
-                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('date')}>
-                                      <Calendar className="mr-2 h-4 w-4" />
-                                      <span>Date Field</span>
-                                  </Button>
-                                  <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('dropdown')}>
-                                      <ChevronDownSquare className="mr-2 h-4 w-4" />
-                                      <span>Dropdown Field</span>
-                                  </Button>
-                              </div>
-                          </PopoverContent>
-                      </Popover>
+                          <DropdownMenuContent className="w-48 p-1" align="center" side="top">
+                              <DropdownMenuItem className="text-xs" onClick={() => addField('text')}>
+                                  <Text className="mr-2 h-4 w-4" />
+                                  <span>Text Field</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-xs" onClick={() => addField('signature')}>
+                                  <Signature className="mr-2 h-4 w-4" />
+                                  <span>Signature Field</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-xs" onClick={() => addField('date')}>
+                                  <Calendar className="mr-2 h-4 w-4" />
+                                  <span>Date Field</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-xs" onClick={() => addField('dropdown')}>
+                                  <ChevronDownSquare className="mr-2 h-4 w-4" />
+                                  <span>Dropdown Field</span>
+                              </DropdownMenuItem>
+                          </DropdownMenuContent>
+                      </DropdownMenu>
                       <div className="w-px h-6 bg-border mx-1" />
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
