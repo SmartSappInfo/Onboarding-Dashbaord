@@ -218,7 +218,11 @@ export default function PdfFormsPage() {
               ) : pdfs && pdfs.length > 0 ? (
                 pdfs.map((pdf) => (
                   <TableRow key={pdf.id}>
-                    <TableCell className="font-medium">{pdf.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline">
+                        {pdf.name}
+                      </Link>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(pdf.status)} className="capitalize">{pdf.status}</Badge>
                     </TableCell>
@@ -259,7 +263,11 @@ export default function PdfFormsPage() {
                         <CardHeader className="pb-2">
                             <div className="flex items-start justify-between">
                                 <div className="space-y-1">
-                                    <CardTitle className="text-lg">{pdf.name}</CardTitle>
+                                    <CardTitle className="text-lg">
+                                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline">
+                                        {pdf.name}
+                                      </Link>
+                                    </CardTitle>
                                     <CardDescription>
                                         Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
                                     </CardDescription>
