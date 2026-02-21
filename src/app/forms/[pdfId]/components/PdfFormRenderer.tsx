@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -265,8 +264,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   return (
     <div className="flex flex-col h-screen bg-muted/20 overflow-hidden">
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center justify-between shadow-sm shrink-0">
-            <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md">{pdfForm.name}</span>
+            <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-none">Form - {pdfForm.name}</span>
+                <span className="text-[10px] text-muted-foreground mt-1.5 leading-none">Powered by SmartSapp</span>
             </div>
             <div className="flex items-center gap-2">
                 {!isSubmitted ? (
