@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -9,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, Monitor } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -204,8 +205,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             fieldElement = (
                 <input 
                     {...register(field.id)}
+                    placeholder={field.placeholder}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80"
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60"
                 />
             );
             break;
@@ -230,7 +232,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {value ? (
                         <img src={value} alt="Signature" className="w-full h-full object-contain" />
                     ) : (
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">Sign Here</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">{field.placeholder || 'Sign Here'}</span>
                     )}
                 </button>
             );
@@ -329,7 +331,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
     pdf: PDFDocumentProxy; 
     pageNumber: number; 
     fields: PDFFormField[]; 
-    renderField: (field: PDFFormField) => React.KeepNode;
+    renderField: (field: PDFFormField) => React.ReactNode;
     scale: number;
 }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);

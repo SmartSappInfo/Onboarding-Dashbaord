@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -260,10 +261,16 @@ const ResizableField = ({
                 e.stopPropagation(); 
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
-            className={`absolute border-2 ${borderColorClass} transition-colors`}
+            className={`absolute border-2 ${borderColorClass} transition-colors flex items-center justify-center overflow-hidden`}
         >
-            <div {...listeners} className="w-full h-full cursor-grab" onMouseDown={(e) => e.stopPropagation()}></div>
+            <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
             
+            {field.placeholder && (
+                <span className="text-muted-foreground italic text-[10px] sm:text-xs p-1 truncate z-10 select-none">
+                    {field.placeholder}
+                </span>
+            )}
+
             {/* Contextual Batch Action Toolbar */}
             {isAnchor && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
@@ -334,6 +341,26 @@ const ResizableField = ({
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
+                        <Popover onOpenChange={(e) => e.stopPropagation()}>
+                            <PopoverTrigger asChild>
+                                <Tooltip><TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7"><ALargeSmall className="h-4 w-4" /></Button>
+                                </TooltipTrigger><TooltipContent><p>Edit Placeholder</p></TooltipContent></Tooltip>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-64 p-3" onClick={(e) => e.stopPropagation()}>
+                                <div className="space-y-2">
+                                    <Label className="text-xs">Placeholder Text</Label>
+                                    <Input 
+                                        value={field.placeholder || ''} 
+                                        onChange={(e) => onUpdate(field.id, { placeholder: e.target.value })}
+                                        placeholder="e.g. Enter name..."
+                                        className="h-8 text-sm"
+                                        autoFocus
+                                    />
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+
                         <Tooltip><TooltipTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDuplicate(field.id); }}>
                                 <Copy className="h-4 w-4" />
@@ -350,7 +377,7 @@ const ResizableField = ({
                                 {(['text', 'signature', 'date'] as const).map(type => {
                                     const Icon = fieldIcons[type];
                                     return (
-                                        <Button key={type} variant="ghost" className="w-full justify-start" onClick={() => onChangeType(field.id, type)}>
+                                        <Button key={type} variant="ghost" className="w-full justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
                                             <Icon className="mr-2 h-4 w-4" />
                                             <span className="capitalize">{type}</span>
                                         </Button>
@@ -531,6 +558,10 @@ const PropertiesSidebar = ({
                         <div className="space-y-2">
                             <Label htmlFor={`label-${selectedField.id}`} className="text-xs">Field Label</Label>
                             <Input id={`label-${selectedField.id}`} placeholder="e.g. Applicant Name" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-8 text-sm" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor={`placeholder-${selectedField.id}`} className="text-xs">Field Placeholder</Label>
+                            <Input id={`placeholder-${selectedField.id}`} placeholder="e.g. Type your name..." value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-8 text-sm" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs">Type</Label>
@@ -914,8 +945,9 @@ export default function FieldMapper({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     
-    // Avoid syntax errors with group/field slashes by using standard attribute checks
-    if ((e.target as HTMLElement).closest('[data-field-id]')) return;
+    // Check if clicked target or parent is a field to avoid triggering marquee
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-field-id]')) return;
     
     const viewport = viewportRef.current;
     if (!viewport) return;

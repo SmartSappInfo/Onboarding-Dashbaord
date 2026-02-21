@@ -211,6 +211,7 @@ export interface PDFFormField {
   id: string;
   type: 'text' | 'signature' | 'date';
   label?: string;
+  placeholder?: string;
   pageNumber: number;
   position: { x: number; y: number };
   dimensions: { width: number; height: number };
