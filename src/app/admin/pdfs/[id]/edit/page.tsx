@@ -7,7 +7,7 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -219,6 +219,10 @@ export default function EditPdfPage() {
       );
   }
 
+  const publicUrl = typeof window !== 'undefined' 
+    ? `${window.location.origin}/forms/${pdf.id}` 
+    : `/forms/${pdf.id}`;
+
   return (
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card">
@@ -227,23 +231,48 @@ export default function EditPdfPage() {
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Back</span>
             </Button>
-            {isEditingTitle ? (
-              <Input
-                value={editableTitle}
-                onChange={(e) => setEditableTitle(e.target.value)}
-                onBlur={handleTitleSave}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setIsEditingTitle(false);}}
-                className="text-lg font-semibold h-9"
-                autoFocus
-              />
-            ) : (
-              <div className="flex items-center gap-1 group min-w-0">
-                <h1 className="text-lg font-semibold truncate" title={pdf.name}>{pdf.name}</h1>
-                <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => setIsEditingTitle(true)}>
-                  < Pencil className="h-4 w-4" />
-                </Button>
-              </div>
-            )}
+            <div className="flex flex-col min-w-0">
+                {isEditingTitle ? (
+                  <Input
+                    value={editableTitle}
+                    onChange={(e) => setEditableTitle(e.target.value)}
+                    onBlur={handleTitleSave}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setIsEditingTitle(false);}}
+                    className="text-lg font-semibold h-9"
+                    autoFocus
+                  />
+                ) : (
+                  <div className="flex items-center gap-1 group min-w-0">
+                    <h1 className="text-lg font-semibold truncate" title={pdf.name}>{pdf.name}</h1>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => setIsEditingTitle(true)}>
+                      < Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+                {!isEditingTitle && (
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-[-2px]">
+                        <a 
+                            href={`/forms/${pdf.id}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="hover:underline truncate max-w-[200px] sm:max-w-md"
+                        >
+                            {publicUrl}
+                        </a>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 hover:text-primary transition-colors" 
+                            onClick={() => {
+                                navigator.clipboard.writeText(publicUrl);
+                                toast({ title: 'Link Copied', description: 'Public form URL copied to clipboard.' });
+                            }}
+                        >
+                            <Copy className="h-3 w-3" />
+                        </Button>
+                    </div>
+                )}
+            </div>
         </div>
         <div className="flex items-center gap-2">
             <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-3 sm:px-4">
