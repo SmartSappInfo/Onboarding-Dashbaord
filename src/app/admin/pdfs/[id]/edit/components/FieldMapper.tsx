@@ -548,7 +548,7 @@ const PropertiesSidebar = ({
                     {hasSuggestions ? (
                         <>
                             <TooltipProvider>
-                                <Tooltip>
+                                Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={acceptAllSuggestions}>
                                             <Check className="h-4 w-4" />
