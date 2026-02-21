@@ -666,7 +666,7 @@ const PropertiesSidebar = ({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>Delete All Fields</p></TooltipContent>
-                        </TooltipProvider>
+                        </Tooltip>
                     </TooltipProvider>
                 </div>
               </CardHeader>
