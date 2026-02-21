@@ -984,29 +984,29 @@ export default function FieldMapper({
 
     let target: number;
     switch(type) {
-        case 'top': // Align to Top: icon with line at left
-            target = Math.min(...sel.map(f => f.position.y));
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
-            break;
-        case 'center-v': // Vertical Align V: icon with horizontal middle line
-            const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
-            break;
-        case 'bottom': // Align Bottom: icon with line at right
-            target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
-            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
-            break;
-        case 'left': // Left Aligned: icon with line at top
+        case 'left': // Icon with line at Top (swapped logic)
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Align Horizontally H: icon with vertical middle line
+        case 'center-h': // Icon with Vertical Middle Line (Align Horizontally H)
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'right': // Right Align: icon with line at bottom
+        case 'right': // Icon with line at Bottom (swapped logic)
             target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
+            break;
+        case 'top': // Icon with line at Left (swapped logic)
+            target = Math.min(...sel.map(f => f.position.y));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
+            break;
+        case 'center-v': // Icon with Horizontal Middle Line (Vertical Align V)
+            const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
+            break;
+        case 'bottom': // Icon with line at Right (swapped logic)
+            target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
+            setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
     }
   }, [fields, selectedFieldIds, setFields]);
