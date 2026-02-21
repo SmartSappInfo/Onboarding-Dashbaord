@@ -173,7 +173,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 
 const ResizableField = ({
-    field, pageDimensions, isSelected, isAnchor, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove
+    field, pageDimensions, isSelected, isAnchor, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom
 }: {
     field: LocalPDFFormField;
     pageDimensions: { width: number, height: number };
@@ -259,6 +259,9 @@ const ResizableField = ({
         transform: CSS.Translate.toString(transform), zIndex: isSelected ? 10 : (field.isSuggestion ? 5 : 1),
     };
 
+    // Calculate dynamic font size based on zoom
+    const scaledFontSize = `${Math.max(8, 12 * zoom)}px`;
+
     const borderColorClass = isSelected ? 'border-primary' : field.isSuggestion ? 'border-green-500' : 'border-dashed border-primary/50 hover:border-primary';
     const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
 
@@ -285,7 +288,8 @@ const ResizableField = ({
             {isEditingPlaceholder ? (
                 <textarea
                     autoFocus
-                    className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 text-[10px] sm:text-xs italic text-muted-foreground z-20 overflow-hidden"
+                    className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 italic text-muted-foreground z-20 overflow-hidden"
+                    style={{ fontSize: scaledFontSize }}
                     value={field.placeholder || ''}
                     onChange={(e) => onUpdate(field.id, { placeholder: e.target.value, isSuggestion: false })}
                     onBlur={() => setIsEditingPlaceholder(false)}
@@ -298,10 +302,13 @@ const ResizableField = ({
                 />
             ) : (
                 field.placeholder && (
-                    <span className={cn(
-                        "text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none",
-                        field.type === 'signature' ? "text-center w-full" : "text-left"
-                    )}>
+                    <span 
+                        className={cn(
+                            "text-muted-foreground italic z-10 select-none",
+                            field.type === 'signature' ? "text-center w-full" : "text-left"
+                        )}
+                        style={{ fontSize: scaledFontSize }}
+                    >
                         {field.placeholder}
                     </span>
                 )
@@ -333,23 +340,23 @@ const ResizableField = ({
                                     </Tooltip>
                                     <DropdownMenuContent className="w-auto p-1" align="center" side="top">
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned (Left Line)
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned (Top Line Icon)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H (Vert. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align (Right Line)
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align (Bottom Line Icon)
                                         </DropdownMenuItem>
                                         <div className="h-px bg-border my-1" />
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top (Top Line)
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top (Left Line Icon)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V (Horiz. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom (Bottom Line)
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom (Right Line Icon)
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -977,27 +984,27 @@ export default function FieldMapper({
 
     let target: number;
     switch(type) {
-        case 'top': 
+        case 'top': // Align to Top: icon with line at left
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v':
+        case 'center-v': // Vertical Align V: icon with horizontal middle line
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
-        case 'bottom':
+        case 'bottom': // Align Bottom: icon with line at right
             target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
-        case 'left':
+        case 'left': // Left Aligned: icon with line at top
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h':
+        case 'center-h': // Align Horizontally H: icon with vertical middle line
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'right':
+        case 'right': // Right Align: icon with line at bottom
             target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
