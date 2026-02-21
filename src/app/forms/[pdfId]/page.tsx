@@ -1,3 +1,4 @@
+
 import { adminDb } from '@/lib/firebase-admin';
 import type { PDFForm } from '@/lib/types';
 import PdfFormRenderer from './components/PdfFormRenderer';
@@ -6,7 +7,16 @@ import PasswordGatedForm from './components/PasswordGatedForm';
 
 async function getPdfForm(id: string): Promise<PDFForm | null> {
     try {
-        const docSnap = await adminDb.collection('pdfs').doc(id).get();
+        // First try by ID
+        let docSnap = await adminDb.collection('pdfs').doc(id).get();
+
+        // If not found, try by Slug
+        if (!docSnap.exists) {
+            const querySnap = await adminDb.collection('pdfs').where('slug', '==', id).limit(1).get();
+            if (!querySnap.empty) {
+                docSnap = querySnap.docs[0];
+            }
+        }
 
         if (!docSnap.exists || docSnap.data()?.status !== 'published') {
             return null;

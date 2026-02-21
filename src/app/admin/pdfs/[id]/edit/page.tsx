@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,9 +8,9 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy } from 'lucide-react';
+import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
-import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName } from '@/lib/pdf-actions';
+import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
@@ -35,6 +36,8 @@ export default function EditPdfPage() {
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
   const [editableTitle, setEditableTitle] = React.useState('');
+  const [editableSlug, setEditableSlug] = React.useState('');
+  const [isSavingSlug, setIsSavingSlug] = React.useState(false);
 
   // Undo/Redo Logic
   const {
@@ -65,6 +68,7 @@ export default function EditPdfPage() {
       setPassword(pdf.password || '');
       setPasswordProtected(pdf.passwordProtected || false);
       setEditableTitle(pdf.name);
+      setEditableSlug(pdf.slug || pdf.id);
     }
   }, [pdf, resetHistory]);
 
@@ -129,6 +133,20 @@ export default function EditPdfPage() {
       toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
     }
     setIsSaving(false);
+  };
+
+  const handleSlugSave = async (newSlug: string) => {
+    if (!pdf || newSlug === pdf.slug) return;
+    setIsSavingSlug(true);
+    const result = await updatePdfFormSlug(pdfId, newSlug);
+    if (result.success) {
+        setEditableSlug(result.slug!);
+        toast({ title: 'URL Slug updated!' });
+    } else {
+        setEditableSlug(pdf.slug || pdf.id);
+        toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
+    }
+    setIsSavingSlug(false);
   };
 
   const handleDetectFields = async () => {
@@ -220,8 +238,8 @@ export default function EditPdfPage() {
   }
 
   const publicUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/forms/${pdf.id}` 
-    : `/forms/${pdf.id}`;
+    ? `${window.location.origin}/forms/${editableSlug}` 
+    : `/forms/${editableSlug}`;
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
@@ -252,7 +270,7 @@ export default function EditPdfPage() {
                 {!isEditingTitle && (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-[-2px]">
                         <a 
-                            href={`/forms/${pdf.id}`} 
+                            href={publicUrl} 
                             target="_blank" 
                             rel="noopener noreferrer" 
                             className="hover:underline truncate max-w-[200px] sm:max-w-md"
@@ -310,13 +328,16 @@ export default function EditPdfPage() {
             redo={handleRedo}
             canUndo={canUndo}
             canRedo={canRedo}
+            editableSlug={editableSlug}
+            onSlugChange={handleSlugSave}
+            isSavingSlug={isSavingSlug}
         />
       </div>
 
       <PdfPreviewDialog
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        pdfForm={{ ...pdf, fields: fields, password, passwordProtected }}
+        pdfForm={{ ...pdf, fields: fields, password, passwordProtected, slug: editableSlug }}
       />
     </div>
   );

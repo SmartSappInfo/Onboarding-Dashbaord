@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown, LinkIcon
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -525,16 +526,25 @@ interface PropertiesSidebarProps {
   setPasswordProtected: (isProtected: boolean) => void;
   onDetect: () => void;
   isDetecting: boolean;
+  editableSlug: string;
+  onSlugChange: (slug: string) => void;
+  isSavingSlug: boolean;
 }
 
 const PropertiesSidebar = ({
   fields, setFields, selectedFieldIds, setSelectedFieldIds, handleSelect, updateField, removeField, addField, pagesLength, pdf,
-  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
+  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting,
+  editableSlug, onSlugChange, isSavingSlug
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const [showPassword, setShowPassword] = React.useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
+  const [tempSlug, setTempSlug] = React.useState(editableSlug);
   const hasSuggestions = fields.some(f => f.isSuggestion);
+
+  React.useEffect(() => {
+    setTempSlug(editableSlug);
+  }, [editableSlug]);
 
   const acceptAllSuggestions = () => setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })));
   const rejectAllSuggestions = () => setFields(prev => prev.filter(f => !f.isSuggestion));
@@ -586,10 +596,36 @@ const PropertiesSidebar = ({
     }
   };
 
+  const publicBaseUrl = typeof window !== 'undefined' ? `${window.location.origin}/forms/` : '/forms/';
+
   return (
     <>
       <ScrollArea className="flex-grow">
         <div className="space-y-4 p-4">
+            <Card>
+                <CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Public Link Settings</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="url-slug" className="text-xs">URL Slug (Back-half of link)</Label>
+                        <div className="flex gap-1">
+                            <Input 
+                                id="url-slug" 
+                                value={tempSlug} 
+                                onChange={e => setTempSlug(e.target.value)} 
+                                onBlur={() => onSlugChange(tempSlug)}
+                                onKeyDown={e => e.key === 'Enter' && onSlugChange(tempSlug)}
+                                className="h-8 text-sm" 
+                                disabled={isSavingSlug}
+                            />
+                            {isSavingSlug && <Loader2 className="h-4 w-4 animate-spin mt-2" />}
+                        </div>
+                        <p className="text-[10px] text-muted-foreground truncate" title={publicBaseUrl + tempSlug}>
+                            <span className="font-semibold">Link Preview:</span> {publicBaseUrl}{tempSlug}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
@@ -869,12 +905,15 @@ interface FieldMapperProps {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  editableSlug: string;
+  onSlugChange: (slug: string) => void;
+  isSavingSlug: boolean;
 }
 
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 export default function FieldMapper({
-  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting, undo, redo, canUndo, canRedo
+  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting, undo, redo, canUndo, canRedo, editableSlug, onSlugChange, isSavingSlug
 }: FieldMapperProps) {
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
@@ -1310,6 +1349,7 @@ export default function FieldMapper({
                         password={password} setPassword={setPassword} 
                         passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
                         onDetect={onDetect} isDetecting={isDetecting}
+                        editableSlug={editableSlug} onSlugChange={onSlugChange} isSavingSlug={isSavingSlug}
                     />
                     <div className="p-4 border-t flex flex-col gap-2">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
@@ -1347,6 +1387,7 @@ export default function FieldMapper({
             password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
             onDetect={onDetect} isDetecting={isDetecting}
+            editableSlug={editableSlug} onSlugChange={onSlugChange} isSavingSlug={isSavingSlug}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>

@@ -223,6 +223,7 @@ export interface PDFFormField {
 export interface PDFForm {
     id: string;
     name: string;
+    slug: string;
     originalFileName: string;
     storagePath: string;
     downloadUrl: string;

@@ -100,8 +100,15 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 }
 
 export async function createPdfForm(data: any, userId: string) {
+  const slug = data.name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '');
+
   const docRef = await adminDb.collection('pdfs').add({
     ...data,
+    slug,
     status: 'draft',
     fields: [],
     createdBy: userId,
@@ -130,6 +137,29 @@ export async function updatePdfFormName(pdfId: string, newName: string) {
   revalidatePath(`/admin/pdfs/${pdfId}/edit`);
   revalidatePath('/admin/pdfs');
   return { success: true };
+}
+
+export async function updatePdfFormSlug(pdfId: string, newSlug: string) {
+  const cleanSlug = newSlug.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  
+  if (cleanSlug.length < 3) {
+    return { error: 'Slug must be at least 3 characters.' };
+  }
+
+  // Check for uniqueness
+  const querySnap = await adminDb.collection('pdfs').where('slug', '==', cleanSlug).limit(1).get();
+  if (!querySnap.empty && querySnap.docs[0].id !== pdfId) {
+    return { error: 'This slug is already in use by another document.' };
+  }
+
+  await adminDb.collection('pdfs').doc(pdfId).update({
+    slug: cleanSlug,
+    updatedAt: new Date().toISOString(),
+  });
+
+  revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+  revalidatePath('/admin/pdfs');
+  return { success: true, slug: cleanSlug };
 }
 
 export async function updatePdfFormMapping(pdfId: string, data: any) {
