@@ -322,23 +322,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -546,26 +546,24 @@ const PropertiesSidebar = ({
                     </Popover>
 
                     {hasSuggestions ? (
-                        <>
-                            <TooltipProvider>
-                                Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={acceptAllSuggestions}>
-                                            <Check className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Accept All AI Suggestions</p></TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={rejectAllSuggestions}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent><p>Reject All AI Suggestions</p></TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                        </>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-50" onClick={acceptAllSuggestions}>
+                                        <Check className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Accept All AI Suggestions</p></TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={rejectAllSuggestions}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent><p>Reject All AI Suggestions</p></TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     ) : (
                         <TooltipProvider>
                             <Tooltip>
