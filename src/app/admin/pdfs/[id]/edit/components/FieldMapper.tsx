@@ -25,13 +25,13 @@ import {
     AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField, MediaAsset } from '@/lib/types';
-import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
+import type { PDFForm, PDFFormField } from '@/lib/types';
+import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor, closestCenter } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
@@ -333,23 +333,23 @@ const ResizableField = ({
                                     </Tooltip>
                                     <DropdownMenuContent className="w-auto p-1" align="center">
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned (Top Line)
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned (Left Line)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H (Vert. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align (Bottom Line)
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align (Right Line)
                                         </DropdownMenuItem>
                                         <div className="h-px bg-border my-1" />
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top (Left Line)
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top (Top Line)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V (Horiz. Mid)
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom (Right Line)
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom (Bottom Line)
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -464,6 +464,46 @@ const ResizableField = ({
     );
 };
 
+const SortableFieldListItem = ({ field, isSelected, onSelect, onRemove, isSuggestion }: { 
+    field: PDFFormField; 
+    isSelected: boolean; 
+    onSelect: (e: React.MouseEvent) => void; 
+    onRemove: () => void;
+    isSuggestion?: boolean;
+}) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id });
+    const Icon = fieldIcons[field.type];
+    
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center gap-1">
+            <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground">
+                <GripVertical className="h-3 w-3" />
+            </button>
+            <button 
+                onClick={onSelect}
+                className={cn(
+                    "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", 
+                    isSelected && 'bg-muted ring-1 ring-primary'
+                )}
+            >
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                <span className={cn("truncate text-sm flex-1", isSuggestion && "text-green-600 font-medium")}>
+                    {field.label || field.id}
+                </span>
+                {field.required && <span className="text-destructive font-bold text-lg">*</span>}
+            </button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+                <Trash2 className="h-4 w-4" />
+            </Button>
+        </div>
+    );
+};
+
 interface PropertiesSidebarProps {
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
@@ -515,6 +555,19 @@ const PropertiesSidebar = ({
     const newOptions = [...selectedField.options];
     newOptions[index] = value;
     updateField(selectedField.id, { options: newOptions });
+  };
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id);
+        const newIndex = items.findIndex((i) => i.id === over?.id);
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   return (
@@ -603,20 +656,22 @@ const PropertiesSidebar = ({
               </CardHeader>
               <CardContent className="px-2 pb-2">
                   <ScrollArea className="h-48 px-2">
-                      <div className="space-y-1">
-                          {fields.map((field) => {
-                              const Icon = fieldIcons[field.type];
-                              const isSel = selectedFieldIds.includes(field.id);
-                              return (
-                                  <button key={field.id} onClick={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
-                                      className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", isSel && 'bg-muted ring-1 ring-primary')}>
-                                      <Icon className="h-4 w-4 text-muted-foreground" />
-                                      <span className={cn("truncate text-sm flex-1", field.isSuggestion && "text-green-600 font-medium")}>{field.label || field.id}</span>
-                                      {field.required && <span className="text-destructive font-bold text-lg">*</span>}
-                                  </button>
-                              );
-                          })}
-                      </div>
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                          <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
+                              <div className="space-y-1">
+                                  {fields.map((field) => (
+                                      <SortableFieldListItem 
+                                          key={field.id}
+                                          field={field}
+                                          isSelected={selectedFieldIds.includes(field.id)}
+                                          onSelect={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
+                                          onRemove={() => removeField(field.id)}
+                                          isSuggestion={field.isSuggestion}
+                                      />
+                                  ))}
+                              </div>
+                          </SortableContext>
+                      </DndContext>
                   </ScrollArea>
               </CardContent>
             </Card>
