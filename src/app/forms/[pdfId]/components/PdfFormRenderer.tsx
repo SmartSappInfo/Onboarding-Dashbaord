@@ -221,6 +221,20 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 />
              );
              break;
+        case 'dropdown':
+            fieldElement = (
+                <select
+                    {...register(field.id)}
+                    disabled={isSubmitting}
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 text-left"
+                >
+                    <option value="">{field.placeholder || 'Select...'}</option>
+                    {(field.options || []).map((opt, i) => (
+                        <option key={i} value={opt}>{opt}</option>
+                    ))}
+                </select>
+            );
+            break;
         case 'signature':
             fieldElement = (
                  <button

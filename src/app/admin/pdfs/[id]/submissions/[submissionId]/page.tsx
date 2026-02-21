@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -293,7 +294,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                     <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
                                     <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">
-                                        {field.type === 'date' ? format(new Date(value), 'PPP') : value}
+                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                                     </span>
                                 )}
                             </div>

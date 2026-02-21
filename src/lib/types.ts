@@ -209,7 +209,7 @@ export interface Activity {
 
 export interface PDFFormField {
   id: string;
-  type: 'text' | 'signature' | 'date';
+  type: 'text' | 'signature' | 'date' | 'dropdown';
   label?: string;
   placeholder?: string;
   pageNumber: number;
@@ -217,6 +217,7 @@ export interface PDFFormField {
   dimensions: { width: number; height: number };
   fontSize?: number;
   required?: boolean;
+  options?: string[];
 }
     
 export interface PDFForm {

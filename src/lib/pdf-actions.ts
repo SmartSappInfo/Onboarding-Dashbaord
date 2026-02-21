@@ -59,11 +59,11 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             const fieldHeight = (field.dimensions.height / 100) * pageHeight;
             const fieldWidth = (field.dimensions.width / 100) * pageWidth;
 
-            if (field.type === 'text' || field.type === 'date') {
+            if (field.type === 'text' || field.type === 'date' || field.type === 'dropdown') {
                 let displayValue = String(rawValue);
                 if (Array.isArray(rawValue)) displayValue = rawValue.join(', ');
                 
-                if (!displayValue || displayValue === 'undefined') continue;
+                if (!displayValue || displayValue === 'undefined' || displayValue === 'null') continue;
 
                 const fontSize = field.fontSize || 11;
                 page.drawText(displayValue, {

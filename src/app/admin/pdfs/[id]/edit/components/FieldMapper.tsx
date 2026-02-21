@@ -23,7 +23,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -61,6 +61,7 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   text: Text,
   signature: Signature,
   date: Calendar,
+  dropdown: ChevronDownSquare,
 };
 
 function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom }: {
@@ -270,9 +271,18 @@ const ResizableField = ({
             <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
             
             {field.placeholder && (
-                <span className="text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none">
+                <span className={cn(
+                    "text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none",
+                    field.type === 'signature' ? "text-center w-full" : "text-left"
+                )}>
                     {field.placeholder}
                 </span>
+            )}
+
+            {field.type === 'dropdown' && (
+                <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
+                    <ChevronDown className="h-3 w-3" />
+                </div>
             )}
 
             {/* Contextual Batch Action Toolbar */}
@@ -290,23 +300,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -378,7 +388,7 @@ const ResizableField = ({
                                 </TooltipTrigger><TooltipContent><p>Change Type</p></TooltipContent></Tooltip>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
-                                {(['text', 'signature', 'date'] as const).map(type => {
+                                {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
                                     const Icon = fieldIcons[type];
                                     return (
                                         <Button key={type} variant="ghost" className="w-full justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
@@ -450,6 +460,25 @@ const PropertiesSidebar = ({
   const rejectAllSuggestions = () => setFields(prev => prev.filter(f => !f.isSuggestion));
   const deleteAllFields = () => { setFields([]); setSelectedFieldIds([]); setIsDeleteDialogOpen(false); };
 
+  const handleAddOption = () => {
+    if (!selectedField) return;
+    const currentOptions = selectedField.options || [];
+    updateField(selectedField.id, { options: [...currentOptions, `Option ${currentOptions.length + 1}`] });
+  };
+
+  const handleRemoveOption = (index: number) => {
+    if (!selectedField || !selectedField.options) return;
+    const newOptions = selectedField.options.filter((_, i) => i !== index);
+    updateField(selectedField.id, { options: newOptions });
+  };
+
+  const handleOptionChange = (index: number, value: string) => {
+    if (!selectedField || !selectedField.options) return;
+    const newOptions = [...selectedField.options];
+    newOptions[index] = value;
+    updateField(selectedField.id, { options: newOptions });
+  };
+
   return (
     <>
       <ScrollArea className="flex-grow">
@@ -477,6 +506,10 @@ const PropertiesSidebar = ({
                                 <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('date')}>
                                     <Calendar className="mr-2 h-4 w-4" />
                                     <span>Date Field</span>
+                                </Button>
+                                <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('dropdown')}>
+                                    <ChevronDownSquare className="mr-2 h-4 w-4" />
+                                    <span>Dropdown Field</span>
                                 </Button>
                             </div>
                         </PopoverContent>
@@ -571,6 +604,35 @@ const PropertiesSidebar = ({
                             <Label className="text-xs">Type</Label>
                             <Input value={selectedField.type} disabled className="capitalize h-8 text-sm" />
                         </div>
+
+                        {selectedField.type === 'dropdown' && (
+                            <div className="space-y-2 pt-2 border-t">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-xs font-semibold">Options</Label>
+                                    <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={handleAddOption}>
+                                        <Plus className="mr-1 h-3 w-3" /> Add Option
+                                    </Button>
+                                </div>
+                                <div className="space-y-2">
+                                    {(selectedField.options || []).map((option, idx) => (
+                                        <div key={idx} className="flex items-center gap-1">
+                                            <Input 
+                                                value={option} 
+                                                onChange={(e) => handleOptionChange(idx, e.target.value)}
+                                                className="h-7 text-xs"
+                                            />
+                                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveOption(idx)}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {(!selectedField.options || selectedField.options.length === 0) && (
+                                        <p className="text-[10px] text-muted-foreground italic text-center py-2">No options added.</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                          <div className="flex items-center justify-between rounded-lg border p-3">
                             <Label htmlFor={`required-toggle-${selectedField.id}`} className="text-xs">Required</Label>
                             <Switch id={`required-toggle-${selectedField.id}`} checked={!!selectedField.required} onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })} />
@@ -773,6 +835,7 @@ export default function FieldMapper({
     const newField: LocalPDFFormField = {
       id: `field_${Date.now()}`, label: `New ${type} field`, type, pageNumber: 1,
       position: { x: 5, y: 5 }, dimensions: { width: 20, height: 5 }, required: false,
+      options: type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined,
     };
     setFields(prev => [...prev, newField]);
     setSelectedFieldIds([newField.id]);
@@ -1025,7 +1088,7 @@ export default function FieldMapper({
                             anchorFieldId={anchorFieldId}
                             onSelect={handleSelect}
                             onUpdate={updateField} onDelete={removeField} onDuplicate={bulkDuplicate}
-                            onChangeType={(id, type) => setFields(prev => prev.map(f => f.id === id ? {...f, type} : f))} 
+                            onChangeType={(id, type) => setFields(prev => prev.map(f => f.id === id ? {...f, type, options: type === 'dropdown' ? (f.options || ['Option 1', 'Option 2']) : undefined} : f))} 
                             alignFields={alignFields}
                             distributeFields={distributeFields}
                             bulkDuplicate={bulkDuplicate}
@@ -1069,6 +1132,7 @@ export default function FieldMapper({
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('text')}><Text className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('signature')}><Signature className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('date')}><Calendar className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Dropdown</p></TooltipContent></Tooltip>
                       <div className="w-px h-6 bg-border mx-1" />
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
