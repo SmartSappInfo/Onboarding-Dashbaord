@@ -261,12 +261,16 @@ const ResizableField = ({
                 e.stopPropagation(); 
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
-            className={`absolute border-2 ${borderColorClass} transition-colors flex items-center justify-center overflow-hidden`}
+            className={cn(
+                "absolute border-2 transition-colors flex overflow-hidden",
+                borderColorClass,
+                field.type === 'signature' ? "items-center justify-center" : "items-start justify-start p-1"
+            )}
         >
             <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
             
             {field.placeholder && (
-                <span className="text-muted-foreground italic text-[10px] sm:text-xs p-1 truncate z-10 select-none">
+                <span className="text-muted-foreground italic text-[10px] sm:text-xs z-10 select-none">
                     {field.placeholder}
                 </span>
             )}

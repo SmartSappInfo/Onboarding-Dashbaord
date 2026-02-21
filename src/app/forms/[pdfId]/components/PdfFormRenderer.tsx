@@ -207,7 +207,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {...register(field.id)}
                     placeholder={field.placeholder}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60"
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60 text-left align-top"
                 />
             );
             break;
@@ -217,7 +217,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     type="date" 
                     {...register(field.id)}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80" 
+                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 text-left align-top" 
                 />
              );
              break;
@@ -232,7 +232,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {value ? (
                         <img src={value} alt="Signature" className="w-full h-full object-contain" />
                     ) : (
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase">{field.placeholder || 'Sign Here'}</span>
+                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase text-center">{field.placeholder || 'Sign Here'}</span>
                     )}
                 </button>
             );
