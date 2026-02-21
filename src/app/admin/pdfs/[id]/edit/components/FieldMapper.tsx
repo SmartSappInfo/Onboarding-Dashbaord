@@ -260,17 +260,17 @@ const ResizableField = ({
                 e.stopPropagation(); 
                 onSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey); 
             }} 
-            className={`absolute border-2 ${borderColorClass} transition-colors group/field`}
+            className={`absolute border-2 ${borderColorClass} transition-colors`}
         >
             <div {...listeners} className="w-full h-full cursor-grab" onMouseDown={(e) => e.stopPropagation()}></div>
             
-            {/* Batch Action Toolbar (Multi-Select) */}
+            {/* Contextual Batch Action Toolbar */}
             {isAnchor && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
                     <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm">
                         <CardContent className="p-1 flex items-center gap-1">
                             <TooltipProvider>
-                                {/* Alignment Dropdown */}
+                                {/* Alignment Group */}
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -279,28 +279,28 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
 
-                                {/* Distribution Dropdown */}
+                                {/* Distribution Group */}
                                 <Popover>
                                     <PopoverTrigger asChild>
                                         <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -330,7 +330,7 @@ const ResizableField = ({
                 </div>
             )}
 
-            {/* Single Select Action Bar */}
+            {/* Single Select Handles */}
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md">
@@ -426,6 +426,7 @@ const PropertiesSidebar = ({
               <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
+                    {/* Add Field Group Dropdown */}
                     <Popover>
                         <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
@@ -749,7 +750,6 @@ export default function FieldMapper({
     setSelectedFieldIds(newElements.map(n => n.id));
   }, [fields, selectedFieldIds, setFields]);
 
-  // Alignment functions
   const alignFields = React.useCallback((type: 'left' | 'right' | 'top' | 'bottom' | 'center-h' | 'center-v') => {
     const sel = fields.filter(f => selectedFieldIds.includes(f.id));
     if (sel.length < 2) return;
@@ -760,7 +760,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Vertical Middle Axis (mapping to AlignCenterHorizontal logic)
+        case 'center-v':
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
@@ -772,7 +772,7 @@ export default function FieldMapper({
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Horizontal Middle Axis (mapping to AlignCenterVertical logic)
+        case 'center-h':
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
@@ -781,11 +781,9 @@ export default function FieldMapper({
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
     }
-    // Release selection
     setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields]);
 
-  // Distribution functions
   const distributeFields = React.useCallback((type: 'horizontal' | 'vertical') => {
     const sel = fields.filter(f => selectedFieldIds.includes(f.id));
     if (sel.length < 3) {
@@ -798,60 +796,43 @@ export default function FieldMapper({
         const minX = sorted[0].position.x;
         const lastItem = sorted[sorted.length - 1];
         const maxX = lastItem.position.x + lastItem.dimensions.width;
-        
         const totalItemsWidth = sorted.reduce((acc, f) => acc + f.dimensions.width, 0);
         const totalSpace = maxX - minX;
-        const totalGap = totalSpace - totalItemsWidth;
-        const gap = totalGap / (sorted.length - 1);
-
+        const gap = (totalSpace - totalItemsWidth) / (sorted.length - 1);
         let currentX = minX;
         const newPositions = new Map<string, number>();
         sorted.forEach((f) => {
             newPositions.set(f.id, currentX);
             currentX += f.dimensions.width + gap;
         });
-
         setFields(prev => prev.map(f => newPositions.has(f.id) ? { ...f, position: { ...f.position, x: newPositions.get(f.id)! } } : f));
     } else {
         const sorted = [...sel].sort((a, b) => a.position.y - b.position.y);
         const minY = sorted[0].position.y;
         const lastItem = sorted[sorted.length - 1];
         const maxY = lastItem.position.y + lastItem.dimensions.height;
-        
         const totalItemsHeight = sorted.reduce((acc, f) => acc + f.dimensions.height, 0);
         const totalSpace = maxY - minY;
-        const totalGap = totalSpace - totalItemsHeight;
-        const gap = totalGap / (sorted.length - 1);
-
+        const gap = (totalSpace - totalItemsHeight) / (sorted.length - 1);
         let currentY = minY;
         const newPositions = new Map<string, number>();
         sorted.forEach((f) => {
             newPositions.set(f.id, currentY);
             currentY += f.dimensions.height + gap;
         });
-
         setFields(prev => prev.map(f => newPositions.has(f.id) ? { ...f, position: { ...f.position, y: newPositions.get(f.id)! } } : f));
     }
-    // Release selection
     setSelectedFieldIds([]);
   }, [fields, selectedFieldIds, setFields, toast]);
 
-  // Keydown handler for nudge and delete
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
         if (selectedFieldIds.length === 0) return;
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-        if (e.key === 'Delete' || e.key === 'Backspace') {
-            e.preventDefault();
-            bulkRemove();
-            return;
-        }
-
+        if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); bulkRemove(); return; }
         const nudge = e.shiftKey ? 1 : 0.1;
         const nudgeX = e.key === 'ArrowLeft' ? -nudge : e.key === 'ArrowRight' ? nudge : 0;
         const nudgeY = e.key === 'ArrowUp' ? -nudge : e.key === 'ArrowDown' ? nudge : 0;
-
         if (nudgeX !== 0 || nudgeY !== 0) {
             e.preventDefault();
             setFields(prev => prev.map(f => {
@@ -881,7 +862,6 @@ export default function FieldMapper({
     const { width, height } = pageContainer.getBoundingClientRect();
     const dX = (delta.x / width) * 100;
     const dY = (delta.y / height) * 100;
-
     setFields(prev => prev.map(f => {
         if (selectedFieldIds.includes(f.id) && f.pageNumber === fieldToMove.pageNumber) {
             return {
@@ -915,79 +895,54 @@ export default function FieldMapper({
   }, []);
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
-    
-    // If target is a field container, don't start marquee
+    if (e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[data-field-id]')) return;
-
     const viewport = viewportRef.current;
     if (!viewport) return;
-
     const rect = viewport.getBoundingClientRect();
     const x = e.clientX - rect.left + viewport.scrollLeft;
     const y = e.clientY - rect.top + viewport.scrollTop;
-
     setMarquee({ startX: x, startY: y, endX: x, endY: y });
-
-    // Clear selection on new click unless modifier keys are held
-    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-      setSelectedFieldIds([]);
-    }
+    if (!e.shiftKey && !e.ctrlKey && !e.metaKey) { setSelectedFieldIds([]); }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!marquee) return;
-
     const viewport = viewportRef.current;
     if (!viewport) return;
-
     const rect = viewport.getBoundingClientRect();
     const x = e.clientX - rect.left + viewport.scrollLeft;
     const y = e.clientY - rect.top + viewport.scrollTop;
-
     setMarquee(prev => prev ? { ...prev, endX: x, endY: y } : null);
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
     if (!marquee) return;
-
     const mLeft = Math.min(marquee.startX, marquee.endX);
     const mTop = Math.min(marquee.startY, marquee.endY);
     const mRight = Math.max(marquee.startX, marquee.endX);
     const mBottom = Math.max(marquee.startY, marquee.endY);
-
-    // Don't do anything for tiny clicks
     if (Math.abs(marquee.endX - marquee.startX) < 5 && Math.abs(marquee.endY - marquee.startY) < 5) {
         setMarquee(null);
         return;
     }
-
     const viewport = viewportRef.current;
     const newSelectedIds = e.shiftKey || e.ctrlKey || e.metaKey ? [...selectedFieldIds] : [];
-
     if (viewport) {
         const fieldElements = viewport.querySelectorAll('[data-field-id]');
         fieldElements.forEach(el => {
             const id = el.getAttribute('data-field-id');
             if (!id) return;
-
             const fRect = el.getBoundingClientRect();
             const vRect = viewport.getBoundingClientRect();
-            
-            // Calculate coordinates relative to the same reference as the marquee
             const fLeft = fRect.left - vRect.left + viewport.scrollLeft;
             const fTop = fRect.top - vRect.top + viewport.scrollTop;
             const fRight = fLeft + fRect.width;
             const fBottom = fTop + fRect.height;
-
             const isOverlapping = !(fLeft > mRight || fRight < mLeft || fTop > mBottom || fBottom < mTop);
-
-            if (isOverlapping && !newSelectedIds.includes(id)) {
-                newSelectedIds.push(id);
-            }
+            if (isOverlapping && !newSelectedIds.includes(id)) { newSelectedIds.push(id); }
         });
     }
-
     setSelectedFieldIds(newSelectedIds);
     setMarquee(null);
   };
@@ -996,17 +951,11 @@ export default function FieldMapper({
     <div className="flex h-full overflow-hidden bg-muted/30">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea 
-                className="h-full w-full" 
-                onWheel={handleWheel} 
-                viewportRef={viewportRef}
-              >
+              <ScrollArea className="h-full w-full" onWheel={handleWheel} viewportRef={viewportRef}>
                 <div 
                     className="p-12 pb-32 flex flex-col items-center min-w-full relative" 
                     style={{ minWidth: 'fit-content' }}
-                    onMouseDown={handleMouseDown}
-                    onMouseMove={handleMouseMove}
-                    onMouseUp={handleMouseUp}
+                    onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
                     onMouseLeave={() => setMarquee(null)}
                 >
                     {!pdfDoc && Array.from({ length: 3 }).map((_, i) => (
@@ -1028,7 +977,6 @@ export default function FieldMapper({
                             zoom={displayZoom} 
                         />
                     ))}
-
                     {marquee && (
                         <div 
                             className="absolute border border-primary bg-primary/10 pointer-events-none z-50"
@@ -1050,8 +998,7 @@ export default function FieldMapper({
                       <CardContent className="p-3 space-y-2">
                           <div className="flex items-center justify-between">
                               <span className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1.5">
-                                  <Sparkles className="h-3 w-3 animate-pulse" />
-                                  AI analyzing
+                                  <Sparkles className="h-3 w-3 animate-pulse" /> AI analyzing
                               </span>
                               <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                           </div>
@@ -1060,29 +1007,21 @@ export default function FieldMapper({
                       </CardContent>
                   </Card>
               )}
-
               <Card className="shadow-2xl border-primary/20 pointer-events-auto">
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('text')}><Text className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Text</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('signature')}><Signature className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Signature</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={() => addField('date')}><Calendar className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Add Date</p></TooltipContent></Tooltip>
-                      
                       <div className="w-px h-6 bg-border mx-1" />
-                      
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
-                      
                       <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-                      
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomOut}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
                       <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground">{Math.round(displayZoom * 100)}%</span>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomIn}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
-                      
                       <div className="md:hidden flex items-center">
-                        <Tooltip><TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-4 w-4" /></Button>
-                        </TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
                 </CardContent>
@@ -1108,7 +1047,7 @@ export default function FieldMapper({
                         isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
                         password={password} setPassword={setPassword} 
                         passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-                        onDetect={handleDetectFields} isDetecting={isDetecting}
+                        onDetect={onDetect} isDetecting={isDetecting}
                     />
                     <div className="p-4 border-t flex flex-col gap-2">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
@@ -1144,7 +1083,7 @@ export default function FieldMapper({
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-            onDetect={handleDetectFields} isDetecting={isDetecting}
+            onDetect={onDetect} isDetecting={isDetecting}
           />
           <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
