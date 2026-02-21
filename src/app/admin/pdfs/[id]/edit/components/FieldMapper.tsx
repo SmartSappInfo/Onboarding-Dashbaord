@@ -322,23 +322,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
                                             <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
                                             <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -399,7 +399,7 @@ const ResizableField = ({
                             </Tooltip>
                         </TooltipProvider>
                         
-                        <Popover onOpenChange={(e) => e.stopPropagation?.()}>
+                        <Popover>
                             <PopoverTrigger asChild>
                                 <TooltipProvider>
                                     <Tooltip>
@@ -410,16 +410,18 @@ const ResizableField = ({
                                     </Tooltip>
                                 </TooltipProvider>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-1" onClick={(e) => e.stopPropagation()}>
-                                {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
-                                    const Icon = fieldIcons[type];
-                                    return (
-                                        <Button key={type} variant="ghost" className="w-full justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
-                                            <Icon className="mr-2 h-4 w-4" />
-                                            <span className="capitalize">{type}</span>
-                                        </Button>
-                                    );
-                                })}
+                            <PopoverContent className="w-auto p-1" side="top">
+                                <div className="flex flex-col gap-1">
+                                    {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
+                                        const Icon = fieldIcons[type];
+                                        return (
+                                            <Button key={type} variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
+                                                <Icon className="mr-2 h-4 w-4" />
+                                                <span className="capitalize">{type}</span>
+                                            </Button>
+                                        );
+                                    })}
+                                </div>
                             </PopoverContent>
                         </Popover>
                         
@@ -644,13 +646,8 @@ const PropertiesSidebar = ({
                         </div>
 
                         {selectedField.type === 'dropdown' && (
-                            <div className="space-y-2 pt-2 border-t">
-                                <div className="flex items-center justify-between">
-                                    <Label className="text-xs font-semibold">Options</Label>
-                                    <Button variant="ghost" size="sm" className="h-7 text-[10px]" onClick={handleAddOption}>
-                                        <Plus className="mr-1 h-3 w-3" /> Add Option
-                                    </Button>
-                                </div>
+                            <div className="space-y-3 pt-2 border-t">
+                                <Label className="text-xs font-semibold">Options</Label>
                                 <div className="space-y-2">
                                     {(selectedField.options || []).map((option, idx) => (
                                         <div key={idx} className="flex items-center gap-1">
@@ -668,6 +665,9 @@ const PropertiesSidebar = ({
                                         <p className="text-[10px] text-muted-foreground italic text-center py-2">No options added.</p>
                                     )}
                                 </div>
+                                <Button type="button" variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={handleAddOption}>
+                                    <Plus className="mr-1 h-3 w-3" /> Add Option
+                                </Button>
                             </div>
                         )}
 
