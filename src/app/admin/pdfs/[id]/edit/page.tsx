@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -38,6 +37,8 @@ export default function EditPdfPage() {
   const [editableTitle, setEditableTitle] = React.useState('');
   const [editableSlug, setEditableSlug] = React.useState('');
   const [isSavingSlug, setIsSavingSlug] = React.useState(false);
+  const [isEditingSlug, setIsEditingSlug] = React.useState(false);
+  const [tempSlug, setTempSlug] = React.useState('');
 
   // Undo/Redo Logic
   const {
@@ -69,6 +70,7 @@ export default function EditPdfPage() {
       setPasswordProtected(pdf.passwordProtected || false);
       setEditableTitle(pdf.name);
       setEditableSlug(pdf.slug || pdf.id);
+      setTempSlug(pdf.slug || pdf.id);
     }
   }, [pdf, resetHistory]);
 
@@ -135,15 +137,19 @@ export default function EditPdfPage() {
     setIsSaving(false);
   };
 
-  const handleSlugSave = async (newSlug: string) => {
-    if (!pdf || newSlug === pdf.slug) return;
+  const handleSlugSave = async () => {
+    if (!pdf || tempSlug === pdf.slug) {
+        setIsEditingSlug(false);
+        return;
+    }
     setIsSavingSlug(true);
-    const result = await updatePdfFormSlug(pdfId, newSlug);
+    const result = await updatePdfFormSlug(pdfId, tempSlug);
     if (result.success) {
         setEditableSlug(result.slug!);
         toast({ title: 'URL Slug updated!' });
+        setIsEditingSlug(false);
     } else {
-        setEditableSlug(pdf.slug || pdf.id);
+        setTempSlug(pdf.slug || pdf.id);
         toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
     }
     setIsSavingSlug(false);
@@ -237,9 +243,8 @@ export default function EditPdfPage() {
       );
   }
 
-  const publicUrl = typeof window !== 'undefined' 
-    ? `${window.location.origin}/forms/${editableSlug}` 
-    : `/forms/${editableSlug}`;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const publicUrl = `${origin}/forms/${editableSlug}`;
 
   return (
     <div className="h-full overflow-hidden flex flex-col">
@@ -267,20 +272,37 @@ export default function EditPdfPage() {
                     </Button>
                   </div>
                 )}
-                {!isEditingTitle && (
-                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-[-2px]">
-                        <a 
-                            href={publicUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className="hover:underline truncate max-w-[200px] sm:max-w-md"
-                        >
-                            {publicUrl}
-                        </a>
+                
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-[-2px]">
+                    <div className="flex items-center gap-0.5 truncate">
+                        <span>{origin}/forms/</span>
+                        {isEditingSlug ? (
+                            <div className="flex items-center gap-1">
+                                <Input 
+                                    value={tempSlug} 
+                                    onChange={e => setTempSlug(e.target.value)} 
+                                    onBlur={handleSlugSave}
+                                    onKeyDown={e => { if (e.key === 'Enter') handleSlugSave(); if (e.key === 'Escape') setIsEditingSlug(false);}}
+                                    className="h-5 text-[10px] py-0 px-1 w-32"
+                                    autoFocus
+                                />
+                                {isSavingSlug && <Loader2 className="h-3 w-3 animate-spin" />}
+                            </div>
+                        ) : (
+                            <button 
+                                onClick={() => setIsEditingSlug(true)}
+                                className="font-medium text-foreground hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                                {editableSlug}
+                                <Pencil className="h-2 w-2 opacity-0 group-hover:opacity-100" />
+                            </button>
+                        )}
+                    </div>
+                    {!isEditingSlug && (
                         <Button 
                             variant="ghost" 
                             size="icon" 
-                            className="h-4 w-4 hover:text-primary transition-colors" 
+                            className="h-4 w-4 hover:text-primary transition-colors shrink-0" 
                             onClick={() => {
                                 navigator.clipboard.writeText(publicUrl);
                                 toast({ title: 'Link Copied', description: 'Public form URL copied to clipboard.' });
@@ -288,8 +310,8 @@ export default function EditPdfPage() {
                         >
                             <Copy className="h-3 w-3" />
                         </Button>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         </div>
         <div className="flex items-center gap-2">
@@ -328,9 +350,6 @@ export default function EditPdfPage() {
             redo={handleRedo}
             canUndo={canUndo}
             canRedo={canRedo}
-            editableSlug={editableSlug}
-            onSlugChange={handleSlugSave}
-            isSavingSlug={isSavingSlug}
         />
       </div>
 
