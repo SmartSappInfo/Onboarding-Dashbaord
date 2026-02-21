@@ -322,23 +322,23 @@ const ResizableField = ({
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-1 flex flex-col gap-1" align="center">
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Left Aligned
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Align Horizontally H
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Right Align
                                         </Button>
                                         <div className="h-px bg-border my-1" />
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Align to Top
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Vertical Align V
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </Button>
                                         <Button variant="ghost" className="justify-start px-2 h-8 text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Align Bottom
                                         </Button>
                                     </PopoverContent>
                                 </Popover>
@@ -386,9 +386,7 @@ const ResizableField = ({
                                 </TooltipTrigger>
                                 <TooltipContent><p>Edit Placeholder</p></TooltipContent>
                             </Tooltip>
-                        </TooltipProvider>
 
-                        <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); onDuplicate(field.id); }}>
@@ -397,35 +395,31 @@ const ResizableField = ({
                                 </TooltipTrigger>
                                 <TooltipContent><p>Duplicate</p></TooltipContent>
                             </Tooltip>
-                        </TooltipProvider>
-                        
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
+                            
+                            <Popover>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <PopoverTrigger asChild>
                                             <Button variant="ghost" size="icon" className="h-7 w-7"><Replace className="h-4 w-4" /></Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent><p>Change Type</p></TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-1" side="top">
-                                <div className="flex flex-col gap-1">
-                                    {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
-                                        const Icon = fieldIcons[type];
-                                        return (
-                                            <Button key={type} variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
-                                                <Icon className="mr-2 h-4 w-4" />
-                                                <span className="capitalize">{type}</span>
-                                            </Button>
-                                        );
-                                    })}
-                                </div>
-                            </PopoverContent>
-                        </Popover>
-                        
-                        <TooltipProvider>
+                                        </PopoverTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent><p>Change Type</p></TooltipContent>
+                                </Tooltip>
+                                <PopoverContent className="w-auto p-1" side="top">
+                                    <div className="flex flex-col gap-1">
+                                        {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
+                                            const Icon = fieldIcons[type];
+                                            return (
+                                                <Button key={type} variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => onChangeType(field.id, type)}>
+                                                    <Icon className="mr-2 h-4 w-4" />
+                                                    <span className="capitalize">{type}</span>
+                                                </Button>
+                                            );
+                                        })}
+                                    </div>
+                                </PopoverContent>
+                            </Popover>
+                            
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); onDelete(field.id); }}>
@@ -1165,16 +1159,16 @@ export default function FieldMapper({
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
                       <Popover>
-                          <PopoverTrigger asChild>
-                              <Tooltip>
-                                  <TooltipTrigger asChild>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <PopoverTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
                                           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent><p>Add Field</p></TooltipContent>
-                              </Tooltip>
-                          </PopoverTrigger>
+                                  </PopoverTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent><p>Add Field</p></TooltipContent>
+                          </Tooltip>
                           <PopoverContent className="w-48 p-1" align="center" side="top">
                               <div className="flex flex-col gap-1">
                                   <Button variant="ghost" className="justify-start px-2 h-9 text-xs" onClick={() => addField('text')}>
