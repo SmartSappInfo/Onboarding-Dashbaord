@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -631,7 +630,17 @@ const PropertiesSidebar = ({
                         </div>
                         <div className="space-y-2">
                             <Label className="text-xs">Type</Label>
-                            <Input value={selectedField.type} disabled className="capitalize h-8 text-sm" />
+                            <Select value={selectedField.type} onValueChange={(value: PDFFormField['type']) => updateField(selectedField.id, { type: value, options: value === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
+                                <SelectTrigger className="h-8 text-sm capitalize">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="text">Text</SelectItem>
+                                    <SelectItem value="signature">Signature</SelectItem>
+                                    <SelectItem value="date">Date</SelectItem>
+                                    <SelectItem value="dropdown">Dropdown</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
 
                         {selectedField.type === 'dropdown' && (
