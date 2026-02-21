@@ -259,7 +259,6 @@ const ResizableField = ({
         transform: CSS.Translate.toString(transform), zIndex: isSelected ? 10 : (field.isSuggestion ? 5 : 1),
     };
 
-    // Calculate dynamic font size based on zoom
     const scaledFontSize = `${Math.max(8, 12 * zoom)}px`;
 
     const borderColorClass = isSelected ? 'border-primary' : field.isSuggestion ? 'border-green-500' : 'border-dashed border-primary/50 hover:border-primary';
@@ -320,13 +319,11 @@ const ResizableField = ({
                 </div>
             )}
 
-            {/* Contextual Batch Action Toolbar (Top-most selected field) */}
             {isAnchor && (
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center gap-2 pointer-events-auto animate-in fade-in zoom-in-95">
                     <Card className="shadow-2xl border-primary/40 bg-background/95 backdrop-blur-sm" onMouseDown={(e) => e.stopPropagation()}>
                         <CardContent className="p-1 flex items-center gap-1">
                             <TooltipProvider>
-                                {/* Alignment Group Dropdown */}
                                 <DropdownMenu>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -340,28 +337,27 @@ const ResizableField = ({
                                     </Tooltip>
                                     <DropdownMenuContent className="w-auto p-1" align="center" side="top">
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('left')}>
-                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned (Top Line Icon)
+                                            <AlignStartHorizontal className="mr-2 h-4 w-4" /> Left Aligned
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-h')}>
-                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H (Horiz. Mid)
+                                            <AlignCenterHorizontal className="mr-2 h-4 w-4" /> Align Horizontally H
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('right')}>
-                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align (Bottom Line Icon)
+                                            <AlignEndHorizontal className="mr-2 h-4 w-4" /> Right Align
                                         </DropdownMenuItem>
                                         <div className="h-px bg-border my-1" />
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('top')}>
-                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top (Left Line Icon)
+                                            <AlignStartVertical className="mr-2 h-4 w-4" /> Align to Top
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('center-v')}>
-                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V (Vert. Mid)
+                                            <AlignCenterVertical className="mr-2 h-4 w-4" /> Vertical Align V
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-xs" onClick={() => alignFields('bottom')}>
-                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom (Right Line Icon)
+                                            <AlignEndVertical className="mr-2 h-4 w-4" /> Align Bottom
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
 
-                                {/* Distribution Group Dropdown */}
                                 <DropdownMenu>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -396,7 +392,6 @@ const ResizableField = ({
                 </div>
             )}
 
-            {/* Single Select Handles & Properties */}
             {isSelected && showHandles && (
                 <>
                     <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-20 flex gap-1 rounded-lg border bg-background p-1 shadow-md" onMouseDown={(e) => e.stopPropagation()}>
@@ -564,6 +559,20 @@ const PropertiesSidebar = ({
     updateField(selectedField.id, { options: newOptions });
   };
 
+  const handleOptionPaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData('text');
+    const newItems = pastedText.split(/[\n\t,]+/).map(item => item.trim()).filter(item => item !== "");
+    
+    if (newItems.length > 1) {
+        e.preventDefault();
+        if (!selectedField || !selectedField.options) return;
+        
+        const currentOptions = [...selectedField.options];
+        currentOptions.splice(index, 1, ...newItems);
+        updateField(selectedField.id, { options: currentOptions });
+    }
+  };
+
   const sensors = useSensors(useSensor(PointerSensor));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -657,7 +666,7 @@ const PropertiesSidebar = ({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>Delete All Fields</p></TooltipContent>
-                        </Tooltip>
+                        </TooltipProvider>
                     </TooltipProvider>
                 </div>
               </CardHeader>
@@ -720,13 +729,14 @@ const PropertiesSidebar = ({
 
                         {selectedField.type === 'dropdown' && (
                             <div className="space-y-3 pt-2 border-t">
-                                <Label className="text-xs font-semibold">Options</Label>
+                                <Label className="text-xs font-semibold">Options (Paste lists supported)</Label>
                                 <div className="space-y-2">
                                     {(selectedField.options || []).map((option, idx) => (
                                         <div key={idx} className="flex items-center gap-1">
                                             <Input 
                                                 value={option} 
                                                 onChange={(e) => handleOptionChange(idx, e.target.value)}
+                                                onPaste={(e) => handleOptionPaste(idx, e)}
                                                 className="h-7 text-xs"
                                             />
                                             <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveOption(idx)}>
@@ -919,7 +929,6 @@ export default function FieldMapper({
 
   const handleSelect = React.useCallback((id: string, multi: boolean = false, toggle: boolean = false) => {
     setSelectedFieldIds(prev => {
-        // Range selection (Shift)
         if (multi && lastSelectedId) {
             const allIds = fields.map(f => f.id);
             const start = allIds.indexOf(lastSelectedId);
@@ -930,13 +939,11 @@ export default function FieldMapper({
             }
         }
         
-        // Toggle selection (Ctrl/Cmd)
         if (toggle) {
             setLastSelectedId(id);
             return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
         }
         
-        // Single selection
         setLastSelectedId(id);
         return [id];
     });
@@ -984,27 +991,27 @@ export default function FieldMapper({
 
     let target: number;
     switch(type) {
-        case 'left': // Icon with line at TOP (Line at Top icon maps to Left Align per visual request)
+        case 'left': 
             target = Math.min(...sel.map(f => f.position.x));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target } } : f));
             break;
-        case 'center-h': // Icon with Horizontal Middle Line (Align Horizontally H)
+        case 'center-h':
             const centerX = sel.reduce((acc, f) => acc + (f.position.x + f.dimensions.width / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: centerX - f.dimensions.width / 2 } } : f));
             break;
-        case 'right': // Icon with line at BOTTOM (Line at Bottom icon maps to Right Align)
+        case 'right':
             target = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: target - f.dimensions.width } } : f));
             break;
-        case 'top': // Icon with line at LEFT (Line at Left icon maps to Align Top)
+        case 'top':
             target = Math.min(...sel.map(f => f.position.y));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target } } : f));
             break;
-        case 'center-v': // Icon with Vertical Middle Line (Vertical Align V)
+        case 'center-v':
             const centerY = sel.reduce((acc, f) => acc + (f.position.y + f.dimensions.height / 2), 0) / sel.length;
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: centerY - f.dimensions.height / 2 } } : f));
             break;
-        case 'bottom': // Icon with line at RIGHT (Line at Right icon maps to Align Bottom)
+        case 'bottom':
             target = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
             setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: target - f.dimensions.height } } : f));
             break;
@@ -1122,10 +1129,8 @@ export default function FieldMapper({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
-    
     const target = e.target as HTMLElement;
     if (target.closest('[data-field-id]')) return;
-    
     const viewport = viewportRef.current;
     if (!viewport) return;
     const rect = viewport.getBoundingClientRect();
