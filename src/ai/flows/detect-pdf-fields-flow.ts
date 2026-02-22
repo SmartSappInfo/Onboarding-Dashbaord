@@ -18,7 +18,7 @@ const DetectPdfFieldsInputSchema = z.object({
 export type DetectPdfFieldsInput = z.infer<typeof DetectPdfFieldsInputSchema>;
 
 const FieldSuggestionSchema = z.object({
-    type: z.enum(['text', 'signature', 'date']).describe("The type of form field detected."),
+    type: z.enum(['text', 'signature', 'date', 'dropdown']).describe("The type of form field detected."),
     pageNumber: z.number().int().min(1).describe("The 1-based page number where the field was found."),
     position: z.object({
         x: z.number().min(0).max(100).describe("The x-coordinate of the top-left corner as a percentage of the page width."),
@@ -28,7 +28,11 @@ const FieldSuggestionSchema = z.object({
         width: z.number().min(1).max(100).describe("The width of the field as a percentage of the page width."),
         height: z.number().min(1).max(100).describe("The height of the field as a percentage of the page height."),
     }),
-    label: z.string().optional().describe("A concise, human-readable label for the field, inferred from any nearby text on the PDF. For example, if the PDF has 'Applicant Name:' next to a blank line, the label should be 'Applicant Name'."),
+    label: z.string().describe("A concise, human-readable label for the field. If multiple fields have the same name (e.g., several 'Student Name' lines), you MUST number them sequentially like 'Student 1 Name', 'Student 2 Name'."),
+    placeholder: z.string().optional().describe("A helpful placeholder for the field, e.g., 'Type your name here', 'Your First Child\'s Name Here', or 'eg. 233 20 000 0000'."),
+    required: z.boolean().describe("Whether the field is likely required based on visual markers like '*' or explicit text."),
+    options: z.array(z.string()).optional().describe("Suggested list of items if the field type is 'dropdown'."),
+    isNamingField: z.boolean().optional().describe("Flag this as true if this field is the primary 'Naming' field for the form."),
 });
 
 
@@ -42,23 +46,33 @@ const detectionPrompt = ai.definePrompt({
     name: 'detectPdfFieldsPrompt',
     input: { schema: DetectPdfFieldsInputSchema },
     output: { schema: DetectPdfFieldsOutputSchema },
-    prompt: `You are an expert document analyst specializing in form field detection. Analyze the following PDF document and identify all potential interactive form fields like text inputs, signature areas, and date fields.
+    prompt: `You are an expert document analyst specializing in form field detection. Analyze the provided PDF and identify all potential interactive fields.
 
-Your task is to return a structured JSON object containing an array of field suggestions.
+### Rules for Detection:
 
-For each field you identify, provide:
-1.  **type**: The most likely field type ('text', 'signature', or 'date').
-2.  **pageNumber**: The 1-based page number where the field is located.
-3.  **position**: The top-left corner (x, y) of the field's bounding box, expressed as percentages of the page dimensions.
-4.  **dimensions**: The size (width, height) of the field's bounding box, also expressed as percentages.
-5.  **label**: A concise, human-readable label for the field, inferred from any text printed on the PDF to the left of, or directly above, the field. For example, if the PDF has 'Applicant Name:' next to a blank line, the label should be 'Applicant Name'. This is a critical field; do not leave it blank unless there is absolutely no descriptive text nearby.
+1.  **Field Types**: Correctly identify types as 'text', 'signature', 'date', or 'dropdown'.
+    - Use 'signature' for explicit signing lines.
+    - Use 'date' for fields labeled for dates.
+    - Use 'dropdown' for fields that suggest multiple choice or have selector icons (arrows).
+    - Use 'text' for general inputs.
 
-**IMPORTANT**:
--   Pay close attention to underlined spaces, boxes, and labels like "Name:", "Signature:", or "Date:".
--   'signature' type should be used for lines explicitly labeled for signing.
--   'date' type should be used for fields explicitly labeled for a date.
--   'text' type is for all other general text inputs.
--   All coordinate and dimension values MUST be percentages (0-100), not pixels.
+2.  **Naming & Numbering**: 
+    - Create concise labels (e.g., "Parent Name", "Contact No").
+    - **CRITICAL**: If multiple lines exist for the same info (e.g., several "Student Name" lines), you MUST number them sequentially: "Student 1 Name", "Student 2 Name", etc.
+
+3.  **Placeholders**:
+    - For names: "Type your name here", "Your First Child's Name Here", "Your Second Child's Name Here".
+    - For IDs: "Enter Your Ghana Card No.", etc.
+    - For phone: "eg. 233 20 000 0000".
+    - For dropdowns: "Select [Field Name]".
+
+4.  **Dropdown Suggestions**: For 'dropdown' fields, provide a list of context-appropriate 'options' (e.g., Grades, Statuses, or Categories).
+
+5.  **Required Fields**: Detect if a field is mandatory based on asterisks (*) or nearby text.
+
+6.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form (usually at the top).
+
+7.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page.
 
 {{#if prompt}}
 User's guidance: {{{prompt}}}

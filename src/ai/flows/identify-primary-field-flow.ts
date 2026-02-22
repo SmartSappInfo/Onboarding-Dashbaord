@@ -28,7 +28,7 @@ const identifyPrompt = ai.definePrompt({
   output: { schema: IdentifyPrimaryFieldOutputSchema },
   prompt: `You are an expert at analyzing form structures. From the following list of fields, identify the one that is most likely to contain the "Name of the Respondent" or "Full Name of the Applicant".
 
-Common labels include "Name", "Full Name", "Applicant Name", "Student Name", "Parent Name", etc. 
+Common labels include "Name", "Full Name", "Applicant Name", "Student Name", "Parent Name", "Parent/Guardian Name", etc. 
 Prefer fields of type 'text'.
 
 If no such field exists, return null for suggestedFieldId.

@@ -204,6 +204,20 @@ export default function EditPdfPage() {
                 id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
                 isSuggestion: true, 
             }));
+
+            // Apply AI suggested naming field if found
+            const suggestedNamingField = result.fields.find(f => f.isNamingField);
+            if (suggestedNamingField) {
+                const correspondingField = newFields.find(nf => 
+                    nf.label === suggestedNamingField.label && 
+                    nf.position.x === suggestedNamingField.position.x && 
+                    nf.position.y === suggestedNamingField.position.y
+                );
+                if (correspondingField) {
+                    setNamingFieldId(correspondingField.id);
+                }
+            }
+
             setFields(prev => [...prev.filter((f: any) => !f.isSuggestion), ...newFields]);
             toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
         } else {
@@ -349,7 +363,7 @@ export default function EditPdfPage() {
                 <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect Fields'}</span>
             </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4 sm:mr-2" />}
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4" />}
                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
             </Button>
         </div>
