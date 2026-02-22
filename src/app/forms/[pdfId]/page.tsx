@@ -40,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pdfId: st
     }
 
     return {
-        title: `Form - ${pdfForm.name}`,
+        title: pdfForm.name,
         description: 'Powered by SmartSapp',
     };
 }

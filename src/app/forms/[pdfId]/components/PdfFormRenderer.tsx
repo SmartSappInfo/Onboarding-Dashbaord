@@ -291,7 +291,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-3 shadow-sm shrink-0">
             <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
             <div className="flex flex-col min-w-0">
-                <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">Form - {pdfForm.name}</h1>
+                <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.name}</h1>
                 <p className="text-[10px] text-muted-foreground leading-none">Powered by SmartSapp</p>
             </div>
             <div className="flex-1" />
