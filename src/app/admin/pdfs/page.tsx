@@ -261,9 +261,9 @@ export default function PdfFormsPage() {
             ) : pdfs && pdfs.length > 0 ? (
                 pdfs.map((pdf) => (
                     <Card key={pdf.id} className="group overflow-hidden border-slate-200 shadow-sm transition-all hover:shadow-md rounded-xl bg-white">
-                        <CardHeader className="pb-4">
+                        <CardHeader className="p-6 pb-4">
                             <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1.5 min-w-0">
+                                <div className="space-y-1 min-w-0 flex-1">
                                     <Link href={`/admin/pdfs/${pdf.id}/edit`} className="block group/title">
                                         <CardTitle className="text-xl font-black leading-tight tracking-tight group-hover/title:text-primary transition-colors decoration-primary/30 underline-offset-4 hover:underline truncate" title={pdf.name}>
                                             {pdf.name}
@@ -273,16 +273,18 @@ export default function PdfFormsPage() {
                                         Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
                                     </CardDescription>
                                 </div>
-                                <Badge variant={getStatusVariant(pdf.status)} className={cn(
-                                    "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full shrink-0",
-                                    pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
-                                )}>
-                                    {pdf.status}
-                                </Badge>
+                                <div className="shrink-0">
+                                    <Badge variant={getStatusVariant(pdf.status)} className={cn(
+                                        "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full",
+                                        pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
+                                    )}>
+                                        {pdf.status}
+                                    </Badge>
+                                </div>
                             </div>
                         </CardHeader>
                         
-                        <CardContent className="pb-6">
+                        <CardContent className="px-6 pb-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:bg-slate-100/80">
                                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Fields</span>
