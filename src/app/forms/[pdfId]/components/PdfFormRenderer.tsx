@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -29,6 +28,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -60,7 +60,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   
   // Scale and Zoom
   const [zoom, setZoom] = React.useState(1.0);
-  const [baseScale, setBaseScale] = React.useState(1.5);
+  const [baseScale, setBaseScale] = React.useState(1.3);
   
   // Pinch-to-zoom logic
   const touchStartDist = React.useRef<number | null>(null);
