@@ -599,6 +599,10 @@ interface PropertiesSidebarProps {
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
   addField: (type: PDFFormField['type']) => void;
+  alignFields: (type: 'left' | 'right' | 'top' | 'bottom' | 'center-h' | 'center-v') => void;
+  distributeFields: (type: 'horizontal' | 'vertical') => void;
+  bulkDuplicate: () => void;
+  bulkRemove: () => void;
   pagesLength: number;
   pdf: PDFForm;
   isStatusChanging: boolean;
@@ -612,7 +616,8 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId, handleSelect, updateField, removeField, addField, pagesLength, pdf,
+  fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId, handleSelect, updateField, removeField, addField,
+  alignFields, distributeFields, bulkDuplicate, bulkRemove, pagesLength, pdf,
   isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -623,6 +628,10 @@ const PropertiesSidebar = ({
   const acceptAllSuggestions = () => setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })));
   const rejectAllSuggestions = () => setFields(prev => prev.filter(f => !f.isSuggestion));
   const deleteAllFields = () => { setFields([]); setSelectedFieldIds([]); setIsDeleteDialogOpen(false); };
+
+  const bulkUpdate = (props: Partial<LocalPDFFormField>) => {
+    setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, ...props } : f));
+  };
 
   const handleAddOption = () => {
     if (!selectedField) return;
@@ -896,11 +905,82 @@ const PropertiesSidebar = ({
             ) : selectedFieldIds.length > 1 ? (
                 <Card>
                     <CardHeader className="py-4">
-                        <CardTitle className="text-sm font-semibold">Bulk Editing</CardTitle>
+                        <CardTitle className="text-sm font-semibold text-primary">Bulk Editing</CardTitle>
                         <CardDescription className="text-[10px]">{selectedFieldIds.length} items selected</CardDescription>
                     </CardHeader>
-                    <CardContent className="p-4 text-center">
-                        <p className="text-xs text-muted-foreground italic">Use the floating toolbar above the selection to align or distribute items.</p>
+                    <CardContent className="space-y-6">
+                        {/* Alignment */}
+                        <div className="space-y-2">
+                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Alignment</Label>
+                            <div className="grid grid-cols-3 gap-1">
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('left')} title="Align Left"><AlignStartHorizontal className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-h')} title="Align Center Horizontal"><AlignCenterHorizontal className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('right')} title="Align Right"><AlignEndHorizontal className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('top')} title="Align Top"><AlignStartVertical className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-v')} title="Align Center Vertical"><AlignCenterVertical className="h-4 w-4" /></Button>
+                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('bottom')} title="Align Bottom"><AlignEndVertical className="h-4 w-4" /></Button>
+                            </div>
+                        </div>
+
+                        {/* Distribution */}
+                        <div className="space-y-2 border-t pt-4">
+                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Distribution</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button>
+                                <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4" /> Vert.</Button>
+                            </div>
+                        </div>
+
+                        {/* Global Properties */}
+                        <div className="space-y-4 border-t pt-4">
+                            <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Properties</Label>
+                            
+                            <div className="space-y-2">
+                                <Label className="text-xs">Change Type</Label>
+                                <Select onValueChange={(val: PDFFormField['type']) => bulkUpdate({ type: val })}>
+                                    <SelectTrigger className="h-8 text-xs">
+                                        <SelectValue placeholder="Multiple Types..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="text">Text</SelectItem>
+                                        <SelectItem value="signature">Signature</SelectItem>
+                                        <SelectItem value="date">Date</SelectItem>
+                                        <SelectItem value="dropdown">Dropdown</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="flex items-center justify-between rounded-lg border p-3">
+                                <Label className="text-xs">Mark as Required</Label>
+                                <Switch 
+                                    onCheckedChange={(checked) => bulkUpdate({ required: checked })}
+                                    checked={fields.filter(f => selectedFieldIds.includes(f.id)).every(f => f.required)}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-xs">Move to Page</Label>
+                                <Input 
+                                    type="number" 
+                                    min="1" 
+                                    max={pagesLength}
+                                    placeholder="Page #"
+                                    className="h-8 text-xs"
+                                    onChange={(e) => {
+                                        const page = parseInt(e.target.value);
+                                        if (page > 0 && page <= pagesLength) bulkUpdate({ pageNumber: page });
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="space-y-2 border-t pt-4">
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button>
+                                <Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button>
+                            </div>
+                        </div>
                     </CardContent>
                 </Card>
             ) : null}
@@ -1434,6 +1514,8 @@ export default function FieldMapper({
                         namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
                         handleSelect={handleSelect}
                         updateField={updateField} removeField={removeField} addField={addField}
+                        alignFields={alignFields} distributeFields={distributeFields}
+                        bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove}
                         pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
                         isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
                         password={password} setPassword={setPassword} 
@@ -1472,6 +1554,8 @@ export default function FieldMapper({
             namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
             handleSelect={handleSelect}
             updateField={updateField} removeField={removeField} addField={addField}
+            alignFields={alignFields} distributeFields={distributeFields}
+            bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove}
             pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
             password={password} setPassword={setPassword} 
