@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/select";
+} from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
 
 // Dynamic imports for rendering libraries
