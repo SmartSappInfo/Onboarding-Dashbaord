@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -101,6 +100,8 @@ export default function PdfUploader({ onUploadSuccess }: PdfUploaderProps) {
             originalFileName: stagedFile.name,
             storagePath: storagePath,
             downloadUrl: downloadURL,
+            size: stagedFile.size,
+            mimeType: stagedFile.type,
           }, user.uid);
 
           if (result.success && result.id) {

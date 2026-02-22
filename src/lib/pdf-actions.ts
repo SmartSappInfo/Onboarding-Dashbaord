@@ -99,28 +99,48 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 }
 
 export async function createPdfForm(data: any, userId: string) {
-  const slug = data.name
+  const { size, mimeType, ...formData } = data;
+
+  const slug = formData.name
     .trim()
     .toLowerCase()
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9-]/g, '');
 
+  const timestamp = new Date().toISOString();
+
+  // 1. Create the PDF record
   const docRef = await adminDb.collection('pdfs').add({
-    ...data,
+    ...formData,
     slug,
     status: 'draft',
     fields: [],
     createdBy: userId,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: timestamp,
+    updatedAt: timestamp,
   });
+  
+  // 2. If this was a direct upload (indicated by size/mimeType), also create a Media record
+  if (size !== undefined && mimeType !== undefined) {
+    await adminDb.collection('media').add({
+      name: formData.originalFileName || formData.name,
+      originalName: formData.originalFileName || formData.name,
+      url: formData.downloadUrl,
+      fullPath: formData.storagePath,
+      type: 'document',
+      mimeType: mimeType,
+      size: size,
+      uploadedBy: userId,
+      createdAt: timestamp,
+    });
+  }
   
   await logActivity({
       schoolId: '', 
       userId,
       type: 'pdf_uploaded',
       source: 'user_action',
-      description: `uploaded a new PDF form: "${data.name}"`,
+      description: `uploaded a new PDF form: "${formData.name}"`,
       metadata: { pdfId: docRef.id }
   });
 
