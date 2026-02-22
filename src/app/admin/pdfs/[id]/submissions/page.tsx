@@ -34,7 +34,7 @@ export default function SubmissionsPage() {
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
-  const { id: pdfId } = params;
+  const pdfId = params.id as string;
   const firestore = useFirestore();
   
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
@@ -44,7 +44,7 @@ export default function SubmissionsPage() {
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
-    return doc(firestore, 'pdfs', pdfId as string);
+    return doc(firestore, 'pdfs', pdfId);
   }, [firestore, pdfId]);
 
   const submissionsQuery = useMemoFirebase(() => {
@@ -287,16 +287,27 @@ export default function SubmissionsPage() {
                   <TableRow key={submission.id}>
                     {displayFields.map((field, idx) => {
                       const value = submission.formData[field.id];
+                      const content = field.type === 'signature' ? (
+                        <div className="h-8 w-16 relative bg-muted rounded overflow-hidden">
+                            {value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}
+                        </div>
+                      ) : (
+                        <span className="truncate max-w-[200px] block">
+                            {value || <span className="text-muted-foreground italic">empty</span>}
+                        </span>
+                      );
+
                       return (
                         <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
-                          {field.type === 'signature' ? (
-                            <div className="h-8 w-16 relative bg-muted rounded overflow-hidden">
-                                {value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}
-                            </div>
+                          {idx === 0 ? (
+                            <Link 
+                              href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}
+                              className="hover:underline cursor-pointer"
+                            >
+                              {content}
+                            </Link>
                           ) : (
-                            <span className="truncate max-w-[200px] block">
-                                {value || <span className="text-muted-foreground italic">empty</span>}
-                            </span>
+                            content
                           )}
                         </TableCell>
                       );
