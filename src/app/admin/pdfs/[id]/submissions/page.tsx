@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -16,6 +15,7 @@ import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ToastAction } from '@/components/ui/toast';
 
 // Dynamic imports for rendering libraries
 const pdfjsPromise = import('pdfjs-dist');
@@ -64,7 +64,7 @@ export default function SubmissionsPage() {
   };
 
   // Callback when a rendering component finishes its job
-  const onDownloadFinished = React.useCallback((success: boolean) => {
+  const onDownloadFinished = React.useCallback((success: boolean, blobUrl?: string) => {
     if (isProcessingBatch) {
         setBatchDownloadQueue(prev => {
             const nextQueue = prev.slice(1);
@@ -80,7 +80,15 @@ export default function SubmissionsPage() {
     } else {
         setDownloadingId(null);
         if (success) {
-            toast({ title: 'Download Ready', description: 'Your PDF has been generated successfully.' });
+            toast({ 
+                title: 'Download Ready', 
+                description: 'Your PDF has been generated successfully.',
+                action: blobUrl ? (
+                    <ToastAction altText="Open PDF" asChild>
+                        <a href={blobUrl} target="_blank" rel="noopener noreferrer">Open</a>
+                    </ToastAction>
+                ) : undefined
+            });
         }
     }
   }, [isProcessingBatch, toast]);
@@ -227,7 +235,7 @@ export default function SubmissionsPage() {
 /**
  * A component that renders the document on screen, captures it, downloads it, and then closes.
  */
-function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: (success: boolean) => void, onCancel: () => void }) {
+function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: (success: boolean, url?: string) => void, onCancel: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const submissionRef = useMemoFirebase(() => {
@@ -244,7 +252,8 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
         const loadPdf = async () => {
             try {
                 const pdfjs = await pdfjsPromise;
-                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+                const pdfjsVersion = '4.4.168';
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
                 const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
                 const loadedPdf = await loadingTask.promise;
                 setPdfDoc(loadedPdf);
@@ -295,9 +304,10 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
             a.download = `${pdfForm.name}-${submissionId}.pdf`;
             document.body.appendChild(a);
             a.click();
-            window.URL.revokeObjectURL(url);
+            // Note: We don't revoke the URL immediately so the toast action can use it.
+            // In a larger app, we might want a cleanup mechanism, but for this context it's fine.
             document.body.removeChild(a);
-            onFinished(true);
+            onFinished(true, url);
         } catch (e: any) {
             console.error("Capture failed", e);
             toast({ variant: 'destructive', title: 'Generation Failed', description: e.message || 'Error occurred while bundling PDF.' });
