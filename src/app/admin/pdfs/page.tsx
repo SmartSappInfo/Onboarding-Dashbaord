@@ -254,7 +254,7 @@ export default function PdfFormsPage() {
           </Table>
         </div>
 
-        {/* Mobile Card View (Updated Design) */}
+        {/* Mobile Card View */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:hidden">
             {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)
@@ -272,14 +272,6 @@ export default function PdfFormsPage() {
                                     <CardDescription className="text-slate-500 font-medium flex items-center gap-1.5">
                                         Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
                                     </CardDescription>
-                                </div>
-                                <div className="shrink-0">
-                                    <Badge variant={getStatusVariant(pdf.status)} className={cn(
-                                        "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full",
-                                        pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
-                                    )}>
-                                        {pdf.status}
-                                    </Badge>
                                 </div>
                             </div>
                         </CardHeader>
@@ -302,7 +294,13 @@ export default function PdfFormsPage() {
                             </div>
                         </CardContent>
                         
-                        <CardFooter className="flex items-center justify-end border-t border-slate-50 bg-slate-50/30 p-3">
+                        <CardFooter className="flex items-center justify-between border-t border-slate-50 bg-slate-50/30 p-3">
+                            <Badge variant={getStatusVariant(pdf.status)} className={cn(
+                                "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full",
+                                pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
+                            )}>
+                                {pdf.status}
+                            </Badge>
                             {renderActions(pdf)}
                         </CardFooter>
                     </Card>
