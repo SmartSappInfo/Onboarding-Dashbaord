@@ -114,21 +114,27 @@ export default function SubmissionsPage() {
   const getSubmissionFileName = React.useCallback((submission: Submission) => {
     if (!pdf) return 'document.pdf';
     
-    let identifier = '';
+    let keyFieldValue = '';
     const namingField = pdf.fields.find(f => f.id === selectedNamingFieldId);
     
     if (namingField) {
-        identifier = submission.formData[namingField.id] || '';
+        keyFieldValue = submission.formData[namingField.id] || '';
     }
 
-    // Fallback: {documentname} - {firstCollumnNameInTheSubmissionsListView}
-    if (!identifier) {
+    // Fallback: If naming field is empty or not selected, use the first display field value
+    if (!keyFieldValue) {
         const firstField = displayFields[0];
-        const firstVal = firstField ? submission.formData[firstField.id] : '';
-        identifier = firstVal ? `${pdf.name} - ${firstVal}` : `${pdf.name} - ${submission.id.substring(0, 8)}`;
+        keyFieldValue = firstField ? submission.formData[firstField.id] : '';
     }
 
-    return `${identifier.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.pdf`;
+    // Final fallback: use submission ID if everything is empty
+    if (!keyFieldValue) {
+        keyFieldValue = submission.id.substring(0, 8);
+    }
+
+    // Pattern: {Value} - {DocumentName}
+    const fileName = `${keyFieldValue} - ${pdf.name}`;
+    return `${fileName.replace(/[^a-z0-9\s-]/gi, '_').trim().substring(0, 100)}.pdf`;
   }, [pdf, selectedNamingFieldId, displayFields]);
 
   // Handle single download click
