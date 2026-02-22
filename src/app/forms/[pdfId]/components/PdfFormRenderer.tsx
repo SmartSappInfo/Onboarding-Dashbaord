@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -30,6 +29,7 @@ import {
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { Slider } from '@/components/ui/slider';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -63,9 +63,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
   
-  // Pinch-to-zoom logic
+  // Pinch-to-zoom logic refs
   const touchStartDist = React.useRef<number | null>(null);
   const startZoom = React.useRef<number>(1.0);
+  const zoomRef = React.useRef(zoom);
+  React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
   // Confirmation Dialog State
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
@@ -102,7 +104,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     return () => window.removeEventListener('resize', updateBaseScale);
   }, []);
 
-  // Robust Zoom Interception (Ctrl + Scroll / Touchpad Pinch)
+  // Robust Zoom Interception (Wheel & Touch Pinch)
   React.useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -117,8 +119,39 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       }
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        touchStartDist.current = dist;
+        startZoom.current = zoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDist.current !== null) {
+        e.preventDefault(); // Intercept browser zoom
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        const factor = dist / touchStartDist.current;
+        const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
+        setZoom(newZoom);
+      }
+    };
+
     viewport.addEventListener('wheel', onWheel, { passive: false });
-    return () => viewport.removeEventListener('wheel', onWheel);
+    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
+    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    
+    return () => {
+      viewport.removeEventListener('wheel', onWheel);
+      viewport.removeEventListener('touchstart', onTouchStart);
+      viewport.removeEventListener('touchmove', onTouchMove);
+    };
   }, []);
 
   React.useEffect(() => {
@@ -265,34 +298,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     } finally {
         setIsDownloading(false);
     }
-  };
-
-  // Pinch Logic
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      touchStartDist.current = dist;
-      startZoom.current = zoom;
-    }
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length === 2 && touchStartDist.current !== null) {
-      const dist = Math.hypot(
-        e.touches[0].pageX - e.touches[1].pageX,
-        e.touches[0].pageY - e.touches[1].pageY
-      );
-      const factor = dist / touchStartDist.current;
-      const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
-      setZoom(newZoom);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    touchStartDist.current = null;
   };
 
   const renderField = (field: PDFFormField) => {
@@ -446,12 +451,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </header>
 
-        <main className="flex-grow relative overflow-hidden overscroll-behavior-none">
+        <main className="flex-grow relative overflow-hidden overscroll-behavior-none bg-muted/30">
             <ScrollArea 
                 className="h-full w-full"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
                 viewportRef={viewportRef}
             >
                 <div 
@@ -482,30 +484,52 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
-                <Card className="shadow-2xl border-primary/20 bg-background/95 backdrop-blur-sm rounded-full overflow-hidden">
-                    <CardContent className="p-1 flex items-center gap-2">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="rounded-full h-9 w-9" 
-                            onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
-                        >
-                            <ZoomOut className="h-4 w-4" />
-                        </Button>
-                        <span className="text-xs font-bold w-12 text-center select-none tabular-nums">
-                            {Math.round(zoom * 100)}%
-                        </span>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="rounded-full h-9 w-9" 
-                            onClick={() => setZoom(prev => Math.min(3.0, prev + 0.1))}
-                        >
-                            <ZoomIn className="h-4 w-4" />
-                        </Button>
-                    </CardContent>
-                </Card>
+            {/* Vertical Zoom Slider */}
+            <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full mb-2 shrink-0" 
+                                    onClick={() => setZoom(prev => Math.min(3, prev + 0.1))}
+                                >
+                                    <ZoomIn className="h-4 w-4 text-primary" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">Zoom In</TooltipContent>
+                        </Tooltip>
+                        
+                        <Slider
+                            orientation="vertical"
+                            min={0.5}
+                            max={3.0}
+                            step={0.05}
+                            value={[zoom]}
+                            onValueChange={([val]) => setZoom(val)}
+                            className="flex-grow py-2"
+                        />
+
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="h-8 w-8 rounded-full mt-2 shrink-0" 
+                                    onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+                                >
+                                    <ZoomOut className="h-4 w-4 text-primary" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="left">Zoom Out</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+                <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
+                    {Math.round(zoom * 100)}%
+                </div>
             </div>
         </main>
         

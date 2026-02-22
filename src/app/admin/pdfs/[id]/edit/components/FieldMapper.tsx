@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -42,6 +41,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Slider } from '@/components/ui/slider';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -769,7 +769,7 @@ const PropertiesSidebar = ({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>Delete All Fields</p></TooltipContent>
-                        </TooltipProvider>
+                        </Tooltip>
                     </TooltipProvider>
                 </div>
               </CardHeader>
@@ -1084,12 +1084,17 @@ export default function FieldMapper({
   const isResizing = React.useRef(false);
   const [isPropertiesSheetOpen, setIsPropertiesSheetOpen] = React.useState(false);
   const [displayZoom, setDisplayZoom] = React.useState(1);
+  const displayZoomRef = React.useRef(displayZoom);
+  React.useEffect(() => { displayZoomRef.current = displayZoom; }, [displayZoom]);
+
   const viewportRef = React.useRef<HTMLDivElement>(null);
+  const touchStartDist = React.useRef<number | null>(null);
+  const startZoom = React.useRef<number>(1.0);
 
   const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 3.0));
   const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
 
-  // Robust Zoom Interception
+  // Robust Zoom Interception (Ctrl + Wheel / Touchpad Pinch)
   React.useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -1099,14 +1104,44 @@ export default function FieldMapper({
         e.preventDefault();
         const delta = -e.deltaY;
         const zoomStep = 0.1;
-        // Use a multiplier for smoother, more standard zooming behavior
         const factor = delta > 0 ? 1 + zoomStep : 1 - zoomStep;
         setDisplayZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
       }
     };
 
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        touchStartDist.current = dist;
+        startZoom.current = displayZoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDist.current !== null) {
+        e.preventDefault(); // Intercept browser pinch zoom
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        const factor = dist / touchStartDist.current;
+        const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
+        setDisplayZoom(newZoom);
+      }
+    };
+
     viewport.addEventListener('wheel', onWheel, { passive: false });
-    return () => viewport.removeEventListener('wheel', onWheel);
+    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
+    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    
+    return () => {
+      viewport.removeEventListener('wheel', onWheel);
+      viewport.removeEventListener('touchstart', onTouchStart);
+      viewport.removeEventListener('touchmove', onTouchMove);
+    };
   }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -1410,10 +1445,10 @@ export default function FieldMapper({
   };
 
   return (
-    <div className="flex h-full overflow-hidden bg-muted/30 selection:bg-primary/20">
+    <div className="flex h-[100dvh] overflow-hidden bg-muted/30 selection:bg-primary/20">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full w-full overscroll-behavior-none" viewportRef={viewportRef}>
+              <ScrollArea className="h-full w-full overscroll-behavior-none bg-muted/30" viewportRef={viewportRef}>
                 <div 
                     className="p-4 sm:p-12 pb-32 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
                     style={{ minWidth: 'fit-content' }}
@@ -1479,7 +1514,7 @@ export default function FieldMapper({
                               <TooltipTrigger asChild>
                                   <DropdownMenuTrigger asChild>
                                       <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onMouseDown={(e) => e.stopPropagation()}>
-                                          <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                                          <Plus className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                                       </Button>
                                   </DropdownMenuTrigger>
                               </TooltipTrigger>
@@ -1507,16 +1542,60 @@ export default function FieldMapper({
                       <div className="w-px h-6 bg-border mx-1" />
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={undo} disabled={!canUndo} onMouseDown={(e) => e.stopPropagation()}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
                       <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={redo} disabled={!canRedo} onMouseDown={(e) => e.stopPropagation()}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
-                      <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={handleZoomOut} onMouseDown={(e) => e.stopPropagation()}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
-                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground select-none tabular-nums">{Math.round(displayZoom * 100)}%</span>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={handleZoomIn} onMouseDown={(e) => e.stopPropagation()}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
-                      <div className="md:hidden flex items-center">
+                      <div className="md:hidden flex items-center ml-1">
                         <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsPropertiesSheetOpen(true)} onMouseDown={(e) => e.stopPropagation()}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
                 </CardContent>
               </Card>
+          </div>
+
+          {/* New High-Fidelity Vertical Zoom Handle */}
+          <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3 pointer-events-auto">
+              <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
+                  <TooltipProvider>
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-full mb-2 shrink-0 hover:bg-primary/10" 
+                                onClick={handleZoomIn}
+                              >
+                                  <ZoomIn className="h-4 w-4 text-primary" />
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">Zoom In</TooltipContent>
+                      </Tooltip>
+                      
+                      <Slider
+                          orientation="vertical"
+                          min={0.5}
+                          max={3.0}
+                          step={0.05}
+                          value={[displayZoom]}
+                          onValueChange={([val]) => setDisplayZoom(val)}
+                          className="flex-grow py-2"
+                      />
+
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-8 w-8 rounded-full mt-2 shrink-0 hover:bg-primary/10" 
+                                onClick={handleZoomOut}
+                              >
+                                  <ZoomOut className="h-4 w-4 text-primary" />
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="left">Zoom Out</TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+              </div>
+              <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
+                  {Math.round(displayZoom * 100)}%
+              </div>
           </div>
       </div>
       
