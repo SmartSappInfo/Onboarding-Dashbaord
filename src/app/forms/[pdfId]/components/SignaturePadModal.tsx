@@ -40,19 +40,22 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     // Camera states
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
+    const streamRef = React.useRef<MediaStream | null>(null);
 
      // Effect to handle camera access
     React.useEffect(() => {
-        let stream: MediaStream | null = null;
-        
-        const getCameraPermission = async () => {
-            if (hasCameraPermission) return; // Don't ask again if already granted
+        const startCamera = async () => {
             try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                streamRef.current = stream;
                 setHasCameraPermission(true);
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
-                }
+                
+                // We need to wait a tick for the video element to be rendered by the tab
+                setTimeout(() => {
+                    if (videoRef.current) {
+                        videoRef.current.srcObject = stream;
+                    }
+                }, 100);
             } catch (error) {
                 console.error('Error accessing camera:', error);
                 setHasCameraPermission(false);
@@ -65,18 +68,17 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         };
 
         const stopCamera = () => {
-            if (videoRef.current?.srcObject) {
-                const mediaStream = videoRef.current.srcObject as MediaStream;
-                mediaStream.getTracks().forEach(track => track.stop());
-                videoRef.current.srcObject = null;
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
             }
-             if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (videoRef.current) {
+                videoRef.current.srcObject = null;
             }
         };
 
-        if (open && activeTab === 'photo') {
-            getCameraPermission();
+        if (open && activeTab === 'photo' && !capturedImage) {
+            startCamera();
         } else {
             stopCamera();
         }
@@ -84,7 +86,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         return () => {
            stopCamera();
         };
-    }, [open, activeTab, hasCameraPermission, toast]);
+    }, [open, activeTab, capturedImage, toast]);
 
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
@@ -244,14 +246,36 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             </TabsContent>
                             <TabsContent value="photo">
                                 <div className="mt-4 space-y-4">
-                                    {hasCameraPermission === false && <Alert variant="destructive"><AlertDescription className="text-center">Camera access is required. Please enable it in your browser settings and refresh.</AlertDescription></Alert>}
-                                    {hasCameraPermission && !capturedImage && <video ref={videoRef} className="w-full aspect-video rounded-md bg-black" autoPlay muted playsInline />}
-                                    {capturedImage && <Image src={capturedImage} alt="Captured signature" width={400} height={225} className="w-full aspect-video object-contain rounded-md border bg-muted" />}
+                                    {hasCameraPermission === false && (
+                                        <Alert variant="destructive">
+                                            <AlertTitle>Camera Access Required</AlertTitle>
+                                            <AlertDescription className="text-center">Camera access is required. Please enable it in your browser settings and refresh.</AlertDescription>
+                                        </Alert>
+                                    )}
+                                    
+                                    <div className={cn("relative w-full aspect-video rounded-md bg-black overflow-hidden", capturedImage && "hidden")}>
+                                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                    </div>
+
+                                    {capturedImage && (
+                                        <div className="relative w-full aspect-video rounded-md border bg-muted overflow-hidden">
+                                            <Image src={capturedImage} alt="Captured signature" fill className="object-contain" />
+                                        </div>
+                                    )}
                                     
                                     <div className="flex justify-center gap-4">
-                                        {!capturedImage && <Button onClick={handleCapture} disabled={!hasCameraPermission}><Camera className="mr-2 h-4 w-4" />Capture</Button>}
-                                        {capturedImage && <Button variant="outline" onClick={() => setCapturedImage(null)}>Retake Photo</Button>}
+                                        {!capturedImage && (
+                                            <Button onClick={handleCapture} disabled={!hasCameraPermission}>
+                                                <Camera className="mr-2 h-4 w-4" />Capture
+                                            </Button>
+                                        )}
+                                        {capturedImage && (
+                                            <Button variant="outline" onClick={() => setCapturedImage(null)}>
+                                                Retake Photo
+                                            </Button>
+                                        )}
                                     </div>
+                                    <canvas ref={photoCanvasRef} className="hidden" />
                                 </div>
                             </TabsContent>
                         </Tabs>
