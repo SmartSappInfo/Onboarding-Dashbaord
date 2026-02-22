@@ -6,11 +6,12 @@ import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase
 import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ListFilter } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -18,13 +19,13 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Label } from '@/components/ui/label';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // Dynamic imports for rendering libraries
 const pdfjsPromise = import('pdfjs-dist');
@@ -57,17 +58,55 @@ export default function SubmissionsPage() {
   const isLoading = isLoadingPdf || isLoadingSubmissions;
 
   React.useEffect(() => {
-    if (pdf && pdf.namingFieldId && !selectedNamingFieldId) {
+    if (pdf && pdf.namingFieldId !== undefined) {
         setSelectedNamingFieldId(pdf.namingFieldId);
     }
+  }, [pdf]);
+
+  // Dynamic Column Logic: Key field is ALWAYS first.
+  const displayFields = React.useMemo(() => {
+    if (!pdf) return [];
+    
+    // 1. Determine the Key Field (Priority 1)
+    const keyField = pdf.fields.find(f => f.id === selectedNamingFieldId);
+    const result = keyField ? [keyField] : [];
+    
+    // 2. Add other fields from displayFieldIds (Priority 2)
+    const otherDisplayIds = (pdf.displayFieldIds || []).filter(id => id !== selectedNamingFieldId);
+    const otherFields = otherDisplayIds
+        .map(id => pdf.fields.find(f => f.id === id))
+        .filter(Boolean) as PDFFormField[];
+    
+    const finalSet = [...result, ...otherFields];
+
+    // 3. Fill gaps if less than 3 fields (Priority 3)
+    if (finalSet.length < 3) {
+        const remaining = pdf.fields.filter(f => 
+            !finalSet.find(ff => ff.id === f.id) && 
+            f.type !== 'signature'
+        );
+        finalSet.push(...remaining.slice(0, 3 - finalSet.length));
+    }
+
+    return finalSet.slice(0, 3);
   }, [pdf, selectedNamingFieldId]);
 
   // Handle naming field change
-  const handleNamingFieldChange = (fieldId: string) => {
+  const handleNamingFieldChange = async (fieldId: string | null) => {
     const newVal = fieldId === 'none' ? null : fieldId;
     setSelectedNamingFieldId(newVal);
-    if (pdf) {
-        updateDoc(doc(firestore!, 'pdfs', pdf.id), { namingFieldId: newVal });
+    if (pdf && firestore) {
+        const docRef = doc(firestore, 'pdfs', pdf.id);
+        
+        // When changing naming field, we also want to update the displayFieldIds 
+        // to ensure it stays as the first column even after refresh
+        const newDisplayIds = [newVal, ...displayFields.filter(f => f.id !== newVal).map(f => f.id)].filter(Boolean) as string[];
+
+        await updateDoc(docRef, { 
+            namingFieldId: newVal,
+            displayFieldIds: newDisplayIds.slice(0, 3)
+        });
+        toast({ title: 'Naming Field Updated', description: 'File names and table columns have been updated.' });
     }
   };
 
@@ -82,14 +121,15 @@ export default function SubmissionsPage() {
         identifier = submission.formData[namingField.id] || '';
     }
 
+    // Fallback: {documentname} - {firstCollumnNameInTheSubmissionsListView}
     if (!identifier) {
-        const firstField = pdf.fields[0];
+        const firstField = displayFields[0];
         const firstVal = firstField ? submission.formData[firstField.id] : '';
         identifier = firstVal ? `${pdf.name} - ${firstVal}` : `${pdf.name} - ${submission.id.substring(0, 8)}`;
     }
 
     return `${identifier.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.pdf`;
-  }, [pdf, selectedNamingFieldId]);
+  }, [pdf, selectedNamingFieldId, displayFields]);
 
   // Handle single download click
   const handleDownloadClick = (submissionId: string) => {
@@ -138,20 +178,6 @@ export default function SubmissionsPage() {
     }
   }, [isProcessingBatch, toast]);
 
-  const displayFields = React.useMemo(() => {
-    if (!pdf) return [];
-    if (pdf.displayFieldIds && pdf.displayFieldIds.length > 0) {
-        return pdf.displayFieldIds.map(id => pdf.fields.find(f => f.id === id)).filter(Boolean) as PDFFormField[];
-    }
-    // Fallback: Key field + next 2 non-signature fields
-    const keyField = pdf.fields.find(f => f.id === pdf.namingFieldId);
-    const result = keyField ? [keyField] : [];
-    const others = pdf.fields
-        .filter(f => f.id !== pdf.namingFieldId && f.type !== 'signature')
-        .slice(0, 3 - result.length);
-    return [...result, ...others];
-  }, [pdf]);
-
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
@@ -164,33 +190,57 @@ export default function SubmissionsPage() {
             <h1 className="text-2xl font-bold tracking-tight">
               {isLoadingPdf ? <Skeleton className="h-8 w-64" /> : `Submissions for "${pdf?.name}"`}
             </h1>
-            <p className="text-muted-foreground">
-              View and download all completed submissions for this document.
+            <p className="text-muted-foreground text-sm">
+              Manage responses and export signed documents.
             </p>
           </div>
           {!isLoading && submissions && submissions.length > 0 && (
-              <div className="flex items-center gap-2">
-                  <div className="flex flex-col items-end gap-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Naming Field</Label>
-                      <Select value={selectedNamingFieldId || 'none'} onValueChange={handleNamingFieldChange}>
-                          <SelectTrigger className="h-9 w-48 text-xs">
-                              <SelectValue placeholder="Select naming field..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                              <SelectItem value="none" className="text-xs">Default (Form Name)</SelectItem>
-                              {pdf?.fields.filter(f => f.type !== 'signature').map(f => (
-                                  <SelectItem key={f.id} value={f.id} className="text-xs">
-                                      {f.label || f.id}
-                                  </SelectItem>
-                              ))}
-                          </SelectContent>
-                      </Select>
-                  </div>
-                  <Button onClick={handleDownloadAll} variant="outline" disabled={isProcessingBatch || !!downloadingId} className="h-9 self-end">
-                      {isProcessingBatch ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                      {isProcessingBatch ? `Processing (${batchDownloadQueue.length} left)` : 'Download All PDFs'}
+              <ButtonGroup>
+                  <Button 
+                    onClick={handleDownloadAll} 
+                    disabled={isProcessingBatch || !!downloadingId} 
+                    className="h-10 px-6 font-semibold"
+                  >
+                      {isProcessingBatch ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing ({batchDownloadQueue.length} left)
+                          </>
+                      ) : (
+                          <>
+                            <Download className="mr-2 h-4 w-4" />
+                            Download All PDFs
+                          </>
+                      )}
                   </Button>
-              </div>
+                  <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <Button variant="default" size="icon" className="h-10 w-10 border-l border-primary-foreground/20 rounded-l-none" disabled={isProcessingBatch}>
+                              <ChevronDown className="h-4 w-4" />
+                          </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                          <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Filename Identifier</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleNamingFieldChange(null)}
+                            className={cn("text-xs", !selectedNamingFieldId && "bg-accent font-bold")}
+                          >
+                              Default (Document Name)
+                          </DropdownMenuItem>
+                          {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
+                              <DropdownMenuItem 
+                                key={field.id}
+                                onClick={() => handleNamingFieldChange(field.id)}
+                                className={cn("text-xs flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}
+                              >
+                                  {field.label || field.id}
+                                  {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
+                              </DropdownMenuItem>
+                          ))}
+                      </DropdownMenuContent>
+                  </DropdownMenu>
+              </ButtonGroup>
           )}
         </div>
         
@@ -198,14 +248,14 @@ export default function SubmissionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {displayFields.map(field => (
-                  <TableHead key={field.id} className="gap-2">
+                {displayFields.map((field, idx) => (
+                  <TableHead key={field.id} className={cn(idx === 0 && "bg-primary/5")}>
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
                         {field.id === selectedNamingFieldId && (
                             <Tooltip>
                                 <TooltipTrigger><Key className="h-3 w-3 text-primary-foreground/70" /></TooltipTrigger>
-                                <TooltipContent>Key Naming Field</TooltipContent>
+                                <TooltipContent>Current Key Naming Field</TooltipContent>
                             </Tooltip>
                         )}
                       </div>
@@ -219,7 +269,7 @@ export default function SubmissionsPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: Math.max(displayFields.length, 1) }).map((_, j) => (
+                    {Array.from({ length: 3 }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>
                     ))}
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
@@ -229,10 +279,10 @@ export default function SubmissionsPage() {
               ) : submissions && submissions.length > 0 ? (
                 submissions.map((submission) => (
                   <TableRow key={submission.id}>
-                    {displayFields.map(field => {
+                    {displayFields.map((field, idx) => {
                       const value = submission.formData[field.id];
                       return (
-                        <TableCell key={field.id} className="font-medium">
+                        <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
                           {field.type === 'signature' ? (
                             <div className="h-8 w-16 relative bg-muted rounded overflow-hidden">
                                 {value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}
@@ -297,7 +347,7 @@ export default function SubmissionsPage() {
         </div>
       </div>
 
-      {/* The visible rendering overlay that performs the front-end generation */}
+      {/* High Fidelity Download Renderer */}
       {downloadingId && pdf && (
           <HighFidelityDownloader 
             pdfForm={pdf} 
@@ -316,9 +366,6 @@ export default function SubmissionsPage() {
   );
 }
 
-/**
- * A component that renders the document on screen, captures it, downloads it, and then closes.
- */
 function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, fileName: string, onFinished: (success: boolean, url?: string) => void, onCancel: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -399,10 +446,8 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
         }
     }, [fileName, onFinished, isCapturing, toast]);
 
-    // Automatically trigger capture when everything is loaded
     React.useEffect(() => {
         if (pdfDoc && submission && !isCapturing) {
-            // Give a delay for signatures to definitely paint
             const timer = setTimeout(() => {
                 handleGenerate();
             }, 1500);
@@ -424,7 +469,6 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                     <X className="h-5 w-5" />
                 </Button>
             </div>
-            
             <div className="flex-1 overflow-hidden relative">
                 <ScrollArea className="h-full w-full">
                     <div ref={containerRef} className="p-8 flex flex-col items-center min-w-full">
