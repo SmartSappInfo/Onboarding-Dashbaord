@@ -551,6 +551,43 @@ const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onR
     );
 };
 
+const SortableDropdownOption = ({ 
+    id, 
+    value, 
+    onRemove, 
+    onChange, 
+    onPaste 
+}: { 
+    id: string; 
+    value: string; 
+    onRemove: () => void; 
+    onChange: (val: string) => void; 
+    onPaste: (e: React.ClipboardEvent<HTMLInputElement>) => void; 
+}) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="flex items-center gap-1 bg-background group/option">
+            <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground shrink-0 opacity-0 group-hover/option:opacity-100 transition-opacity">
+                <GripVertical className="h-3 w-3" />
+            </button>
+            <Input 
+                value={value} 
+                onChange={(e) => onChange(e.target.value)}
+                onPaste={onPaste}
+                className="h-7 text-xs"
+            />
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={onRemove}>
+                <X className="h-3 w-3" />
+            </Button>
+        </div>
+    );
+};
+
 interface PropertiesSidebarProps {
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
@@ -630,6 +667,16 @@ const PropertiesSidebar = ({
         const newIndex = items.findIndex((i) => i.id === over?.id);
         return arrayMove(items, oldIndex, newIndex);
       });
+    }
+  };
+
+  const handleOptionsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id && selectedField && selectedField.options) {
+        const oldIndex = parseInt(active.id as string);
+        const newIndex = parseInt(over?.id as string);
+        const newOptions = arrayMove([...selectedField.options], oldIndex, newIndex);
+        updateField(selectedField.id, { options: newOptions });
     }
   };
 
@@ -778,24 +825,25 @@ const PropertiesSidebar = ({
                         {selectedField.type === 'dropdown' && (
                             <div className="space-y-3 pt-2 border-t">
                                 <Label className="text-xs font-semibold">Options (Paste lists supported)</Label>
-                                <div className="space-y-2">
-                                    {(selectedField.options || []).map((option, idx) => (
-                                        <div key={idx} className="flex items-center gap-1">
-                                            <Input 
-                                                value={option} 
-                                                onChange={(e) => handleOptionChange(idx, e.target.value)}
-                                                onPaste={(e) => handleOptionPaste(idx, e)}
-                                                className="h-7 text-xs"
-                                            />
-                                            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => handleRemoveOption(idx)}>
-                                                <X className="h-3 w-3" />
-                                            </Button>
+                                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleOptionsDragEnd}>
+                                    <SortableContext items={(selectedField.options || []).map((_, i) => i.toString())} strategy={verticalListSortingStrategy}>
+                                        <div className="space-y-2">
+                                            {(selectedField.options || []).map((option, idx) => (
+                                                <SortableDropdownOption 
+                                                    key={idx} 
+                                                    id={idx.toString()}
+                                                    value={option} 
+                                                    onChange={(val) => handleOptionChange(idx, val)}
+                                                    onPaste={(e) => handleOptionPaste(idx, e)}
+                                                    onRemove={() => handleRemoveOption(idx)}
+                                                />
+                                            ))}
+                                            {(!selectedField.options || selectedField.options.length === 0) && (
+                                                <p className="text-[10px] text-muted-foreground italic text-center py-2">No options added.</p>
+                                            )}
                                         </div>
-                                    ))}
-                                    {(!selectedField.options || selectedField.options.length === 0) && (
-                                        <p className="text-[10px] text-muted-foreground italic text-center py-2">No options added.</p>
-                                    )}
-                                </div>
+                                    </SortableContext>
+                                </DndContext>
                                 <Button type="button" variant="outline" size="sm" className="w-full h-7 text-[10px]" onClick={handleAddOption}>
                                     <Plus className="mr-1 h-3 w-3" /> Add Option
                                 </Button>
@@ -1258,7 +1306,7 @@ export default function FieldMapper({
                     onMouseLeave={() => setMarquee(null)}
                 >
                     {!pdfDoc && Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />
+                        <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />
                     ))}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer
