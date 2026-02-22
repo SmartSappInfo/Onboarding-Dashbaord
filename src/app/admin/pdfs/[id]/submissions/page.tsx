@@ -49,6 +49,7 @@ export default function SubmissionsPage() {
   // Handle single download click
   const handleDownloadClick = (submissionId: string) => {
     if (downloadingId || isProcessingBatch) return;
+    toast({ title: 'Preparing download...', description: 'Initializing high-fidelity renderer.' });
     setDownloadingId(submissionId);
   };
 
@@ -59,11 +60,11 @@ export default function SubmissionsPage() {
     setBatchDownloadQueue(ids);
     setIsProcessingBatch(true);
     setDownloadingId(ids[0]);
-    toast({ title: 'Batch Download Started', description: `Processing ${ids.length} documents...` });
+    toast({ title: 'Batch Download Started', description: `Processing ${ids.length} documents sequentially...` });
   };
 
   // Callback when a rendering component finishes its job
-  const onDownloadFinished = React.useCallback(() => {
+  const onDownloadFinished = React.useCallback((success: boolean) => {
     if (isProcessingBatch) {
         setBatchDownloadQueue(prev => {
             const nextQueue = prev.slice(1);
@@ -72,12 +73,15 @@ export default function SubmissionsPage() {
             } else {
                 setIsProcessingBatch(false);
                 setDownloadingId(null);
-                toast({ title: 'Batch Download Complete' });
+                toast({ title: 'Batch Download Complete', description: 'All submissions have been processed.' });
             }
             return nextQueue;
         });
     } else {
         setDownloadingId(null);
+        if (success) {
+            toast({ title: 'Download Ready', description: 'Your PDF has been generated successfully.' });
+        }
     }
   }, [isProcessingBatch, toast]);
 
@@ -212,6 +216,7 @@ export default function SubmissionsPage() {
                 setDownloadingId(null);
                 setIsProcessingBatch(false);
                 setBatchDownloadQueue([]);
+                toast({ title: 'Download Cancelled', variant: 'secondary' });
             }}
           />
       )}
@@ -222,8 +227,9 @@ export default function SubmissionsPage() {
 /**
  * A component that renders the document on screen, captures it, downloads it, and then closes.
  */
-function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: () => void, onCancel: () => void }) {
+function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: (success: boolean) => void, onCancel: () => void }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const submissionRef = useMemoFirebase(() => {
         if (!firestore) return null;
         return doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId);
@@ -244,10 +250,12 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
                 setPdfDoc(loadedPdf);
             } catch (e) {
                 console.error("Renderer: Failed to load PDF", e);
+                toast({ variant: 'destructive', title: 'Rendering Error', description: 'Failed to load PDF template.' });
+                onFinished(false);
             }
         };
         loadPdf();
-    }, [pdfForm.downloadUrl]);
+    }, [pdfForm.downloadUrl, onFinished, toast]);
 
     const handleGenerate = React.useCallback(async () => {
         if (isCapturing || !containerRef.current) return;
@@ -260,7 +268,7 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
             const pdfBundle = await PDFDocument.create();
             const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
             
-            if (!pageWrappers.length) throw new Error("No pages rendered");
+            if (!pageWrappers.length) throw new Error("No pages rendered for capture.");
 
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
@@ -289,18 +297,20 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
             a.click();
             window.URL.revokeObjectURL(url);
             document.body.removeChild(a);
-        } catch (e) {
+            onFinished(true);
+        } catch (e: any) {
             console.error("Capture failed", e);
+            toast({ variant: 'destructive', title: 'Generation Failed', description: e.message || 'Error occurred while bundling PDF.' });
+            onFinished(false);
         } finally {
             setIsCapturing(false);
-            onFinished();
         }
-    }, [pdfForm.name, submissionId, onFinished, isCapturing]);
+    }, [pdfForm.name, submissionId, onFinished, isCapturing, toast]);
 
     // Automatically trigger capture when everything is loaded
     React.useEffect(() => {
         if (pdfDoc && submission && !isCapturing) {
-            // Give a short delay for images/signatures to definitely paint
+            // Give a delay for signatures to definitely paint
             const timer = setTimeout(() => {
                 handleGenerate();
             }, 1500);
