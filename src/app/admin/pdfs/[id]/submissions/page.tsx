@@ -23,7 +23,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/select";
 import { Label } from '@/components/ui/label';
 
 // Dynamic imports for rendering libraries
@@ -138,9 +138,19 @@ export default function SubmissionsPage() {
     }
   }, [isProcessingBatch, toast]);
 
-  const firstTwoFields = React.useMemo(() => {
-    return pdf?.fields?.slice(0, 2) || [];
-  }, [pdf?.fields]);
+  const displayFields = React.useMemo(() => {
+    if (!pdf) return [];
+    if (pdf.displayFieldIds && pdf.displayFieldIds.length > 0) {
+        return pdf.displayFieldIds.map(id => pdf.fields.find(f => f.id === id)).filter(Boolean) as PDFFormField[];
+    }
+    // Fallback: Key field + next 2 non-signature fields
+    const keyField = pdf.fields.find(f => f.id === pdf.namingFieldId);
+    const result = keyField ? [keyField] : [];
+    const others = pdf.fields
+        .filter(f => f.id !== pdf.namingFieldId && f.type !== 'signature')
+        .slice(0, 3 - result.length);
+    return [...result, ...others];
+  }, [pdf]);
 
   return (
     <TooltipProvider>
@@ -188,11 +198,16 @@ export default function SubmissionsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {firstTwoFields.map(field => (
+                {displayFields.map(field => (
                   <TableHead key={field.id} className="gap-2">
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
-                        {field.id === selectedNamingFieldId && <Key className="h-3 w-3 text-primary-foreground/70" />}
+                        {field.id === selectedNamingFieldId && (
+                            <Tooltip>
+                                <TooltipTrigger><Key className="h-3 w-3 text-primary-foreground/70" /></TooltipTrigger>
+                                <TooltipContent>Key Naming Field</TooltipContent>
+                            </Tooltip>
+                        )}
                       </div>
                   </TableHead>
                 ))}
@@ -204,7 +219,7 @@ export default function SubmissionsPage() {
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: Math.max(firstTwoFields.length, 1) }).map((_, j) => (
+                    {Array.from({ length: Math.max(displayFields.length, 1) }).map((_, j) => (
                       <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>
                     ))}
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
@@ -214,7 +229,7 @@ export default function SubmissionsPage() {
               ) : submissions && submissions.length > 0 ? (
                 submissions.map((submission) => (
                   <TableRow key={submission.id}>
-                    {firstTwoFields.map(field => {
+                    {displayFields.map(field => {
                       const value = submission.formData[field.id];
                       return (
                         <TableCell key={field.id} className="font-medium">
@@ -272,7 +287,7 @@ export default function SubmissionsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={firstTwoFields.length + 2} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={displayFields.length + 2} className="h-24 text-center text-muted-foreground">
                     No submissions have been received for this document yet.
                   </TableCell>
                 </TableRow>

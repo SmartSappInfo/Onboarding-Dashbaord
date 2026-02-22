@@ -163,9 +163,23 @@ export default function EditPdfPage() {
         }
     }
 
+    // Determine display fields: Key field (first) + next 2 non-signature fields
+    const displayFieldIds: string[] = [];
+    if (finalNamingFieldId) {
+        displayFieldIds.push(finalNamingFieldId);
+    }
+    
+    const otherFields = fields
+        .filter(f => f.id !== finalNamingFieldId && f.type !== 'signature')
+        .slice(0, 3 - displayFieldIds.length)
+        .map(f => f.id);
+    
+    displayFieldIds.push(...otherFields);
+
     const result = await updatePdfFormMapping(pdfId, {
       fields,
       namingFieldId: finalNamingFieldId,
+      displayFieldIds,
       password: passwordProtected ? password : '',
       passwordProtected,
     });
