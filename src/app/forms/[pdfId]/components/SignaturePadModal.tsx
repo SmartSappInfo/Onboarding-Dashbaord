@@ -138,7 +138,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.font = '180px "Mrs Saint Delafield"';
+                ctx.font = '90px "Mrs Saint Delafield"';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -222,7 +222,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                         id="initials-input" 
                                         value={typedInitials} 
                                         onChange={(e) => setTypedInitials(e.target.value)} 
-                                        className="text-[150px] text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
+                                        className="text-[75px] text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
                                         placeholder="Jane Doe" 
                                     />
                                     <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
