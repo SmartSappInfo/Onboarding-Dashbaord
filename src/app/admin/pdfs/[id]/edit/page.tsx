@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -14,6 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
+import { identifyPrimaryField } from '@/ai/flows/identify-primary-field-flow';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -27,6 +29,7 @@ export default function EditPdfPage() {
   const { user } = useUser();
 
   const [fields, setFields] = React.useState<PDFFormField[]>([]);
+  const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
   const [password, setPassword] = React.useState('');
   const [passwordProtected, setPasswordProtected] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -65,6 +68,7 @@ export default function EditPdfPage() {
     if (pdf) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
       setFields(initialFields);
+      setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       setPassword(pdf.password || '');
       setPasswordProtected(pdf.passwordProtected || false);
@@ -124,11 +128,32 @@ export default function EditPdfPage() {
 
   const handleSave = async () => {
     setIsSaving(true);
+    
+    let finalNamingFieldId = namingFieldId;
+
+    // AI Detection: Only run if no naming field is manually selected and we have fields
+    if (!finalNamingFieldId && fields.length > 0) {
+        try {
+            const aiResult = await identifyPrimaryField({ 
+                fields: fields.map(f => ({ id: f.id, label: f.label, type: f.type })) 
+            });
+            if (aiResult.suggestedFieldId) {
+                finalNamingFieldId = aiResult.suggestedFieldId;
+                setNamingFieldId(finalNamingFieldId);
+                toast({ title: 'AI Field Detection', description: `Automatically using "${fields.find(f => f.id === finalNamingFieldId)?.label || 'Field'}" for file naming.` });
+            }
+        } catch (e) {
+            console.warn("AI Naming Field Detection failed:", e);
+        }
+    }
+
     const result = await updatePdfFormMapping(pdfId, {
       fields,
+      namingFieldId: finalNamingFieldId,
       password: passwordProtected ? password : '',
       passwordProtected,
     });
+
     if (result.success) {
       toast({ title: 'Field map saved successfully!' });
     } else {
@@ -324,7 +349,7 @@ export default function EditPdfPage() {
                 <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect Fields'}</span>
             </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4 sm:mr-2" />}
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4" sm:mr-2" />}
                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
             </Button>
         </div>
@@ -335,6 +360,8 @@ export default function EditPdfPage() {
             pdf={pdf}
             fields={fields}
             setFields={setFields}
+            namingFieldId={namingFieldId}
+            setNamingFieldId={setNamingFieldId}
             password={password}
             setPassword={setPassword}
             passwordProtected={passwordProtected}
@@ -356,7 +383,7 @@ export default function EditPdfPage() {
       <PdfPreviewDialog
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        pdfForm={{ ...pdf, fields: fields, password, passwordProtected, slug: editableSlug }}
+        pdfForm={{ ...pdf, fields: fields, namingFieldId, password, passwordProtected, slug: editableSlug }}
       />
     </div>
   );

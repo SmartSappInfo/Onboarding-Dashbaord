@@ -232,6 +232,7 @@ export interface PDFForm {
     createdAt: string; // ISO String
     updatedAt: string; // ISO String
     fields: PDFFormField[];
+    namingFieldId?: string | null;
     password?: string;
     passwordProtected?: boolean;
 }

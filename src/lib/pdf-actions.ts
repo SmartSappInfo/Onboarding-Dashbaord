@@ -165,6 +165,7 @@ export async function updatePdfFormSlug(pdfId: string, newSlug: string) {
 export async function updatePdfFormMapping(pdfId: string, data: any) {
   await adminDb.collection('pdfs').doc(pdfId).update({
     fields: data.fields,
+    namingFieldId: data.namingFieldId || null,
     password: data.password || null,
     passwordProtected: data.passwordProtected || false,
     updatedAt: new Date().toISOString(),

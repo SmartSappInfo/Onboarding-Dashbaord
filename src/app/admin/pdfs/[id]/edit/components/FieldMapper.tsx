@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown, LinkIcon
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, Type, ALargeSmall, ChevronDownSquare, ChevronDown, Key
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -69,12 +70,13 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   dropdown: ChevronDownSquare,
 };
 
-function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom }: {
+function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId, namingFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom }: {
     pdf: PDFDocumentProxy;
     pageNumber: number;
     fields: LocalPDFFormField[];
     selectedFieldIds: string[];
     anchorFieldId: string | null;
+    namingFieldId: string | null;
     onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
     onDelete: (id: string) => void;
@@ -153,6 +155,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId
                     pageDimensions={pageDimensions}
                     isSelected={selectedFieldIds.includes(field.id)}
                     isAnchor={field.id === anchorFieldId}
+                    isNamingField={field.id === namingFieldId}
                     showHandles={selectedFieldIds.length <= 1}
                     onSelect={onSelect}
                     onUpdate={onUpdate}
@@ -173,12 +176,13 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 
 const ResizableField = ({
-    field, pageDimensions, isSelected, isAnchor, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom
+    field, pageDimensions, isSelected, isAnchor, isNamingField, showHandles, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom
 }: {
     field: LocalPDFFormField;
     pageDimensions: { width: number, height: number };
     isSelected: boolean;
     isAnchor: boolean;
+    isNamingField: boolean;
     showHandles: boolean;
     onSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
     onUpdate: (id: string, newProps: Partial<LocalPDFFormField>) => void;
@@ -316,6 +320,12 @@ const ResizableField = ({
             {field.type === 'dropdown' && (
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
                     <ChevronDown className="h-3 w-3" />
+                </div>
+            )}
+
+            {isNamingField && !isSelected && (
+                <div className="absolute -top-5 -right-1 bg-primary text-white p-0.5 rounded-full shadow-sm z-30">
+                    <Key className="h-2.5 w-2.5" />
                 </div>
             )}
 
@@ -466,12 +476,12 @@ const ResizableField = ({
     );
 };
 
-const SortableFieldListItem = ({ field, isSelected, onSelect, onRemove, isSuggestion }: { 
+const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onRemove }: { 
     field: PDFFormField; 
     isSelected: boolean; 
+    isNamingField: boolean;
     onSelect: (e: React.MouseEvent) => void; 
     onRemove: () => void;
-    isSuggestion?: boolean;
 }) => {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id });
     const Icon = fieldIcons[field.type];
@@ -494,10 +504,11 @@ const SortableFieldListItem = ({ field, isSelected, onSelect, onRemove, isSugges
                 )}
             >
                 <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className={cn("truncate text-sm flex-1", isSuggestion && "text-green-600 font-medium")}>
+                <span className={cn("truncate text-sm flex-1")}>
                     {field.label || field.id}
                 </span>
-                {field.required && <span className="text-destructive font-bold text-lg">*</span>}
+                {isNamingField && <Key className="h-3 w-3 text-primary shrink-0" />}
+                {field.required && <span className="text-destructive font-bold text-lg leading-none">*</span>}
             </button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}>
                 <Trash2 className="h-4 w-4" />
@@ -511,6 +522,8 @@ interface PropertiesSidebarProps {
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   selectedFieldIds: string[];
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
+  namingFieldId: string | null;
+  setNamingFieldId: (id: string | null) => void;
   handleSelect: (id: string, multi?: boolean, toggle?: boolean) => void;
   updateField: (id: string, newProps: Partial<PDFFormField>) => void;
   removeField: (id: string) => void;
@@ -528,7 +541,7 @@ interface PropertiesSidebarProps {
 }
 
 const PropertiesSidebar = ({
-  fields, setFields, selectedFieldIds, setSelectedFieldIds, handleSelect, updateField, removeField, addField, pagesLength, pdf,
+  fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId, handleSelect, updateField, removeField, addField, pagesLength, pdf,
   isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -680,9 +693,9 @@ const PropertiesSidebar = ({
                                           key={field.id}
                                           field={field}
                                           isSelected={selectedFieldIds.includes(field.id)}
+                                          isNamingField={field.id === namingFieldId}
                                           onSelect={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
                                           onRemove={() => removeField(field.id)}
-                                          isSuggestion={field.isSuggestion}
                                       />
                                   ))}
                               </div>
@@ -758,6 +771,19 @@ const PropertiesSidebar = ({
                             <Label htmlFor={`required-toggle-${selectedField.id}`} className="text-xs">Required</Label>
                             <Switch id={`required-toggle-${selectedField.id}`} checked={!!selectedField.required} onCheckedChange={(checked) => updateField(selectedField.id, { required: checked })} />
                         </div>
+
+                        <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5">
+                            <div className="space-y-0.5">
+                                <Label htmlFor={`naming-toggle-${selectedField.id}`} className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label>
+                                <p className="text-[10px] text-muted-foreground">Use for file naming.</p>
+                            </div>
+                            <Switch 
+                                id={`naming-toggle-${selectedField.id}`} 
+                                checked={namingFieldId === selectedField.id} 
+                                onCheckedChange={(checked) => setNamingFieldId(checked ? selectedField.id : null)} 
+                            />
+                        </div>
+
                         <div className="space-y-2">
                             <Label htmlFor={`page-${selectedField.id}`} className="text-xs">Page Number</Label>
                             <Input id={`page-${selectedField.id}`} type="number" min="1" max={pagesLength} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} className="h-8 text-sm" />
@@ -854,6 +880,8 @@ interface FieldMapperProps {
   pdf: PDFForm;
   fields: LocalPDFFormField[];
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
+  namingFieldId: string | null;
+  setNamingFieldId: (id: string | null) => void;
   onSave: () => void;
   isSaving: boolean;
   onPreview: () => void;
@@ -874,7 +902,7 @@ interface FieldMapperProps {
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 export default function FieldMapper({
-  pdf, fields, setFields, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting, undo, redo, canUndo, canRedo
+  pdf, fields, setFields, namingFieldId, setNamingFieldId, onSave, isSaving, onPreview, password, setPassword, passwordProtected, setPasswordProtected, isStatusChanging, onStatusChange, onDetect, isDetecting, undo, redo, canUndo, canRedo
 }: FieldMapperProps) {
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
@@ -963,7 +991,8 @@ export default function FieldMapper({
   const removeField = React.useCallback((id: string) => {
     setFields(prev => prev.filter(f => f.id !== id));
     setSelectedFieldIds(prev => prev.filter(i => i !== id));
-  }, [setFields]);
+    if (namingFieldId === id) setNamingFieldId(null);
+  }, [setFields, namingFieldId, setNamingFieldId]);
 
   const updateField = React.useCallback((id: string, newProps: Partial<LocalPDFFormField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
@@ -971,8 +1000,9 @@ export default function FieldMapper({
 
   const bulkRemove = React.useCallback(() => {
     setFields(prev => prev.filter(f => !selectedFieldIds.includes(f.id)));
+    if (selectedFieldIds.includes(namingFieldId || '')) setNamingFieldId(null);
     setSelectedFieldIds([]);
-  }, [setFields, selectedFieldIds]);
+  }, [setFields, selectedFieldIds, namingFieldId, setNamingFieldId]);
 
   const bulkDuplicate = React.useCallback(() => {
     const toDuplicate = fields.filter(f => selectedFieldIds.includes(f.id));
@@ -1201,6 +1231,7 @@ export default function FieldMapper({
                             fields={fields.filter(f => f.pageNumber === index + 1)}
                             selectedFieldIds={selectedFieldIds} 
                             anchorFieldId={anchorFieldId}
+                            namingFieldId={namingFieldId}
                             onSelect={handleSelect}
                             onUpdate={updateField} onDelete={removeField} onDuplicate={bulkDuplicate}
                             onChangeType={(id, type) => setFields(prev => prev.map(f => f.id === id ? {...f, type, options: type === 'dropdown' ? (f.options || ['Option 1', 'Option 2']) : undefined} : f))} 
@@ -1303,6 +1334,7 @@ export default function FieldMapper({
                     <PropertiesSidebar 
                         fields={fields} setFields={setFields} 
                         selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+                        namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
                         handleSelect={handleSelect}
                         updateField={updateField} removeField={removeField} addField={addField}
                         pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
@@ -1340,6 +1372,7 @@ export default function FieldMapper({
           <PropertiesSidebar 
             fields={fields} setFields={setFields} 
             selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+            namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
             handleSelect={handleSelect}
             updateField={updateField} removeField={removeField} addField={addField}
             pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 

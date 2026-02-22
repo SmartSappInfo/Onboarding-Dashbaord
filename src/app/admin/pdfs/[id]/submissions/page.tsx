@@ -1,21 +1,29 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ListFilter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 // Dynamic imports for rendering libraries
 const pdfjsPromise = import('pdfjs-dist');
@@ -30,6 +38,7 @@ export default function SubmissionsPage() {
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
+  const [selectedNamingFieldId, setSelectedNamingFieldId] = React.useState<string | null>(null);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -45,6 +54,41 @@ export default function SubmissionsPage() {
   const { data: submissions, isLoading: isLoadingSubmissions } = useCollection<Submission>(submissionsQuery);
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
+
+  React.useEffect(() => {
+    if (pdf && pdf.namingFieldId && !selectedNamingFieldId) {
+        setSelectedNamingFieldId(pdf.namingFieldId);
+    }
+  }, [pdf, selectedNamingFieldId]);
+
+  // Handle naming field change
+  const handleNamingFieldChange = (fieldId: string) => {
+    const newVal = fieldId === 'none' ? null : fieldId;
+    setSelectedNamingFieldId(newVal);
+    if (pdf) {
+        updateDoc(doc(firestore!, 'pdfs', pdf.id), { namingFieldId: newVal });
+    }
+  };
+
+  // Get naming info for a specific submission
+  const getSubmissionFileName = React.useCallback((submission: Submission) => {
+    if (!pdf) return 'document.pdf';
+    
+    let identifier = '';
+    const namingField = pdf.fields.find(f => f.id === selectedNamingFieldId);
+    
+    if (namingField) {
+        identifier = submission.formData[namingField.id] || '';
+    }
+
+    if (!identifier) {
+        const firstField = pdf.fields[0];
+        const firstVal = firstField ? submission.formData[firstField.id] : '';
+        identifier = firstVal ? `${pdf.name} - ${firstVal}` : `${pdf.name} - ${submission.id.substring(0, 8)}`;
+    }
+
+    return `${identifier.replace(/[^a-z0-9]/gi, '_').substring(0, 50)}.pdf`;
+  }, [pdf, selectedNamingFieldId]);
 
   // Handle single download click
   const handleDownloadClick = (submissionId: string) => {
@@ -114,10 +158,28 @@ export default function SubmissionsPage() {
             </p>
           </div>
           {!isLoading && submissions && submissions.length > 0 && (
-              <Button onClick={handleDownloadAll} variant="outline" disabled={isProcessingBatch || !!downloadingId}>
-                  {isProcessingBatch ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                  {isProcessingBatch ? `Processing (${batchDownloadQueue.length} left)` : 'Download All PDFs'}
-              </Button>
+              <div className="flex items-center gap-2">
+                  <div className="flex flex-col items-end gap-1">
+                      <Label className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Naming Field</Label>
+                      <Select value={selectedNamingFieldId || 'none'} onValueChange={handleNamingFieldChange}>
+                          <SelectTrigger className="h-9 w-48 text-xs">
+                              <SelectValue placeholder="Select naming field..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                              <SelectItem value="none" className="text-xs">Default (Form Name)</SelectItem>
+                              {pdf?.fields.filter(f => f.type !== 'signature').map(f => (
+                                  <SelectItem key={f.id} value={f.id} className="text-xs">
+                                      {f.label || f.id}
+                                  </SelectItem>
+                              ))}
+                          </SelectContent>
+                      </Select>
+                  </div>
+                  <Button onClick={handleDownloadAll} variant="outline" disabled={isProcessingBatch || !!downloadingId} className="h-9 self-end">
+                      {isProcessingBatch ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                      {isProcessingBatch ? `Processing (${batchDownloadQueue.length} left)` : 'Download All PDFs'}
+                  </Button>
+              </div>
           )}
         </div>
         
@@ -126,7 +188,12 @@ export default function SubmissionsPage() {
             <TableHeader>
               <TableRow>
                 {firstTwoFields.map(field => (
-                  <TableHead key={field.id}>{field.label || 'Unnamed Field'}</TableHead>
+                  <TableHead key={field.id} className="gap-2">
+                      <div className="flex items-center gap-1.5">
+                        {field.label || 'Unnamed Field'}
+                        {field.id === selectedNamingFieldId && <Key className="h-3 w-3 text-primary-foreground/70" />}
+                      </div>
+                  </TableHead>
                 ))}
                 <TableHead>Submission Date</TableHead>
                 <TableHead className="w-[120px] text-right">Actions</TableHead>
@@ -219,6 +286,7 @@ export default function SubmissionsPage() {
           <HighFidelityDownloader 
             pdfForm={pdf} 
             submissionId={downloadingId} 
+            fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
             onFinished={onDownloadFinished}
             onCancel={() => {
                 setDownloadingId(null);
@@ -235,7 +303,7 @@ export default function SubmissionsPage() {
 /**
  * A component that renders the document on screen, captures it, downloads it, and then closes.
  */
-function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: (success: boolean, url?: string) => void, onCancel: () => void }) {
+function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, fileName: string, onFinished: (success: boolean, url?: string) => void, onCancel: () => void }) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const submissionRef = useMemoFirebase(() => {
@@ -301,11 +369,9 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${pdfForm.name}-${submissionId}.pdf`;
+            a.download = fileName;
             document.body.appendChild(a);
             a.click();
-            // Note: We don't revoke the URL immediately so the toast action can use it.
-            // In a larger app, we might want a cleanup mechanism, but for this context it's fine.
             document.body.removeChild(a);
             onFinished(true, url);
         } catch (e: any) {
@@ -315,7 +381,7 @@ function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }:
         } finally {
             setIsCapturing(false);
         }
-    }, [pdfForm.name, submissionId, onFinished, isCapturing, toast]);
+    }, [fileName, onFinished, isCapturing, toast]);
 
     // Automatically trigger capture when everything is loaded
     React.useEffect(() => {
