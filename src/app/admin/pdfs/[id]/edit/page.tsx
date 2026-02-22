@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -349,7 +348,7 @@ export default function EditPdfPage() {
                 <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect Fields'}</span>
             </RainbowButton>
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4" sm:mr-2" />}
+                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4 sm:mr-2" />}
                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
             </Button>
         </div>
