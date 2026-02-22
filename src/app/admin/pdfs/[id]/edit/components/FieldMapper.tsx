@@ -31,7 +31,7 @@ import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, Poi
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
@@ -142,7 +142,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId
     return (
         <div 
             data-page-number={pageNumber}
-            className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0"
+            className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0 touch-pan-x touch-pan-y"
             style={{ width: pageDimensions.width / 1.5, height: pageDimensions.height / 1.5 }}
         >
             {isLoading && <Skeleton className="absolute inset-0 z-10" />}
@@ -281,7 +281,7 @@ const ResizableField = ({
             }} 
             onDoubleClick={handleDoubleClick}
             className={cn(
-                "absolute border-2 transition-colors flex",
+                "absolute border-2 transition-colors flex overscroll-behavior-none",
                 borderColorClass,
                 field.type === 'signature' ? "items-center justify-center text-center" : "items-start justify-start p-1 text-left"
             )}
@@ -769,7 +769,7 @@ const PropertiesSidebar = ({
                                 </Button>
                             </TooltipTrigger>
                             <TooltipContent><p>Delete All Fields</p></TooltipContent>
-                        </Tooltip>
+                        </TooltipProvider>
                     </TooltipProvider>
                 </div>
               </CardHeader>
@@ -1184,8 +1184,6 @@ export default function FieldMapper({
         // Handle bulk editing
         if (selectedFieldIds.length > 1 && selectedFieldIds.includes(id) && selectedFieldIds.includes(f.id)) {
             // If it's a dimensional update (resize), sync dimensions only
-            // Position updates are complex because they usually depend on the specific field's start position,
-            // so for bulk resize we only sync the width/height to avoid stacking them.
             if (newProps.dimensions && !newProps.placeholder && !newProps.label) {
                 return { ...f, dimensions: newProps.dimensions, isSuggestion: false };
             }
@@ -1412,12 +1410,12 @@ export default function FieldMapper({
   };
 
   return (
-    <div className="flex h-full overflow-hidden bg-muted/30">
+    <div className="flex h-full overflow-hidden bg-muted/30 selection:bg-primary/20">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
+              <ScrollArea className="h-full w-full overscroll-behavior-none" viewportRef={viewportRef}>
                 <div 
-                    className="p-12 pb-32 flex flex-col items-center min-w-full relative" 
+                    className="p-4 sm:p-12 pb-32 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
                     style={{ minWidth: 'fit-content' }}
                     onMouseDown={handleMouseDown} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp}
                     onMouseLeave={() => setMarquee(null)}
@@ -1454,6 +1452,7 @@ export default function FieldMapper({
                         />
                     )}
                 </div>
+                <ScrollBar orientation="horizontal" />
               </ScrollArea>
           </DndContext>
           
@@ -1472,14 +1471,14 @@ export default function FieldMapper({
                       </CardContent>
                   </Card>
               )}
-              <Card className="shadow-2xl border-primary/20 pointer-events-auto" onMouseDown={(e) => e.stopPropagation()}>
+              <Card className="shadow-2xl border-primary/20 pointer-events-auto rounded-full overflow-hidden" onMouseDown={(e) => e.stopPropagation()}>
                 <CardContent className="p-1 flex items-center gap-0.5 sm:gap-1">
                   <TooltipProvider>
                       <DropdownMenu>
                           <Tooltip>
                               <TooltipTrigger asChild>
                                   <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onMouseDown={(e) => e.stopPropagation()}>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onMouseDown={(e) => e.stopPropagation()}>
                                           <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                                       </Button>
                                   </DropdownMenuTrigger>
@@ -1506,14 +1505,14 @@ export default function FieldMapper({
                           </DropdownMenuContent>
                       </DropdownMenu>
                       <div className="w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={undo} disabled={!canUndo} onMouseDown={(e) => e.stopPropagation()}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={redo} disabled={!canRedo} onMouseDown={(e) => e.stopPropagation()}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={undo} disabled={!canUndo} onMouseDown={(e) => e.stopPropagation()}><Undo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Undo (Ctrl+Z)</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={redo} disabled={!canRedo} onMouseDown={(e) => e.stopPropagation()}><Redo className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Redo (Ctrl+Y)</p></TooltipContent></Tooltip>
                       <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomOut} onMouseDown={(e) => e.stopPropagation()}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
-                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground select-none">{Math.round(displayZoom * 100)}%</span>
-                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={handleZoomIn} onMouseDown={(e) => e.stopPropagation()}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={handleZoomOut} onMouseDown={(e) => e.stopPropagation()}><ZoomOut className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom Out</p></TooltipContent></Tooltip>
+                      <span className="text-[10px] sm:text-xs font-mono w-10 sm:w-12 text-center text-muted-foreground select-none tabular-nums">{Math.round(displayZoom * 100)}%</span>
+                      <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9 rounded-full" onClick={handleZoomIn} onMouseDown={(e) => e.stopPropagation()}><ZoomIn className="h-4 w-4 sm:h-5 sm:w-5" /></Button></TooltipTrigger><TooltipContent><p>Zoom In</p></TooltipContent></Tooltip>
                       <div className="md:hidden flex items-center">
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsPropertiesSheetOpen(true)} onMouseDown={(e) => e.stopPropagation()}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setIsPropertiesSheetOpen(true)} onMouseDown={(e) => e.stopPropagation()}><Settings2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Properties</p></TooltipContent></Tooltip>
                       </div>
                   </TooltipProvider>
                 </CardContent>
@@ -1545,7 +1544,7 @@ export default function FieldMapper({
                         passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
                         onDetect={onDetect} isDetecting={isDetecting}
                     />
-                    <div className="p-4 border-t flex flex-col gap-2">
+                    <div className="p-4 border-t flex flex-col gap-2 bg-muted/10">
                         <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
                         <Button onClick={onSave} disabled={isSaving} size="sm">
                             {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -1571,25 +1570,27 @@ export default function FieldMapper({
           <SheetHeader className="p-4 border-b">
             <SheetTitle>Fields & Properties</SheetTitle>
           </SheetHeader>
-          <PropertiesSidebar 
-            fields={fields} setFields={setFields} 
-            selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
-            namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
-            handleSelect={handleSelect}
-            updateField={updateField} removeField={removeField} addField={addField}
-            alignFields={alignFields} distributeFields={distributeFields}
-            bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove}
-            pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
-            isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
-            password={password} setPassword={setPassword} 
-            passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
-            onDetect={onDetect} isDetecting={isDetecting}
-          />
-          <SheetFooter className="p-4 border-t flex-col sm:flex-row sm:justify-end gap-2">
-            <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
-            <Button onClick={onSave} disabled={isSaving} size="sm">
+          <div className="flex-1 overflow-hidden">
+            <PropertiesSidebar 
+                fields={fields} setFields={setFields} 
+                selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
+                namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
+                handleSelect={handleSelect}
+                updateField={updateField} removeField={removeField} addField={addField}
+                alignFields={alignFields} distributeFields={distributeFields}
+                bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove}
+                pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
+                isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} 
+                password={password} setPassword={setPassword} 
+                passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} 
+                onDetect={onDetect} isDetecting={isDetecting}
+            />
+          </div>
+          <SheetFooter className="p-4 border-t flex flex-col sm:flex-row sm:justify-end gap-2 bg-muted/10">
+            <Button variant="outline" onClick={onPreview} size="sm" className="w-full sm:w-auto"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+            <Button onClick={onSave} disabled={isSaving} size="sm" className="w-full sm:w-auto">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                {isSaving ? 'Saving...' : 'Save'}
+                {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </SheetFooter>
         </SheetContent>

@@ -112,7 +112,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         e.preventDefault();
         const delta = -e.deltaY;
         const zoomStep = 0.1;
-        // Multiplier factor for smooth zooming
         const factor = delta > 0 ? 1 + zoomStep : 1 - zoomStep;
         setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
       }
@@ -398,7 +397,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const hasSignature = pdfForm.fields.some(f => f.type === 'signature');
 
   return (
-    <div className="flex flex-col h-screen bg-muted/20 overflow-hidden text-foreground">
+    <div className="flex flex-col h-[100dvh] bg-muted/20 overflow-hidden text-foreground selection:bg-primary/20">
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-3 shadow-sm shrink-0">
             <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
             <div className="flex flex-col min-w-0">
@@ -447,7 +446,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </header>
 
-        <main className="flex-grow relative overflow-hidden">
+        <main className="flex-grow relative overflow-hidden overscroll-behavior-none">
             <ScrollArea 
                 className="h-full w-full"
                 onTouchStart={handleTouchStart}
@@ -457,7 +456,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             >
                 <div 
                     ref={pageContainerRef}
-                    className="p-4 sm:p-8 flex flex-col items-center min-w-full" 
+                    className="p-2 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" 
                     style={{ minWidth: 'fit-content' }}
                 >
                     {!pdfDoc ? (
@@ -465,7 +464,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-8 pb-24">
+                        <div className="flex flex-col gap-4 sm:gap-8 pb-24">
                             {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                 <div key={index} className="page-capture-wrapper">
                                     <PageRenderer
