@@ -9,12 +9,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { SmartSappIcon } from '@/components/icons';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -45,6 +55,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   const [scale, setScale] = React.useState(1.5);
   
+  // Confirmation Dialog State
+  const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
+  const [pendingFormData, setPendingFormData] = React.useState<any>(null);
+
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
@@ -89,18 +103,26 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
   }, [pdfForm.downloadUrl, toast]);
   
-  const onSubmit = async (data: any) => {
+  const handlePreSubmit = (data: any) => {
     if (isPreview) {
         toast({ title: 'Preview Mode', description: 'Submission is disabled in preview.' });
         return;
     }
+    setPendingFormData(data);
+    setShowConfirmDialog(true);
+  };
+
+  const onConfirmSubmission = async () => {
+    if (!pendingFormData) return;
     
     setIsSubmitting(true);
+    setShowConfirmDialog(false);
+
     try {
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfId: pdfForm.id, formData: data }),
+            body: JSON.stringify({ pdfId: pdfForm.id, formData: pendingFormData }),
         });
 
         const result = await response.json();
@@ -110,7 +132,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             setIsSubmitted(true);
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
             
-            // Update URL to prevent accidental resubmission on refresh
             const params = new URLSearchParams(searchParams);
             params.set('submissionId', result.submissionId);
             router.replace(`${pathname}?${params.toString()}`);
@@ -121,6 +142,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
         setIsSubmitting(false);
+        setPendingFormData(null);
     }
   };
 
@@ -262,6 +284,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     );
   }
 
+  const hasSignature = pdfForm.fields.some(f => f.type === 'signature');
+
   return (
     <div className="flex flex-col h-screen bg-muted/20 overflow-hidden text-foreground">
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-3 shadow-sm shrink-0">
@@ -277,7 +301,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         type="button" 
                         size="sm" 
                         disabled={isSubmitting || isPreview || !isValid} 
-                        onClick={handleSubmit(onSubmit)}
+                        onClick={handleSubmit(handlePreSubmit)}
                     >
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                         Submit Form
@@ -340,6 +364,54 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 setActiveSignatureField(null);
             }}
         />
+
+        {/* Confirmation Dialog */}
+        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+            <AlertDialogContent className="sm:max-w-md">
+                <AlertDialogHeader>
+                    <div className="flex items-center gap-3 mb-2">
+                        {hasSignature ? (
+                            <div className="bg-primary/10 p-2 rounded-full">
+                                <ShieldAlert className="h-6 w-6 text-primary" />
+                            </div>
+                        ) : (
+                            <div className="bg-yellow-100 p-2 rounded-full">
+                                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                            </div>
+                        )}
+                        <AlertDialogTitle>Confirm Final Submission</AlertDialogTitle>
+                    </div>
+                    <AlertDialogDescription className="space-y-4 pt-2">
+                        {hasSignature ? (
+                            <>
+                                <p className="font-semibold text-foreground">Important Legal Notice:</p>
+                                <p>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</p>
+                                <p className="bg-muted p-3 rounded-md text-xs italic">
+                                    "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
+                                </p>
+                            </>
+                        ) : (
+                            <p>Are you ready to submit your responses? Please review your entries one last time.</p>
+                        )}
+                        <p className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" />
+                            This submission is final and irreversible.
+                        </p>
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isSubmitting}>Cancel and Review</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={onConfirmSubmission} 
+                        disabled={isSubmitting}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Confirm and Submit
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
