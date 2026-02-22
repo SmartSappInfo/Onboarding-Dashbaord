@@ -704,7 +704,7 @@ const PropertiesSidebar = ({
                         <DropdownMenuContent className="w-48 p-1" align="end">
                             <DropdownMenuItem className="text-xs" onClick={() => addField('text')}>
                                 <Text className="mr-2 h-4 w-4" />
-                                <span>Text Field</span>
+                               <span>Text Field</span>
                             </DropdownMenuItem>
                             <DropdownMenuItem className="text-xs" onClick={() => addField('signature')}>
                                 <Signature className="mr-2 h-4 w-4" />
@@ -1000,14 +1000,28 @@ export default function FieldMapper({
   const [displayZoom, setDisplayZoom] = React.useState(1);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
-  const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 2));
+  const handleZoomIn = () => setDisplayZoom(prev => Math.min(prev + 0.1, 3.0));
   const handleZoomOut = () => setDisplayZoom(prev => Math.max(prev - 0.1, 0.5));
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      setDisplayZoom(prev => Math.max(0.5, Math.min(prev - (e.deltaY > 0 ? 0.1 : -0.1), 2)));
-    }
-  };
+
+  // Robust Zoom Interception
+  React.useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const zoomStep = 0.1;
+        // Use a multiplier for smoother, more standard zooming behavior
+        const factor = delta > 0 ? 1 + zoomStep : 1 - zoomStep;
+        setDisplayZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
+      }
+    };
+
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', onWheel);
+  }, []);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -1298,7 +1312,7 @@ export default function FieldMapper({
     <div className="flex h-full overflow-hidden bg-muted/30">
       <div className="flex-1 h-full relative min-w-0">
           <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-              <ScrollArea className="h-full w-full" onWheel={handleWheel} viewportRef={viewportRef}>
+              <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
                 <div 
                     className="p-12 pb-32 flex flex-col items-center min-w-full relative" 
                     style={{ minWidth: 'fit-content' }}
@@ -1306,7 +1320,7 @@ export default function FieldMapper({
                     onMouseLeave={() => setMarquee(null)}
                 >
                     {!pdfDoc && Array.from({ length: 3 }).map((_, i) => (
-                        <Skeleton className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />
+                        <Skeleton key={i} className="w-[8.5in] h-[11in] max-w-full bg-card shadow-xl rounded-lg flex-shrink-0 mb-12" />
                     ))}
                     {pdfDoc && Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                         <PageRenderer

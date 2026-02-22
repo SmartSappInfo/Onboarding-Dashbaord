@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -26,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 
@@ -75,6 +76,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [missingFields, setMissingFields] = React.useState<{ id: string, label: string }[]>([]);
 
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
+  const viewportRef = React.useRef<HTMLDivElement>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -98,6 +100,26 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     updateBaseScale();
     window.addEventListener('resize', updateBaseScale);
     return () => window.removeEventListener('resize', updateBaseScale);
+  }, []);
+
+  // Robust Zoom Interception (Ctrl + Scroll / Touchpad Pinch)
+  React.useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const zoomStep = 0.1;
+        // Multiplier factor for smooth zooming
+        const factor = delta > 0 ? 1 + zoomStep : 1 - zoomStep;
+        setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
+      }
+    };
+
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+    return () => viewport.removeEventListener('wheel', onWheel);
   }, []);
 
   React.useEffect(() => {
@@ -431,6 +453,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
+                viewportRef={viewportRef}
             >
                 <div 
                     ref={pageContainerRef}
