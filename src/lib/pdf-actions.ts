@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb, adminStorage } from './firebase-admin';
@@ -10,7 +9,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 /**
  * Generates a PDF buffer by overlaying form data onto a template using Firebase Admin.
  * @param pdfForm The form metadata containing field definitions.
- * @param formData The user-submitted values.
+ * @param formData { [key: string]: any } The user-submitted values.
  */
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     console.log(`>>> [PDF:GEN] START: "${pdfForm.name}" (ID: ${pdfForm.id})`);
