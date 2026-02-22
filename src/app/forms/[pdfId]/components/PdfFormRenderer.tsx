@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { SmartSappIcon } from '@/components/icons';
+import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,8 +54,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [submissionId, setSubmissionId] = React.useState<string | null>(searchParams.get('submissionId'));
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
-  const [scale, setScale] = React.useState(1.5);
   
+  // Scale and Zoom
+  const [zoom, setZoom] = React.useState(1.0);
+  const [baseScale, setBaseScale] = React.useState(1.5);
+  
+  // Pinch-to-zoom logic
+  const touchStartDist = React.useRef<number | null>(null);
+  const startZoom = React.useRef<number>(1.0);
+
   // Confirmation Dialog State
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
@@ -70,15 +78,19 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const watchedValues = watch();
 
+  // Determine base scale based on screen size
   React.useEffect(() => {
-    const updateScale = () => {
-        const containerWidth = window.innerWidth - 64; 
-        if (containerWidth < 600) setScale(containerWidth / 600);
-        else setScale(1.5);
+    const updateBaseScale = () => {
+        if (typeof window !== 'undefined') {
+            const width = window.innerWidth;
+            if (width < 640) setBaseScale(0.8);
+            else if (width < 1024) setBaseScale(1.2);
+            else setBaseScale(1.5);
+        }
     };
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
+    updateBaseScale();
+    window.addEventListener('resize', updateBaseScale);
+    return () => window.removeEventListener('resize', updateBaseScale);
   }, []);
 
   React.useEffect(() => {
@@ -86,10 +98,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         try {
             const pdfjs = await pdfjsPromise;
             const pdfjsVersion = '4.4.168';
-            
-            // Set worker source
             pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-            
             const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
             const loadedPdf = await loadingTask.promise;
             setPdfDoc(loadedPdf);
@@ -141,7 +150,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
-        setIsSubmitting(false);
+        setIsSubmitting(true); // Keep spinner if submitted
         setPendingFormData(null);
     }
   };
@@ -163,7 +172,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
-            
             const canvas = await html2canvas(el, {
                 scale: 2,
                 useCORS: true,
@@ -203,9 +211,41 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         setIsDownloading(false);
     }
   };
-  
+
+  // Pinch Logic
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      touchStartDist.current = dist;
+      startZoom.current = zoom;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && touchStartDist.current !== null) {
+      const dist = Math.hypot(
+        e.touches[0].pageX - e.touches[1].pageX,
+        e.touches[0].pageY - e.touches[1].pageY
+      );
+      const factor = dist / touchStartDist.current;
+      const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
+      setZoom(newZoom);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartDist.current = null;
+  };
+
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
+    const currentTotalScale = baseScale * zoom;
+    
+    // Proportional Font Size Calculation
+    const dynamicFontSize = `${Math.round(14 * currentTotalScale)}px`;
     
     if (isSubmitted) {
         return (
@@ -213,7 +253,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 {field.type === 'signature' ? (
                     value && <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                 ) : (
-                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                    <span 
+                        className="px-1 font-medium text-black whitespace-nowrap bg-transparent"
+                        style={{ fontSize: dynamicFontSize }}
+                    >
                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                     </span>
                 )}
@@ -222,6 +265,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
 
     let fieldElement;
+    const inputClasses = "w-full h-full p-1 border rounded bg-white/90 focus:bg-white transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60 text-left align-top";
+    
     switch(field.type) {
         case 'text':
             fieldElement = (
@@ -229,7 +274,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {...register(field.id)}
                     placeholder={field.placeholder}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60 text-left align-top"
+                    style={{ fontSize: dynamicFontSize }}
+                    className={inputClasses}
                 />
             );
             break;
@@ -239,7 +285,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     type="date" 
                     {...register(field.id)}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 text-left align-top" 
+                    style={{ fontSize: dynamicFontSize }}
+                    className={inputClasses} 
                 />
              );
              break;
@@ -248,7 +295,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <select
                     {...register(field.id)}
                     disabled={isSubmitting}
-                    className="w-full h-full p-1 border rounded bg-white/90 focus:bg-white text-[14px] transition-colors disabled:opacity-80 text-left"
+                    style={{ fontSize: dynamicFontSize }}
+                    className={inputClasses}
                 >
                     <option value="">{field.placeholder || 'Select...'}</option>
                     {(field.options || []).map((opt, i) => (
@@ -268,7 +316,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {value ? (
                         <img src={value} alt="Signature" className="w-full h-full object-contain" />
                     ) : (
-                        <span className="text-[10px] sm:text-xs text-muted-foreground font-medium uppercase text-center">{field.placeholder || 'Sign Here'}</span>
+                        <span 
+                            className="text-muted-foreground font-medium uppercase text-center"
+                            style={{ fontSize: `${Math.round(10 * currentTotalScale)}px` }}
+                        >
+                            {field.placeholder || 'Sign Here'}
+                        </span>
                     )}
                 </button>
             );
@@ -324,7 +377,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         </header>
 
         <main className="flex-grow relative overflow-hidden">
-            <ScrollArea className="h-full w-full">
+            <ScrollArea 
+                className="h-full w-full"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
                 <div 
                     ref={pageContainerRef}
                     className="p-4 sm:p-8 flex flex-col items-center min-w-full" 
@@ -335,7 +393,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-8 pb-20">
+                        <div className="flex flex-col gap-8 pb-24">
                             {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                 <div key={index} className="page-capture-wrapper">
                                     <PageRenderer
@@ -343,7 +401,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                         pageNumber={index + 1}
                                         fields={pdfForm.fields}
                                         renderField={renderField}
-                                        scale={scale}
+                                        scale={baseScale * zoom}
                                     />
                                 </div>
                             ))}
@@ -352,6 +410,33 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 </div>
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
+
+            {/* Bottom Zoom Toolbar */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
+                <Card className="shadow-2xl border-primary/20 bg-background/95 backdrop-blur-sm rounded-full overflow-hidden">
+                    <CardContent className="p-1 flex items-center gap-2">
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full h-9 w-9" 
+                            onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+                        >
+                            <ZoomOut className="h-4 w-4" />
+                        </Button>
+                        <span className="text-xs font-bold w-12 text-center select-none tabular-nums">
+                            {Math.round(zoom * 100)}%
+                        </span>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="rounded-full h-9 w-9" 
+                            onClick={() => setZoom(prev => Math.min(3.0, prev + 0.1))}
+                        >
+                            <ZoomIn className="h-4 w-4" />
+                        </Button>
+                    </CardContent>
+                </Card>
+            </div>
         </main>
         
          <SignaturePadModal
@@ -438,6 +523,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
                 }
 
                 const page = await pdf.getPage(pageNumber);
+                // We render at high-fidelity by multiplying base resolution by scale
                 const viewport = page.getViewport({ scale, rotation: page.rotate });
                 
                 if (!isMounted) return;
