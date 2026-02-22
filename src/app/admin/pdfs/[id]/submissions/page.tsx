@@ -4,16 +4,21 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
-import type { PDFForm, Submission } from '@/lib/types';
+import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { PDFDocumentProxy } from 'pdfjs-dist';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
+// Dynamic imports for rendering libraries
+const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionsPage() {
   const params = useParams();
@@ -21,7 +26,10 @@ export default function SubmissionsPage() {
   const { toast } = useToast();
   const { id: pdfId } = params;
   const firestore = useFirestore();
+  
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+  const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
+  const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -38,39 +46,40 @@ export default function SubmissionsPage() {
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
 
-  const handleDownload = async (submissionId: string) => {
+  // Handle single download click
+  const handleDownloadClick = (submissionId: string) => {
+    if (downloadingId || isProcessingBatch) return;
     setDownloadingId(submissionId);
-    try {
-        const response = await fetch(`/api/pdfs/${pdfId}/generate/${submissionId}`);
-        if (!response.ok) throw new Error('Failed to generate PDF');
+  };
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `submission-${submissionId}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        toast({ title: 'Download Successful' });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
-    } finally {
+  // Handle "Download All" click
+  const handleDownloadAll = () => {
+    if (!submissions || submissions.length === 0 || isProcessingBatch) return;
+    const ids = submissions.map(s => s.id);
+    setBatchDownloadQueue(ids);
+    setIsProcessingBatch(true);
+    setDownloadingId(ids[0]);
+    toast({ title: 'Batch Download Started', description: `Processing ${ids.length} documents...` });
+  };
+
+  // Callback when a rendering component finishes its job
+  const onDownloadFinished = React.useCallback(() => {
+    if (isProcessingBatch) {
+        setBatchDownloadQueue(prev => {
+            const nextQueue = prev.slice(1);
+            if (nextQueue.length > 0) {
+                setDownloadingId(nextQueue[0]);
+            } else {
+                setIsProcessingBatch(false);
+                setDownloadingId(null);
+                toast({ title: 'Batch Download Complete' });
+            }
+            return nextQueue;
+        });
+    } else {
         setDownloadingId(null);
     }
-  };
-
-  const handleDownloadAll = async () => {
-    if (!submissions || submissions.length === 0) return;
-    toast({ title: 'Preparing Batch Download', description: 'Generating all signed documents sequentially.' });
-    
-    for (const sub of submissions) {
-        await handleDownload(sub.id);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  };
+  }, [isProcessingBatch, toast]);
 
   const firstTwoFields = React.useMemo(() => {
     return pdf?.fields?.slice(0, 2) || [];
@@ -93,9 +102,9 @@ export default function SubmissionsPage() {
             </p>
           </div>
           {!isLoading && submissions && submissions.length > 0 && (
-              <Button onClick={handleDownloadAll} variant="outline">
-                  <Download className="mr-2 h-4 w-4" />
-                  Download All PDFs
+              <Button onClick={handleDownloadAll} variant="outline" disabled={isProcessingBatch || !!downloadingId}>
+                  {isProcessingBatch ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                  {isProcessingBatch ? `Processing (${batchDownloadQueue.length} left)` : 'Download All PDFs'}
               </Button>
           )}
         </div>
@@ -164,8 +173,8 @@ export default function SubmissionsPage() {
                                 variant="ghost" 
                                 size="icon" 
                                 className="h-8 w-8"
-                                onClick={() => handleDownload(submission.id)}
-                                disabled={downloadingId === submission.id}
+                                onClick={() => handleDownloadClick(submission.id)}
+                                disabled={!!downloadingId && downloadingId !== submission.id}
                             >
                                 {downloadingId === submission.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -192,6 +201,239 @@ export default function SubmissionsPage() {
           </Table>
         </div>
       </div>
+
+      {/* The visible rendering overlay that performs the front-end generation */}
+      {downloadingId && pdf && (
+          <HighFidelityDownloader 
+            pdfForm={pdf} 
+            submissionId={downloadingId} 
+            onFinished={onDownloadFinished}
+            onCancel={() => {
+                setDownloadingId(null);
+                setIsProcessingBatch(false);
+                setBatchDownloadQueue([]);
+            }}
+          />
+      )}
     </TooltipProvider>
   );
+}
+
+/**
+ * A component that renders the document on screen, captures it, downloads it, and then closes.
+ */
+function HighFidelityDownloader({ pdfForm, submissionId, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, onFinished: () => void, onCancel: () => void }) {
+    const firestore = useFirestore();
+    const submissionRef = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId);
+    }, [firestore, pdfForm.id, submissionId]);
+
+    const { data: submission, isLoading } = useDoc<Submission>(submissionRef);
+    const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
+    const [isCapturing, setIsCapturing] = React.useState(false);
+    const containerRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        const loadPdf = async () => {
+            try {
+                const pdfjs = await pdfjsPromise;
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+                const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
+                const loadedPdf = await loadingTask.promise;
+                setPdfDoc(loadedPdf);
+            } catch (e) {
+                console.error("Renderer: Failed to load PDF", e);
+            }
+        };
+        loadPdf();
+    }, [pdfForm.downloadUrl]);
+
+    const handleGenerate = React.useCallback(async () => {
+        if (isCapturing || !containerRef.current) return;
+        setIsCapturing(true);
+
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const { PDFDocument } = await import('pdf-lib');
+            
+            const pdfBundle = await PDFDocument.create();
+            const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
+            
+            if (!pageWrappers.length) throw new Error("No pages rendered");
+
+            for (let i = 0; i < pageWrappers.length; i++) {
+                const el = pageWrappers[i] as HTMLElement;
+                const canvas = await html2canvas(el, {
+                    scale: 2,
+                    useCORS: true,
+                    logging: false,
+                    backgroundColor: '#ffffff'
+                });
+                
+                const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+                const image = await pdfBundle.embedJpg(imgBytes);
+                
+                const page = pdfBundle.addPage([image.width, image.height]);
+                page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+            }
+
+            const pdfBytes = await pdfBundle.save();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${pdfForm.name}-${submissionId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (e) {
+            console.error("Capture failed", e);
+        } finally {
+            setIsCapturing(false);
+            onFinished();
+        }
+    }, [pdfForm.name, submissionId, onFinished, isCapturing]);
+
+    // Automatically trigger capture when everything is loaded
+    React.useEffect(() => {
+        if (pdfDoc && submission && !isCapturing) {
+            // Give a short delay for images/signatures to definitely paint
+            const timer = setTimeout(() => {
+                handleGenerate();
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [pdfDoc, submission, handleGenerate, isCapturing]);
+
+    return (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
+            <div className="flex items-center justify-between p-4 border-b shrink-0 bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <div>
+                        <h2 className="text-lg font-bold">Generating Signed Document</h2>
+                        <p className="text-sm text-muted-foreground">Please wait, capturing high-fidelity pages...</p>
+                    </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onCancel}>
+                    <X className="h-5 w-5" />
+                </Button>
+            </div>
+            
+            <div className="flex-1 overflow-hidden relative">
+                <ScrollArea className="h-full w-full">
+                    <div ref={containerRef} className="p-8 flex flex-col items-center min-w-full">
+                        {(!pdfDoc || isLoading) ? (
+                            <div className="flex flex-col gap-8">
+                                <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-xl rounded-lg" />
+                            </div>
+                        ) : (
+                            <div className="flex flex-col gap-8 pb-20">
+                                {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                                    <div key={index} className="page-capture-wrapper">
+                                        <SilentPageRenderer 
+                                            pdf={pdfDoc} 
+                                            pageNumber={index + 1} 
+                                            fields={pdfForm.fields} 
+                                            formData={submission?.formData || {}} 
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </div>
+        </div>
+    );
+}
+
+function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any } }) {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const renderTaskRef = React.useRef<any>(null);
+    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+    const [isRendering, setIsRendering] = React.useState(true);
+
+    React.useEffect(() => {
+        let isCancelled = false;
+        const render = async () => {
+            setIsRendering(true);
+            try {
+                if (renderTaskRef.current) {
+                    renderTaskRef.current.cancel();
+                }
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
+                if (isCancelled) return;
+                setDimensions({ width: viewport.width, height: viewport.height });
+
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    if (context) {
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        const renderTask = page.render({ canvasContext: context, viewport });
+                        renderTaskRef.current = renderTask;
+                        await renderTask.promise;
+                    }
+                }
+            } catch (e: any) {
+                if (e.name === 'RenderingCancelledException') return;
+                console.error("Renderer: Page task failed", e);
+            } finally {
+                if (!isCancelled) setIsRendering(false);
+            }
+        };
+        render();
+        return () => {
+            isCancelled = true;
+            if (renderTaskRef.current) renderTaskRef.current.cancel();
+        };
+    }, [pdf, pageNumber]);
+
+    return (
+        <div 
+            className="relative mx-auto shadow-2xl bg-white border border-border flex-shrink-0" 
+            style={{ width: dimensions.width, height: dimensions.height }}
+        >
+            {isRendering && <Skeleton className="absolute inset-0" />}
+            <canvas ref={canvasRef} className="w-full h-full block" />
+            {!isRendering && (
+                <div className="absolute inset-0 pointer-events-none">
+                    {fields.filter(f => f.pageNumber === pageNumber).map(field => {
+                        const value = formData[field.id];
+                        if (!value) return null;
+                        return (
+                            <div 
+                                key={field.id} 
+                                style={{ 
+                                    position: 'absolute', 
+                                    left: `${field.position.x}%`, 
+                                    top: `${field.position.y}%`, 
+                                    width: `${field.dimensions.width}%`, 
+                                    height: `${field.dimensions.height}%`,
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    justifyContent: 'flex-start',
+                                }}
+                            >
+                                {field.type === 'signature' ? (
+                                    <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                ) : (
+                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">
+                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
 }
