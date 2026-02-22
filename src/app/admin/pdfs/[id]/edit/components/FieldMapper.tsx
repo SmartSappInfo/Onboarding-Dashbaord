@@ -263,7 +263,7 @@ const ResizableField = ({
         transform: CSS.Translate.toString(transform), zIndex: isSelected ? 10 : (field.isSuggestion ? 5 : 1),
     };
 
-    const scaledFontSize = `${Math.max(8, 12 * zoom)}px`;
+    const scaledFontSize = `${Math.max(8, 10 * zoom)}px`;
 
     const borderColorClass = isSelected ? 'border-primary' : field.isSuggestion ? 'border-green-500' : 'border-dashed border-primary/50 hover:border-primary';
     const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
@@ -502,7 +502,10 @@ const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onR
     };
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') handleBlur();
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            handleBlur();
+        }
         if (e.key === 'Escape') {
             setEditValue(field.label || '');
             setIsEditing(false);

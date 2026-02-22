@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -83,9 +84,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const updateBaseScale = () => {
         if (typeof window !== 'undefined') {
             const width = window.innerWidth;
-            if (width < 640) setBaseScale(0.8);
-            else if (width < 1024) setBaseScale(1.2);
-            else setBaseScale(1.5);
+            if (width < 640) setBaseScale(0.9); // Slightly adjusted for mobile
+            else if (width < 1024) setBaseScale(1.1);
+            else setBaseScale(1.3); // Reduced from 1.5 for desktop
         }
     };
     updateBaseScale();
@@ -172,6 +173,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
+            
+            // Capture the element as a canvas with high scale for quality
             const canvas = await html2canvas(el, {
                 scale: 2,
                 useCORS: true,
@@ -244,8 +247,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
     
-    // Proportional Font Size Calculation
-    const dynamicFontSize = `${Math.round(14 * currentTotalScale)}px`;
+    // Proportional Font Size Calculation - Reduced base multiplier to 10
+    const dynamicFontSize = `${Math.round(10 * currentTotalScale)}px`;
     
     if (isSubmitted) {
         return (
@@ -318,7 +321,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     ) : (
                         <span 
                             className="text-muted-foreground font-medium uppercase text-center"
-                            style={{ fontSize: `${Math.round(10 * currentTotalScale)}px` }}
+                            style={{ fontSize: `${Math.round(8 * currentTotalScale)}px` }}
                         >
                             {field.placeholder || 'Sign Here'}
                         </span>
