@@ -41,7 +41,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/dropdown-menu";
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -476,13 +476,16 @@ const ResizableField = ({
     );
 };
 
-const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onRemove }: { 
+const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onRemove, onUpdateLabel }: { 
     field: PDFFormField; 
     isSelected: boolean; 
     isNamingField: boolean;
     onSelect: (e: React.MouseEvent) => void; 
     onRemove: () => void;
+    onUpdateLabel: (newLabel: string) => void;
 }) => {
+    const [isEditing, setIsEditing] = React.useState(false);
+    const [editValue, setEditValue] = React.useState(field.label || '');
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id });
     const Icon = fieldIcons[field.type];
     
@@ -491,25 +494,53 @@ const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onR
         transition,
     };
 
+    const handleBlur = () => {
+        setIsEditing(false);
+        if (editValue.trim() !== field.label) {
+            onUpdateLabel(editValue.trim());
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') handleBlur();
+        if (e.key === 'Escape') {
+            setEditValue(field.label || '');
+            setIsEditing(false);
+        }
+    };
+
     return (
         <div ref={setNodeRef} style={style} className="flex items-center gap-1">
             <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground">
                 <GripVertical className="h-3 w-3" />
             </button>
-            <button 
-                onClick={onSelect}
+            <div 
                 className={cn(
-                    "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors", 
+                    "w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors cursor-pointer", 
                     isSelected && 'bg-muted ring-1 ring-primary'
                 )}
+                onClick={onSelect}
+                onDoubleClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
             >
                 <Icon className="h-4 w-4 text-muted-foreground" />
-                <span className={cn("truncate text-sm flex-1")}>
-                    {field.label || field.id}
-                </span>
+                {isEditing ? (
+                    <Input 
+                        autoFocus 
+                        value={editValue} 
+                        onChange={(e) => setEditValue(e.target.value)}
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
+                        className="h-6 text-sm px-1 py-0 flex-1"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                ) : (
+                    <span className={cn("truncate text-sm flex-1")}>
+                        {field.label || field.id}
+                    </span>
+                )}
                 {isNamingField && <Key className="h-3 w-3 text-primary shrink-0" />}
                 {field.required && <span className="text-destructive font-bold text-lg leading-none">*</span>}
-            </button>
+            </div>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}>
                 <Trash2 className="h-4 w-4" />
             </Button>
@@ -696,6 +727,7 @@ const PropertiesSidebar = ({
                                           isNamingField={field.id === namingFieldId}
                                           onSelect={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
                                           onRemove={() => removeField(field.id)}
+                                          onUpdateLabel={(newLabel) => updateField(field.id, { label: newLabel })}
                                       />
                                   ))}
                               </div>
