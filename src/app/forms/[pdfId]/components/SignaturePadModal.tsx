@@ -235,9 +235,13 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             <TabsContent value="upload">
                                 <div className="mt-4">
                                     {!uploadedImage ? (
-                                        <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted p-6 text-center">
+                                        <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted p-6 text-center transition-colors">
                                             <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                                            <p className="mb-2 text-sm text-muted-foreground font-semibold uppercase tracking-tight">Click to upload or drag and drop an image file of your signature (PNG or JPG)</p>
+                                            <p className="mb-2 text-sm text-muted-foreground leading-relaxed">
+                                                <span className="font-bold text-foreground">Click to upload</span> or <span className="font-bold text-foreground">drag and drop</span> an image file of your signature
+                                                <br />
+                                                (PNG or JPG)
+                                            </p>
                                             <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                                         </label>
                                     ) : (
