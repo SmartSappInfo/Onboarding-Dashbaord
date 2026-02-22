@@ -8,7 +8,10 @@ import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X } from 'lucide-react';
+import { 
+    ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
+    RefreshCcw, Play, AlertCircle 
+} from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
@@ -19,6 +22,16 @@ import { identifyPrimaryField } from '@/ai/flows/identify-primary-field-flow';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function EditPdfPage() {
   const params = useParams();
@@ -42,6 +55,9 @@ export default function EditPdfPage() {
   const [isSavingSlug, setIsSavingSlug] = React.useState(false);
   const [isEditingSlug, setIsEditingSlug] = React.useState(false);
   const [tempSlug, setTempSlug] = React.useState('');
+  
+  // Detection Mode Dialog State
+  const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
 
   // Undo/Redo Logic
   const {
@@ -180,10 +196,23 @@ export default function EditPdfPage() {
     setIsSavingSlug(false);
   };
 
-  const handleDetectFields = async () => {
+  const handleDetectClick = () => {
+      if (fields.length > 0) {
+          setIsDetectionModeOpen(true);
+      } else {
+          handleRunDetection('overwrite');
+      }
+  };
+
+  const handleRunDetection = async (mode: 'overwrite' | 'continue') => {
     if (isDetecting || !pdf?.downloadUrl) return;
+    setIsDetectionModeOpen(false);
     setIsDetecting(true);
-    toast({ title: 'AI Field Detection', description: 'Analyzing your PDF. This might take a moment...' });
+    
+    toast({ 
+        title: mode === 'overwrite' ? 'AI Redesign Started' : 'AI Filling Gaps...', 
+        description: 'Analyzing your PDF structure. This may take a moment...' 
+    });
     
     try {
         const response = await fetch(pdf.downloadUrl);
@@ -197,9 +226,13 @@ export default function EditPdfPage() {
             reader.readAsDataURL(blob);
         });
 
-        const result = await detectPdfFields({ pdfDataUri: base64data });
+        const result = await detectPdfFields({ 
+            pdfDataUri: base64data,
+            existingFields: mode === 'continue' ? fields : undefined
+        });
+
         if (result.fields && result.fields.length > 0) {
-            const newFields: (PDFFormField & { isSuggestion?: boolean })[] = result.fields.map(suggestion => ({ 
+            const newSuggestions: (PDFFormField & { isSuggestion?: boolean })[] = result.fields.map(suggestion => ({ 
                 ...suggestion, 
                 id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
                 isSuggestion: true, 
@@ -207,21 +240,35 @@ export default function EditPdfPage() {
 
             // Apply AI suggested naming field if found
             const suggestedNamingField = result.fields.find(f => f.isNamingField);
+            let newNamingFieldId = namingFieldId;
+
             if (suggestedNamingField) {
-                const correspondingField = newFields.find(nf => 
+                const correspondingField = newSuggestions.find(nf => 
                     nf.label === suggestedNamingField.label && 
                     nf.position.x === suggestedNamingField.position.x && 
                     nf.position.y === suggestedNamingField.position.y
                 );
                 if (correspondingField) {
-                    setNamingFieldId(correspondingField.id);
+                    newNamingFieldId = correspondingField.id;
                 }
             }
 
-            setFields(prev => [...prev.filter((f: any) => !f.isSuggestion), ...newFields]);
-            toast({ title: 'AI Suggestions Added', description: `${result.fields.length} potential fields detected.` });
+            if (mode === 'overwrite') {
+                setFields(newSuggestions);
+                setNamingFieldId(newNamingFieldId);
+            } else {
+                // Keep existing fields, add new ones as suggestions
+                setFields(prev => [...prev, ...newSuggestions]);
+                // Only update naming field if we don't have one
+                if (!namingFieldId) setNamingFieldId(newNamingFieldId);
+            }
+
+            toast({ 
+                title: 'AI Analysis Complete', 
+                description: `${result.fields.length} potential fields detected. Review and accept suggestions.` 
+            });
         } else {
-            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any fields in this document.' });
+            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any additional fields in this document.' });
         }
     } catch (error: any) {
         toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
@@ -354,7 +401,7 @@ export default function EditPdfPage() {
             </div>
         </div>
         <div className="flex items-center gap-2">
-            <RainbowButton onClick={handleDetectFields} disabled={isDetecting} className="h-9 px-3 sm:px-4">
+            <RainbowButton onClick={handleDetectClick} disabled={isDetecting} className="h-9 px-3 sm:px-4">
                 {isDetecting ? (
                     <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
                 ) : (
@@ -385,7 +432,7 @@ export default function EditPdfPage() {
             onPreview={() => setIsPreviewOpen(true)}
             onSave={handleSave}
             isSaving={isSaving}
-            onDetect={handleDetectFields}
+            onDetect={handleDetectClick}
             isDetecting={isDetecting}
             undo={handleUndo}
             redo={handleRedo}
@@ -399,6 +446,52 @@ export default function EditPdfPage() {
         onClose={() => setIsPreviewOpen(false)}
         pdfForm={{ ...pdf, fields: fields, namingFieldId, password, passwordProtected, slug: editableSlug }}
       />
+
+      {/* Detection Mode Selection Dialog */}
+      <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <AlertDialogTitle className="text-center">How should the AI help?</AlertDialogTitle>
+            <AlertDialogDescription className="text-center">
+              You already have {fields.length} fields on this document. Choose how the AI should proceed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-4 py-4">
+            <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start gap-1 p-4 text-left" 
+                onClick={() => handleRunDetection('continue')}
+            >
+                <div className="flex items-center gap-2 font-bold">
+                    <Play className="h-4 w-4 text-primary" />
+                    Continue Designing
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">
+                    Keep your current work. AI will fill in missing fields and refine positioning.
+                </span>
+            </Button>
+            <Button 
+                variant="outline" 
+                className="h-auto flex-col items-start gap-1 p-4 text-left border-destructive/20 hover:border-destructive/50 hover:bg-destructive/5" 
+                onClick={() => handleRunDetection('overwrite')}
+            >
+                <div className="flex items-center gap-2 font-bold text-destructive">
+                    <RefreshCcw className="h-4 w-4" />
+                    Re-design from Scratch
+                </div>
+                <span className="text-xs text-muted-foreground font-normal">
+                    Wipe the canvas and let AI build the entire form from the ground up.
+                </span>
+            </Button>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

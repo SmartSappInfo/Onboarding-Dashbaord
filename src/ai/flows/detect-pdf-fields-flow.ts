@@ -14,6 +14,14 @@ const DetectPdfFieldsInputSchema = z.object({
       "A PDF file encoded as a data URI. Expected format: 'data:application/pdf;base64,<encoded_data>'."
     ),
     prompt: z.string().optional().describe("An optional prompt to guide the AI, e.g., 'focus on finding signature and date fields'"),
+    existingFields: z.array(z.object({
+        id: z.string(),
+        label: z.string().optional(),
+        type: z.string(),
+        pageNumber: z.number(),
+        position: z.object({ x: z.number(), y: z.number() }),
+        dimensions: z.object({ width: z.number(), height: z.number() })
+    })).optional().describe("A list of fields already placed by the user to provide context and avoid duplicates."),
 });
 export type DetectPdfFieldsInput = z.infer<typeof DetectPdfFieldsInputSchema>;
 
@@ -32,7 +40,7 @@ const FieldSuggestionSchema = z.object({
     placeholder: z.string().optional().describe("A helpful placeholder for the field, e.g., 'Type your name here', 'Your First Child\'s Name Here', or 'eg. 233 20 000 0000'."),
     required: z.boolean().describe("Whether the field is likely required based on visual markers like '*' or explicit text."),
     options: z.array(z.string()).optional().describe("Suggested list of items if the field type is 'dropdown'."),
-    isNamingField: z.boolean().optional().describe("Flag this as true if this field is the primary 'Naming' field for the form."),
+    isNamingField: z.boolean().optional().describe("Flag this as true if this field is the primary 'Naming' field for the form (the person who the document belongs to)."),
 });
 
 
@@ -56,9 +64,9 @@ const detectionPrompt = ai.definePrompt({
     - Use 'dropdown' for fields that suggest multiple choice or have selector icons (arrows).
     - Use 'text' for general inputs.
 
-2.  **Naming & Numbering**: 
+2.  **Naming & Numbering (CRITICAL)**: 
     - Create concise labels (e.g., "Parent Name", "Contact No").
-    - **CRITICAL**: If multiple lines exist for the same info (e.g., several "Student Name" lines), you MUST number them sequentially: "Student 1 Name", "Student 2 Name", etc.
+    - **REPEAT FIELDS**: If multiple lines exist for the same info (e.g., a table or list of students), you MUST number them sequentially: "Student 1 Name", "Student 2 Name", "Student 3 Name", etc.
 
 3.  **Placeholders**:
     - For names: "Type your name here", "Your First Child's Name Here", "Your Second Child's Name Here".
@@ -66,16 +74,28 @@ const detectionPrompt = ai.definePrompt({
     - For phone: "eg. 233 20 000 0000".
     - For dropdowns: "Select [Field Name]".
 
-4.  **Dropdown Suggestions**: For 'dropdown' fields, provide a list of context-appropriate 'options' (e.g., Grades, Statuses, or Categories).
+4.  **Dropdown Suggestions**: For 'dropdown' fields, provide a list of context-appropriate 'options' (e.g., Grades, Statuses, Gender, or Regions).
 
 5.  **Required Fields**: Detect if a field is mandatory based on asterisks (*) or nearby text.
 
-6.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form (usually at the top).
+6.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form or the entity the form is about (usually at the very top).
 
 7.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page.
 
+{{#if existingFields}}
+### Context: Continuing Work
+The user has already placed some fields. 
+1. DO NOT duplicate these fields in your output.
+2. Focus on finding the GAPS (missing fields).
+3. If an existing field is slightly misaligned, you can suggest a refined version of it, but use the same or a very similar label.
+Existing Fields:
+{{#each existingFields}}
+- Label: "{{label}}", Type: {{type}}, Page: {{pageNumber}}, Pos: ({{position.x}}%, {{position.y}}%)
+{{/each}}
+{{/if}}
+
 {{#if prompt}}
-User's guidance: {{{prompt}}}
+User's specific guidance: {{{prompt}}}
 {{/if}}
 
 PDF Document for analysis:
