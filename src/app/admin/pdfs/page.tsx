@@ -45,6 +45,7 @@ import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -108,10 +109,10 @@ export default function PdfFormsPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 text-slate-500 hover:text-primary transition-colors"
             onClick={() => {
               if (typeof window !== 'undefined') {
-                const url = `${window.location.origin}/forms/${pdf.id}`;
+                const url = `${window.location.origin}/forms/${pdf.slug || pdf.id}`;
                 navigator.clipboard.writeText(url);
                 toast({
                   title: "Link Copied",
@@ -130,8 +131,8 @@ export default function PdfFormsPage() {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-            <a href={`/forms/${pdf.id}`} target="_blank" rel="noopener noreferrer">
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-primary transition-colors" asChild>
+            <a href={`/forms/${pdf.slug || pdf.id}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4" />
               <span className="sr-only">View public page</span>
             </a>
@@ -143,7 +144,7 @@ export default function PdfFormsPage() {
       </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
+          <Button variant="ghost" className="h-8 w-8 p-0 text-slate-500 hover:text-primary transition-colors">
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -253,56 +254,62 @@ export default function PdfFormsPage() {
           </Table>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="grid gap-4 md:hidden">
+        {/* Mobile Card View (Updated Design) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:hidden">
             {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full" />)
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)
             ) : pdfs && pdfs.length > 0 ? (
                 pdfs.map((pdf) => (
-                    <Card key={pdf.id}>
-                        <CardHeader className="pb-2">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <CardTitle className="text-lg">
-                                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline">
-                                        {pdf.name}
-                                      </Link>
-                                    </CardTitle>
-                                    <CardDescription>
+                    <Card key={pdf.id} className="group overflow-hidden border-slate-200 shadow-sm transition-all hover:shadow-md rounded-xl bg-white">
+                        <CardHeader className="pb-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="space-y-1.5 min-w-0">
+                                    <Link href={`/admin/pdfs/${pdf.id}/edit`} className="block group/title">
+                                        <CardTitle className="text-xl font-black leading-tight tracking-tight group-hover/title:text-primary transition-colors decoration-primary/30 underline-offset-4 hover:underline truncate" title={pdf.name}>
+                                            {pdf.name}
+                                        </CardTitle>
+                                    </Link>
+                                    <CardDescription className="text-slate-500 font-medium flex items-center gap-1.5">
                                         Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
                                     </CardDescription>
                                 </div>
-                                <Badge variant={getStatusVariant(pdf.status)} className="capitalize">
+                                <Badge variant={getStatusVariant(pdf.status)} className={cn(
+                                    "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full shrink-0",
+                                    pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
+                                )}>
                                     {pdf.status}
                                 </Badge>
                             </div>
                         </CardHeader>
-                        <CardContent className="pb-4">
-                            <div className="flex items-center justify-between text-sm">
-                                <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50 flex-1 mr-2">
-                                    <span className="text-muted-foreground text-xs uppercase font-semibold">Fields</span>
-                                    <span className="text-lg font-bold">{pdf.fields?.length || 0}</span>
+                        
+                        <CardContent className="pb-6">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:bg-slate-100/80">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Fields</span>
+                                    <span className="text-2xl font-black text-slate-900">{pdf.fields?.length || 0}</span>
                                 </div>
-                                <div className="flex flex-col items-center p-2 rounded-lg bg-muted/50 flex-1 ml-2">
-                                    <span className="text-muted-foreground text-xs uppercase font-semibold">Responses</span>
-                                    <Button variant="link" asChild className="h-auto p-0 font-bold text-lg">
-                                        <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
-                                            <SubmissionCount pdfId={pdf.id} />
-                                        </Link>
-                                    </Button>
-                                </div>
+                                <Link 
+                                    href={`/admin/pdfs/${pdf.id}/submissions`}
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:bg-primary/5 hover:border-primary/20 group/stat"
+                                >
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 group-hover/stat:text-primary">Responses</span>
+                                    <span className="text-2xl font-black text-primary">
+                                        <SubmissionCount pdfId={pdf.id} />
+                                    </span>
+                                </Link>
                             </div>
                         </CardContent>
-                        <CardFooter className="flex justify-end pt-0">
+                        
+                        <CardFooter className="flex items-center justify-end border-t border-slate-50 bg-slate-50/30 p-3">
                             {renderActions(pdf)}
                         </CardFooter>
                     </Card>
                 ))
             ) : (
-                <div className="text-center py-20 border-2 border-dashed rounded-lg bg-muted/20">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No Documents Yet</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
+                <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl bg-slate-50/50">
+                    <FileText className="mx-auto h-12 w-12 text-slate-300" />
+                    <h3 className="mt-4 text-lg font-bold text-slate-900">No Documents Yet</h3>
+                    <p className="mt-1 text-sm text-slate-500">Upload your first document to get started.</p>
                 </div>
             )}
         </div>
