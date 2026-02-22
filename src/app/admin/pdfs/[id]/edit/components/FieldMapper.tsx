@@ -156,7 +156,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, anchorFieldId
                     isSelected={selectedFieldIds.includes(field.id)}
                     isAnchor={field.id === anchorFieldId}
                     isNamingField={field.id === namingFieldId}
-                    showHandles={selectedFieldIds.length <= 1}
+                    showHandles={selectedFieldIds.includes(field.id)}
                     onSelect={onSelect}
                     onUpdate={onUpdate}
                     onDelete={onDelete}
@@ -216,7 +216,7 @@ const ResizableField = ({
             startFieldX: (field.position.x / 100) * displayWidth,
             startFieldY: (field.position.y / 100) * displayHeight,
         };
-        onSelect(field.id);
+        onSelect(field.id, false, false);
     };
 
     const handleDoubleClick = (e: React.MouseEvent) => {
@@ -912,23 +912,27 @@ const PropertiesSidebar = ({
                         {/* Alignment */}
                         <div className="space-y-2">
                             <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Alignment</Label>
-                            <div className="grid grid-cols-3 gap-1">
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('left')} title="Align Left"><AlignStartHorizontal className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-h')} title="Align Center Horizontal"><AlignCenterHorizontal className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('right')} title="Align Right"><AlignEndHorizontal className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('top')} title="Align Top"><AlignStartVertical className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-v')} title="Align Center Vertical"><AlignCenterVertical className="h-4 w-4" /></Button>
-                                <Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('bottom')} title="Align Bottom"><AlignEndVertical className="h-4 w-4" /></Button>
-                            </div>
+                            <TooltipProvider>
+                                <div className="grid grid-cols-3 gap-1">
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Align Left</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Center Horizontally</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Align Right</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Align Top</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Center Vertically</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 p-0" onClick={() => alignFields('bottom')}><AlignEndVertical className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Align Bottom</p></TooltipContent></Tooltip>
+                                </div>
+                            </TooltipProvider>
                         </div>
 
                         {/* Distribution */}
                         <div className="space-y-2 border-t pt-4">
                             <Label className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Distribution</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button>
-                                <Button variant="outline" size="sm" className="h-8 gap-2" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4" /> Vert.</Button>
-                            </div>
+                            <TooltipProvider>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 gap-2 w-full" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button></TooltipTrigger><TooltipContent><p>Distribute Horizontally</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 gap-2 w-full" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4" /> Vert.</Button></TooltipTrigger><TooltipContent><p>Distribute Vertically</p></TooltipContent></Tooltip>
+                                </div>
+                            </TooltipProvider>
                         </div>
 
                         {/* Global Properties */}
@@ -976,10 +980,12 @@ const PropertiesSidebar = ({
 
                         {/* Actions */}
                         <div className="space-y-2 border-t pt-4">
-                            <div className="grid grid-cols-2 gap-2">
-                                <Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button>
-                                <Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button>
-                            </div>
+                            <TooltipProvider>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Tooltip><TooltipTrigger asChild><Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button></TooltipTrigger><TooltipContent><p>Duplicate All Selected</p></TooltipContent></Tooltip>
+                                    <Tooltip><TooltipTrigger asChild><Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button></TooltipTrigger><TooltipContent><p>Delete All Selected</p></TooltipContent></Tooltip>
+                                </div>
+                            </TooltipProvider>
                         </div>
                     </CardContent>
                 </Card>
@@ -1172,8 +1178,25 @@ export default function FieldMapper({
   }, [setFields, namingFieldId, setNamingFieldId]);
 
   const updateField = React.useCallback((id: string, newProps: Partial<LocalPDFFormField>) => {
-    setFields(prev => prev.map(f => f.id === id ? { ...f, ...newProps } : f));
-  }, [setFields]);
+    setFields(prev => prev.map(f => {
+        if (f.id === id) return { ...f, ...newProps };
+        
+        // Handle bulk editing
+        if (selectedFieldIds.length > 1 && selectedFieldIds.includes(id) && selectedFieldIds.includes(f.id)) {
+            // If it's a dimensional update (resize), sync dimensions only
+            // Position updates are complex because they usually depend on the specific field's start position,
+            // so for bulk resize we only sync the width/height to avoid stacking them.
+            if (newProps.dimensions && !newProps.placeholder && !newProps.label) {
+                return { ...f, dimensions: newProps.dimensions, isSuggestion: false };
+            }
+            // Sync non-geometric props
+            if (!newProps.dimensions && !newProps.position) {
+                return { ...f, ...newProps };
+            }
+        }
+        return f;
+    }));
+  }, [setFields, selectedFieldIds]);
 
   const bulkRemove = React.useCallback(() => {
     setFields(prev => prev.filter(f => !selectedFieldIds.includes(f.id)));
