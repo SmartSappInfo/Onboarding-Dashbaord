@@ -205,20 +205,23 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                 <TabsTrigger value="photo">Take Photo</TabsTrigger>
                             </TabsList>
                             <TabsContent value="draw">
-                                <div className="border rounded-md bg-white mt-4 relative">
-                                    <SignatureCanvas
-                                        ref={sigPadRef}
-                                        penColor="black"
-                                        canvasProps={{
-                                            className: 'w-full h-48 rounded-md',
-                                        }}
-                                        onBegin={() => setHasDrawn(true)}
-                                    />
+                                <div className="mt-4 space-y-4">
+                                    <Label className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Sign your signature on this signing pad</Label>
+                                    <div className="border rounded-md bg-white relative">
+                                        <SignatureCanvas
+                                            ref={sigPadRef}
+                                            penColor="black"
+                                            canvasProps={{
+                                                className: 'w-full h-48 rounded-md',
+                                            }}
+                                            onBegin={() => setHasDrawn(true)}
+                                        />
+                                    </div>
                                 </div>
                             </TabsContent>
                             <TabsContent value="type">
                                 <div className="mt-4 space-y-4">
-                                    <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-xs tracking-widest">Type your name or initials</Label>
+                                    <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
                                     <Input 
                                         id="initials-input" 
                                         value={typedInitials} 
@@ -232,10 +235,9 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             <TabsContent value="upload">
                                 <div className="mt-4">
                                     {!uploadedImage ? (
-                                        <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted">
+                                        <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted p-6 text-center">
                                             <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                                            <p className="text-xs text-muted-foreground">PNG or JPG</p>
+                                            <p className="mb-2 text-sm text-muted-foreground font-semibold uppercase tracking-tight">Click to upload or drag and drop an image file of your signature (PNG or JPG)</p>
                                             <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                                         </label>
                                     ) : (
@@ -246,7 +248,9 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                 </div>
                             </TabsContent>
                             <TabsContent value="photo">
-                                <div className="mt-4 space-y-4">
+                                <div className="mt-4 space-y-4 text-center">
+                                    <Label className="block text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Take a photo of your signature from paper</Label>
+                                    
                                     {hasCameraPermission === false && (
                                         <Alert variant="destructive">
                                             <AlertTitle>Camera Access Required</AlertTitle>
