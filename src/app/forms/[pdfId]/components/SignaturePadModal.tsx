@@ -138,8 +138,8 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const ctx = canvas.getContext('2d');
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // Use a larger font size for the high-res canvas export
-                ctx.font = '450px "Mrs Saint Delafield"';
+                // Reduced the canvas font size by 70% (450 * 0.3 = 135)
+                ctx.font = '135px "Mrs Saint Delafield"';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
@@ -222,11 +222,12 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             <TabsContent value="type">
                                 <div className="mt-4 space-y-4">
                                     <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
+                                    {/* Reduced font sizes by ~70%: Mobile 75->22, Desktop 375->112 */}
                                     <Input 
                                         id="initials-input" 
                                         value={typedInitials} 
                                         onChange={(e) => setTypedInitials(e.target.value)} 
-                                        className="text-[75px] md:text-[375px] text-center font-signature h-auto py-6 md:py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
+                                        className="text-[22px] md:text-[112px] text-center font-signature h-auto py-6 md:py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
                                         placeholder="Jane Doe" 
                                     />
                                     <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
