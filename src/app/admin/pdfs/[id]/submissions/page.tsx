@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 
-// Dynamic imports for rendering libraries
+// Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionsPage() {
@@ -156,32 +156,36 @@ export default function SubmissionsPage() {
 
   // Callback when a rendering component finishes its job
   const onDownloadFinished = React.useCallback((success: boolean, blobUrl?: string) => {
-    if (isProcessingBatch) {
-        setBatchDownloadQueue(prev => {
-            const nextQueue = prev.slice(1);
-            if (nextQueue.length > 0) {
-                setDownloadingId(nextQueue[0]);
-            } else {
-                setIsProcessingBatch(false);
-                setDownloadingId(null);
-                toast({ title: 'Batch Download Complete', description: 'All submissions have been processed.' });
-            }
-            return nextQueue;
-        });
-    } else {
-        setDownloadingId(null);
-        if (success) {
-            toast({ 
-                title: 'Download Ready', 
-                description: 'Your PDF has been generated successfully.',
-                action: blobUrl ? (
-                    <ToastAction altText="Open PDF" asChild>
-                        <a href={blobUrl} target="_blank" rel="noopener noreferrer">Open</a>
-                    </ToastAction>
-                ) : undefined
+    // We wrap the state updates in a setTimeout to avoid the "Cannot update a component while rendering another" error.
+    // This happens when a child (HighFidelityDownloader) triggers a parent state update (SubmissionsPage) synchronously.
+    setTimeout(() => {
+        if (isProcessingBatch) {
+            setBatchDownloadQueue(prev => {
+                const nextQueue = prev.slice(1);
+                if (nextQueue.length > 0) {
+                    setDownloadingId(nextQueue[0]);
+                } else {
+                    setIsProcessingBatch(false);
+                    setDownloadingId(null);
+                    toast({ title: 'Batch Download Complete', description: 'All submissions have been processed.' });
+                }
+                return nextQueue;
             });
+        } else {
+            setDownloadingId(null);
+            if (success) {
+                toast({ 
+                    title: 'Download Ready', 
+                    description: 'Your PDF has been generated successfully.',
+                    action: blobUrl ? (
+                        <ToastAction altText="Open PDF" asChild>
+                            <a href={blobUrl} target="_blank" rel="noopener noreferrer">Open</a>
+                        </ToastAction>
+                    ) : undefined
+                });
+            }
         }
-    }
+    }, 0);
   }, [isProcessingBatch, toast]);
 
   return (
