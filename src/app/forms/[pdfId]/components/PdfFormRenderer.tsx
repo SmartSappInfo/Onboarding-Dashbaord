@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -27,6 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -68,6 +70,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
 
+  // Missing Fields Modal State
+  const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
+  const [missingFields, setMissingFields] = React.useState<{ id: string, label: string }[]>([]);
+
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
@@ -84,9 +90,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const updateBaseScale = () => {
         if (typeof window !== 'undefined') {
             const width = window.innerWidth;
-            if (width < 640) setBaseScale(0.9); // Slightly adjusted for mobile
+            if (width < 640) setBaseScale(0.9);
             else if (width < 1024) setBaseScale(1.1);
-            else setBaseScale(1.3); // Reduced from 1.5 for desktop
+            else setBaseScale(1.3);
         }
     };
     updateBaseScale();
@@ -122,6 +128,32 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     setShowConfirmDialog(true);
   };
 
+  const onInvalid = (errors: any) => {
+    const missing = pdfForm.fields
+        .filter(f => errors[f.id])
+        .map(f => ({ id: f.id, label: f.label || f.placeholder || 'Unnamed Field' }));
+    
+    if (missing.length > 0) {
+        setMissingFields(missing);
+        setShowMissingFieldsModal(true);
+    }
+  };
+
+  const handleOkMissingFields = () => {
+    setShowMissingFieldsModal(false);
+    if (missingFields.length > 0) {
+        const firstId = missingFields[0].id;
+        const element = document.getElementById(firstId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const input = element.querySelector('input, select, textarea, button');
+            if (input instanceof HTMLElement) {
+                input.focus();
+            }
+        }
+    }
+  };
+
   const onConfirmSubmission = async () => {
     if (!pendingFormData) return;
     
@@ -151,7 +183,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Submission Error', description: e.message });
     } finally {
-        setIsSubmitting(true); // Keep spinner if submitted
+        setIsSubmitting(false);
         setPendingFormData(null);
     }
   };
@@ -174,7 +206,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
             
-            // Capture the element as a canvas with high scale for quality
             const canvas = await html2canvas(el, {
                 scale: 2,
                 useCORS: true,
@@ -247,7 +278,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
     
-    // Proportional Font Size Calculation - Reduced base multiplier to 10
     const dynamicFontSize = `${Math.round(10 * currentTotalScale)}px`;
     
     if (isSubmitted) {
@@ -278,7 +308,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     placeholder={field.placeholder}
                     disabled={isSubmitting}
                     style={{ fontSize: dynamicFontSize }}
-                    className={inputClasses}
+                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")}
                 />
             );
             break;
@@ -289,7 +319,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {...register(field.id)}
                     disabled={isSubmitting}
                     style={{ fontSize: dynamicFontSize }}
-                    className={inputClasses} 
+                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")} 
                 />
              );
              break;
@@ -299,7 +329,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {...register(field.id)}
                     disabled={isSubmitting}
                     style={{ fontSize: dynamicFontSize }}
-                    className={inputClasses}
+                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")}
                 >
                     <option value="">{field.placeholder || 'Select...'}</option>
                     {(field.options || []).map((opt, i) => (
@@ -314,7 +344,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     type="button"
                     disabled={isSubmitting}
                     onClick={() => setActiveSignatureField(field.id)}
-                    className="w-full h-full border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden"
+                    className={cn(
+                        "w-full h-full border border-dashed rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden",
+                        errors[field.id] ? "border-destructive bg-destructive/5" : "border-muted-foreground"
+                    )}
                 >
                     {value ? (
                         <img src={value} alt="Signature" className="w-full h-full object-contain" />
@@ -353,15 +386,28 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             <div className="flex-1" />
             <div className="flex items-center gap-2">
                 {!isSubmitted ? (
-                    <Button 
-                        type="button" 
-                        size="sm" 
-                        disabled={isSubmitting || isPreview || !isValid} 
-                        onClick={handleSubmit(handlePreSubmit)}
-                    >
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                        Submit Form
-                    </Button>
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className="inline-block">
+                                    <Button 
+                                        type="button" 
+                                        size="sm" 
+                                        disabled={isSubmitting || isPreview} 
+                                        onClick={handleSubmit(handlePreSubmit, onInvalid)}
+                                    >
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                        Submit Form
+                                    </Button>
+                                </div>
+                            </TooltipTrigger>
+                            {!isValid && (
+                                <TooltipContent>
+                                    <p>Please complete all required fields before submitting.</p>
+                                </TooltipContent>
+                            )}
+                        </Tooltip>
+                    </TooltipProvider>
                 ) : (
                     <div className="flex items-center gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-600 hidden sm:block" />
@@ -414,7 +460,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            {/* Bottom Zoom Toolbar */}
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40">
                 <Card className="shadow-2xl border-primary/20 bg-background/95 backdrop-blur-sm rounded-full overflow-hidden">
                     <CardContent className="p-1 flex items-center gap-2">
@@ -452,6 +497,34 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 setActiveSignatureField(null);
             }}
         />
+
+        {/* Missing Fields Modal */}
+        <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                        <AlertCircle className="h-6 w-6 text-destructive" />
+                    </div>
+                    <DialogTitle className="text-center text-xl">Required Fields Missing</DialogTitle>
+                    <DialogDescription className="text-center pt-2">
+                        Please complete the following fields before submitting the document:
+                    </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[30vh] border rounded-md my-4">
+                    <ul className="p-4 space-y-2">
+                        {missingFields.map((field, idx) => (
+                            <li key={idx} className="flex items-center gap-2 text-sm">
+                                <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                                <span>{field.label}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={handleOkMissingFields} className="w-full">OK, take me there</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
 
         {/* Confirmation Dialog */}
         <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
@@ -526,7 +599,6 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
                 }
 
                 const page = await pdf.getPage(pageNumber);
-                // We render at high-fidelity by multiplying base resolution by scale
                 const viewport = page.getViewport({ scale, rotation: page.rotate });
                 
                 if (!isMounted) return;
@@ -573,6 +645,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => (
                         <div 
                             key={field.id} 
+                            id={field.id}
                             className="pointer-events-auto"
                             style={{ 
                                 position: 'absolute', 
