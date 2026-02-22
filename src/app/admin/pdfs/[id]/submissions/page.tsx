@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -26,6 +25,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import { cn } from '@/lib/utils';
 
 // Dynamic imports for rendering libraries
 const pdfjsPromise = import('pdfjs-dist');
