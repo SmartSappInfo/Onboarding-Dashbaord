@@ -30,7 +30,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { updatePdfResultsSharing } from '@/lib/pdf-actions';
+import { Card, CardContent } from '@/components/ui/card';
+import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -92,9 +93,25 @@ export default function SubmissionsPage() {
     const newVal = fieldId === 'none' ? null : fieldId;
     setSelectedNamingFieldId(newVal);
     if (pdf && firestore) {
-        const docRef = doc(firestore, 'pdfs', pdf.id);
-        const newDisplayIds = [newVal, ...displayFields.filter(f => f.id !== newVal).map(f => f.id)].filter(Boolean) as string[];
-        await updateDoc(docRef, { namingFieldId: newVal, displayFieldIds: newDisplayIds.slice(0, 3) });
+        // Calculate new display fields
+        const keyField = pdf.fields.find(f => f.id === newVal);
+        const result = keyField ? [keyField] : [];
+        const otherDisplayIds = (pdf.displayFieldIds || []).filter(id => id !== newVal);
+        const otherFields = otherDisplayIds.map(id => pdf.fields.find(f => f.id === id)).filter(Boolean) as PDFFormField[];
+        const finalSet = [...result, ...otherFields];
+        if (finalSet.length < 3) {
+            const remaining = pdf.fields.filter(f => !finalSet.find(ff => ff.id === f.id) && f.type !== 'signature');
+            finalSet.push(...remaining.slice(0, 3 - finalSet.length));
+        }
+        const newDisplayFieldIds = finalSet.slice(0, 3).map(f => f.id);
+
+        await updatePdfFormMapping(pdf.id, {
+            fields: pdf.fields,
+            namingFieldId: newVal,
+            displayFieldIds: newDisplayFieldIds,
+            password: pdf.password,
+            passwordProtected: pdf.passwordProtected,
+        });
         toast({ title: 'Naming Field Updated' });
     }
   };
@@ -214,8 +231,7 @@ export default function SubmissionsPage() {
         const pdfDoc = await PDFDocument.create();
         const image = await pdfDoc.embedJpg(imgBytes);
         
-        // Handle potential long table by splitting into pages or one long page
-        // For simplicity and report quality, we'll create a page that fits the table
+        // Create a page that fits the table
         const page = pdfDoc.addPage([image.width, image.height]);
         page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
 
@@ -306,7 +322,7 @@ export default function SubmissionsPage() {
           )}
         </div>
 
-        {/* Print-only Header (Also used for PDF capture) */}
+        {/* Print-only Header */}
         <div className={cn("hidden mb-8 border-b pb-4", isExportingPDF && "block")}>
             <h1 className="text-2xl font-bold">Submission Report: {pdf?.name}</h1>
             <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
