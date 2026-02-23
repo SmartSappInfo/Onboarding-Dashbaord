@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
     ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
-    RefreshCcw, Play, AlertCircle 
+    RefreshCcw, Play, AlertCircle, Eye
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -349,7 +349,7 @@ export default function EditPdfPage() {
     <div className="h-full overflow-hidden flex flex-col">
       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card">
         <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" onClick={() => router.push('/admin/pdfs')}>
+            <Button variant="ghost" onClick={() => router.push('/admin/pdfs')} className="shrink-0">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 <span className="hidden sm:inline">Back</span>
             </Button>
@@ -420,8 +420,14 @@ export default function EditPdfPage() {
                 ) : (
                     <Sparkles className="h-4 w-4 sm:mr-2" />
                 )}
-                <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect Fields'}</span>
+                <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect'}</span>
             </RainbowButton>
+            
+            <Button variant="outline" onClick={() => setIsPreviewOpen(true)} className="h-9 px-3 sm:px-4">
+                <Eye className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Preview</span>
+            </Button>
+
             <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4" />}
                 <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>

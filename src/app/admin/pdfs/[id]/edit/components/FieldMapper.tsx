@@ -19,10 +19,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { 
-    Text, Signature, Calendar, Trash2, Loader2, Sparkles, List, Settings2, 
+    Text, Signature, Calendar, Trash2, Loader2, Sparkles, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, Plus, ALargeSmall, ChevronDownSquare, ChevronDown, Key
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, ALargeSmall, ChevronDownSquare, ChevronDown, Key
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -142,9 +142,8 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
     const selectedOnThisPage = fields.filter(f => selectedFieldIds.includes(f.id));
     const isMultiSelect = selectedFieldIds.length > 1;
     
-    // Use stored percentages if background isn't loaded yet, or viewport dimensions once available
-    const displayWidth = pageDimensions.width > 0 ? pageDimensions.width / 1.5 : 816; // 8.5in at 96dpi
-    const displayHeight = pageDimensions.height > 0 ? pageDimensions.height / 1.5 : 1056; // 11in at 96dpi
+    const displayWidth = pageDimensions.width > 0 ? pageDimensions.width / 1.5 : 816;
+    const displayHeight = pageDimensions.height > 0 ? pageDimensions.height / 1.5 : 1056;
 
     return (
         <div 
@@ -680,7 +679,6 @@ const PropertiesSidebar = ({
       
       <ScrollArea className="flex-grow">
         <div className={cn("space-y-4 p-4", isCollapsed && "p-2")}>
-            {/* Quick Add Elements Section */}
             {!isCollapsed && (
                 <Card>
                     <CardHeader className="py-3">
@@ -695,7 +693,6 @@ const PropertiesSidebar = ({
                 </Card>
             )}
 
-            {/* AI Tools Card (Dynamic Detect vs Accept/Reject) */}
             {!isCollapsed && (
                 <Card className={cn(hasSuggestions && "border-green-500 bg-green-50/10")}>
                     <CardHeader className="py-3">
@@ -706,11 +703,7 @@ const PropertiesSidebar = ({
                     </CardHeader>
                     <CardContent className="space-y-2 pb-4">
                         {!hasSuggestions ? (
-                            <Button 
-                                onClick={onDetect} 
-                                disabled={isDetecting} 
-                                className="w-full h-9 text-xs font-bold bg-primary text-primary-foreground"
-                            >
+                            <Button onClick={onDetect} disabled={isDetecting} className="w-full h-9 text-xs font-bold bg-primary text-primary-foreground">
                                 {isDetecting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
                                 Auto-Detect Fields
                             </Button>
@@ -959,7 +952,6 @@ export default function FieldMapper({
               </ScrollArea>
           </DndContext>
           
-          {/* Zoom Component Vertically Centered */}
           <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">
               <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mb-2" onClick={() => setDisplayZoom(p => Math.min(p+0.1, 3))}><ZoomIn className="h-4 w-4 text-primary" /></Button>
@@ -971,7 +963,6 @@ export default function FieldMapper({
               </div>
           </div>
 
-          {/* Tool Docker at the bottom centre */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
               <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl">
                   <TooltipProvider>
@@ -1007,7 +998,6 @@ export default function FieldMapper({
           </div>
       </div>
 
-      {/* Properties Sidebar */}
       <div 
         className={cn(
             "h-full bg-card border-l hidden md:flex flex-col z-30 shadow-xl transition-all duration-300 ease-in-out",
