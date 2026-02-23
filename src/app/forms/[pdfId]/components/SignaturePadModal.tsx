@@ -122,7 +122,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const video = videoRef.current;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
             setCapturedImage(canvas.toDataURL('image/png'));
         }
@@ -135,7 +135,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             dataUrl = sigPadRef.current.getTrimmedCanvas().toDataURL('image/png');
         } else if (activeTab === 'type' && initialsCanvasRef.current && typedInitials) {
             const canvas = initialsCanvasRef.current;
-            const ctx = canvas.getContext('2d');
+            const ctx = canvas.getContext('2d', { willReadFrequently: true });
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 // Reduced the canvas font size by 70% (450 * 0.3 = 135)
@@ -213,6 +213,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                             penColor="black"
                                             canvasProps={{
                                                 className: 'w-full h-48 rounded-md',
+                                                willreadfrequently: "true"
                                             }}
                                             onBegin={() => setHasDrawn(true)}
                                         />

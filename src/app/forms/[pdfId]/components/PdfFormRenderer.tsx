@@ -588,22 +588,24 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         )}
                         <AlertDialogTitle>Confirm Final Submission</AlertDialogTitle>
                     </div>
-                    <AlertDialogDescription className="space-y-4 pt-2">
-                        {hasSignature ? (
-                            <>
-                                <p className="font-semibold text-foreground">Important Legal Notice:</p>
-                                <p>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</p>
-                                <p className="bg-muted p-3 rounded-md text-xs italic">
-                                    "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
-                                </p>
-                            </>
-                        ) : (
-                            <p>Are you ready to submit your responses? Please review your entries one last time.</p>
-                        )}
-                        <p className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
-                            <AlertTriangle className="h-4 w-4" />
-                            This submission is final and irreversible.
-                        </p>
+                    <AlertDialogDescription asChild>
+                        <div className="space-y-4 pt-2">
+                            {hasSignature ? (
+                                <>
+                                    <p className="font-semibold text-foreground">Important Legal Notice:</p>
+                                    <p>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</p>
+                                    <p className="bg-muted p-3 rounded-md text-xs italic">
+                                        "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
+                                    </p>
+                                </>
+                            ) : (
+                                <p>Are you ready to submit your responses? Please review your entries one last time.</p>
+                            )}
+                            <p className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4" />
+                                This submission is final and irreversible.
+                            </p>
+                        </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -686,7 +688,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
         >
             {isRendering && <Skeleton className="absolute inset-0 z-10" />}
             <canvas ref={canvasRef} className="block w-full h-full" />
-            {!isRendering && (
+            {dimensions.width > 0 && (
                 <div className="absolute inset-0 z-20 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => (
                         <div 

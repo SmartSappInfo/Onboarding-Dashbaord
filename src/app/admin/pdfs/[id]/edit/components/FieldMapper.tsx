@@ -151,7 +151,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
             {isLoading && <Skeleton className="absolute inset-0 z-10" />}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
             
-            {!isLoading && fields.map(field => (
+            {pageDimensions.width > 0 && fields.map(field => (
                 <ResizableField
                     key={field.id}
                     field={field}
@@ -168,7 +168,7 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
                 />
             ))}
 
-            {!isLoading && selectedOnThisPage.length > 1 && (
+            {pageDimensions.width > 0 && selectedOnThisPage.length > 1 && (
                 <SelectionOverlay
                     fields={selectedOnThisPage}
                     pageDimensions={pageDimensions}
