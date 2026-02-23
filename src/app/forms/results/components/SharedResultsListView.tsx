@@ -7,9 +7,9 @@ import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer } from 'lucide-react';
+import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Users, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -86,7 +86,6 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   };
 
   const onDownloadFinished = React.useCallback((success: boolean) => {
-    // Wrap in setTimeout to avoid React state conflict during render
     setTimeout(() => {
         if (isProcessingBatch) {
             setBatchDownloadQueue(prev => {
@@ -198,7 +197,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     </div>
                 `;
             } else {
-                pageEl.innerHTML = `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
+                pageEl.innerHTML += `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
             }
 
             let tableHtml = `
@@ -276,23 +275,25 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   return (
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-muted/10">
-        <header className="h-16 border-b bg-background px-6 flex items-center justify-between shrink-0 print:hidden">
+        <header className="h-16 border-b bg-background px-6 flex items-center justify-between shrink-0 print:hidden shadow-sm z-30">
             <div className="flex items-center gap-3">
-                <SmartSappIcon className="h-8 w-8 text-primary" />
-                <div>
-                    <h1 className="font-bold text-sm sm:text-base leading-none">Shared Results: {pdfForm.name}</h1>
-                    <p className="text-[10px] text-muted-foreground mt-1">Authorized Viewing Access</p>
+                <div className="p-2 bg-primary/10 rounded-xl">
+                    <SmartSappIcon className="h-6 w-6 text-primary" />
+                </div>
+                <div className="min-w-0">
+                    <h1 className="font-black text-sm sm:text-lg leading-none truncate pr-4">{pdfForm.name}</h1>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Shared Results Portal</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2" disabled={isExportingCSV || isExportingPDF}>
+                        <Button variant="outline" size="sm" className="gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
                             {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             Export List
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Export to Excel (CSV)
@@ -305,7 +306,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 </DropdownMenu>
                 
                 {submissions?.length > 0 && (
-                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId}>
+                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="font-bold shadow-sm">
                         {isProcessingBatch ? (
                             <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing ({batchDownloadQueue.length} left)</>
                         ) : (
@@ -316,22 +317,51 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
             </div>
         </header>
 
-        <div className="flex-grow overflow-auto p-4 sm:p-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+        <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
+            <div className="max-w-6xl mx-auto space-y-6">
+                
+                {/* Stats Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="bg-card shadow-sm border-border/50">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className="bg-primary/10 p-2.5 rounded-xl">
+                                <Users className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Submissions</p>
+                                <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card shadow-sm border-border/50">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className="bg-green-500/10 p-2.5 rounded-xl">
+                                <Clock className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Latest Update</p>
+                                <p className="text-sm font-bold text-foreground">
+                                    {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'N/A'}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
                     <Table>
-                        <TableHeader>
-                            <TableRow>
+                        <TableHeader className="bg-muted/50 border-b border-border/50">
+                            <TableRow className="hover:bg-transparent">
                                 {displayFields.map((field, idx) => (
-                                    <TableHead key={field.id} className={cn(idx === 0 && "bg-primary/5")}>
+                                    <TableHead key={field.id} className={cn("text-xs font-black uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
                                         <div className="flex items-center gap-1.5">
                                             {field.label || 'Unnamed'}
-                                            {field.id === pdfForm.namingFieldId && <Key className="h-3 w-3 text-primary/70" />}
+                                            {field.id === pdfForm.namingFieldId && <Key className="h-3 w-3 text-primary" />}
                                         </div>
                                     </TableHead>
                                 ))}
-                                <TableHead>Date</TableHead>
-                                <TableHead className="w-[100px] text-right">Actions</TableHead>
+                                <TableHead className="text-xs font-black uppercase tracking-wider py-4">Submission Date</TableHead>
+                                <TableHead className="w-[100px] text-right py-4 pr-6">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -342,28 +372,28 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                                 </TableRow>
                             )) : submissions?.length ? submissions.map((submission) => (
-                                <TableRow key={submission.id}>
+                                <TableRow key={submission.id} className="group hover:bg-muted/30 transition-colors">
                                     {displayFields.map((field, idx) => {
                                         const value = submission.formData[field.id];
                                         const content = field.type === 'signature' ? (
-                                            <div className="h-8 w-16 relative bg-muted rounded overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
-                                        ) : <span className="truncate max-w-[200px] block">{value || '-'}</span>;
+                                            <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
+                                        ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         return (
-                                            <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
-                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:underline">{content}</Link> : content}
+                                            <TableCell key={field.id} className={cn(idx === 0 && "pl-6")}>
+                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold">{content}</Link> : content}
                                             </TableCell>
                                         );
                                     })}
-                                    <TableCell className="text-muted-foreground text-xs">{format(new Date(submission.submittedAt), 'PPP')}</TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
+                                    <TableCell className="text-muted-foreground text-xs font-medium">{format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}</TableCell>
+                                    <TableCell className="text-right pr-6">
+                                        <div className="flex items-center justify-end gap-1 group-hover:opacity-100 opacity-0 transition-opacity">
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={displayFields.length + 2} className="h-48 text-center text-muted-foreground">No submissions found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={displayFields.length + 2} className="h-48 text-center text-muted-foreground font-medium">No submission records found.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -373,17 +403,17 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
 
         {isExportingPDF && (
             <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-                <Card className="w-80 shadow-2xl border-primary/20">
-                    <CardContent className="p-6 flex flex-col items-center gap-4">
+                <Card className="w-80 shadow-2xl border-primary/20 bg-card rounded-2xl">
+                    <CardContent className="p-8 flex flex-col items-center gap-6">
                         <div className="relative">
                             <Loader2 className="h-12 w-12 animate-spin text-primary" />
                             <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
                         </div>
-                        <div className="text-center">
-                            <h2 className="font-bold text-lg">Generating Report</h2>
-                            <p className="text-sm text-muted-foreground">Creating A4 multi-page document...</p>
+                        <div className="text-center space-y-1">
+                            <h2 className="font-black text-xl tracking-tight">Generating Report</h2>
+                            <p className="text-sm text-muted-foreground font-medium">Creating A4 multi-page document...</p>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
+                        <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground">Cancel</Button>
                     </CardContent>
                 </Card>
             </div>
@@ -436,7 +466,6 @@ function HighFidelityDownloader({
                 setPdfDoc(loaded);
             } catch (e) {
                 console.error("Renderer: Failed to load PDF", e);
-                // Defer toast to avoid React update conflicts
                 setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
                 onFinished(false);
             }
@@ -477,23 +506,23 @@ function HighFidelityDownloader({
 
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="flex items-center justify-between p-4 border-b bg-card">
+            <div className="flex items-center justify-between p-4 border-b bg-card shadow-sm">
                 <div className="flex items-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     <div>
                         <h2 className="text-lg font-bold">
                             {batchProgress ? `Downloading Record ${batchProgress.current} of ${batchProgress.total}` : 'Processing PDF'}
                         </h2>
-                        <p className="text-sm text-muted-foreground">Generating high-fidelity document...</p>
+                        <p className="text-sm text-muted-foreground font-medium">Generating high-fidelity document...</p>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">
                     <X className="h-5 w-5" />
                 </Button>
             </div>
             
             {batchProgress && (
-                <div className="w-full h-1 bg-muted">
+                <div className="w-full h-1.5 bg-muted">
                     <div 
                         className="h-full bg-primary transition-all duration-500 ease-in-out" 
                         style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
@@ -519,7 +548,7 @@ function HighFidelityDownloader({
             </div>
             
             <div className="p-4 border-t bg-card text-center print:hidden">
-                <Button variant="destructive" size="sm" onClick={onCancel}>
+                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
                     Stop Batch Download
                 </Button>
             </div>
@@ -548,7 +577,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
     }, [pdf, pageNumber]);
 
     return (
-        <div className="relative mx-auto bg-white border flex-shrink-0 shadow-lg" style={{ width: dimensions.width, height: dimensions.height }}>
+        <div className="relative mx-auto bg-white border border-border/50 flex-shrink-0 shadow-lg" style={{ width: dimensions.width, height: dimensions.height }}>
             {isRendering && <Skeleton className="absolute inset-0" />}
             <canvas ref={canvasRef} className="w-full h-full block" />
             {!isRendering && (
@@ -557,7 +586,13 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         const val = formData[field.id]; if (!val) return null;
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
-                                {field.type === 'signature' ? <img src={val} alt="S" className="w-full h-full object-contain" /> : <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">{field.type === 'date' ? format(new Date(val), 'PPP') : val}</span>}
+                                {field.type === 'signature' ? (
+                                    <img src={val} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                ) : (
+                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                                        {field.type === 'date' ? format(new Date(val), 'PPP') : val}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}

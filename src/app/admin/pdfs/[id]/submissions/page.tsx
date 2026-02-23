@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, BarChart3, Clock, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,10 +30,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
-import SubmissionCount from '../components/SubmissionCount';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -146,7 +145,6 @@ export default function SubmissionsPage() {
   };
 
   const onDownloadFinished = React.useCallback((success: boolean, blobUrl?: string) => {
-    // Wrap in setTimeout to avoid "Cannot update a component while rendering a different component" error
     setTimeout(() => {
         if (isProcessingBatch) {
             setBatchDownloadQueue(prev => {
@@ -347,28 +345,29 @@ export default function SubmissionsPage() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
-          <div>
-            <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => router.push('/admin/pdfs')}>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 print:hidden">
+          <div className="space-y-1 min-w-0">
+            <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground" onClick={() => router.push('/admin/pdfs')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Documents
             </Button>
-            <h1 className="text-2xl font-bold tracking-tight">
-              {isLoadingPdf ? <Skeleton className="h-8 w-64" /> : `Submissions for "${pdf?.name}"`}
+            <h1 className="text-3xl font-black tracking-tight text-foreground truncate" title={pdf?.name}>
+              {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions for "${pdf?.name}"`}
             </h1>
-            <p className="text-muted-foreground text-sm">Manage responses and export signed documents.</p>
+            <p className="text-muted-foreground text-sm font-medium">Manage and export signed document records.</p>
           </div>
+          
           {!isLoading && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2" disabled={isExportingCSV || isExportingPDF}>
+                        <Button variant="outline" className="gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
                             {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             Export List
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Export to Excel (CSV)
@@ -380,13 +379,14 @@ export default function SubmissionsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="gap-2">
+                  <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="gap-2 shadow-sm">
                       <Share2 className="h-4 w-4" />
                       Share Results
                   </Button>
+                  
                   {submissions && submissions.length > 0 && (
-                      <ButtonGroup>
-                          <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-10 px-6 font-semibold">
+                      <ButtonGroup className="shadow-sm">
+                          <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-10 px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                               {isProcessingBatch ? (
                                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing ({batchDownloadQueue.length} left)</>
                               ) : (
@@ -395,16 +395,16 @@ export default function SubmissionsPage() {
                           </Button>
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                  <Button variant="default" size="icon" className="h-10 w-10 border-l border-primary-foreground/20 rounded-l-none" disabled={isProcessingBatch}>
+                                  <Button variant="default" size="icon" className="h-10 w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
                                       <ChevronDown className="h-4 w-4" />
                                   </Button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-56">
-                                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground">Filename Identifier</DropdownMenuLabel>
+                              <DropdownMenuContent align="end" className="w-64">
+                                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
                                   {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
-                                      <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
+                                      <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
                                           {field.label || field.id}
                                           {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
                                       </DropdownMenuItem>
@@ -417,20 +417,48 @@ export default function SubmissionsPage() {
           )}
         </div>
 
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-card shadow-sm border-border/50">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="bg-primary/10 p-2.5 rounded-xl">
+                        <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Total Records</p>
+                        <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card className="bg-card shadow-sm border-border/50">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="bg-green-500/10 p-2.5 rounded-xl">
+                        <Clock className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Last Active</p>
+                        <p className="text-sm font-bold text-foreground">
+                            {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'No activity'}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
-              <TableRow>
+            <TableHeader className="bg-muted/50 border-b border-border/50">
+              <TableRow className="hover:bg-transparent">
                 {displayFields.map((field, idx) => (
-                  <TableHead key={field.id} className={cn(idx === 0 && "bg-primary/5")}>
+                  <TableHead key={field.id} className={cn("text-xs font-black uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
-                        {field.id === selectedNamingFieldId && <Tooltip><TooltipTrigger><Key className="h-3 w-3 text-primary-foreground/70" /></TooltipTrigger><TooltipContent>Current Key Naming Field</TooltipContent></Tooltip>}
+                        {field.id === selectedNamingFieldId && <Tooltip><TooltipTrigger><Key className="h-3 w-3 text-primary" /></TooltipTrigger><TooltipContent>Primary Naming Field</TooltipContent></Tooltip>}
                       </div>
                   </TableHead>
                 ))}
-                <TableHead>Submission Date</TableHead>
-                <TableHead className="w-[120px] text-right">Actions</TableHead>
+                <TableHead className="text-xs font-black uppercase tracking-wider py-4">Submission Date</TableHead>
+                <TableHead className="w-[120px] text-right py-4 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -441,35 +469,35 @@ export default function SubmissionsPage() {
                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 )) : submissions && submissions.length > 0 ? submissions.map((submission) => (
-                  <TableRow key={submission.id}>
+                  <TableRow key={submission.id} className="group hover:bg-muted/30 transition-colors">
                     {displayFields.map((field, idx) => {
                       const value = submission.formData[field.id];
                       const content = field.type === 'signature' ? (
-                        <div className="h-8 w-16 relative bg-muted rounded overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
-                      ) : <span className="truncate max-w-[200px] block">{value || <span className="text-muted-foreground italic">empty</span>}</span>;
+                        <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
+                      ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                       return (
-                        <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
+                        <TableCell key={field.id} className={cn(idx === 0 && "pl-6")}>
                           {idx === 0 ? (
-                              <div className="flex items-center gap-2">
-                                  <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:underline cursor-pointer">
-                                    {content}
-                                  </Link>
-                              </div>
+                              <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="inline-flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
+                                {content}
+                              </Link>
                           ) : content}
                         </TableCell>
                       );
                     })}
-                    <TableCell className="text-muted-foreground">{format(new Date(submission.submittedAt), 'PPP p')}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Tooltip><TooltipTrigger asChild><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4" /><span className="sr-only">View Submission</span></Link></Button></TooltipTrigger><TooltipContent>View Details</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>{downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="sr-only">Download PDF</span></Button></TooltipTrigger><TooltipContent>Download PDF</TooltipContent></Tooltip>
+                    <TableCell className="text-muted-foreground text-xs font-medium">
+                        {format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Tooltip><TooltipTrigger asChild><Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4" /><span className="sr-only">View Submission</span></Link></Button></TooltipTrigger><TooltipContent>View Details</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>{downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="sr-only">Download PDF</span></Button></TooltipTrigger><TooltipContent>Download Signed PDF</TooltipContent></Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
                 )) : (
                 <TableRow>
-                  <TableCell colSpan={displayFields.length + 2} className="h-24 text-center text-muted-foreground">No submissions have been received for this document yet.</TableCell>
+                  <TableCell colSpan={displayFields.length + 2} className="h-48 text-center text-muted-foreground">No submissions have been received for this document yet.</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -487,17 +515,17 @@ export default function SubmissionsPage() {
 
       {isExportingPDF && (
           <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-              <Card className="w-80 shadow-2xl border-primary/20">
-                  <CardContent className="p-6 flex flex-col items-center gap-4">
+              <Card className="w-80 shadow-2xl border-primary/20 bg-card rounded-2xl">
+                  <CardContent className="p-8 flex flex-col items-center gap-6">
                       <div className="relative">
                           <Loader2 className="h-12 w-12 animate-spin text-primary" />
                           <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
                       </div>
-                      <div className="text-center">
-                          <h2 className="font-bold text-lg">Generating Report</h2>
-                          <p className="text-sm text-muted-foreground">Creating A4 multi-page document...</p>
+                      <div className="text-center space-y-1">
+                          <h2 className="font-black text-xl tracking-tight">Generating Report</h2>
+                          <p className="text-sm text-muted-foreground font-medium">Creating A4 multi-page document...</p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground hover:text-foreground">Cancel</Button>
                   </CardContent>
               </Card>
           </div>
@@ -539,30 +567,30 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Share Results List</DialogTitle>
-                    <DialogDescription>Allow external stakeholders to view and download submissions.</DialogDescription>
+            <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden">
+                <DialogHeader className="p-6 pb-0">
+                    <DialogTitle className="text-2xl font-black tracking-tight">Share Results Portal</DialogTitle>
+                    <DialogDescription className="text-sm font-medium">Allow external stakeholders to view and download submissions securely.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 py-4">
-                    <div className="flex items-center justify-between rounded-lg border p-4">
+                <div className="space-y-6 p-6">
+                    <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-muted/30 p-4">
                         <div className="space-y-0.5">
-                            <Label>Public Access</Label>
-                            <p className="text-xs text-muted-foreground">Enable to allow external viewing via link.</p>
+                            <Label className="text-sm font-bold uppercase tracking-wider">Public Access</Label>
+                            <p className="text-xs text-muted-foreground font-medium">Enable to allow external viewing via link.</p>
                         </div>
                         <Switch checked={isShared} onCheckedChange={setIsShared} />
                     </div>
                     {isShared && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                             <div className="space-y-2">
-                                <Label className="text-xs flex items-center gap-1.5"><Lock className="h-3 w-3" /> Results Password</Label>
-                                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." />
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Lock className="h-3 w-3" /> Results Password</Label>
+                                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-11" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-xs">Share Link</Label>
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Share Link</Label>
                                 <div className="flex items-center gap-2">
-                                    <Input value={shareUrl} readOnly className="text-[10px] bg-muted" />
-                                    <Button size="icon" variant="outline" className="shrink-0" onClick={() => {
+                                    <Input value={shareUrl} readOnly className="text-[10px] bg-muted h-11 font-mono" />
+                                    <Button size="icon" variant="outline" className="h-11 w-11 shrink-0 rounded-lg shadow-sm" onClick={() => {
                                         navigator.clipboard.writeText(shareUrl);
                                         toast({ title: 'Link Copied' });
                                     }}>
@@ -573,9 +601,9 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
                         </div>
                     )}
                 </div>
-                <DialogFooter>
-                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving}>
+                <DialogFooter className="p-6 pt-0">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving} className="font-bold">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Settings'}
                     </Button>
                 </DialogFooter>
@@ -622,7 +650,6 @@ function HighFidelityDownloader({
                 setPdfDoc(loadedPdf);
             } catch (e) {
                 console.error("Renderer: Failed to load PDF", e);
-                // Defer toast to next tick to avoid React update conflicts
                 setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
                 onFinished(false);
             }
@@ -687,16 +714,16 @@ function HighFidelityDownloader({
                         <h2 className="text-lg font-bold">
                             {batchProgress ? `Downloading Document ${batchProgress.current} of ${batchProgress.total}` : 'Generating Signed Document'}
                         </h2>
-                        <p className="text-sm text-muted-foreground">Capturing high-fidelity pages...</p>
+                        <p className="text-sm text-muted-foreground font-medium">Capturing high-fidelity pages...</p>
                     </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">
                     <X className="h-5 w-5" />
                 </Button>
             </div>
             
             {batchProgress && (
-                <div className="w-full h-1 bg-muted">
+                <div className="w-full h-1.5 bg-muted">
                     <div 
                         className="h-full bg-primary transition-all duration-500 ease-in-out" 
                         style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
@@ -724,8 +751,8 @@ function HighFidelityDownloader({
             </div>
             
             <div className="p-4 border-t bg-card text-center print:hidden">
-                <Button variant="destructive" size="sm" onClick={onCancel}>
-                    Cancel Operation
+                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
+                    Stop Batch Download
                 </Button>
             </div>
         </div>
@@ -783,7 +810,13 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         if (!value) return null;
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', alignItems: 'flex-start', justifyItems: 'flex-start' }}>
-                                {field.type === 'signature' ? <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" /> : <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">{field.type === 'date' && value ? format(new Date(value), 'PPP') : value}</span>}
+                                {field.type === 'signature' ? (
+                                    <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                ) : (
+                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
