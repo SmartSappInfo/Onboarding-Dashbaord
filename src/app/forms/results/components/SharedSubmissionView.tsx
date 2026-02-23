@@ -4,24 +4,74 @@ import * as React from 'react';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Monitor, Printer } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Printer, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { SmartSappIcon } from '@/components/icons';
 import { useRouter } from 'next/navigation';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 
 const pdfjsPromise = import('pdfjs-dist');
+
+const passwordSchema = z.object({
+  password: z.string().min(1, 'Password is required.'),
+});
+
+const AUTH_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
 export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm: PDFForm, submission: Submission }) {
   const router = useRouter();
   const { toast } = useToast();
+  
+  const [isUnlocked, setIsUnlocked] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(true);
+  const [authError, setAuthError] = React.useState<string | null>(null);
+  const storageKey = React.useMemo(() => `results_auth_${pdfForm.id}`, [pdfForm.id]);
+
+  const authForm = useForm<z.infer<typeof passwordSchema>>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: { password: '' },
+  });
+
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isDownloading, setIsDownloading] = React.useState(false);
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    const checkAuth = () => {
+      if (!pdfForm.resultsPassword) {
+        setIsUnlocked(true);
+        setIsInitializing(false);
+        return;
+      }
+
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const { timestamp } = JSON.parse(stored);
+          if (Date.now() - timestamp < AUTH_EXPIRY_MS) {
+            setIsUnlocked(true);
+          } else {
+            localStorage.removeItem(storageKey);
+          }
+        } catch (e) {
+          localStorage.removeItem(storageKey);
+        }
+      }
+      setIsInitializing(false);
+    };
+
+    checkAuth();
+  }, [storageKey, pdfForm.resultsPassword]);
+
+  React.useEffect(() => {
+    if (!isUnlocked) return;
     const load = async () => {
         const pdfjs = await pdfjsPromise;
         pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
@@ -29,7 +79,18 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
         setPdfDoc(loaded);
     };
     load();
-  }, [pdfForm.downloadUrl]);
+  }, [pdfForm.downloadUrl, isUnlocked]);
+
+  const onAuthSubmit = (data: z.infer<typeof passwordSchema>) => {
+    if (data.password === pdfForm.resultsPassword) {
+      localStorage.setItem(storageKey, JSON.stringify({ timestamp: Date.now() }));
+      setIsUnlocked(true);
+      setAuthError(null);
+    } else {
+      setAuthError('Incorrect password. Please try again.');
+      authForm.reset();
+    }
+  };
 
   const handleDownload = async () => {
     setIsDownloading(true);
@@ -44,6 +105,64 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
         toast({ variant: 'destructive', title: 'Download Failed' });
     } finally { setIsDownloading(false); }
   };
+
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/20">
+        <Dialog open={!isUnlocked} onOpenChange={() => {}}>
+          <DialogContent 
+            className="sm:max-w-md" 
+            onPointerDownOutside={(e) => e.preventDefault()} 
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
+            <DialogHeader>
+              <div className="flex justify-center mb-4">
+                <div className="bg-primary/10 p-3 rounded-full">
+                  <Lock className="h-10 w-10 text-primary" />
+                </div>
+              </div>
+              <DialogTitle className="text-center text-xl">Shared Results Access</DialogTitle>
+              <DialogDescription className="text-center">
+                Please enter the password provided to you to view this record.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...authForm}>
+              <form onSubmit={authForm.handleSubmit(onAuthSubmit)} className="space-y-4 pt-4">
+                <FormField
+                  control={authForm.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Results Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="Enter password..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {authError && <p className="text-sm font-medium text-destructive text-center">{authError}</p>}
+                <DialogFooter>
+                  <Button type="submit" className="w-full" disabled={authForm.formState.isSubmitting}>
+                     {authForm.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Access Results
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/20">
@@ -72,7 +191,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
 
       <div className="flex-grow overflow-hidden relative">
         <ScrollArea className="h-full w-full">
-            <div ref={pageContainerRef} className="p-4 sm:p-8 flex flex-col items-center">
+            <div ref={pageContainerRef} className="p-4 sm:p-8 flex flex-col items-center min-w-full">
                 {!pdfDoc ? (
                     <div className="space-y-4"><Skeleton className="w-[8.5in] h-[11in] bg-card rounded-lg" /></div>
                 ) : (

@@ -11,23 +11,56 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2, Lock } from 'lucide-react';
-import { SmartSappIcon } from '@/components/icons';
 
 const passwordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
 });
 
+const AUTH_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+
 export default function PasswordGatedResults({ pdfForm }: { pdfForm: PDFForm }) {
   const [isUnlocked, setIsUnlocked] = React.useState(false);
+  const [isInitializing, setIsInitializing] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   
+  const storageKey = React.useMemo(() => `results_auth_${pdfForm.id}`, [pdfForm.id]);
+
   const form = useForm<z.infer<typeof passwordSchema>>({
     resolver: zodResolver(passwordSchema),
     defaultValues: { password: '' },
   });
 
+  React.useEffect(() => {
+    const checkAuth = () => {
+      // If no password is set, skip the gate
+      if (!pdfForm.resultsPassword) {
+        setIsUnlocked(true);
+        setIsInitializing(false);
+        return;
+      }
+
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        try {
+          const { timestamp } = JSON.parse(stored);
+          if (Date.now() - timestamp < AUTH_EXPIRY_MS) {
+            setIsUnlocked(true);
+          } else {
+            localStorage.removeItem(storageKey);
+          }
+        } catch (e) {
+          localStorage.removeItem(storageKey);
+        }
+      }
+      setIsInitializing(false);
+    };
+
+    checkAuth();
+  }, [storageKey, pdfForm.resultsPassword]);
+
   const onSubmit = (data: z.infer<typeof passwordSchema>) => {
     if (data.password === pdfForm.resultsPassword) {
+      localStorage.setItem(storageKey, JSON.stringify({ timestamp: Date.now() }));
       setIsUnlocked(true);
       setError(null);
     } else {
@@ -36,6 +69,14 @@ export default function PasswordGatedResults({ pdfForm }: { pdfForm: PDFForm }) 
     }
   };
 
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-muted/20">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   if (isUnlocked) {
     return <SharedResultsListView pdfForm={pdfForm} />;
   }
@@ -43,7 +84,11 @@ export default function PasswordGatedResults({ pdfForm }: { pdfForm: PDFForm }) 
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/20">
       <Dialog open={!isUnlocked} onOpenChange={() => {}}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent 
+          className="sm:max-w-md" 
+          onPointerDownOutside={(e) => e.preventDefault()} 
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader>
             <div className="flex justify-center mb-4">
               <div className="bg-primary/10 p-3 rounded-full">
