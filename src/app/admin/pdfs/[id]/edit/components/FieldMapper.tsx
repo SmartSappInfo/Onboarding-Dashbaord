@@ -28,7 +28,7 @@ import {
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import { DndContext, useDraggable, type DragEndEvent, useSensors, useSensor, PointerSensor, closestCenter } from '@dnd-kit/core';
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@nd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -955,7 +955,7 @@ export default function FieldMapper({
           <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))} onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
                 <div className="p-4 sm:p-12 pb-48 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => setMarquee(null)}>
-                    {!pdfDoc ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />) : Array.from({ length: pdfDoc.numPages }).map((_, i) => (
+                    {!pdfDoc ? Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />) : Array.from({ length: pdfDoc.numPages }).map((_, i) => (
                         <PageRenderer
                             key={i} pdf={pdfDoc} pageNumber={i + 1} fields={fields.filter(f => f.pageNumber === i + 1)}
                             selectedFieldIds={selectedFieldIds} namingFieldId={namingFieldId}

@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to detect potential form fields in a PDF document.
@@ -26,7 +25,7 @@ const DetectPdfFieldsInputSchema = z.object({
 export type DetectPdfFieldsInput = z.infer<typeof DetectPdfFieldsInputSchema>;
 
 const FieldSuggestionSchema = z.object({
-    type: z.enum(['text', 'signature', 'date', 'dropdown']).describe("The type of form field detected."),
+    type: z.enum(['text', 'signature', 'date', 'dropdown', 'phone', 'email', 'time', 'photo']).describe("The type of form field detected."),
     pageNumber: z.number().int().min(1).describe("The 1-based page number where the field was found."),
     position: z.object({
         x: z.number().min(0).max(100).describe("The x-coordinate of the top-left corner as a percentage of the page width."),
@@ -54,40 +53,41 @@ const detectionPrompt = ai.definePrompt({
     name: 'detectPdfFieldsPrompt',
     input: { schema: DetectPdfFieldsInputSchema },
     output: { schema: DetectPdfFieldsOutputSchema },
-    prompt: `You are an expert document analyst specializing in form field detection. Analyze the provided PDF and identify all potential interactive fields.
+    prompt: `You are an expert document analyst specializing in high-precision form field detection. Analyze the provided PDF and identify all potential interactive fields.
 
 ### Rules for Detection:
 
-1.  **Field Types**: Correctly identify types as 'text', 'signature', 'date', or 'dropdown'.
+1.  **Field Types (CRITICAL)**: Correctly identify types as 'text', 'signature', 'date', 'dropdown', 'phone', 'email', 'time', or 'photo'.
+    - Use 'phone' for any telephone, mobile, or contact number fields.
+    - Use 'email' for email address fields.
     - Use 'signature' for explicit signing lines.
-    - Use 'date' for fields labeled for dates.
+    - Use 'date' for fields labeled for dates (DOB, Today's Date).
+    - Use 'time' for time-of-day selection.
+    - Use 'photo' for designated photo attachment areas (e.g., passport photo boxes).
     - Use 'dropdown' for fields that suggest multiple choice or have selector icons (arrows).
-    - Use 'text' for general inputs.
+    - Use 'text' for general alphanumeric inputs.
 
-2.  **Naming & Numbering (CRITICAL)**: 
+2.  **Naming & Numbering**: 
     - Create concise labels (e.g., "Parent Name", "Contact No").
-    - **REPEAT FIELDS**: If multiple lines exist for the same info (e.g., a table or list of students), you MUST number them sequentially: "Student 1 Name", "Student 2 Name", "Student 3 Name", etc.
+    - **REPEAT FIELDS / TABLES**: If multiple lines exist for the same info (e.g., a table or list of students), you MUST number them sequentially: "Student 1 Name", "Student 2 Name", "Student 3 Name", etc.
 
 3.  **Placeholders**:
-    - For names: "Type your name here", "Your First Child's Name Here", "Your Second Child's Name Here".
+    - For names: "Type your name here", "Your First Child's Name Here".
     - For IDs: "Enter Your Ghana Card No.", etc.
     - For phone: "eg. 233 20 000 0000".
     - For dropdowns: "Select [Field Name]".
 
-4.  **Dropdown Suggestions**: For 'dropdown' fields, provide a list of context-appropriate 'options' (e.g., Grades, Statuses, Gender, or Regions).
+4.  **Required Fields (PRECISION)**: Detect if a field is mandatory based on asterisks (*), bold labels, or explicit text like "(Req)". If a field is essential to the form's purpose (like Name or Signature), mark it as required.
 
-5.  **Required Fields**: Detect if a field is mandatory based on asterisks (*) or nearby text.
+5.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form (usually at the very top).
 
-6.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form or the entity the form is about (usually at the very top).
-
-7.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page.
+6.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page. Align fields perfectly with the lines/boxes on the document.
 
 {{#if existingFields}}
 ### Context: Continuing Work
 The user has already placed some fields. 
 1. DO NOT duplicate these fields in your output.
 2. Focus on finding the GAPS (missing fields).
-3. If an existing field is slightly misaligned, you can suggest a refined version of it, but use the same or a very similar label.
 Existing Fields:
 {{#each existingFields}}
 - Label: "{{label}}", Type: {{type}}, Page: {{pageNumber}}, Pos: ({{position.x}}%, {{position.y}}%)
