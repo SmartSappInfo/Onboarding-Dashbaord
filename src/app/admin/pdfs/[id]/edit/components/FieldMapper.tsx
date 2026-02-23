@@ -34,15 +34,15 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+} from "@/dropdown-menu";
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
+import { Separator } from '@/components/ui/separator';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -148,7 +148,6 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
             className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0 touch-pan-x touch-pan-y"
             style={{ width: pageDimensions.width / 1.5, height: pageDimensions.height / 1.5 }}
         >
-            {isLoading && <Skeleton className="absolute inset-0 z-10" />}
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
             
             {pageDimensions.width > 0 && fields.map(field => (
@@ -182,8 +181,6 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
         </div>
     );
 }
-
-type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 
 const ResizableField = ({
     field, pageDimensions, isSelected, isPartOfMultiSelect, isNamingField, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, zoom
@@ -496,7 +493,6 @@ const SelectionOverlay = ({ fields, pageDimensions, onUpdate, alignFields, distr
             className="absolute border-2 border-primary pointer-events-none z-20"
             style={{ left: `${minX}%`, top: `${minY}%`, width: `${boxW}%`, height: `${boxH}%` }}
         >
-            {/* Group Action Toolbar */}
             <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full border border-primary/20 bg-background/95 backdrop-blur-sm p-1 shadow-2xl pointer-events-auto">
                 <TooltipProvider>
                     <DropdownMenu>
@@ -543,13 +539,14 @@ const SelectionOverlay = ({ fields, pageDimensions, onUpdate, alignFields, distr
     );
 };
 
-const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onRemove, onUpdateLabel }: { 
+const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onRemove, onUpdateLabel, isCollapsed }: { 
     field: PDFFormField; 
     isSelected: boolean; 
     isNamingField: boolean;
     onSelect: (e: React.MouseEvent) => void; 
     onRemove: () => void;
     onUpdateLabel: (newLabel: string) => void;
+    isCollapsed: boolean;
 }) => {
     const [isEditing, setIsEditing] = React.useState(false);
     const [editValue, setEditValue] = React.useState(field.label || '');
@@ -563,6 +560,29 @@ const SortableFieldListItem = ({ field, isSelected, isNamingField, onSelect, onR
         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleBlur(); }
         if (e.key === 'Escape') { setEditValue(field.label || ''); setIsEditing(false); }
     };
+
+    if (isCollapsed) {
+        return (
+            <TooltipProvider>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div 
+                            ref={setNodeRef} 
+                            style={style} 
+                            className={cn(
+                                "flex items-center justify-center p-2 rounded-md hover:bg-muted cursor-pointer transition-all",
+                                isSelected && 'bg-primary/10 ring-1 ring-primary'
+                            )}
+                            onClick={onSelect}
+                        >
+                            <Icon className={cn("h-5 w-5", isSelected ? 'text-primary' : 'text-muted-foreground')} />
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right"><p>{field.label || field.id}</p></TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        );
+    }
 
     return (
         <div ref={setNodeRef} style={style} className="flex items-center gap-1">
@@ -611,12 +631,15 @@ interface PropertiesSidebarProps {
   setPasswordProtected: (isProtected: boolean) => void;
   onDetect: () => void;
   isDetecting: boolean;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
 const PropertiesSidebar = ({
   fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId, handleSelect, updateField, removeField, addField,
   alignFields, distributeFields, bulkDuplicate, bulkRemove, pagesLength, pdf,
-  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting
+  isStatusChanging, onStatusChange, password, setPassword, passwordProtected, setPasswordProtected, onDetect, isDetecting,
+  isCollapsed, onToggleCollapse
 }: PropertiesSidebarProps) => {
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const [showPassword, setShowPassword] = React.useState(false);
@@ -644,46 +667,26 @@ const PropertiesSidebar = ({
 
   return (
     <>
+      <div className="flex items-center justify-between p-4 border-b shrink-0 bg-background/50 backdrop-blur-sm">
+          {!isCollapsed && <h2 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Properties</h2>}
+          <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto" onClick={onToggleCollapse}>
+              {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+          </Button>
+      </div>
+      
       <ScrollArea className="flex-grow">
-        <div className="space-y-4 p-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 py-4">
+        <div className={cn("space-y-4 p-4", isCollapsed && "p-2")}>
+            <Card className={cn(isCollapsed && "border-none shadow-none bg-transparent")}>
+              <CardHeader className={cn("flex flex-row items-center justify-between space-y-0 py-4", isCollapsed && "hidden")}>
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
                 <div className="flex items-center gap-1">
-                    <DropdownMenu>
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10"><Plus className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                </TooltipTrigger>
-                                <TooltipContent><p>Add Field</p></TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <DropdownMenuContent className="w-48 p-1" align="end">
-                            {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
-                                const Icon = fieldIcons[type];
-                                return (
-                                    <DropdownMenuItem key={type} className="text-xs capitalize" onClick={() => addField(type)}>
-                                        <Icon className="mr-2 h-4 w-4" /> <span>{type} Field</span>
-                                    </DropdownMenuItem>
-                                );
-                            })}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    {hasSuggestions ? (
-                        <TooltipProvider>
-                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-green-600 hover:bg-green-50" onClick={acceptAllSuggestions}><Check className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Accept AI</p></TooltipContent></Tooltip>
-                            <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={rejectAllSuggestions}><X className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Reject AI</p></TooltipContent></Tooltip>
-                        </TooltipProvider>
-                    ) : (
-                        <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={onDetect} disabled={isDetecting}>{isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}</Button></TooltipTrigger><TooltipContent><p>AI-Detect</p></TooltipContent></Tooltip></TooltipProvider>
-                    )}
-                    <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete All</p></TooltipContent></Tooltip></TooltipProvider>
+                    <TooltipProvider>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setIsDeleteDialogOpen(true)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent><p>Delete All</p></TooltipContent></Tooltip>
+                    </TooltipProvider>
                 </div>
               </CardHeader>
-              <CardContent className="px-2 pb-2">
-                  <ScrollArea className="h-48 px-2">
+              <CardContent className={cn("px-2 pb-2", isCollapsed && "px-0")}>
+                  <ScrollArea className={cn("h-[calc(100vh-250px)] px-2", isCollapsed && "px-0")}>
                       <DndContext sensors={useSensors(useSensor(PointerSensor))} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                           <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                               <div className="space-y-1">
@@ -693,6 +696,7 @@ const PropertiesSidebar = ({
                                           onSelect={(e) => handleSelect(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
                                           onRemove={() => removeField(field.id)}
                                           onUpdateLabel={(newLabel) => updateField(field.id, { label: newLabel })}
+                                          isCollapsed={isCollapsed}
                                       />
                                   ))}
                               </div>
@@ -702,47 +706,51 @@ const PropertiesSidebar = ({
               </CardContent>
             </Card>
 
-            {selectedField ? (
-                <Card>
-                    <CardHeader className="py-4">
-                        <CardTitle className="flex justify-between items-center text-sm font-semibold"><span>Field Properties</span><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}><Trash2 className="h-4 w-4" /></Button></CardTitle>
-                        <CardDescription className="text-[10px]">ID: {selectedField.id}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2"><Label htmlFor="f-label" className="text-xs">Field Label</Label><Input id="f-label" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-8 text-sm" /></div>
-                        <div className="space-y-2"><Label htmlFor="f-placeholder" className="text-xs">Field Placeholder</Label><Input id="f-placeholder" value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-8 text-sm" /></div>
-                        <div className="space-y-2"><Label className="text-xs">Type</Label>
-                            <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
-                                <SelectTrigger className="h-8 text-sm capitalize"><SelectValue /></SelectTrigger>
-                                <SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent>
-                            </Select>
-                        </div>
-                        {selectedField.type === 'dropdown' && (
-                            <div className="space-y-2 pt-2 border-t"><Label className="text-xs font-semibold">Options</Label><Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[80px] text-xs" placeholder="One option per line..." /></div>
-                        )}
-                        <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Required</Label><Switch checked={!!selectedField.required} onCheckedChange={(v) => updateField(selectedField.id, { required: v })} /></div>
-                        <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5"><div className="space-y-0.5"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><p className="text-[10px] text-muted-foreground">Use for file naming.</p></div><Switch checked={namingFieldId === selectedField.id} onCheckedChange={(v) => setNamingFieldId(v ? selectedField.id : null)} /></div>
-                        <div className="space-y-2"><Label className="text-xs">Page Number</Label><Input type="number" min="1" max={pagesLength} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} className="h-8 text-sm" /></div>
-                        <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label className="text-xs">X (%)</Label><Input type="number" step="0.1" value={selectedField.position.x.toFixed(1)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div><div className="space-y-2"><Label className="text-xs">Y (%)</Label><Input type="number" step="0.1" value={selectedField.position.y.toFixed(1)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div></div>
-                        <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label className="text-xs">Width (%)</Label><Input type="number" step="0.1" value={selectedField.dimensions.width.toFixed(1)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div><div className="space-y-2"><Label className="text-xs">Height (%)</Label><Input type="number" step="0.1" value={selectedField.dimensions.height.toFixed(1)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div></div>
-                    </CardContent>
-                </Card>
-            ) : selectedFieldIds.length > 1 ? (
-                <Card>
-                    <CardHeader className="py-4"><CardTitle className="text-sm font-semibold text-primary">Bulk Editing</CardTitle><CardDescription className="text-[10px]">{selectedFieldIds.length} selected</CardDescription></CardHeader>
-                    <CardContent className="space-y-6">
-                        <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Alignment</Label><div className="grid grid-cols-3 gap-1"><Button variant="outline" size="sm" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-v')}><AlignCenterVertical className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('bottom')}><AlignEndVertical className="h-4 w-4" /></Button></div></div>
-                        <div className="space-y-2 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Distribution</Label><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" onClick={() => distributeFields('horizontal')} className="gap-2"><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button><Button variant="outline" size="sm" onClick={() => distributeFields('vertical')} className="gap-2"><DistributeVertical className="h-4 w-4" /> Vert.</Button></div></div>
-                        <div className="space-y-4 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Properties</Label>
-                            <Select onValueChange={(val: PDFFormField['type']) => bulkUpdate({ type: val })}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Change Type..." /></SelectTrigger><SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent></Select>
-                            <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Mark Required</Label><Switch onCheckedChange={(v) => bulkUpdate({ required: v })} checked={fields.filter(f => selectedFieldIds.includes(f.id)).every(f => f.required)} /></div>
-                        </div>
-                        <div className="space-y-2 border-t pt-4"><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button><Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button></div></div>
-                    </CardContent>
-                </Card>
-            ) : null}
-            <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Security</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><Label className="text-xs">Password Protect</Label><p className="text-[10px] text-muted-foreground">Require a password to view.</p></div><Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} /></div>{passwordProtected && <div className="relative"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-sm pr-8" /><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button></div>}</CardContent></Card>
-            <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Status</CardTitle></CardHeader><CardContent><Select value={pdf.status} onValueChange={(v: PDFForm['status']) => onStatusChange(v)} disabled={isStatusChanging}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Set status..." /></SelectTrigger><SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></CardContent></Card>
+            {!isCollapsed && (
+                <>
+                    {selectedField ? (
+                        <Card>
+                            <CardHeader className="py-4">
+                                <CardTitle className="flex justify-between items-center text-sm font-semibold"><span>Field Properties</span><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}><Trash2 className="h-4 w-4" /></Button></CardTitle>
+                                <CardDescription className="text-[10px]">ID: {selectedField.id}</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2"><Label htmlFor="f-label" className="text-xs">Field Label</Label><Input id="f-label" value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-8 text-sm" /></div>
+                                <div className="space-y-2"><Label htmlFor="f-placeholder" className="text-xs">Field Placeholder</Label><Input id="f-placeholder" value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-8 text-sm" /></div>
+                                <div className="space-y-2"><Label className="text-xs">Type</Label>
+                                    <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
+                                        <SelectTrigger className="h-8 text-sm capitalize"><SelectValue /></SelectTrigger>
+                                        <SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent>
+                                    </Select>
+                                </div>
+                                {selectedField.type === 'dropdown' && (
+                                    <div className="space-y-2 pt-2 border-t"><Label className="text-xs font-semibold">Options</Label><Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[80px] text-xs" placeholder="One option per line..." /></div>
+                                )}
+                                <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Required</Label><Switch checked={!!selectedField.required} onCheckedChange={(v) => updateField(selectedField.id, { required: v })} /></div>
+                                <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5"><div className="space-y-0.5"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><p className="text-[10px] text-muted-foreground">Use for file naming.</p></div><Switch checked={namingFieldId === selectedField.id} onCheckedChange={(v) => setNamingFieldId(v ? selectedField.id : null)} /></div>
+                                <div className="space-y-2"><Label className="text-xs">Page Number</Label><Input type="number" min="1" max={pagesLength} value={selectedField.pageNumber} onChange={e => updateField(selectedField.id, { pageNumber: parseInt(e.target.value) || 1 })} className="h-8 text-sm" /></div>
+                                <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label className="text-xs">X (%)</Label><Input type="number" step="0.1" value={selectedField.position.x.toFixed(1)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, x: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div><div className="space-y-2"><Label className="text-xs">Y (%)</Label><Input type="number" step="0.1" value={selectedField.position.y.toFixed(1)} onChange={e => updateField(selectedField.id, { position: { ...selectedField.position, y: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div></div>
+                                <div className="grid grid-cols-2 gap-2"><div className="space-y-2"><Label className="text-xs">Width (%)</Label><Input type="number" step="0.1" value={selectedField.dimensions.width.toFixed(1)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, width: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div><div className="space-y-2"><Label className="text-xs">Height (%)</Label><Input type="number" step="0.1" value={selectedField.dimensions.height.toFixed(1)} onChange={e => updateField(selectedField.id, { dimensions: { ...selectedField.dimensions, height: parseFloat(e.target.value) || 0 } })} className="h-8 text-sm" /></div></div>
+                            </CardContent>
+                        </Card>
+                    ) : selectedFieldIds.length > 1 ? (
+                        <Card>
+                            <CardHeader className="py-4"><CardTitle className="text-sm font-semibold text-primary">Bulk Editing</CardTitle><CardDescription className="text-[10px]">{selectedFieldIds.length} selected</CardDescription></CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Alignment</Label><div className="grid grid-cols-3 gap-1"><Button variant="outline" size="sm" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-v')}><AlignCenterVertical className="mr-2 h-4 w-4" /> Center V</Button><Button variant="outline" size="sm" onClick={() => alignFields('bottom')}><AlignEndVertical className="mr-2 h-4 w-4" /> Bottom</Button></div></div>
+                                <div className="space-y-2 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Distribution</Label><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" onClick={() => distributeFields('horizontal')} className="gap-2"><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button><Button variant="outline" size="sm" onClick={() => distributeFields('vertical')} className="gap-2"><DistributeVertical className="h-4 w-4" /> Vert.</Button></div></div>
+                                <div className="space-y-4 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Properties</Label>
+                                    <Select onValueChange={(val: PDFFormField['type']) => bulkUpdate({ type: val })}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Change Type..." /></SelectTrigger><SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent></Select>
+                                    <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Mark Required</Label><Switch onCheckedChange={(v) => bulkUpdate({ required: v })} checked={fields.filter(f => selectedFieldIds.includes(f.id)).every(f => f.required)} /></div>
+                                </div>
+                                <div className="space-y-2 border-t pt-4"><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button><Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button></div></div>
+                            </CardContent>
+                        </Card>
+                    ) : null}
+                    <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Security</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><Label className="text-xs">Password Protect</Label><p className="text-[10px] text-muted-foreground">Require a password to view.</p></div><Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} /></div>{passwordProtected && <div className="relative"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-sm pr-8" /><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button></div>}</CardContent></Card>
+                    <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Status</CardTitle></CardHeader><CardContent><Select value={pdf.status} onValueChange={(v: PDFForm['status']) => onStatusChange(v)} disabled={isStatusChanging}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Set status..." /></SelectTrigger><SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></CardContent></Card>
+                </>
+            )}
         </div>
       </ScrollArea>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will delete all mapped fields. This cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={deleteAllFields} className="bg-destructive text-destructive-foreground">Delete All</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
@@ -780,7 +788,7 @@ export default function FieldMapper({
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [marquee, setMarquee] = React.useState<{ startX: number, startY: number, endX: number, endY: number } | null>(null);
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [displayZoom, setDisplayZoom] = React.useState(1);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
@@ -876,7 +884,7 @@ export default function FieldMapper({
       <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
           <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))} onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
-                <div className="p-4 sm:p-12 pb-32 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => setMarquee(null)}>
+                <div className="p-4 sm:p-12 pb-48 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => setMarquee(null)}>
                     {!pdfDoc ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />) : Array.from({ length: pdfDoc.numPages }).map((_, i) => (
                         <PageRenderer
                             key={i} pdf={pdfDoc} pageNumber={i + 1} fields={fields.filter(f => f.pageNumber === i + 1)}
@@ -903,24 +911,40 @@ export default function FieldMapper({
               </div>
           </div>
 
-          {/* Sidebar Toggle Button */}
-          <Button
-            variant="secondary"
-            size="icon"
-            className={cn(
-                "absolute top-4 right-4 z-50 rounded-full shadow-lg transition-all",
-                !isSidebarOpen && "bg-primary text-primary-foreground hover:bg-primary/90"
-            )}
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
-          </Button>
+          {/* Docker at the bottom */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
+              <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl">
+                  <TooltipProvider>
+                      <div className="flex items-center gap-1.5 px-2 mr-2">
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('text')}><Text className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Text Field</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('signature')}><Signature className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Signature</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('date')}><Calendar className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Date</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Dropdown</TooltipContent></Tooltip>
+                      </div>
+                      <Separator orientation="vertical" className="h-8" />
+                      <Tooltip>
+                          <TooltipTrigger asChild>
+                              <Button 
+                                onClick={onDetect} 
+                                disabled={isDetecting} 
+                                className="h-10 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                              >
+                                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                {isDetecting ? 'Analyzing...' : 'AI Detect'}
+                              </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Auto-detect all form fields with AI</TooltipContent>
+                      </Tooltip>
+                  </TooltipProvider>
+              </div>
+          </div>
       </div>
 
+      {/* Properties Sidebar */}
       <div 
         className={cn(
             "h-full bg-card border-l hidden md:flex flex-col z-30 shadow-xl transition-all duration-300 ease-in-out",
-            isSidebarOpen ? "w-[384px]" : "w-0 overflow-hidden border-none"
+            isSidebarCollapsed ? "w-16" : "w-[384px]"
         )}
       >
         <PropertiesSidebar 
@@ -930,12 +954,104 @@ export default function FieldMapper({
             bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} onDetect={onDetect} isDetecting={isDetecting}
+            isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
-        <div className="p-4 border-t flex flex-col gap-2 bg-muted/10 shrink-0">
-            <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
-            <Button onClick={onSave} disabled={isSaving} size="sm">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {isSaving ? 'Saving...' : 'Save'}</Button>
-        </div>
+        {!isSidebarCollapsed && (
+            <div className="p-4 border-t flex flex-col gap-2 bg-muted/10 shrink-0">
+                <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
+                <Button onClick={onSave} disabled={isSaving} size="sm">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {isSaving ? 'Saving...' : 'Save'}</Button>
+            </div>
+        )}
       </div>
     </div>
   );
+}
+
+type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
+
+function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: { 
+    pdf: PDFDocumentProxy; 
+    pageNumber: number; 
+    fields: PDFFormField[]; 
+    renderField: (field: PDFFormField) => React.ReactNode;
+    scale: number;
+}) {
+    const canvasRef = React.useRef<HTMLCanvasElement>(null);
+    const renderTaskRef = React.useRef<any>(null);
+    const [isRendering, setIsRendering] = React.useState(true);
+    const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
+
+    React.useEffect(() => {
+        let isMounted = true;
+        const render = async () => {
+            setIsRendering(true);
+            try {
+                if (renderTaskRef.current) {
+                    renderTaskRef.current.cancel();
+                }
+
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale, rotation: page.rotate });
+                
+                if (!isMounted) return;
+                setDimensions({ width: viewport.width, height: viewport.height });
+
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    if (context) {
+                        canvas.height = viewport.height;
+                        canvas.width = viewport.width;
+                        
+                        const renderTask = page.render({ canvasContext: context, viewport });
+                        renderTaskRef.current = renderTask;
+                        
+                        await renderTask.promise;
+                    }
+                }
+            } catch (e: any) {
+                if (e.name === 'RenderingCancelledException') return;
+                console.error(`Failed to render page ${pageNumber}`, e);
+            } finally {
+                if (isMounted) setIsRendering(false);
+            }
+        };
+        render();
+        return () => { 
+            isMounted = false; 
+            if (renderTaskRef.current) {
+                renderTaskRef.current.cancel();
+            }
+        };
+    }, [pdf, pageNumber, scale]);
+
+    return (
+        <div 
+            className="relative shadow-2xl bg-white border border-border transition-all duration-300 flex-shrink-0" 
+            style={{ width: dimensions.width, height: dimensions.height }}
+        >
+            {isRendering && <Skeleton className="absolute inset-0 z-10" />}
+            <canvas ref={canvasRef} className="block w-full h-full" />
+            {dimensions.width > 0 && (
+                <div className="absolute inset-0 z-20 pointer-events-none">
+                    {fields.filter(f => f.pageNumber === pageNumber).map(field => (
+                        <div 
+                            key={field.id} 
+                            id={field.id}
+                            className="pointer-events-auto"
+                            style={{ 
+                                position: 'absolute', 
+                                left: `${field.position.x}%`, 
+                                top: `${field.position.y}%`, 
+                                width: `${field.dimensions.width}%`, 
+                                height: `${field.dimensions.height}%` 
+                            }}
+                        >
+                            {renderField(field)}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 }
