@@ -353,15 +353,15 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                         <TableHeader className="bg-muted/50 border-b border-border/50">
                             <TableRow className="hover:bg-transparent">
                                 {displayFields.map((field, idx) => (
-                                    <TableHead key={field.id} className={cn("text-xs font-black uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
+                                    <TableHead key={field.id} className={cn("text-[10px] font-bold text-foreground uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
                                         <div className="flex items-center gap-1.5">
                                             {field.label || 'Unnamed'}
                                             {field.id === pdfForm.namingFieldId && <Key className="h-3 w-3 text-primary" />}
                                         </div>
                                     </TableHead>
                                 ))}
-                                <TableHead className="text-xs font-black uppercase tracking-wider py-4">Submission Date</TableHead>
-                                <TableHead className="w-[100px] text-right py-4 pr-6">Actions</TableHead>
+                                <TableHead className="text-[10px] font-bold text-foreground uppercase tracking-wider py-4">Submission Date</TableHead>
+                                <TableHead className="w-[100px] text-right py-4 pr-6 text-[10px] font-bold text-foreground uppercase">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -386,7 +386,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     })}
                                     <TableCell className="text-muted-foreground text-xs font-medium">{format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}</TableCell>
                                     <TableCell className="text-right pr-6">
-                                        <div className="flex items-center justify-end gap-1 group-hover:opacity-100 opacity-0 transition-opacity">
+                                        <div className="flex items-center justify-end gap-1">
                                             <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
                                         </div>

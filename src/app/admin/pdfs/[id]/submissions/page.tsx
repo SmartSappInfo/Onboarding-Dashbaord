@@ -40,9 +40,10 @@ const pdfjsPromise = import('pdfjs-dist');
 export default function SubmissionsPage() {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
-  const pdfId = params.id as string;
+  const searchParams = useSearchParams();
   const firestore = useFirestore();
+  const pdfId = params.id as string;
+  const { toast } = useToast();
   
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
@@ -450,15 +451,15 @@ export default function SubmissionsPage() {
             <TableHeader className="bg-muted/50 border-b border-border/50">
               <TableRow className="hover:bg-transparent">
                 {displayFields.map((field, idx) => (
-                  <TableHead key={field.id} className={cn("text-xs font-black uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
+                  <TableHead key={field.id} className={cn("text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
                         {field.id === selectedNamingFieldId && <Tooltip><TooltipTrigger><Key className="h-3 w-3 text-primary" /></TooltipTrigger><TooltipContent>Primary Naming Field</TooltipContent></Tooltip>}
                       </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-xs font-black uppercase tracking-wider py-4">Submission Date</TableHead>
-                <TableHead className="w-[120px] text-right py-4 pr-6">Actions</TableHead>
+                <TableHead className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4">Submission Date</TableHead>
+                <TableHead className="w-[120px] text-right py-4 pr-6 text-[10px] font-bold text-muted-foreground uppercase">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
