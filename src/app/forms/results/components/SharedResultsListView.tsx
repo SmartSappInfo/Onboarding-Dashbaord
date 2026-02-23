@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Users, Clock } from 'lucide-react';
+import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Users, Clock, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -37,6 +38,9 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
 
   const submissionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -73,6 +77,15 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   const handleDownloadClick = (id: string) => {
     if (downloadingId || isProcessingBatch) return;
     setDownloadingId(id);
+  };
+
+  const handleDownloadSelected = () => {
+    if (selectedIds.length === 0 || isProcessingBatch) return;
+    setTotalBatchSize(selectedIds.length);
+    setBatchDownloadQueue(selectedIds);
+    setIsProcessingBatch(true);
+    setDownloadingId(selectedIds[0]);
+    toast({ title: 'Batch Download Started', description: `Processing ${selectedIds.length} documents...` });
   };
 
   const handleDownloadAll = () => {
@@ -113,6 +126,19 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
     setIsProcessingBatch(false);
     setTotalBatchSize(0);
     toast({ title: 'Download Cancelled', variant: 'secondary' });
+  };
+
+  const toggleSelectAll = () => {
+    if (!submissions) return;
+    if (selectedIds.length === submissions.length) {
+        setSelectedIds([]);
+    } else {
+        setSelectedIds(submissions.map(s => s.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
   const handleExportCSV = () => {
@@ -290,36 +316,55 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
             <div className="max-w-6xl mx-auto space-y-6">
                 
-                {/* Actions Bar (Positioned between title/description and summary cards as requested) */}
+                {/* Actions Bar */}
                 {!isLoading && (
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 print:hidden">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
-                                    {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-                                    <span className="hidden sm:inline">Export List</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
-                                <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
-                                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                                    Export to Excel (CSV)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Export to PDF Report
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                        
-                        {submissions?.length > 0 && (
-                            <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
-                                {isProcessingBatch ? (
-                                    <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
-                                ) : (
-                                    <><Download className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
+                        {selectedIds.length > 0 ? (
+                            <Card className="bg-primary/5 border-primary/20 w-full mb-4">
+                                <CardContent className="p-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <CheckSquare className="h-5 w-5 text-primary" />
+                                        <span className="text-sm font-bold text-primary">{selectedIds.length} records selected</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 px-4 font-bold shadow-sm">
+                                            <Download className="h-4 w-4 mr-2" /> Download
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 px-4">Cancel</Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                                            {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                                            <span className="hidden sm:inline">Export List</span>
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-56">
+                                        <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
+                                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                            Export to Excel (CSV)
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
+                                            <Printer className="mr-2 h-4 w-4" />
+                                            Export to PDF Report
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                                
+                                {submissions?.length > 0 && (
+                                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
+                                        {isProcessingBatch ? (
+                                            <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
+                                        ) : (
+                                            <><Download className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
+                                        )}
+                                    </Button>
                                 )}
-                            </Button>
+                            </>
                         )}
                     </div>
                 )}
@@ -356,8 +401,14 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     <Table>
                         <TableHeader className="bg-muted/50 border-b border-border/50">
                             <TableRow className="hover:bg-transparent">
+                                <TableHead className="w-[50px] pl-6">
+                                    <Checkbox 
+                                        checked={submissions?.length ? selectedIds.length === submissions.length : false} 
+                                        onCheckedChange={toggleSelectAll} 
+                                    />
+                                </TableHead>
                                 {displayFields.map((field, idx) => (
-                                    <TableHead key={field.id} className={cn("text-[10px] font-bold text-foreground uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
+                                    <TableHead key={field.id} className={cn("text-[10px] font-bold text-foreground uppercase tracking-wider py-4")}>
                                         <div className="flex items-center gap-1.5">
                                             {field.label || 'Unnamed'}
                                             {field.id === pdfForm.namingFieldId && <Key className="h-3 w-3 text-primary" />}
@@ -371,19 +422,26 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                         <TableBody>
                             {isLoading ? Array.from({ length: 5 }).map((_, i) => (
                                 <TableRow key={i}>
+                                    <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                                     {Array.from({ length: 3 }).map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>)}
                                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                                 </TableRow>
                             )) : submissions?.length ? submissions.map((submission) => (
-                                <TableRow key={submission.id} className="group hover:bg-muted/30 transition-colors">
+                                <TableRow key={submission.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(submission.id) && "bg-primary/5")}>
+                                    <TableCell className="pl-6">
+                                        <Checkbox 
+                                            checked={selectedIds.includes(submission.id)} 
+                                            onCheckedChange={() => toggleSelect(submission.id)} 
+                                        />
+                                    </TableCell>
                                     {displayFields.map((field, idx) => {
                                         const value = submission.formData[field.id];
                                         const content = field.type === 'signature' ? (
                                             <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
                                         ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         return (
-                                            <TableCell key={field.id} className={cn(idx === 0 && "pl-6")}>
+                                            <TableCell key={field.id}>
                                                 {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold">{content}</Link> : content}
                                             </TableCell>
                                         );
@@ -403,7 +461,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={displayFields.length + 2} className="h-48 text-center text-muted-foreground font-medium">No submission records found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground font-medium">No submission records found.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>

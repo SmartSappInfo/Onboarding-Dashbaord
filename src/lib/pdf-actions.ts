@@ -250,3 +250,38 @@ export async function deletePdfForm(pdfId: string, storagePath: string, userId: 
     revalidatePath('/admin/pdfs');
     return { success: true };
 }
+
+/**
+ * Bulk deletes submissions and their associated storage files.
+ */
+export async function deleteSubmissions(pdfId: string, submissionIds: string[], userId: string) {
+    const batch = adminDb.batch();
+    const pdfRef = adminDb.collection('pdfs').doc(pdfId);
+    
+    for (const id of submissionIds) {
+        const docRef = pdfRef.collection('submissions').doc(id);
+        batch.delete(docRef);
+        
+        // Attempt to delete predictable storage file path
+        const storagePath = `submissions/${pdfId}/${id}.pdf`;
+        try {
+            await adminStorage.file(storagePath).delete();
+        } catch (e) {
+            // File might not exist
+        }
+    }
+
+    await batch.commit();
+
+    await logActivity({
+        schoolId: '',
+        userId,
+        type: 'pdf_status_changed',
+        source: 'user_action',
+        description: `bulk deleted ${submissionIds.length} submissions for a PDF document`,
+        metadata: { pdfId, count: submissionIds.length }
+    });
+
+    revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
+    return { success: true };
+}

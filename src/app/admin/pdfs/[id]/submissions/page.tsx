@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, Clock, Users } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, Clock, Users, Trash2, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -31,9 +31,19 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
-import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
+import { updatePdfResultsSharing, updatePdfFormMapping, deleteSubmissions } from '@/lib/pdf-actions';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-// Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionsPage() {
@@ -41,6 +51,7 @@ export default function SubmissionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const firestore = useFirestore();
+  const { user } = useUser();
   const pdfId = params.id as string;
   const { toast } = useToast();
   
@@ -52,6 +63,11 @@ export default function SubmissionsPage() {
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [isDeletingSelected, setIsDeletingSelected] = React.useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -132,6 +148,15 @@ export default function SubmissionsPage() {
     if (downloadingId || isProcessingBatch) return;
     toast({ title: 'Preparing download...' });
     setDownloadingId(submissionId);
+  };
+
+  const handleDownloadSelected = () => {
+    if (selectedIds.length === 0 || isProcessingBatch) return;
+    setTotalBatchSize(selectedIds.length);
+    setBatchDownloadQueue(selectedIds);
+    setIsProcessingBatch(true);
+    setDownloadingId(selectedIds[0]);
+    toast({ title: 'Batch Download Started', description: `Processing ${selectedIds.length} documents...` });
   };
 
   const handleDownloadAll = () => {
@@ -341,6 +366,38 @@ export default function SubmissionsPage() {
     }
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedIds.length === 0 || !user || !pdf) return;
+    setIsDeletingSelected(true);
+    try {
+        const result = await deleteSubmissions(pdf.id, selectedIds, user.uid);
+        if (result.success) {
+            toast({ title: 'Submissions Deleted', description: `${selectedIds.length} records have been removed.` });
+            setSelectedIds([]);
+        } else {
+            toast({ variant: 'destructive', title: 'Deletion Failed' });
+        }
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Error' });
+    } finally {
+        setIsDeletingSelected(false);
+        setShowDeleteConfirm(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (!submissions) return;
+    if (selectedIds.length === submissions.length) {
+        setSelectedIds([]);
+    } else {
+        setSelectedIds(submissions.map(s => s.id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+  };
+
   const currentBatchIndex = isProcessingBatch ? totalBatchSize - batchDownloadQueue.length + 1 : 0;
 
   return (
@@ -360,58 +417,80 @@ export default function SubmissionsPage() {
         {/* Desktop Actions Bar */}
         {!isLoading && (
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8 print:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
-                          {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-                          <span className="hidden sm:inline">Export List</span>
-                      </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
-                          <FileSpreadsheet className="mr-2 h-4 w-4" />
-                          Export to Excel (CSV)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
-                          <Printer className="mr-2 h-4 w-4" />
-                          Export to PDF Report
-                      </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
-                <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
-                    <Share2 className="h-4 w-4" />
-                    <span className="hidden sm:inline">Share Results</span>
-                </Button>
-                
-                {submissions && submissions.length > 0 && (
-                    <ButtonGroup className="shadow-sm">
-                        <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
-                            {isProcessingBatch ? (
-                                <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
-                            ) : (
-                                <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
-                            )}
-                        </Button>
+                {selectedIds.length > 0 ? (
+                    <Card className="bg-primary/5 border-primary/20 w-full mb-4">
+                        <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <CheckSquare className="h-5 w-5 text-primary" />
+                                <span className="text-sm font-bold text-primary">{selectedIds.length} records selected</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 px-4 font-bold">
+                                    <Download className="h-4 w-4 mr-2" /> Download
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="h-9 px-4 font-bold">
+                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 px-4">Cancel</Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
-                                    <ChevronDown className="h-4 w-4" />
+                                <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                                    {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                                    <span className="hidden sm:inline">Export List</span>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-64">
-                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
-                                {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
-                                    <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
-                                        {field.label || field.id}
-                                        {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
-                                    </DropdownMenuItem>
-                                ))}
+                            <DropdownMenuContent align="start" className="w-56">
+                                <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
+                                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                    Export to Excel (CSV)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Export to PDF Report
+                                </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
-                    </ButtonGroup>
+
+                        <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
+                            <Share2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">Share Results</span>
+                        </Button>
+                        
+                        {submissions && submissions.length > 0 && (
+                            <ButtonGroup className="shadow-sm">
+                                <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                                    {isProcessingBatch ? (
+                                        <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
+                                    ) : (
+                                        <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
+                                    )}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
+                                            <ChevronDown className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="start" className="w-64">
+                                        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
+                                        {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
+                                            <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
+                                                {field.label || field.id}
+                                                {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
+                                            </DropdownMenuItem>
+                                        ))}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </ButtonGroup>
+                        )}
+                    </>
                 )}
             </div>
         )}
@@ -448,8 +527,14 @@ export default function SubmissionsPage() {
           <Table>
             <TableHeader className="bg-muted/50 border-b border-border/50">
               <TableRow className="hover:bg-transparent">
+                <TableHead className="w-[50px] pl-6">
+                    <Checkbox 
+                        checked={submissions?.length ? selectedIds.length === submissions.length : false} 
+                        onCheckedChange={toggleSelectAll} 
+                    />
+                </TableHead>
                 {displayFields.map((field, idx) => (
-                  <TableHead key={field.id} className={cn("text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4", idx === 0 && "pl-6")}>
+                  <TableHead key={field.id} className={cn("text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4")}>
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
                         {field.id === selectedNamingFieldId && <Tooltip><TooltipTrigger><Key className="h-3 w-3 text-primary" /></TooltipTrigger><TooltipContent>Primary Naming Field</TooltipContent></Tooltip>}
@@ -463,19 +548,26 @@ export default function SubmissionsPage() {
             <TableBody>
               {isLoading ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
+                    <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                     {Array.from({ length: 3 }).map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>)}
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
                     <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 )) : submissions && submissions.length > 0 ? submissions.map((submission) => (
-                  <TableRow key={submission.id} className="group hover:bg-muted/30 transition-colors">
+                  <TableRow key={submission.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(submission.id) && "bg-primary/5")}>
+                    <TableCell className="pl-6">
+                        <Checkbox 
+                            checked={selectedIds.includes(submission.id)} 
+                            onCheckedChange={() => toggleSelect(submission.id)} 
+                        />
+                    </TableCell>
                     {displayFields.map((field, idx) => {
                       const value = submission.formData[field.id];
                       const content = field.type === 'signature' ? (
                         <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
                       ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                       return (
-                        <TableCell key={field.id} className={cn(idx === 0 && "pl-6")}>
+                        <TableCell key={field.id}>
                           {idx === 0 ? (
                               <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="inline-flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
                                 {content}
@@ -516,13 +608,31 @@ export default function SubmissionsPage() {
                   </TableRow>
                 )) : (
                 <TableRow>
-                  <TableCell colSpan={displayFields.length + 2} className="h-48 text-center text-muted-foreground">No submissions have been received for this document yet.</TableCell>
+                  <TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground">No submissions have been received for this document yet.</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
         </div>
       </div>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedIds.length} selected submission records and their associated signed documents. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingSelected}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSelected} disabled={isDeletingSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isDeletingSelected ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Delete {selectedIds.length} Records
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {pdf && (
           <ShareResultsDialog
