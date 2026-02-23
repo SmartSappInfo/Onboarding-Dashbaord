@@ -215,7 +215,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/20">
-       <header className="h-14 border-b bg-background px-4 flex items-center justify-between shrink-0 shadow-sm">
+       <header className="h-14 border-b bg-background px-4 flex items-center justify-between shrink-0 shadow-sm print:hidden">
             <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                 <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-9 px-2 sm:px-3">
                     <ArrowLeft className="sm:mr-2 h-4 w-4" />
@@ -232,7 +232,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                 </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 hidden sm:flex">
+                <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
                     <Printer className="mr-2 h-4 w-4" /> Print
                 </Button>
                 <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9">
@@ -244,12 +244,12 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
       </header>
 
       <div className="flex-grow overflow-hidden relative bg-muted/30">
-        <ScrollArea className="h-full w-full">
+        <ScrollArea className="h-full w-full print-area">
             <div ref={pageContainerRef} className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }}>
                 {!pdfDoc ? (
                     <div className="space-y-4"><Skeleton className="w-[8.5in] h-[11in] bg-card rounded-lg shadow-lg" /></div>
                 ) : (
-                    <div className="flex flex-col gap-4 sm:gap-8 pb-24">
+                    <div className="flex flex-col gap-4 sm:gap-8 pb-24 print:gap-0 print:pb-0">
                         {Array.from({ length: pdfDoc.numPages }).map((_, i) => (
                             <div key={i} className="page-capture-wrapper">
                                 <PageRenderer 
@@ -263,11 +263,11 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                     </div>
                 )}
             </div>
-            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="horizontal" className="print:hidden" />
         </ScrollArea>
       </div>
       
-      <footer className="sm:hidden h-8 bg-background border-t flex items-center justify-center px-4 shrink-0">
+      <footer className="sm:hidden h-8 bg-background border-t flex items-center justify-center px-4 shrink-0 print:hidden">
           <div className="flex items-center gap-1 opacity-50">
               <SmartSappIcon className="h-3 w-3" />
               <span className="text-[8px] font-medium">Powered by SmartSapp</span>

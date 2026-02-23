@@ -154,3 +154,74 @@ body {
       box-shadow: 0px 2px 10px #ff0;
   }
 }
+
+@media print {
+  @page {
+    size: A4;
+    margin: 0;
+  }
+  
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide all UI elements except the document content */
+  .print-area {
+    visibility: visible !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    background: white !important;
+  }
+
+  body > *:not(.print-area) {
+    display: none !important;
+  }
+
+  /* Ensure detail views hide their headers/sidebars */
+  header, footer, nav, aside, button, .print\:hidden {
+    display: none !important;
+  }
+
+  .page-capture-wrapper {
+    width: 210mm !important;
+    height: 297mm !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    position: relative !important;
+    overflow: hidden !important;
+    background: white !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Scale document elements to fit A4 exactly */
+  .page-capture-wrapper > div {
+    width: 210mm !important;
+    height: 297mm !important;
+    box-shadow: none !important;
+    border: none !important;
+    transform: none !important;
+    left: 0 !important;
+    top: 0 !important;
+    background: white !important;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block !important;
+    object-fit: contain !important;
+  }
+}

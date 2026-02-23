@@ -7,7 +7,7 @@ import { doc } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Monitor } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Monitor, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -151,7 +151,7 @@ export default function SubmissionDetailPage() {
 
   return (
     <div className="h-full overflow-hidden flex flex-col bg-muted/10">
-       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14">
+       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
         <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions`)} className="h-9 px-2 sm:px-3">
                 <ArrowLeft className="sm:mr-2 h-4 w-4" />
@@ -169,6 +169,10 @@ export default function SubmissionDetailPage() {
             </h1>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => window.print()} disabled={isLoading} className="h-9">
+            <Printer className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
           <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex">
             {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
             Front-end
@@ -181,18 +185,18 @@ export default function SubmissionDetailPage() {
         </div>
       </div>
       <div className="flex-grow bg-muted/30 overflow-hidden relative">
-        <ScrollArea className="h-full w-full">
+        <ScrollArea className="h-full w-full print-area">
             <div 
                 ref={pageContainerRef}
                 className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y"
                 style={{ minWidth: 'fit-content' }}
             >
-                <div className="max-w-4xl mx-auto space-y-4">
+                <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
                     {isLoading ? (
                         Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                            <div key={index} className="page-capture-wrapper mb-4">
+                            <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
                                 <SubmissionPageRenderer
                                     pdf={pdfDoc}
                                     pageNumber={index + 1}
@@ -209,7 +213,7 @@ export default function SubmissionDetailPage() {
                     )}
                 </div>
             </div>
-            <ScrollBar orientation="horizontal" />
+            <ScrollBar orientation="horizontal" className="print:hidden" />
         </ScrollArea>
       </div>
     </div>
