@@ -19,9 +19,10 @@ interface SignaturePadModalProps {
     open: boolean;
     onClose: () => void;
     onSave: (dataUrl: string) => void;
+    mode?: 'signature' | 'photo';
 }
 
-export default function SignaturePadModal({ open, onClose, onSave }: SignaturePadModalProps) {
+export default function SignaturePadModal({ open, onClose, onSave, mode = 'signature' }: SignaturePadModalProps) {
     const { toast } = useToast();
     const [step, setStep] = React.useState<'input' | 'confirm'>('input');
     const [signatureData, setSignatureData] = React.useState<string | null>(null);
@@ -31,7 +32,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     const videoRef = React.useRef<HTMLVideoElement>(null);
     const photoCanvasRef = React.useRef<HTMLCanvasElement>(null);
     
-    const [activeTab, setActiveTab] = React.useState('draw');
+    const [activeTab, setActiveTab] = React.useState(mode === 'photo' ? 'photo' : 'draw');
     const [typedInitials, setTypedInitials] = React.useState('');
     const [uploadedImage, setUploadedImage] = React.useState<string | null>(null);
     const [isConsented, setIsConsented] = React.useState(false);
@@ -41,6 +42,12 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
     const streamRef = React.useRef<MediaStream | null>(null);
+
+    React.useEffect(() => {
+        if (open) {
+            setActiveTab(mode === 'photo' ? 'photo' : 'draw');
+        }
+    }, [open, mode]);
 
      // Effect to handle camera access
     React.useEffect(() => {
@@ -122,7 +129,6 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const video = videoRef.current;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            // set willReadFrequently to true for performance and to clear console warning
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
             setCapturedImage(canvas.toDataURL('image/png'));
@@ -158,8 +164,8 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
         } else {
             toast({
                 variant: 'destructive',
-                title: 'No Signature Provided',
-                description: 'Please create a signature before proceeding.',
+                title: 'No Selection',
+                description: 'Please provide a signature or capture a photo before proceeding.',
             });
         }
     };
@@ -193,53 +199,57 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                 {step === 'input' && (
                     <>
                         <DialogHeader className="text-center sm:text-center">
-                            <DialogTitle>Provide Your Signature</DialogTitle>
-                            <DialogDescription>Choose one of the methods below to create your signature.</DialogDescription>
+                            <DialogTitle>{mode === 'photo' ? 'Capture or Upload Photo' : 'Provide Your Signature'}</DialogTitle>
+                            <DialogDescription>Choose one of the methods below.</DialogDescription>
                         </DialogHeader>
                         
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className="grid w-full grid-cols-4">
-                                <TabsTrigger value="draw">Draw</TabsTrigger>
-                                <TabsTrigger value="type">Type</TabsTrigger>
+                            <TabsList className={cn("grid w-full", mode === 'photo' ? "grid-cols-2" : "grid-cols-4")}>
+                                {mode !== 'photo' && <TabsTrigger value="draw">Draw</TabsTrigger>}
+                                {mode !== 'photo' && <TabsTrigger value="type">Type</TabsTrigger>}
                                 <TabsTrigger value="upload">Upload</TabsTrigger>
                                 <TabsTrigger value="photo">Take Photo</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="draw">
-                                <div className="mt-4 space-y-4">
-                                    <Label className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Sign your signature on this signing pad</Label>
-                                    <div className="border rounded-md bg-white relative">
-                                        <SignatureCanvas
-                                            ref={sigPadRef}
-                                            penColor="black"
-                                            canvasProps={{
-                                                className: 'w-full h-48 rounded-md',
-                                                willreadfrequently: "true"
-                                            }}
-                                            onBegin={() => setHasDrawn(true)}
-                                        />
-                                    </div>
-                                </div>
-                            </TabsContent>
-                            <TabsContent value="type">
-                                <div className="mt-4 space-y-4">
-                                    <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
-                                    <Input 
-                                        id="initials-input" 
-                                        value={typedInitials} 
-                                        onChange={(e) => setTypedInitials(e.target.value)} 
-                                        className="text-[22px] md:text-[112px] text-center font-signature h-auto py-6 md:py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
-                                        placeholder="Jane Doe" 
-                                    />
-                                    <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
-                                </div>
-                            </TabsContent>
+                            {mode !== 'photo' && (
+                                <>
+                                    <TabsContent value="draw">
+                                        <div className="mt-4 space-y-4">
+                                            <Label className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Sign your signature on this signing pad</Label>
+                                            <div className="border rounded-md bg-white relative">
+                                                <SignatureCanvas
+                                                    ref={sigPadRef}
+                                                    penColor="black"
+                                                    canvasProps={{
+                                                        className: 'w-full h-48 rounded-md',
+                                                        willreadfrequently: "true"
+                                                    }}
+                                                    onBegin={() => setHasDrawn(true)}
+                                                />
+                                            </div>
+                                        </div>
+                                    </TabsContent>
+                                    <TabsContent value="type">
+                                        <div className="mt-4 space-y-4">
+                                            <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
+                                            <Input 
+                                                id="initials-input" 
+                                                value={typedInitials} 
+                                                onChange={(e) => setTypedInitials(e.target.value)} 
+                                                className="text-[22px] md:text-[112px] text-center font-signature h-auto py-6 md:py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
+                                                placeholder="Jane Doe" 
+                                            />
+                                            <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
+                                        </div>
+                                    </TabsContent>
+                                </>
+                            )}
                             <TabsContent value="upload">
                                 <div className="mt-4">
                                     {!uploadedImage ? (
                                         <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted p-6 text-center transition-colors">
                                             <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
                                             <p className="mb-2 text-sm text-muted-foreground leading-relaxed">
-                                                <span className="font-bold text-foreground">Click to upload</span> or <span className="font-bold text-foreground">drag and drop</span> an image file of your signature
+                                                <span className="font-bold text-foreground">Click to upload</span> or <span className="font-bold text-foreground">drag and drop</span>
                                                 <br />
                                                 (PNG or JPG)
                                             </p>
@@ -247,14 +257,14 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                                         </label>
                                     ) : (
                                         <div className="mt-4 p-2 border rounded-md relative flex items-center justify-center bg-muted h-48">
-                                            <Image src={uploadedImage} alt="Signature Preview" fill className="object-contain p-2" />
+                                            <Image src={uploadedImage} alt="Preview" fill className="object-contain p-2" />
                                         </div>
                                     )}
                                 </div>
                             </TabsContent>
                             <TabsContent value="photo">
                                 <div className="mt-4 space-y-4 text-center">
-                                    <Label className="block text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Take a photo of your signature from paper</Label>
+                                    <Label className="block text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Capture a photo</Label>
                                     
                                     {hasCameraPermission === false && (
                                         <Alert variant="destructive">
@@ -269,7 +279,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
 
                                     {capturedImage && (
                                         <div className="relative w-full aspect-video rounded-md border bg-muted overflow-hidden">
-                                            <Image src={capturedImage} alt="Captured signature" fill className="object-contain" />
+                                            <Image src={capturedImage} alt="Captured" fill className="object-contain" />
                                         </div>
                                     )}
                                     
@@ -305,28 +315,28 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                 {step === 'confirm' && (
                     <>
                         <DialogHeader className="text-center sm:text-center">
-                            <DialogTitle>Confirm Your Signature</DialogTitle>
-                            <DialogDescription>Please review your signature and provide consent to sign.</DialogDescription>
+                            <DialogTitle>Confirm {mode === 'photo' ? 'Photo' : 'Signature'}</DialogTitle>
+                            <DialogDescription>Please review and provide consent.</DialogDescription>
                         </DialogHeader>
 
                         <div className="my-6 flex flex-col items-center gap-6">
                             <div className="p-4 border rounded-md bg-muted w-full max-w-sm h-32 flex items-center justify-center">
-                                {signatureData && <Image src={signatureData} alt="Final signature preview" width={200} height={100} className="object-contain" />}
+                                {signatureData && <Image src={signatureData} alt="Final preview" width={200} height={100} className="object-contain" />}
                             </div>
                             <Alert variant="default">
                                 <AlertDescription className="text-xs text-center">
-                                    By selecting “Sign Now” you consent to electronically sign this document. This signature is equivalent to a handwritten signature under applicable electronic transaction laws. Ensure all details are accurate before continuing. This action cannot be undone.
+                                    By selecting “Confirm” you consent to electronically include this {mode === 'photo' ? 'photo' : 'signature'} in the document. This is legally binding where applicable.
                                 </AlertDescription>
                             </Alert>
                              <div className="flex items-center justify-center space-x-2 w-full">
                                 <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} />
-                                <Label htmlFor="consent-toggle" className="text-sm font-medium">I have reviewed and I consent to sign.</Label>
+                                <Label htmlFor="consent-toggle" className="text-sm font-medium">I have reviewed and I consent.</Label>
                             </div>
                         </div>
 
                         <DialogFooter>
                             <Button variant="outline" onClick={() => setStep('input')}>Back</Button>
-                            <Button onClick={handleFinalSign} disabled={!isConsented || !signatureData}>Sign Now</Button>
+                            <Button onClick={handleFinalSign} disabled={!isConsented || !signatureData}>Confirm</Button>
                         </DialogFooter>
                     </>
                 )}

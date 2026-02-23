@@ -38,11 +38,18 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
         let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
         
-        if (field.required) {
+        if (field.type === 'email') {
+            const emailSchema = z.string().email({ message: "Invalid email address." });
+            fieldSchema = field.required ? emailSchema : emailSchema.optional().or(z.literal(''));
+        } else if (field.type === 'phone') {
+            const phoneSchema = z.string().min(10, { message: "Invalid phone number." });
+            fieldSchema = field.required ? phoneSchema : phoneSchema.optional().or(z.literal(''));
+        } else if (field.required) {
             fieldSchema = z.string({
                 required_error: `${field.label || 'This field'} is required.`
             }).min(1, { message: `${field.label || 'This field'} is required.` });
         }
+        
         acc[field.id] = fieldSchema;
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
@@ -60,7 +67,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [submissionId, setSubmissionId] = React.useState<string | null>(searchParams.get('submissionId'));
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
-  const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
+  
+  const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
   
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
@@ -311,8 +319,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     if (isSubmitted) {
         return (
             <div className="w-full h-full flex items-start justify-start overflow-visible">
-                {field.type === 'signature' ? (
-                    value && <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                {(field.type === 'signature' || field.type === 'photo') ? (
+                    value && <img src={value} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                 ) : (
                     <span 
                         className="px-1 font-medium text-black whitespace-nowrap bg-transparent"
@@ -330,9 +338,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     
     switch(field.type) {
         case 'text':
+        case 'phone':
+        case 'email':
             fieldElement = (
                 <input 
                     {...register(field.id)}
+                    type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
                     placeholder={field.placeholder}
                     disabled={isSubmitting}
                     style={{ fontSize: dynamicFontSize }}
@@ -341,9 +352,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             );
             break;
         case 'date':
+        case 'time':
              fieldElement = (
                 <input 
-                    type="date" 
+                    type={field.type === 'time' ? 'time' : 'date'}
                     {...register(field.id)}
                     disabled={isSubmitting}
                     style={{ fontSize: dynamicFontSize }}
@@ -367,24 +379,25 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             );
             break;
         case 'signature':
+        case 'photo':
             fieldElement = (
                  <button
                     type="button"
                     disabled={isSubmitting}
-                    onClick={() => setActiveSignatureField(field.id)}
+                    onClick={() => setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' })}
                     className={cn(
                         "w-full h-full border border-dashed rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden",
                         errors[field.id] ? "border-destructive bg-destructive/5" : "border-muted-foreground"
                     )}
                 >
                     {value ? (
-                        <img src={value} alt="Signature" className="w-full h-full object-contain" />
+                        <img src={value} alt="Captured" className="w-full h-full object-contain" />
                     ) : (
                         <span 
-                            className="text-muted-foreground font-medium uppercase text-center"
-                            style={{ fontSize: `${Math.round(8 * currentTotalScale)}px` }}
+                            className="text-muted-foreground font-medium uppercase text-center px-1"
+                            style={{ fontSize: `${Math.max(6, Math.round(8 * currentTotalScale))}px` }}
                         >
-                            {field.placeholder || 'Sign Here'}
+                            {field.placeholder || (field.type === 'photo' ? 'Tap to Capture' : 'Sign Here')}
                         </span>
                     )}
                 </button>
@@ -445,7 +458,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             disabled={isDownloading} 
                             onClick={handleDownload}
                         >
-                            {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                            {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
                             Download Signed PDF
                         </Button>
                     </div>
@@ -535,14 +548,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         </main>
         
          <SignaturePadModal
-            open={!!activeSignatureField}
-            onClose={() => setActiveSignatureField(null)}
+            open={!!mediaCaptureState}
+            onClose={() => setMediaCaptureState(null)}
             onSave={(dataUrl) => {
-                if (activeSignatureField) {
-                    setValue(activeSignatureField, dataUrl, { shouldDirty: true, shouldValidate: true });
+                if (mediaCaptureState) {
+                    setValue(mediaCaptureState.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true });
                 }
-                setActiveSignatureField(null);
+                setMediaCaptureState(null);
             }}
+            mode={mediaCaptureState?.mode || 'signature'}
         />
 
         <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>

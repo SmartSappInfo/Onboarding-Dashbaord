@@ -22,7 +22,8 @@ import {
     Text, Signature, Calendar, Trash2, Loader2, Sparkles, 
     PanelLeftClose, PanelLeftOpen, ZoomIn, ZoomOut, Save, Eye, Copy, Replace, 
     EyeOff, Check, X, AlignStartHorizontal, AlignEndHorizontal, AlignStartVertical, AlignEndVertical, 
-    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, ALargeSmall, ChevronDownSquare, ChevronDown, Key
+    AlignCenterHorizontal, AlignCenterVertical, GripVertical, Undo, Redo, ALargeSmall, ChevronDownSquare, ChevronDown, Key,
+    Phone, Mail, Clock, Camera
 } from 'lucide-react';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
@@ -66,6 +67,10 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   signature: Signature,
   date: Calendar,
   dropdown: ChevronDownSquare,
+  phone: Phone,
+  email: Mail,
+  time: Clock,
+  photo: Camera,
 };
 
 type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
@@ -287,7 +292,7 @@ const ResizableField = ({
             className={cn(
                 "absolute border-2 transition-colors flex overscroll-behavior-none",
                 borderColorClass,
-                field.type === 'signature' ? "items-center justify-center text-center" : "items-start justify-start p-1 text-left"
+                (field.type === 'signature' || field.type === 'photo') ? "items-center justify-center text-center" : "items-start justify-start p-1 text-left"
             )}
         >
             <div {...listeners} className="w-full h-full cursor-grab absolute inset-0 z-0" onMouseDown={(e) => e.stopPropagation()}></div>
@@ -312,7 +317,7 @@ const ResizableField = ({
                     <span 
                         className={cn(
                             "text-muted-foreground italic z-10 select-none pointer-events-none",
-                            field.type === 'signature' ? "w-full" : "text-left"
+                            (field.type === 'signature' || field.type === 'photo') ? "w-full px-1" : "text-left"
                         )}
                         style={{ fontSize: scaledFontSize }}
                     >
@@ -321,9 +326,9 @@ const ResizableField = ({
                 )
             )}
 
-            {field.type === 'dropdown' && (
+            {(field.type === 'dropdown' || field.type === 'time') && (
                 <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none opacity-50">
-                    <ChevronDown className="h-3 w-3" />
+                    {field.type === 'dropdown' ? <ChevronDown className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
                 </div>
             )}
 
@@ -365,7 +370,7 @@ const ResizableField = ({
                                     <TooltipContent><p>Change Type</p></TooltipContent>
                                 </Tooltip>
                                 <DropdownMenuContent className="w-auto p-1" side="top">
-                                    {(['text', 'signature', 'date', 'dropdown'] as const).map(type => {
+                                    {(['text', 'signature', 'date', 'dropdown', 'phone', 'email', 'time', 'photo'] as const).map(type => {
                                         const Icon = fieldIcons[type];
                                         return (
                                             <DropdownMenuItem key={type} className="text-xs capitalize" onClick={() => onChangeType(field.id, type)}>
@@ -689,6 +694,10 @@ const PropertiesSidebar = ({
                         <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('signature')}><Signature className="h-3 w-3 mr-1.5 text-primary" /> Sig</Button>
                         <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('date')}><Calendar className="h-3 w-3 mr-1.5 text-primary" /> Date</Button>
                         <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-3 w-3 mr-1.5 text-primary" /> Select</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('phone')}><Phone className="h-3 w-3 mr-1.5 text-primary" /> Phone</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('email')}><Mail className="h-3 w-3 mr-1.5 text-primary" /> Email</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('time')}><Clock className="h-3 w-3 mr-1.5 text-primary" /> Time</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('photo')}><Camera className="h-3 w-3 mr-1.5 text-primary" /> Photo</Button>
                     </CardContent>
                 </Card>
             )}
@@ -765,7 +774,16 @@ const PropertiesSidebar = ({
                                 <div className="space-y-2"><Label className="text-xs">Type</Label>
                                     <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
                                         <SelectTrigger className="h-8 text-sm capitalize"><SelectValue /></SelectTrigger>
-                                        <SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent>
+                                        <SelectContent>
+                                            <SelectItem value="text">Text</SelectItem>
+                                            <SelectItem value="signature">Signature</SelectItem>
+                                            <SelectItem value="date">Date</SelectItem>
+                                            <SelectItem value="dropdown">Dropdown</SelectItem>
+                                            <SelectItem value="phone">Phone</SelectItem>
+                                            <SelectItem value="email">Email</SelectItem>
+                                            <SelectItem value="time">Time</SelectItem>
+                                            <SelectItem value="photo">Photo</SelectItem>
+                                        </SelectContent>
                                     </Select>
                                 </div>
                                 {selectedField.type === 'dropdown' && (
@@ -785,7 +803,7 @@ const PropertiesSidebar = ({
                                 <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Alignment</Label><div className="grid grid-cols-3 gap-1"><Button variant="outline" size="sm" onClick={() => alignFields('left')}><AlignStartHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-h')}><AlignCenterHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('right')}><AlignEndHorizontal className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('top')}><AlignStartVertical className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => alignFields('center-v')}><AlignCenterVertical className="mr-2 h-4 w-4" /> Center V</Button><Button variant="outline" size="sm" onClick={() => alignFields('bottom')}><AlignEndVertical className="mr-2 h-4 w-4" /> Bottom</Button></div></div>
                                 <div className="space-y-2 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Distribution</Label><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" onClick={() => distributeFields('horizontal')} className="gap-2"><DistributeHorizontal className="h-4 w-4" /> Horiz.</Button><Button variant="outline" size="sm" onClick={() => distributeFields('vertical')} className="gap-2"><DistributeVertical className="h-4 w-4" /> Vert.</Button></div></div>
                                 <div className="space-y-4 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Properties</Label>
-                                    <Select onValueChange={(val: PDFFormField['type']) => bulkUpdate({ type: val })}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Change Type..." /></SelectTrigger><SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem></SelectContent></Select>
+                                    <Select onValueChange={(val: PDFFormField['type']) => bulkUpdate({ type: val })}><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Change Type..." /></SelectTrigger><SelectContent><SelectItem value="text">Text</SelectItem><SelectItem value="signature">Signature</SelectItem><SelectItem value="date">Date</SelectItem><SelectItem value="dropdown">Dropdown</SelectItem><SelectItem value="phone">Phone</SelectItem><SelectItem value="email">Email</SelectItem><SelectItem value="time">Time</SelectItem><SelectItem value="photo">Photo</SelectItem></SelectContent></Select>
                                     <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Mark Required</Label><Switch onCheckedChange={(v) => bulkUpdate({ required: v })} checked={fields.filter(f => selectedFieldIds.includes(f.id)).every(f => f.required)} /></div>
                                 </div>
                                 <div className="space-y-2 border-t pt-4"><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={bulkDuplicate}><Copy className="h-3 w-3" /> Duplicate</Button><Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={bulkRemove}><Trash2 className="h-3 w-3" /> Delete</Button></div></div>
@@ -964,30 +982,34 @@ export default function FieldMapper({
           </div>
 
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
-              <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl">
+              <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw]">
                   <TooltipProvider>
-                      <div className="flex items-center gap-1.5 px-2">
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('text')}><Text className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Text</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('signature')}><Signature className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Signature</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('date')}><Calendar className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Date</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Dropdown</TooltipContent></Tooltip>
+                      <div className="flex items-center gap-1 px-2 shrink-0">
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('text')}><Text className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Text</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('signature')}><Signature className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Signature</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('date')}><Calendar className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Date</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Dropdown</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('phone')}><Phone className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Phone</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('email')}><Mail className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Email</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('time')}><Clock className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Time</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('photo')}><Camera className="h-4 w-4 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Photo</TooltipContent></Tooltip>
                       </div>
                       <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
-                      <div className="flex items-center gap-1.5 px-2">
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={undo} disabled={!canUndo}><Undo className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent side="top">Undo (Ctrl+Z)</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={redo} disabled={!canRedo}><Redo className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent side="top">Redo (Ctrl+Y)</TooltipContent></Tooltip>
+                      <div className="flex items-center gap-1.5 px-2 shrink-0">
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={undo} disabled={!canUndo}><Undo className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="top">Undo (Ctrl+Z)</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={redo} disabled={!canRedo}><Redo className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent side="top">Redo (Ctrl+Y)</TooltipContent></Tooltip>
                       </div>
                       <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
-                      <div className="px-2">
+                      <div className="px-2 shrink-0">
                           <Tooltip>
                               <TooltipTrigger asChild>
                                   <Button 
                                     onClick={onDetect} 
                                     disabled={isDetecting} 
-                                    className="h-10 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                                    className="h-9 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                                   >
-                                    {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                    {isDetecting ? 'Analyzing...' : 'AI Detect'}
+                                    {isDetecting ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Sparkles className="h-4 w-4 sm:mr-2" />}
+                                    <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI Detect'}</span>
                                   </Button>
                               </TooltipTrigger>
                               <TooltipContent side="top">Auto-detect with AI</TooltipContent>
@@ -1009,7 +1031,7 @@ export default function FieldMapper({
             namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} handleSelect={handleSelect}
             updateField={updateField} removeField={removeField} addField={addField} alignFields={alignFields} distributeFields={distributeFields}
             bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
-            isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} 
+            isStatusChanging={isStatusChanging} onStatusChange={handleStatusChange} password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} onDetect={onDetect} isDetecting={isDetecting}
             isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />

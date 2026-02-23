@@ -208,7 +208,7 @@ export interface Activity {
 
 export interface PDFFormField {
   id: string;
-  type: 'text' | 'signature' | 'date' | 'dropdown';
+  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo';
   label?: string;
   placeholder?: string;
   pageNumber: number;

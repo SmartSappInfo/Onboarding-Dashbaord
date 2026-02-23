@@ -58,7 +58,9 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             const fieldHeight = (field.dimensions.height / 100) * pageHeight;
             const fieldWidth = (field.dimensions.width / 100) * pageWidth;
 
-            if (field.type === 'text' || field.type === 'date' || field.type === 'dropdown') {
+            const isImageField = field.type === 'signature' || field.type === 'photo';
+
+            if (!isImageField) {
                 let displayValue = String(rawValue);
                 if (Array.isArray(rawValue)) displayValue = rawValue.join(', ');
                 
@@ -73,19 +75,19 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     color: rgb(0, 0, 0),
                     maxWidth: fieldWidth - 4,
                 });
-            } else if (field.type === 'signature') {
+            } else {
                 if (typeof rawValue === 'string' && rawValue.includes('base64,')) {
                     const base64Data = rawValue.split('base64,')[1];
-                    const signatureBuffer = Buffer.from(base64Data, 'base64');
+                    const imageBuffer = Buffer.from(base64Data, 'base64');
                     
-                    const pngImage = await pdfDoc.embedPng(signatureBuffer);
-                    const scale = Math.min(fieldWidth / pngImage.width, fieldHeight / pngImage.height);
+                    const img = await pdfDoc.embedPng(imageBuffer);
+                    const scale = Math.min(fieldWidth / img.width, fieldHeight / img.height);
 
-                    page.drawImage(pngImage, {
+                    page.drawImage(img, {
                         x: x,
                         y: y_top - fieldHeight,
-                        width: pngImage.width * scale,
-                        height: pngImage.height * scale,
+                        width: img.width * scale,
+                        height: img.height * scale,
                     });
                 }
             }
