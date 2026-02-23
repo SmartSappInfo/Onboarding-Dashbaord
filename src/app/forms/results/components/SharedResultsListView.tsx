@@ -5,7 +5,6 @@ import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -82,6 +81,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
     setBatchDownloadQueue(ids);
     setIsProcessingBatch(true);
     setDownloadingId(ids[0]);
+    toast({ title: 'Batch Download Started', description: `Processing ${ids.length} documents...` });
   };
 
   const onDownloadFinished = React.useCallback((success: boolean) => {
@@ -215,10 +215,9 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     </DropdownMenuContent>
                 </DropdownMenu>
                 
-                {submissions?.length && (
+                {submissions?.length > 0 && (
                     <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId}>
-                        {isProcessingBatch ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                        Download All PDFs
+                        {isProcessingBatch ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing ({batchDownloadQueue.length} left)</> : <><Download className="h-4 w-4 mr-2" />Download All PDFs</>}
                     </Button>
                 )}
             </div>
@@ -273,7 +272,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     <TableCell className="text-right print:hidden">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId}><Download className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -311,7 +310,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 submissionId={downloadingId} 
                 fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
                 onFinished={onDownloadFinished}
-                onCancel={() => { setDownloadingId(null); setIsProcessingBatch(false); setBatchDownloadQueue([]); }}
+                onCancel={() => { 
+                    setDownloadingId(null); 
+                    setIsProcessingBatch(false); 
+                    setBatchDownloadQueue([]); 
+                    toast({ title: 'Download Cancelled', variant: 'secondary' });
+                }}
             />
         )}
       </div>
@@ -346,7 +350,8 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
             const pdfBundle = await PDFDocument.create();
             const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
             for (let i = 0; i < pageWrappers.length; i++) {
-                const canvas = await html2canvas(pageWrappers[i] as HTMLElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                const el = pageWrappers[i] as HTMLElement;
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
                 const image = await pdfBundle.embedJpg(await fetch(canvas.toDataURL('image/jpeg', 0.9)).then(res => res.arrayBuffer()));
                 const page = pdfBundle.addPage([image.width, image.height]);
                 page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });

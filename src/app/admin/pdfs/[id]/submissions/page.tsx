@@ -617,7 +617,10 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
         const render = async () => {
             setIsRendering(true);
             try {
-                if (renderTaskRef.current) renderTaskRef.current.cancel();
+                if (renderTaskRef.current) {
+                    renderTaskRef.current.cancel();
+                }
+
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
                 if (isCancelled) return;
