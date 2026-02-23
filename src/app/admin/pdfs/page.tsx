@@ -142,6 +142,22 @@ export default function PdfFormsPage() {
           <p>View Public Page</p>
         </TooltipContent>
       </Tooltip>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-500 hover:text-primary transition-colors"
+            onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}
+          >
+            <Edit className="h-4 w-4" />
+            <span className="sr-only">Edit fields</span>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Map Fields</p>
+        </TooltipContent>
+      </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0 text-slate-500 hover:text-primary transition-colors">
