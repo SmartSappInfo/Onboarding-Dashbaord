@@ -36,11 +36,15 @@ const pdfjsPromise = import('pdfjs-dist');
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
+        // Ensure all fields are in the schema so they aren't stripped on submit
+        let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
+        
         if (field.required) {
-            acc[field.id] = z.string({
+            fieldSchema = z.string({
                 required_error: `${field.label || 'This field'} is required.`
             }).min(1, { message: `${field.label || 'This field'} is required.` });
         }
+        acc[field.id] = fieldSchema;
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
     return z.object(schemaObject);
@@ -88,6 +92,13 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   });
 
   const watchedValues = watch();
+
+  // Register all fields on mount to ensure Signature fields are tracked
+  React.useEffect(() => {
+    pdfForm.fields.forEach(field => {
+        register(field.id);
+    });
+  }, [pdfForm.fields, register]);
 
   // Determine base scale based on screen size
   React.useEffect(() => {

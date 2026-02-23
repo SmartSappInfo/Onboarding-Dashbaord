@@ -138,7 +138,6 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             if (ctx) {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // Reduced the canvas font size by 70% (450 * 0.3 = 135)
                 ctx.font = '135px "Mrs Saint Delafield"';
                 ctx.fillStyle = 'black';
                 ctx.textAlign = 'center';
@@ -223,7 +222,6 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
                             <TabsContent value="type">
                                 <div className="mt-4 space-y-4">
                                     <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
-                                    {/* Reduced font sizes by ~70%: Mobile 75->22, Desktop 375->112 */}
                                     <Input 
                                         id="initials-input" 
                                         value={typedInitials} 
