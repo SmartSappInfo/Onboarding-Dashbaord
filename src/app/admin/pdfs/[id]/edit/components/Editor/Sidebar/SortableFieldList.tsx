@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useEditor } from '../EditorContext';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove } from '@nd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { FieldListItem } from './FieldListItem';
 
 export function SortableFieldList() {
