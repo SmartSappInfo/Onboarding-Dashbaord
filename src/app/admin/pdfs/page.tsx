@@ -109,7 +109,7 @@ export default function PdfFormsPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-primary transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
             onClick={() => {
               if (typeof window !== 'undefined') {
                 const url = `${window.location.origin}/forms/${pdf.slug || pdf.id}`;
@@ -131,7 +131,7 @@ export default function PdfFormsPage() {
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-primary transition-colors" asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" asChild>
             <a href={`/forms/${pdf.slug || pdf.id}`} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-4 w-4" />
               <span className="sr-only">View public page</span>
@@ -147,7 +147,7 @@ export default function PdfFormsPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-500 hover:text-primary transition-colors"
+            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
             onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}
           >
             <Edit className="h-4 w-4" />
@@ -160,7 +160,7 @@ export default function PdfFormsPage() {
       </Tooltip>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0 text-slate-500 hover:text-primary transition-colors">
+          <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors">
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
@@ -276,7 +276,7 @@ export default function PdfFormsPage() {
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)
             ) : pdfs && pdfs.length > 0 ? (
                 pdfs.map((pdf) => (
-                    <Card key={pdf.id} className="group overflow-hidden border-slate-200 shadow-sm transition-all hover:shadow-md rounded-xl bg-white">
+                    <Card key={pdf.id} className="group overflow-hidden border-border shadow-sm transition-all hover:shadow-md rounded-xl">
                         <CardHeader className="p-6 pb-4">
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1 min-w-0 flex-1">
@@ -285,7 +285,7 @@ export default function PdfFormsPage() {
                                             {pdf.name}
                                         </CardTitle>
                                     </Link>
-                                    <CardDescription className="text-slate-500 font-medium flex items-center gap-1.5">
+                                    <CardDescription className="text-muted-foreground font-medium flex items-center gap-1.5">
                                         Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
                                     </CardDescription>
                                 </div>
@@ -294,15 +294,15 @@ export default function PdfFormsPage() {
                         
                         <CardContent className="px-6 pb-6">
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:bg-slate-100/80">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Fields</span>
-                                    <span className="text-2xl font-black text-slate-900">{pdf.fields?.length || 0}</span>
+                                <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-muted/50 border border-border transition-colors">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Fields</span>
+                                    <span className="text-2xl font-black text-foreground">{pdf.fields?.length || 0}</span>
                                 </div>
                                 <Link 
                                     href={`/admin/pdfs/${pdf.id}/submissions`}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 border border-slate-100 transition-colors hover:bg-primary/5 hover:border-primary/20 group/stat"
+                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-muted/50 border border-border transition-colors hover:bg-primary/5 hover:border-primary/20 group/stat"
                                 >
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1 group-hover/stat:text-primary">Responses</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover/stat:text-primary mb-1">Responses</span>
                                     <span className="text-2xl font-black text-primary">
                                         <SubmissionCount pdfId={pdf.id} />
                                     </span>
@@ -310,10 +310,10 @@ export default function PdfFormsPage() {
                             </div>
                         </CardContent>
                         
-                        <CardFooter className="flex items-center justify-between border-t border-slate-50 bg-slate-50/30 p-3">
+                        <CardFooter className="flex items-center justify-between border-t bg-muted/30 p-3">
                             <Badge variant={getStatusVariant(pdf.status)} className={cn(
                                 "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full",
-                                pdf.status === 'published' ? "bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm shadow-blue-200" : ""
+                                pdf.status === 'published' ? "bg-primary hover:bg-primary/90 text-primary-foreground border-none shadow-sm" : ""
                             )}>
                                 {pdf.status}
                             </Badge>
@@ -322,10 +322,10 @@ export default function PdfFormsPage() {
                     </Card>
                 ))
             ) : (
-                <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl bg-slate-50/50">
-                    <FileText className="mx-auto h-12 w-12 text-slate-300" />
-                    <h3 className="mt-4 text-lg font-bold text-slate-900">No Documents Yet</h3>
-                    <p className="mt-1 text-sm text-slate-500">Upload your first document to get started.</p>
+                <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl bg-muted/50">
+                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
+                    <h3 className="mt-4 text-lg font-bold">No Documents Yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
                 </div>
             )}
         </div>
