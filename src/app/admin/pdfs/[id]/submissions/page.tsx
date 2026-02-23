@@ -414,7 +414,7 @@ export default function SubmissionsPage() {
           <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
         </div>
 
-        {/* Quick Stats Grid */}
+        {/* Quick Stats Grid - Positioned at top */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                 <CardContent className="p-4 flex items-center gap-4">
@@ -442,9 +442,9 @@ export default function SubmissionsPage() {
             </Card>
         </div>
 
-        {/* Actions Bar */}
+        {/* Actions Bar - Aligned Right */}
         {!isLoading && (
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8 print:hidden">
+            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 mb-8 print:hidden">
                 {selectedIds.length > 0 ? (
                     <Card className="bg-primary/5 border-primary/20 w-full mb-4">
                         <CardContent className="p-3 flex items-center justify-between">

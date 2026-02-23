@@ -316,7 +316,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
             <div className="max-w-6xl mx-auto space-y-6">
                 
-                {/* Stats Summary */}
+                {/* Stats Summary - Positioned at top */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4">
@@ -344,9 +344,9 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     </Card>
                 </div>
 
-                {/* Actions Bar */}
+                {/* Actions Bar - Aligned Right */}
                 {!isLoading && (
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 print:hidden">
+                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0 print:hidden">
                         {selectedIds.length > 0 ? (
                             <Card className="bg-primary/5 border-primary/20 w-full mb-4">
                                 <CardContent className="p-3 flex items-center justify-between">
