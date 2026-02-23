@@ -146,6 +146,7 @@ export default function SubmissionsPage() {
   };
 
   const onDownloadFinished = React.useCallback((success: boolean, blobUrl?: string) => {
+    // Wrap in setTimeout to avoid "Cannot update a component while rendering a different component" error
     setTimeout(() => {
         if (isProcessingBatch) {
             setBatchDownloadQueue(prev => {
@@ -621,7 +622,8 @@ function HighFidelityDownloader({
                 setPdfDoc(loadedPdf);
             } catch (e) {
                 console.error("Renderer: Failed to load PDF", e);
-                toast({ variant: 'destructive', title: 'Rendering Error' });
+                // Defer toast to next tick to avoid React update conflicts
+                setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
                 onFinished(false);
             }
         };

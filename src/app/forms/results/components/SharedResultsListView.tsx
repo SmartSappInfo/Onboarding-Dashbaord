@@ -86,6 +86,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   };
 
   const onDownloadFinished = React.useCallback((success: boolean) => {
+    // Wrap in setTimeout to avoid React state conflict during render
     setTimeout(() => {
         if (isProcessingBatch) {
             setBatchDownloadQueue(prev => {
@@ -419,6 +420,7 @@ function HighFidelityDownloader({
     onCancel: () => void 
 }) {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const submissionRef = useMemoFirebase(() => firestore ? doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId) : null, [firestore, pdfForm.id, submissionId]);
     const { data: submission } = useDoc<Submission>(submissionRef);
     const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
@@ -427,13 +429,20 @@ function HighFidelityDownloader({
 
     React.useEffect(() => {
         const load = async () => {
-            const pdfjs = await pdfjsPromise;
-            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
-            const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
-            setPdfDoc(loaded);
+            try {
+                const pdfjs = await pdfjsPromise;
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+                const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
+                setPdfDoc(loaded);
+            } catch (e) {
+                console.error("Renderer: Failed to load PDF", e);
+                // Defer toast to avoid React update conflicts
+                setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
+                onFinished(false);
+            }
         };
         load();
-    }, [pdfForm.downloadUrl]);
+    }, [pdfForm.downloadUrl, onFinished, toast]);
 
     const handleGenerate = React.useCallback(async () => {
         if (isCapturing || !containerRef.current) return;
