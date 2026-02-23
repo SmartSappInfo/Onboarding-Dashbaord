@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -151,39 +150,46 @@ export default function SubmissionDetailPage() {
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
-       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm">
-        <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions`)}>
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                Back to List
+    <div className="h-full overflow-hidden flex flex-col bg-muted/10">
+       <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14">
+        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+            <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions`)} className="h-9 px-2 sm:px-3">
+                <ArrowLeft className="sm:mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Back</span>
             </Button>
-            <div className="hidden sm:block h-6 w-px bg-border mx-2" />
-            <h1 className="text-lg font-semibold truncate">
-              {isLoadingSubmission ? <Skeleton className="h-6 w-48" /> : `Submitted: ${submission ? format(new Date(submission.submittedAt), "PPP p") : ''}`}
+            <div className="hidden sm:block h-6 w-px bg-border mx-1" />
+            <h1 className="text-sm sm:text-lg font-semibold truncate px-1">
+              {isLoadingSubmission ? (
+                <Skeleton className="h-5 w-32" />
+              ) : (
+                <span className="truncate">
+                  {submission ? `Submitted: ${format(new Date(submission.submittedAt), "MMM d, yyyy")}` : 'Submission'}
+                </span>
+              )}
             </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading}>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex">
             {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
-            Front-end Download
+            Front-end
           </Button>
-          <Button onClick={handleDownload} disabled={isLoading || isDownloading}>
-            {isDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-            Download Signed PDF
+          <Button size="sm" onClick={handleDownload} disabled={isLoading || isDownloading} className="h-9">
+            {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
+            <span className="hidden sm:inline">Download Signed</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
         </div>
       </div>
-      <div className="flex-grow bg-muted overflow-hidden relative">
+      <div className="flex-grow bg-muted/30 overflow-hidden relative">
         <ScrollArea className="h-full w-full">
             <div 
                 ref={pageContainerRef}
-                className="p-4 sm:p-8 flex flex-col items-center min-w-full"
+                className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y"
                 style={{ minWidth: 'fit-content' }}
             >
                 <div className="max-w-4xl mx-auto space-y-4">
                     {isLoading ? (
-                        Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-full aspect-[1/1.41] bg-white shadow-md mb-4 flex-shrink-0" />)
+                        Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                             <div key={index} className="page-capture-wrapper mb-4">
@@ -196,8 +202,9 @@ export default function SubmissionDetailPage() {
                             </div>
                         ))
                     ) : (
-                        <div className="flex items-center justify-center h-full py-20 text-center">
-                            <p className="text-muted-foreground">Submission not found or failed to load template.</p>
+                        <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
+                            <Monitor className="h-12 w-12 mb-4 opacity-20" />
+                            <p>Submission details unavailable.</p>
                         </div>
                     )}
                 </div>

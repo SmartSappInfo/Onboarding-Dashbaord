@@ -16,6 +16,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { SmartSappIcon } from '@/components/icons';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -73,13 +74,18 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
   React.useEffect(() => {
     if (!isUnlocked) return;
     const load = async () => {
-        const pdfjs = await pdfjsPromise;
-        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
-        const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
-        setPdfDoc(loaded);
+        try {
+            const pdfjs = await pdfjsPromise;
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+            const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
+            setPdfDoc(loaded);
+        } catch (e) {
+            console.error("Renderer: Failed to load PDF", e);
+            toast({ variant: 'destructive', title: 'Error Loading Document' });
+        }
     };
     load();
-  }, [pdfForm.downloadUrl, isUnlocked]);
+  }, [pdfForm.downloadUrl, isUnlocked, toast]);
 
   const onAuthSubmit = (data: z.infer<typeof passwordSchema>) => {
     if (data.password === pdfForm.resultsPassword) {
@@ -99,7 +105,13 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
         if (!response.ok) throw new Error('Failed to generate PDF');
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = `${pdfForm.name}-submission.pdf`; document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url);
+        const a = document.createElement('a'); 
+        a.href = url; 
+        a.download = `${pdfForm.name}-submission.pdf`; 
+        document.body.appendChild(a); 
+        a.click(); 
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
         toast({ title: 'Download Successful' });
     } catch (e: any) {
         toast({ variant: 'destructive', title: 'Download Failed' });
@@ -166,38 +178,50 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/20">
-       <header className="h-16 border-b bg-background px-4 flex items-center justify-between shrink-0 shadow-sm">
-            <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => router.back()}>
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Results
+       <header className="h-14 border-b bg-background px-4 flex items-center justify-between shrink-0 shadow-sm">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
+                <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-9 px-2 sm:px-3">
+                    <ArrowLeft className="sm:mr-2 h-4 w-4" />
+                    <span className="hidden sm:inline">Back</span>
                 </Button>
-                <div className="h-6 w-px bg-border mx-2" />
-                <div className="hidden sm:block">
-                    <h1 className="font-bold text-sm leading-none">Record: {submission.id.substring(0,8)}</h1>
-                    <p className="text-[10px] text-muted-foreground mt-1">Submitted on {format(new Date(submission.submittedAt), "PPP")}</p>
+                <div className="hidden sm:block h-6 w-px bg-border mx-1" />
+                <div className="min-w-0">
+                    <h1 className="font-bold text-xs sm:text-sm leading-none truncate pr-2">
+                      Record: {submission.id.substring(0,8)}
+                    </h1>
+                    <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 hidden sm:block">
+                      Submitted on {format(new Date(submission.submittedAt), "MMM d, yyyy")}
+                    </p>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={() => window.print()} className="hidden sm:flex">
-                    <Printer className="h-4 w-4 mr-2" /> Print
+            <div className="flex items-center gap-1.5 shrink-0">
+                <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9 hidden sm:flex">
+                    <Printer className="mr-2 h-4 w-4" /> Print
                 </Button>
-                <Button size="sm" onClick={handleDownload} disabled={isDownloading}>
-                    {isDownloading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                    Download PDF
+                <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9">
+                    {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
+                    <span className="hidden sm:inline">Download PDF</span>
+                    <span className="sm:hidden">Download</span>
                 </Button>
             </div>
       </header>
 
-      <div className="flex-grow overflow-hidden relative">
+      <div className="flex-grow overflow-hidden relative bg-muted/30">
         <ScrollArea className="h-full w-full">
-            <div ref={pageContainerRef} className="p-4 sm:p-8 flex flex-col items-center min-w-full">
+            <div ref={pageContainerRef} className="p-4 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }}>
                 {!pdfDoc ? (
-                    <div className="space-y-4"><Skeleton className="w-[8.5in] h-[11in] bg-card rounded-lg" /></div>
+                    <div className="space-y-4"><Skeleton className="w-[8.5in] h-[11in] bg-card rounded-lg shadow-lg" /></div>
                 ) : (
-                    <div className="flex flex-col gap-8 pb-20">
+                    <div className="flex flex-col gap-4 sm:gap-8 pb-24">
                         {Array.from({ length: pdfDoc.numPages }).map((_, i) => (
-                            <PageRenderer key={i} pdf={pdfDoc} pageNumber={i+1} fields={pdfForm.fields} formData={submission.formData} />
+                            <div key={i} className="page-capture-wrapper">
+                                <PageRenderer 
+                                    pdf={pdfDoc} 
+                                    pageNumber={i+1} 
+                                    fields={pdfForm.fields} 
+                                    formData={submission.formData} 
+                                />
+                            </div>
                         ))}
                     </div>
                 )}
@@ -205,6 +229,14 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
             <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </div>
+      
+      {/* Footer Branding for Mobile View */}
+      <footer className="sm:hidden h-8 bg-background border-t flex items-center justify-center px-4 shrink-0">
+          <div className="flex items-center gap-1 opacity-50">
+              <SmartSappIcon className="h-3 w-3" />
+              <span className="text-[8px] font-medium">Powered by SmartSapp</span>
+          </div>
+      </footer>
     </div>
   );
 }
@@ -215,22 +247,35 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
     const [isRendering, setIsRendering] = React.useState(true);
 
     React.useEffect(() => {
+        let isMounted = true;
         const render = async () => {
-            const page = await pdf.getPage(pageNumber);
-            const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
-            setDimensions({ width: viewport.width, height: viewport.height });
-            if (canvasRef.current) {
-                const canvas = canvasRef.current;
-                canvas.height = viewport.height; canvas.width = viewport.width;
-                await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise;
-                setIsRendering(false);
+            try {
+                const page = await pdf.getPage(pageNumber);
+                const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
+                
+                if (!isMounted) return;
+                setDimensions({ width: viewport.width, height: viewport.height });
+                
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const context = canvas.getContext('2d');
+                    if (context) {
+                        canvas.height = viewport.height; 
+                        canvas.width = viewport.width;
+                        await page.render({ canvasContext: context, viewport }).promise;
+                        if (isMounted) setIsRendering(false);
+                    }
+                }
+            } catch (e) {
+                console.error("PageRenderer error:", e);
             }
         };
         render();
+        return () => { isMounted = false; };
     }, [pdf, pageNumber]);
 
     return (
-        <div className="relative bg-white border shadow-2xl" style={{ width: dimensions.width, height: dimensions.height }}>
+        <div className="relative bg-white border shadow-2xl flex-shrink-0" style={{ width: dimensions.width, height: dimensions.height }}>
             {isRendering && <Skeleton className="absolute inset-0" />}
             <canvas ref={canvasRef} className="w-full h-full block" />
             {!isRendering && (
@@ -239,7 +284,13 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                         const val = formData[field.id]; if (!val) return null;
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
-                                {field.type === 'signature' ? <img src={val} alt="Sig" className="w-full h-full object-contain object-left-top" /> : <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">{field.type === 'date' ? format(new Date(val), 'PPP') : val}</span>}
+                                {field.type === 'signature' ? (
+                                    <img src={val} alt="Sig" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                ) : (
+                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">
+                                        {field.type === 'date' ? format(new Date(val), 'PPP') : val}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}
