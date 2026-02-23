@@ -285,41 +285,45 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5 sm:mt-1 truncate">Shared Portal</p>
                 </div>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
-                            {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            <span className="hidden sm:inline">Export List</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            Export to Excel (CSV)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Export to PDF Report
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-                
-                {submissions?.length > 0 && (
-                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm">
-                        {isProcessingBatch ? (
-                            <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
-                        ) : (
-                            <><Download className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
-                        )}
-                    </Button>
-                )}
-            </div>
         </header>
 
         <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
             <div className="max-w-6xl mx-auto space-y-6">
                 
+                {/* Actions Bar (Positioned between title/description and summary cards as requested) */}
+                {!isLoading && (
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 print:hidden">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                                    {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                                    <span className="hidden sm:inline">Export List</span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-56">
+                                <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
+                                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                                    Export to Excel (CSV)
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Export to PDF Report
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                        
+                        {submissions?.length > 0 && (
+                            <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
+                                {isProcessingBatch ? (
+                                    <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
+                                ) : (
+                                    <><Download className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
+                                )}
+                            </Button>
+                        )}
+                    </div>
+                )}
+
                 {/* Stats Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card className="bg-card shadow-sm border-border/50 rounded-xl">
@@ -387,8 +391,14 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     <TableCell className="text-muted-foreground text-xs font-medium">{format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}</TableCell>
                                     <TableCell className="text-right pr-6">
                                         <div className="flex items-center justify-end gap-1">
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                                <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}>
+                                                <Download className="h-4 w-4" />
+                                            </Button>
                                         </div>
                                     </TableCell>
                                 </TableRow>

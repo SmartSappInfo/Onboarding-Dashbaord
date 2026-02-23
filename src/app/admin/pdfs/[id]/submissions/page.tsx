@@ -346,76 +346,75 @@ export default function SubmissionsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 print:hidden">
-          <div className="space-y-1 min-w-0">
-            <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground" onClick={() => router.push('/admin/pdfs')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Documents
-            </Button>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground truncate pr-4" title={pdf?.name}>
-              {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions for "${pdf?.name}"`}
-            </h1>
-            <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
-          </div>
-          
-          {!isLoading && (
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
-                            {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            <span className="hidden sm:inline">Export List</span>
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                        <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
-                            <FileSpreadsheet className="mr-2 h-4 w-4" />
-                            Export to Excel (CSV)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
-                            <Printer className="mr-2 h-4 w-4" />
-                            Export to PDF Report
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-
-                  <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
-                      <Share2 className="h-4 w-4" />
-                      <span className="hidden sm:inline">Share Results</span>
-                  </Button>
-                  
-                  {submissions && submissions.length > 0 && (
-                      <ButtonGroup className="shadow-sm">
-                          <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
-                              {isProcessingBatch ? (
-                                  <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
-                              ) : (
-                                  <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
-                              )}
-                          </Button>
-                          <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                  <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
-                                      <ChevronDown className="h-4 w-4" />
-                                  </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-64">
-                                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
-                                  {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
-                                      <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
-                                          {field.label || field.id}
-                                          {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
-                                      </DropdownMenuItem>
-                                  ))}
-                              </DropdownMenuContent>
-                          </DropdownMenu>
-                      </ButtonGroup>
-                  )}
-              </div>
-          )}
+        <div className="space-y-1 min-w-0 mb-6 print:hidden">
+          <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground" onClick={() => router.push('/admin/pdfs')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Documents
+          </Button>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground truncate pr-4" title={pdf?.name}>
+            {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions for "${pdf?.name}"`}
+          </h1>
+          <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
         </div>
+
+        {/* Desktop Actions Bar */}
+        {!isLoading && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8 print:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                          {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+                          <span className="hidden sm:inline">Export List</span>
+                      </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                      <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
+                          <FileSpreadsheet className="mr-2 h-4 w-4" />
+                          Export to Excel (CSV)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
+                          <Printer className="mr-2 h-4 w-4" />
+                          Export to PDF Report
+                      </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
+                    <Share2 className="h-4 w-4" />
+                    <span className="hidden sm:inline">Share Results</span>
+                </Button>
+                
+                {submissions && submissions.length > 0 && (
+                    <ButtonGroup className="shadow-sm">
+                        <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                            {isProcessingBatch ? (
+                                <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
+                            ) : (
+                                <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
+                            )}
+                        </Button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
+                                    <ChevronDown className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-64">
+                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
+                                {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
+                                    <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
+                                        {field.label || field.id}
+                                        {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </ButtonGroup>
+                )}
+            </div>
+        )}
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -489,9 +488,29 @@ export default function SubmissionsPage() {
                         {format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Tooltip><TooltipTrigger asChild><Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4" /><span className="sr-only">View Submission</span></Link></Button></TooltipTrigger><TooltipContent>View Details</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>{downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="sr-only">Download PDF</span></Button></TooltipTrigger><TooltipContent>Download Signed PDF</TooltipContent></Tooltip>
+                      <div className="flex items-center justify-end gap-1">
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
+                                  <Eye className="h-4 w-4" />
+                                  <span className="sr-only">View Submission</span>
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>View Details</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>
+                                {downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                <span className="sr-only">Download PDF</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Download Signed PDF</TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </TableCell>
                   </TableRow>
