@@ -76,7 +76,8 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
     const load = async () => {
         try {
             const pdfjs = await pdfjsPromise;
-            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+            const pdfjsVersion = '4.4.168';
+            pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
             const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
             setPdfDoc(loaded);
         } catch (e) {
@@ -101,20 +102,56 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-        const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submission.id}`);
-        if (!response.ok) throw new Error('Failed to generate PDF');
-        const blob = await response.blob();
+        const html2canvas = (await import('html2canvas')).default;
+        const { PDFDocument } = await import('pdf-lib');
+        
+        const pdfBundle = await PDFDocument.create();
+        const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
+        
+        if (!pageElements || !pageElements.length) {
+            throw new Error("No pages found to capture. Please ensure the document is fully loaded.");
+        }
+
+        toast({ title: 'Preparing Download', description: 'Generating high-fidelity PDF...' });
+
+        for (let i = 0; i < pageElements.length; i++) {
+            const el = pageElements[i] as HTMLElement;
+            
+            const canvas = await html2canvas(el, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+            
+            const imgData = canvas.toDataURL('image/jpeg', 0.9);
+            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+            const image = await pdfBundle.embedJpg(imgBytes);
+            
+            const page = pdfBundle.addPage([595.28, 841.89]);
+            page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: 595.28,
+                height: 841.89,
+            });
+        }
+
+        const pdfBytes = await pdfBundle.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a'); 
         a.href = url; 
-        a.download = `${pdfForm.name}-submission.pdf`; 
+        a.download = `${pdfForm.name}-signed.pdf`; 
         document.body.appendChild(a); 
         a.click(); 
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
+        
         toast({ title: 'Download Successful' });
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Download Failed' });
+        console.error("Download error:", e);
+        toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate the signed document.' });
     } finally { setIsDownloading(false); }
   };
 
@@ -200,7 +237,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                 </Button>
                 <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9">
                     {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
-                    <span className="hidden sm:inline">Download PDF</span>
+                    <span className="hidden sm:inline">Download Signed PDF</span>
                     <span className="sm:hidden">Download</span>
                 </Button>
             </div>
@@ -230,7 +267,6 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
         </ScrollArea>
       </div>
       
-      {/* Footer Branding for Mobile View */}
       <footer className="sm:hidden h-8 bg-background border-t flex items-center justify-center px-4 shrink-0">
           <div className="flex items-center gap-1 opacity-50">
               <SmartSappIcon className="h-3 w-3" />
@@ -276,10 +312,10 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
 
     return (
         <div className="relative bg-white border shadow-2xl flex-shrink-0" style={{ width: dimensions.width, height: dimensions.height }}>
-            {isRendering && <Skeleton className="absolute inset-0" />}
+            {isRendering && <Skeleton className="absolute inset-0 z-10" />}
             <canvas ref={canvasRef} className="w-full h-full block" />
-            {!isRendering && (
-                <div className="absolute inset-0 pointer-events-none">
+            {dimensions.width > 0 && (
+                <div className="absolute inset-0 z-20 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
                         return (

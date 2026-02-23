@@ -36,7 +36,6 @@ const pdfjsPromise = import('pdfjs-dist');
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
-        // Ensure all fields are in the schema so they aren't stripped on submit
         let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
         
         if (field.required) {
@@ -63,21 +62,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
   const [activeSignatureField, setActiveSignatureField] = React.useState<string | null>(null);
   
-  // Scale and Zoom
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
   
-  // Pinch-to-zoom logic refs
   const touchStartDist = React.useRef<number | null>(null);
   const startZoom = React.useRef<number>(1.0);
   const zoomRef = React.useRef(zoom);
   React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
 
-  // Confirmation Dialog State
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
 
-  // Missing Fields Modal State
   const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
   const [missingFields, setMissingFields] = React.useState<{ id: string, label: string }[]>([]);
 
@@ -93,14 +88,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const watchedValues = watch();
 
-  // Register all fields on mount to ensure Signature fields are tracked
   React.useEffect(() => {
     pdfForm.fields.forEach(field => {
         register(field.id);
     });
   }, [pdfForm.fields, register]);
 
-  // Determine base scale based on screen size
   React.useEffect(() => {
     const updateBaseScale = () => {
         if (typeof window !== 'undefined') {
@@ -115,7 +108,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     return () => window.removeEventListener('resize', updateBaseScale);
   }, []);
 
-  // Robust Zoom Interception (Wheel & Touch Pinch)
   React.useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -143,7 +135,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length === 2 && touchStartDist.current !== null) {
-        e.preventDefault(); // Intercept browser zoom
+        e.preventDefault();
         const dist = Math.hypot(
           e.touches[0].pageX - e.touches[1].pageX,
           e.touches[0].pageY - e.touches[1].pageY
@@ -314,7 +306,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
-    
     const dynamicFontSize = `${Math.round(10 * currentTotalScale)}px`;
     
     if (isSubmitted) {
@@ -495,7 +486,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            {/* Vertical Zoom Slider */}
             <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
                 <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
                     <TooltipProvider>
@@ -555,7 +545,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             }}
         />
 
-        {/* Missing Fields Modal */}
         <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
@@ -583,7 +572,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </DialogContent>
         </Dialog>
 
-        {/* Confirmation Dialog */}
         <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
             <AlertDialogContent className="sm:max-w-md">
                 <AlertDialogHeader>
@@ -600,7 +588,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         <AlertDialogTitle>Confirm Final Submission</AlertDialogTitle>
                     </div>
                     <AlertDialogDescription asChild>
-                        <div className="space-y-4 pt-2">
+                        <div className="space-y-4 pt-2 text-sm text-muted-foreground">
                             {hasSignature ? (
                                 <>
                                     <p className="font-semibold text-foreground">Important Legal Notice:</p>
