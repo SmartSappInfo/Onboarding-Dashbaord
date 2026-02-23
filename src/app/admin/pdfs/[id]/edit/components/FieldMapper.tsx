@@ -142,19 +142,23 @@ function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId
     const selectedOnThisPage = fields.filter(f => selectedFieldIds.includes(f.id));
     const isMultiSelect = selectedFieldIds.length > 1;
     
+    // Use stored percentages if background isn't loaded yet, or viewport dimensions once available
+    const displayWidth = pageDimensions.width > 0 ? pageDimensions.width / 1.5 : 816; // 8.5in at 96dpi
+    const displayHeight = pageDimensions.height > 0 ? pageDimensions.height / 1.5 : 1056; // 11in at 96dpi
+
     return (
         <div 
             data-page-number={pageNumber}
             className="relative mx-auto shadow-xl mb-8 bg-white pdf-page-container transition-all flex-shrink-0 touch-pan-x touch-pan-y"
-            style={{ width: pageDimensions.width / 1.5, height: pageDimensions.height / 1.5 }}
+            style={{ width: displayWidth, height: displayHeight }}
         >
             <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" />
             
-            {pageDimensions.width > 0 && fields.map(field => (
+            {(displayWidth > 0) && fields.map(field => (
                 <ResizableField
                     key={field.id}
                     field={field}
-                    pageDimensions={pageDimensions}
+                    pageDimensions={{ width: displayWidth * 1.5, height: displayHeight * 1.5 }}
                     isSelected={selectedFieldIds.includes(field.id)}
                     isPartOfMultiSelect={isMultiSelect}
                     isNamingField={field.id === namingFieldId}
@@ -676,7 +680,7 @@ const PropertiesSidebar = ({
       
       <ScrollArea className="flex-grow">
         <div className={cn("space-y-4 p-4", isCollapsed && "p-2")}>
-            {/* Quick Add Elements Section (Added based on user request) */}
+            {/* Quick Add Elements Section */}
             {!isCollapsed && (
                 <Card>
                     <CardHeader className="py-3">
@@ -796,7 +800,6 @@ const PropertiesSidebar = ({
                         </Card>
                     ) : null}
                     
-                    {/* Delete All Fields button added to sidebar as requested */}
                     {!selectedField && selectedFieldIds.length === 0 && fields.length > 0 && (
                         <Button variant="destructive" size="sm" className="w-full h-9 text-xs gap-2" onClick={() => setIsDeleteDialogOpen(true)}>
                             <Trash2 className="h-3 w-3" /> Clear All Fields

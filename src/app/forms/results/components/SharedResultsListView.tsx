@@ -371,7 +371,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                             <span className="hidden sm:inline">Export List</span>
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="w-56">
+                                    <DropdownMenuContent align="end" className="w-56">
                                         <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                                             Export to Excel (CSV)

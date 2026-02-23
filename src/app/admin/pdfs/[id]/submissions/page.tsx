@@ -472,7 +472,7 @@ export default function SubmissionsPage() {
                                     <span className="hidden sm:inline">Export List</span>
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-56">
+                            <DropdownMenuContent align="end" className="w-56">
                                 <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                                     <FileSpreadsheet className="mr-2 h-4 w-4" />
                                     Export to Excel (CSV)
@@ -504,7 +504,7 @@ export default function SubmissionsPage() {
                                             <ChevronDown className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="start" className="w-64">
+                                    <DropdownMenuContent align="end" className="w-64">
                                         <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
                                         <DropdownMenuSeparator />
                                         <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
