@@ -47,7 +47,10 @@ export default function SubmissionsPage() {
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [selectedNamingFieldId, setSelectedNamingFieldId] = React.useState<string | null>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
-  const [isSharing, setIsSharing] = React.useState(false);
+  const [isExportingCSV, setIsExportingCSV] = React.useState(false);
+  const [isExportingPDF, setIsExportingPDF] = React.useState(false);
+
+  const tableRef = React.useRef<HTMLDivElement>(null);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -153,38 +156,91 @@ export default function SubmissionsPage() {
 
   const handleExportCSV = () => {
     if (!submissions || !pdf) return;
+    setIsExportingCSV(true);
 
-    // Use all non-signature fields for CSV export
-    const dataFields = pdf.fields.filter(f => f.type !== 'signature');
-    const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
-    const csvRows = [headers.join(",")];
+    try {
+        // Use all non-signature fields for CSV export
+        const dataFields = pdf.fields.filter(f => f.type !== 'signature');
+        const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
+        const csvRows = [headers.join(",")];
 
-    submissions.forEach(sub => {
-        const row = [
-            sub.id,
-            format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
-            ...dataFields.map(f => {
-                const val = sub.formData[f.id] || "";
-                return `"${String(val).replace(/"/g, '""')}"`;
-            })
-        ];
-        csvRows.push(row.join(","));
-    });
+        submissions.forEach(sub => {
+            const row = [
+                sub.id,
+                format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
+                ...dataFields.map(f => {
+                    const val = sub.formData[f.id] || "";
+                    return `"${String(val).replace(/"/g, '""')}"`;
+                })
+            ];
+            csvRows.push(row.join(","));
+        });
 
-    const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `${pdf.slug || pdf.id}_submissions_${format(new Date(), "yyyy-MM-dd")}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: "CSV Export Started" });
+        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${pdf.slug || pdf.id}_submissions_${format(new Date(), "yyyy-MM-dd")}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "CSV Export Started" });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExportingCSV(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!tableRef.current || isExportingPDF) return;
+    setIsExportingPDF(true);
+    
+    try {
+        const html2canvas = (await import('html2canvas')).default;
+        const { PDFDocument } = await import('pdf-lib');
+        
+        const canvas = await html2canvas(tableRef.current, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: 'white',
+            ignoreElements: (el) => el.classList.contains('print:hidden') || el.tagName === 'BUTTON'
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+        
+        const pdfDoc = await PDFDocument.create();
+        const image = await pdfDoc.embedJpg(imgBytes);
+        
+        // Handle potential long table by splitting into pages or one long page
+        // For simplicity and report quality, we'll create a page that fits the table
+        const page = pdfDoc.addPage([image.width, image.height]);
+        page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${pdf?.name || 'submissions'}_report.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: 'PDF Export Complete' });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'PDF Generation Failed' });
+    } finally {
+        setIsExportingPDF(false);
+    }
   };
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8" ref={tableRef}>
         <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
           <div>
             <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => router.push('/admin/pdfs')}>
@@ -200,19 +256,19 @@ export default function SubmissionsPage() {
               <div className="flex items-center gap-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2">
-                            <Download className="h-4 w-4" />
+                        <Button variant="outline" className="gap-2" disabled={isExportingCSV || isExportingPDF}>
+                            {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             Export List
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleExportCSV}>
+                        <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Export to Excel (CSV)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.print()}>
+                        <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
                             <Printer className="mr-2 h-4 w-4" />
-                            Print / Save as PDF
+                            Export to PDF Report
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -250,8 +306,8 @@ export default function SubmissionsPage() {
           )}
         </div>
 
-        {/* Print-only Header */}
-        <div className="hidden print:block mb-8 border-b pb-4">
+        {/* Print-only Header (Also used for PDF capture) */}
+        <div className={cn("hidden mb-8 border-b pb-4", isExportingPDF && "block")}>
             <h1 className="text-2xl font-bold">Submission Report: {pdf?.name}</h1>
             <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
             <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
@@ -323,6 +379,25 @@ export default function SubmissionsPage() {
             open={isShareDialogOpen}
             onOpenChange={setIsShareDialogOpen}
           />
+      )}
+
+      {/* High-Fidelity Capture Progress Overlay */}
+      {isExportingPDF && (
+          <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+              <Card className="w-80 shadow-2xl border-primary/20">
+                  <CardContent className="p-6 flex flex-col items-center gap-4">
+                      <div className="relative">
+                          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                          <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
+                      </div>
+                      <div className="text-center">
+                          <h2 className="font-bold text-lg">Generating Report</h2>
+                          <p className="text-sm text-muted-foreground">Capturing data and formatting PDF...</p>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
+                  </CardContent>
+              </Card>
+          </div>
       )}
 
       {downloadingId && pdf && (

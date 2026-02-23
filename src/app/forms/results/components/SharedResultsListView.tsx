@@ -23,6 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Card, CardContent } from '@/components/ui/card';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -33,6 +34,10 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
+  const [isExportingCSV, setIsExportingCSV] = React.useState(false);
+  const [isExportingPDF, setIsExportingPDF] = React.useState(false);
+
+  const tableRef = React.useRef<HTMLDivElement>(null);
 
   const submissionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -101,33 +106,82 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
 
   const handleExportCSV = () => {
     if (!submissions || !pdfForm) return;
+    setIsExportingCSV(true);
 
-    // Use all non-signature fields for CSV export
-    const dataFields = pdfForm.fields.filter(f => f.type !== 'signature');
-    const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
-    const csvRows = [headers.join(",")];
+    try {
+        const dataFields = pdfForm.fields.filter(f => f.type !== 'signature');
+        const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
+        const csvRows = [headers.join(",")];
 
-    submissions.forEach(sub => {
-        const row = [
-            sub.id,
-            format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
-            ...dataFields.map(f => {
-                const val = sub.formData[f.id] || "";
-                return `"${String(val).replace(/"/g, '""')}"`;
-            })
-        ];
-        csvRows.push(row.join(","));
-    });
+        submissions.forEach(sub => {
+            const row = [
+                sub.id,
+                format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
+                ...dataFields.map(f => {
+                    const val = sub.formData[f.id] || "";
+                    return `"${String(val).replace(/"/g, '""')}"`;
+                })
+            ];
+            csvRows.push(row.join(","));
+        });
 
-    const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute("download", `${pdfForm.slug || pdfForm.id}_results_export.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: "CSV Export Started" });
+        const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${pdfForm.slug || pdfForm.id}_results_export.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: "CSV Export Started" });
+    } catch (e) {
+        toast({ variant: 'destructive', title: 'CSV Export Failed' });
+    } finally {
+        setIsExportingCSV(false);
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!tableRef.current || isExportingPDF) return;
+    setIsExportingPDF(true);
+    
+    try {
+        const html2canvas = (await import('html2canvas')).default;
+        const { PDFDocument } = await import('pdf-lib');
+        
+        const canvas = await html2canvas(tableRef.current, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: 'white',
+            ignoreElements: (el) => el.classList.contains('print:hidden') || el.tagName === 'BUTTON'
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+        
+        const pdfDoc = await PDFDocument.create();
+        const image = await pdfDoc.embedJpg(imgBytes);
+        const page = pdfDoc.addPage([image.width, image.height]);
+        page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+
+        const pdfBytes = await pdfDoc.save();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `${pdfForm.name}_shared_report.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({ title: 'PDF Export Complete' });
+    } catch (e) {
+        console.error(e);
+        toast({ variant: 'destructive', title: 'PDF Generation Failed' });
+    } finally {
+        setIsExportingPDF(false);
+    }
   };
 
   return (
@@ -144,19 +198,19 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2">
-                            <Download className="h-4 w-4" />
+                        <Button variant="outline" size="sm" className="gap-2" disabled={isExportingCSV || isExportingPDF}>
+                            {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
                             Export List
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={handleExportCSV}>
+                        <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
                             <FileSpreadsheet className="mr-2 h-4 w-4" />
                             Export to Excel (CSV)
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => window.print()}>
+                        <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
                             <Printer className="mr-2 h-4 w-4" />
-                            Print / Save as PDF
+                            Export to PDF Report
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -170,15 +224,15 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
             </div>
         </header>
 
-        {/* Print-only Header */}
-        <div className="hidden print:block mb-8 border-b pb-4 px-8 pt-8">
-            <h1 className="text-2xl font-bold">Shared Results: {pdfForm.name}</h1>
-            <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
-            <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
-        </div>
-
-        <div className="flex-grow overflow-auto p-4 sm:p-8">
+        <div className="flex-grow overflow-auto p-4 sm:p-8" ref={tableRef}>
             <div className="max-w-6xl mx-auto">
+                {/* PDF Header Capture Only */}
+                <div className={cn("hidden mb-8 border-b pb-4", isExportingPDF && "block")}>
+                    <h1 className="text-2xl font-bold">Shared Results Report: {pdfForm.name}</h1>
+                    <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
+                </div>
+
                 <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden print:border-none print:shadow-none print:overflow-visible">
                     <Table>
                         <TableHeader>
@@ -231,6 +285,25 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 </div>
             </div>
         </div>
+
+        {/* High-Fidelity Capture Progress Overlay */}
+        {isExportingPDF && (
+            <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
+                <Card className="w-80 shadow-2xl border-primary/20">
+                    <CardContent className="p-6 flex flex-col items-center gap-4">
+                        <div className="relative">
+                            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                            <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
+                        </div>
+                        <div className="text-center">
+                            <h2 className="font-bold text-lg">Generating Report</h2>
+                            <p className="text-sm text-muted-foreground">Capturing data and formatting PDF...</p>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
+                    </CardContent>
+                </Card>
+            </div>
+        )}
 
         {downloadingId && (
             <HighFidelityDownloader 
