@@ -1031,7 +1031,7 @@ export default function FieldMapper({
             namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} handleSelect={handleSelect}
             updateField={updateField} removeField={removeField} addField={addField} alignFields={alignFields} distributeFields={distributeFields}
             bulkDuplicate={bulkDuplicate} bulkRemove={bulkRemove} pagesLength={pdfDoc?.numPages || 0} pdf={pdf} 
-            isStatusChanging={isStatusChanging} onStatusChange={handleStatusChange} password={password} setPassword={setPassword} 
+            isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} onDetect={onDetect} isDetecting={isDetecting}
             isCollapsed={isSidebarCollapsed} onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
