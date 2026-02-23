@@ -780,7 +780,7 @@ export default function FieldMapper({
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [marquee, setMarquee] = React.useState<{ startX: number, startY: number, endX: number, endY: number } | null>(null);
-  const [sidebarWidth, setSidebarWidth] = React.useState(384);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const [displayZoom, setDisplayZoom] = React.useState(1);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
@@ -860,7 +860,7 @@ export default function FieldMapper({
 
   return (
     <div className="flex h-screen overflow-hidden bg-muted/30">
-      <div className="flex-1 relative min-w-0">
+      <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
           <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))} onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
                 <div className="p-4 sm:p-12 pb-32 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => setMarquee(null)}>
@@ -878,13 +878,38 @@ export default function FieldMapper({
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
           </DndContext>
-          <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3 bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mb-2" onClick={() => setDisplayZoom(p => Math.min(p+0.1, 3))}><ZoomIn className="h-4 w-4" /></Button>
-              <Slider orientation="vertical" min={0.5} max={3} step={0.05} value={[displayZoom]} onValueChange={([v]) => setDisplayZoom(v)} className="flex-grow py-2" />
-              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mt-2" onClick={() => setDisplayZoom(p => Math.max(p-0.1, 0.5))}><ZoomOut className="h-4 w-4" /></Button>
+          
+          <div className="absolute right-6 bottom-8 z-40 flex flex-col items-center gap-3">
+              <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mb-2" onClick={() => setDisplayZoom(p => Math.min(p+0.1, 3))}><ZoomIn className="h-4 w-4 text-primary" /></Button>
+                  <Slider orientation="vertical" min={0.5} max={3} step={0.05} value={[displayZoom]} onValueChange={([v]) => setDisplayZoom(v)} className="flex-grow py-2" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mt-2" onClick={() => setDisplayZoom(p => Math.max(p-0.1, 0.5))}><ZoomOut className="h-4 w-4 text-primary" /></Button>
+              </div>
+              <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
+                  {Math.round(displayZoom * 100)}%
+              </div>
           </div>
+
+          {/* Sidebar Toggle Button */}
+          <Button
+            variant="secondary"
+            size="icon"
+            className={cn(
+                "absolute top-4 right-4 z-50 rounded-full shadow-lg transition-all",
+                !isSidebarOpen && "bg-primary text-primary-foreground hover:bg-primary/90"
+            )}
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          >
+            {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </Button>
       </div>
-      <div className="h-full bg-card border-l hidden md:flex flex-col z-30 shadow-xl" style={{ width: `${sidebarWidth}px` }}>
+
+      <div 
+        className={cn(
+            "h-full bg-card border-l hidden md:flex flex-col z-30 shadow-xl transition-all duration-300 ease-in-out",
+            isSidebarOpen ? "w-[384px]" : "w-0 overflow-hidden border-none"
+        )}
+      >
         <PropertiesSidebar 
             fields={fields} setFields={setFields} selectedFieldIds={selectedFieldIds} setSelectedFieldIds={setSelectedFieldIds} 
             namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId} handleSelect={handleSelect}
@@ -893,7 +918,7 @@ export default function FieldMapper({
             isStatusChanging={isStatusChanging} onStatusChange={onStatusChange} password={password} setPassword={setPassword} 
             passwordProtected={passwordProtected} setPasswordProtected={setPasswordProtected} onDetect={onDetect} isDetecting={isDetecting}
         />
-        <div className="p-4 border-t flex flex-col gap-2 bg-muted/10">
+        <div className="p-4 border-t flex flex-col gap-2 bg-muted/10 shrink-0">
             <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
             <Button onClick={onSave} disabled={isSaving} size="sm">{isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} {isSaving ? 'Saving...' : 'Save'}</Button>
         </div>
