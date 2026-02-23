@@ -423,7 +423,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                         onClick={handleSubmit(handlePreSubmit, onInvalid)}
                                     >
                                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                        Submit Form
+                                        Done
                                     </Button>
                                 </div>
                             </TooltipTrigger>
