@@ -316,6 +316,34 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
             <div className="max-w-6xl mx-auto space-y-6">
                 
+                {/* Stats Summary */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className="bg-primary/10 p-2.5 rounded-xl">
+                                <Users className="h-5 w-5 text-primary" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Submissions</p>
+                                <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                        <CardContent className="p-4 flex items-center gap-4">
+                            <div className="bg-green-500/10 p-2.5 rounded-xl">
+                                <Clock className="h-5 w-5 text-green-600" />
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Latest Update</p>
+                                <p className="text-sm font-bold text-foreground">
+                                    {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'N/A'}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
                 {/* Actions Bar */}
                 {!isLoading && (
                     <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 print:hidden">
@@ -368,34 +396,6 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                         )}
                     </div>
                 )}
-
-                {/* Stats Summary */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="bg-primary/10 p-2.5 rounded-xl">
-                                <Users className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Submissions</p>
-                                <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                        <CardContent className="p-4 flex items-center gap-4">
-                            <div className="bg-green-500/10 p-2.5 rounded-xl">
-                                <Clock className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Latest Update</p>
-                                <p className="text-sm font-bold text-foreground">
-                                    {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'N/A'}
-                                </p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
 
                 <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
                     <Table>

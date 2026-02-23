@@ -69,6 +69,7 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   dropdown: ChevronDownSquare,
 };
 
+type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 type LocalPDFFormField = PDFFormField & { isSuggestion?: boolean };
 
 function PageRenderer({ pdf, pageNumber, fields, selectedFieldIds, namingFieldId, onSelect, onUpdate, onDelete, onDuplicate, onChangeType, alignFields, distributeFields, bulkDuplicate, bulkRemove, zoom }: {
@@ -966,5 +967,3 @@ export default function FieldMapper({
     </div>
   );
 }
-
-type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';

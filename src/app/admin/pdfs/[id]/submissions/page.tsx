@@ -414,7 +414,35 @@ export default function SubmissionsPage() {
           <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
         </div>
 
-        {/* Desktop Actions Bar */}
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="bg-primary/10 p-2.5 rounded-xl">
+                        <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Total Records</p>
+                        <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                <CardContent className="p-4 flex items-center gap-4">
+                    <div className="bg-green-500/10 p-2.5 rounded-xl">
+                        <Clock className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Last Active</p>
+                        <p className="text-sm font-bold text-foreground">
+                            {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'No activity'}
+                        </p>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        {/* Actions Bar */}
         {!isLoading && (
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-8 print:hidden">
                 {selectedIds.length > 0 ? (
@@ -494,34 +522,6 @@ export default function SubmissionsPage() {
                 )}
             </div>
         )}
-
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                <CardContent className="p-4 flex items-center gap-4">
-                    <div className="bg-primary/10 p-2.5 rounded-xl">
-                        <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Total Records</p>
-                        <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                <CardContent className="p-4 flex items-center gap-4">
-                    <div className="bg-green-500/10 p-2.5 rounded-xl">
-                        <Clock className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Last Active</p>
-                        <p className="text-sm font-bold text-foreground">
-                            {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'No activity'}
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
 
         <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
