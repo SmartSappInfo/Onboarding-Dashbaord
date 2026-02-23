@@ -139,7 +139,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       disableTransitionOnChange
     >
       <GlobalFilterProvider>
-        <SidebarProvider>
+        <SidebarProvider defaultOpen={false}>
           <div className="flex h-screen w-full bg-background">
             <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg">
               <SidebarHeader className="p-2">
