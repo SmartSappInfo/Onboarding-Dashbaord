@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, EyeOff, Lock, FileSpreadsheet, Printer } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -31,6 +31,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
 import SubmissionCount from '../components/SubmissionCount';
 
@@ -46,6 +47,7 @@ export default function SubmissionsPage() {
   
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
+  const [totalBatchSize, setTotalBatchSize] = React.useState(0);
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [selectedNamingFieldId, setSelectedNamingFieldId] = React.useState<string | null>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
@@ -73,7 +75,6 @@ export default function SubmissionsPage() {
     }
   }, [pdf]);
 
-  // Dynamic Column Logic
   const displayFields = React.useMemo(() => {
     if (!pdf) return [];
     const keyField = pdf.fields.find(f => f.id === selectedNamingFieldId);
@@ -92,7 +93,6 @@ export default function SubmissionsPage() {
     const newVal = fieldId === 'none' ? null : fieldId;
     setSelectedNamingFieldId(newVal);
     if (pdf && firestore) {
-        // Calculate new display fields
         const keyField = pdf.fields.find(f => f.id === newVal);
         const result = keyField ? [keyField] : [];
         const otherDisplayIds = (pdf.displayFieldIds || []).filter(id => id !== newVal);
@@ -138,6 +138,7 @@ export default function SubmissionsPage() {
   const handleDownloadAll = () => {
     if (!submissions || submissions.length === 0 || isProcessingBatch) return;
     const ids = submissions.map(s => s.id);
+    setTotalBatchSize(ids.length);
     setBatchDownloadQueue(ids);
     setIsProcessingBatch(true);
     setDownloadingId(ids[0]);
@@ -154,6 +155,7 @@ export default function SubmissionsPage() {
                 } else {
                     setIsProcessingBatch(false);
                     setDownloadingId(null);
+                    setTotalBatchSize(0);
                     toast({ title: 'Batch Download Complete' });
                 }
                 return nextQueue;
@@ -169,6 +171,14 @@ export default function SubmissionsPage() {
         }
     }, 0);
   }, [isProcessingBatch, toast]);
+
+  const handleCancelBatch = () => {
+    setBatchDownloadQueue([]);
+    setDownloadingId(null);
+    setIsProcessingBatch(false);
+    setTotalBatchSize(0);
+    toast({ title: 'Download Cancelled', variant: 'secondary' });
+  };
 
   const handleExportCSV = () => {
     if (!submissions || !pdf) return;
@@ -215,10 +225,9 @@ export default function SubmissionsPage() {
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        // Configuration for A4 at 96 DPI
         const A4_WIDTH = 794;
         const A4_HEIGHT = 1123;
-        const ROWS_PER_PAGE = 18; // Adjusted for header space
+        const ROWS_PER_PAGE = 18;
 
         const pdfDoc = await PDFDocument.create();
         const rowChunks = [];
@@ -226,7 +235,6 @@ export default function SubmissionsPage() {
             rowChunks.push(submissions.slice(i, i + ROWS_PER_PAGE));
         }
 
-        // Create a temporary container for rendering pages
         const exportContainer = document.createElement('div');
         exportContainer.style.position = 'fixed';
         exportContainer.style.left = '-9999px';
@@ -237,14 +245,12 @@ export default function SubmissionsPage() {
         for (let pageIdx = 0; pageIdx < rowChunks.length; pageIdx++) {
             const chunk = rowChunks[pageIdx];
             
-            // Create Page Element
             const pageEl = document.createElement('div');
             pageEl.className = "p-10 bg-white text-black font-sans";
             pageEl.style.width = `${A4_WIDTH}px`;
             pageEl.style.minHeight = `${A4_HEIGHT}px`;
             pageEl.style.boxSizing = 'border-box';
 
-            // Add Header only on first page
             if (pageIdx === 0) {
                 const headerHtml = `
                     <div class="mb-8 border-b-2 pb-4 border-gray-200">
@@ -261,7 +267,6 @@ export default function SubmissionsPage() {
                 pageEl.innerHTML += `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
             }
 
-            // Build Table
             let tableHtml = `
                 <table class="w-full border-collapse">
                     <thead>
@@ -305,7 +310,6 @@ export default function SubmissionsPage() {
             const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
             const image = await pdfDoc.embedJpg(imgBytes);
             
-            // Standard A4 Points: 595.28 x 841.89
             const page = pdfDoc.addPage([595.28, 841.89]);
             page.drawImage(image, {
                 x: 0,
@@ -337,6 +341,8 @@ export default function SubmissionsPage() {
         setIsExportingPDF(false);
     }
   };
+
+  const currentBatchIndex = isProcessingBatch ? totalBatchSize - batchDownloadQueue.length + 1 : 0;
 
   return (
     <TooltipProvider>
@@ -380,7 +386,11 @@ export default function SubmissionsPage() {
                   {submissions && submissions.length > 0 && (
                       <ButtonGroup>
                           <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-10 px-6 font-semibold">
-                              {isProcessingBatch ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing ({batchDownloadQueue.length} left)</> : <><Download className="mr-2 h-4 w-4" />Download All PDFs</>}
+                              {isProcessingBatch ? (
+                                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing ({batchDownloadQueue.length} left)</>
+                              ) : (
+                                  <><Download className="mr-2 h-4 w-4" />Download All PDFs</>
+                              )}
                           </Button>
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -474,7 +484,6 @@ export default function SubmissionsPage() {
           />
       )}
 
-      {/* High-Fidelity Capture Progress Overlay */}
       {isExportingPDF && (
           <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
               <Card className="w-80 shadow-2xl border-primary/20">
@@ -498,13 +507,9 @@ export default function SubmissionsPage() {
             pdfForm={pdf} 
             submissionId={downloadingId} 
             fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
+            batchProgress={isProcessingBatch ? { current: currentBatchIndex, total: totalBatchSize } : undefined}
             onFinished={onDownloadFinished}
-            onCancel={() => {
-                setDownloadingId(null);
-                setIsProcessingBatch(false);
-                setBatchDownloadQueue([]);
-                toast({ title: 'Download Cancelled', variant: 'secondary' });
-            }}
+            onCancel={handleCancelBatch}
           />
       )}
     </TooltipProvider>
@@ -578,7 +583,21 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
     );
 }
 
-function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, fileName: string, onFinished: (success: boolean, url?: string) => void, onCancel: () => void }) {
+function HighFidelityDownloader({ 
+    pdfForm, 
+    submissionId, 
+    fileName, 
+    batchProgress, 
+    onFinished, 
+    onCancel 
+}: { 
+    pdfForm: PDFForm, 
+    submissionId: string, 
+    fileName: string, 
+    batchProgress?: { current: number, total: number },
+    onFinished: (success: boolean, url?: string) => void, 
+    onCancel: () => void 
+}) {
     const firestore = useFirestore();
     const { toast } = useToast();
     const submissionRef = useMemoFirebase(() => {
@@ -624,7 +643,6 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                 const imgData = canvas.toDataURL('image/jpeg', 0.9);
                 const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
                 const image = await pdfBundle.embedJpg(imgBytes);
-                // Points: 595.28 x 841.89 (A4)
                 const page = pdfBundle.addPage([595.28, 841.89]);
                 page.drawImage(image, {
                     x: 0,
@@ -663,10 +681,27 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
             <div className="flex items-center justify-between p-4 border-b shrink-0 bg-card shadow-sm">
                 <div className="flex items-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <div><h2 className="text-lg font-bold">Generating Signed Document</h2><p className="text-sm text-muted-foreground">Capturing high-fidelity pages...</p></div>
+                    <div>
+                        <h2 className="text-lg font-bold">
+                            {batchProgress ? `Downloading Document ${batchProgress.current} of ${batchProgress.total}` : 'Generating Signed Document'}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">Capturing high-fidelity pages...</p>
+                    </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onCancel}><X className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+                    <X className="h-5 w-5" />
+                </Button>
             </div>
+            
+            {batchProgress && (
+                <div className="w-full h-1 bg-muted">
+                    <div 
+                        className="h-full bg-primary transition-all duration-500 ease-in-out" 
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                    />
+                </div>
+            )}
+
             <div className="flex-1 overflow-hidden relative">
                 <ScrollArea className="h-full w-full">
                     <div ref={containerRef} className="p-8 flex flex-col items-center min-w-full">
@@ -684,6 +719,12 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                     </div>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
+            </div>
+            
+            <div className="p-4 border-t bg-card text-center print:hidden">
+                <Button variant="destructive" size="sm" onClick={onCancel}>
+                    Cancel Operation
+                </Button>
             </div>
         </div>
     );

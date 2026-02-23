@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -32,6 +33,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   
   const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   const [batchDownloadQueue, setBatchDownloadQueue] = React.useState<string[]>([]);
+  const [totalBatchSize, setTotalBatchSize] = React.useState(0);
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
@@ -76,6 +78,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   const handleDownloadAll = () => {
     if (!submissions?.length || isProcessingBatch) return;
     const ids = submissions.map(s => s.id);
+    setTotalBatchSize(ids.length);
     setBatchDownloadQueue(ids);
     setIsProcessingBatch(true);
     setDownloadingId(ids[0]);
@@ -87,10 +90,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         if (isProcessingBatch) {
             setBatchDownloadQueue(prev => {
                 const next = prev.slice(1);
-                if (next.length > 0) setDownloadingId(next[0]);
-                else {
+                if (next.length > 0) {
+                    setDownloadingId(next[0]);
+                } else {
                     setIsProcessingBatch(false);
                     setDownloadingId(null);
+                    setTotalBatchSize(0);
                     toast({ title: 'Batch Download Complete' });
                 }
                 return next;
@@ -101,6 +106,14 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         }
     }, 0);
   }, [isProcessingBatch, toast]);
+
+  const handleCancelBatch = () => {
+    setBatchDownloadQueue([]);
+    setDownloadingId(null);
+    setIsProcessingBatch(false);
+    setTotalBatchSize(0);
+    toast({ title: 'Download Cancelled', variant: 'secondary' });
+  };
 
   const handleExportCSV = () => {
     if (!submissions || !pdfForm) return;
@@ -147,7 +160,6 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        // A4 Pixel sizing @ 96 DPI
         const A4_WIDTH = 794;
         const A4_HEIGHT = 1123;
         const ROWS_PER_PAGE = 18;
@@ -258,6 +270,8 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
     }
   };
 
+  const currentBatchIndex = isProcessingBatch ? totalBatchSize - batchDownloadQueue.length + 1 : 0;
+
   return (
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-muted/10">
@@ -291,7 +305,11 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 
                 {submissions?.length > 0 && (
                     <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId}>
-                        {isProcessingBatch ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing ({batchDownloadQueue.length} left)</> : <><Download className="h-4 w-4 mr-2" />Download All PDFs</>}
+                        {isProcessingBatch ? (
+                            <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing ({batchDownloadQueue.length} left)</>
+                        ) : (
+                            <><Download className="h-4 w-4 mr-2" />Download All PDFs</>
+                        )}
                     </Button>
                 )}
             </div>
@@ -352,7 +370,6 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
             </div>
         </div>
 
-        {/* High-Fidelity Capture Progress Overlay */}
         {isExportingPDF && (
             <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
                 <Card className="w-80 shadow-2xl border-primary/20">
@@ -376,13 +393,9 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 pdfForm={pdfForm} 
                 submissionId={downloadingId} 
                 fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
+                batchProgress={isProcessingBatch ? { current: currentBatchIndex, total: totalBatchSize } : undefined}
                 onFinished={onDownloadFinished}
-                onCancel={() => { 
-                    setDownloadingId(null); 
-                    setIsProcessingBatch(false); 
-                    setBatchDownloadQueue([]); 
-                    toast({ title: 'Download Cancelled', variant: 'secondary' });
-                }}
+                onCancel={handleCancelBatch}
             />
         )}
       </div>
@@ -390,7 +403,21 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   );
 }
 
-function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, onCancel }: { pdfForm: PDFForm, submissionId: string, fileName: string, onFinished: (success: boolean) => void, onCancel: () => void }) {
+function HighFidelityDownloader({ 
+    pdfForm, 
+    submissionId, 
+    fileName, 
+    batchProgress,
+    onFinished, 
+    onCancel 
+}: { 
+    pdfForm: PDFForm, 
+    submissionId: string, 
+    fileName: string, 
+    batchProgress?: { current: number, total: number },
+    onFinished: (success: boolean) => void, 
+    onCancel: () => void 
+}) {
     const firestore = useFirestore();
     const submissionRef = useMemoFirebase(() => firestore ? doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId) : null, [firestore, pdfForm.id, submissionId]);
     const { data: submission } = useDoc<Submission>(submissionRef);
@@ -440,14 +467,31 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
     }, [pdfDoc, submission, handleGenerate, isCapturing]);
 
     return (
-        <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md">
+        <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
             <div className="flex items-center justify-between p-4 border-b bg-card">
                 <div className="flex items-center gap-3">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <div><h2 className="text-lg font-bold">Processing PDF</h2><p className="text-sm text-muted-foreground">Generating high-fidelity document...</p></div>
+                    <div>
+                        <h2 className="text-lg font-bold">
+                            {batchProgress ? `Downloading Record ${batchProgress.current} of ${batchProgress.total}` : 'Processing PDF'}
+                        </h2>
+                        <p className="text-sm text-muted-foreground">Generating high-fidelity document...</p>
+                    </div>
                 </div>
-                <Button variant="ghost" size="icon" onClick={onCancel}><X className="h-5 w-5" /></Button>
+                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors">
+                    <X className="h-5 w-5" />
+                </Button>
             </div>
+            
+            {batchProgress && (
+                <div className="w-full h-1 bg-muted">
+                    <div 
+                        className="h-full bg-primary transition-all duration-500 ease-in-out" 
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                    />
+                </div>
+            )}
+
             <div className="flex-1 overflow-hidden relative">
                 <ScrollArea className="h-full w-full">
                     <div ref={containerRef} className="p-8 flex flex-col items-center">
@@ -463,6 +507,12 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                     </div>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
+            </div>
+            
+            <div className="p-4 border-t bg-card text-center print:hidden">
+                <Button variant="destructive" size="sm" onClick={onCancel}>
+                    Stop Batch Download
+                </Button>
             </div>
         </div>
     );
