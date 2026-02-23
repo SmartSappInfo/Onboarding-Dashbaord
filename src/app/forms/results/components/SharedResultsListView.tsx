@@ -10,13 +10,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { Eye, Download, Loader2, X, Key, ChevronDown } from 'lucide-react';
+import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -93,10 +99,41 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
     }, 0);
   }, [isProcessingBatch, toast]);
 
+  const handleExportCSV = () => {
+    if (!submissions || !pdfForm) return;
+
+    // Use all non-signature fields for CSV export
+    const dataFields = pdfForm.fields.filter(f => f.type !== 'signature');
+    const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
+    const csvRows = [headers.join(",")];
+
+    submissions.forEach(sub => {
+        const row = [
+            sub.id,
+            format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
+            ...dataFields.map(f => {
+                const val = sub.formData[f.id] || "";
+                return `"${String(val).replace(/"/g, '""')}"`;
+            })
+        ];
+        csvRows.push(row.join(","));
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${pdfForm.slug || pdfForm.id}_results_export.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "CSV Export Started" });
+  };
+
   return (
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-muted/10">
-        <header className="h-16 border-b bg-background px-6 flex items-center justify-between shrink-0">
+        <header className="h-16 border-b bg-background px-6 flex items-center justify-between shrink-0 print:hidden">
             <div className="flex items-center gap-3">
                 <SmartSappIcon className="h-8 w-8 text-primary" />
                 <div>
@@ -104,17 +141,45 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     <p className="text-[10px] text-muted-foreground mt-1">Authorized Viewing Access</p>
                 </div>
             </div>
-            {submissions?.length && (
-                <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId}>
-                    {isProcessingBatch ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-                    Download All PDFs
-                </Button>
-            )}
+            <div className="flex items-center gap-2">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Export List
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExportCSV}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Export to Excel (CSV)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.print()}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print / Save as PDF
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                
+                {submissions?.length && (
+                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId}>
+                        {isProcessingBatch ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                        Download All PDFs
+                    </Button>
+                )}
+            </div>
         </header>
+
+        {/* Print-only Header */}
+        <div className="hidden print:block mb-8 border-b pb-4 px-8 pt-8">
+            <h1 className="text-2xl font-bold">Shared Results: {pdfForm.name}</h1>
+            <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
+        </div>
 
         <div className="flex-grow overflow-auto p-4 sm:p-8">
             <div className="max-w-6xl mx-auto">
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden print:border-none print:shadow-none print:overflow-visible">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -127,7 +192,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </TableHead>
                                 ))}
                                 <TableHead>Date</TableHead>
-                                <TableHead className="w-[100px] text-right">Actions</TableHead>
+                                <TableHead className="w-[100px] text-right print:hidden">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -146,12 +211,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                         ) : <span className="truncate max-w-[200px] block">{value || '-'}</span>;
                                         return (
                                             <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
-                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:underline">{content}</Link> : content}
+                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:underline print:no-underline">{content}</Link> : content}
                                             </TableCell>
                                         );
                                     })}
                                     <TableCell className="text-muted-foreground text-xs">{format(new Date(submission.submittedAt), 'PPP')}</TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right print:hidden">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId}><Download className="h-4 w-4" /></Button>

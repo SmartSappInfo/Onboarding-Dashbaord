@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, EyeOff, Lock } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, EyeOff, Lock, FileSpreadsheet, Printer } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -151,10 +151,41 @@ export default function SubmissionsPage() {
     }, 0);
   }, [isProcessingBatch, toast]);
 
+  const handleExportCSV = () => {
+    if (!submissions || !pdf) return;
+
+    // Use all non-signature fields for CSV export
+    const dataFields = pdf.fields.filter(f => f.type !== 'signature');
+    const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
+    const csvRows = [headers.join(",")];
+
+    submissions.forEach(sub => {
+        const row = [
+            sub.id,
+            format(new Date(sub.submittedAt), "yyyy-MM-dd HH:mm:ss"),
+            ...dataFields.map(f => {
+                const val = sub.formData[f.id] || "";
+                return `"${String(val).replace(/"/g, '""')}"`;
+            })
+        ];
+        csvRows.push(row.join(","));
+    });
+
+    const blob = new Blob([csvRows.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${pdf.slug || pdf.id}_submissions_${format(new Date(), "yyyy-MM-dd")}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "CSV Export Started" });
+  };
+
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-between gap-4 mb-8">
+        <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
           <div>
             <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => router.push('/admin/pdfs')}>
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -167,6 +198,25 @@ export default function SubmissionsPage() {
           </div>
           {!isLoading && (
               <div className="flex items-center gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Export List
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExportCSV}>
+                            <FileSpreadsheet className="mr-2 h-4 w-4" />
+                            Export to Excel (CSV)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => window.print()}>
+                            <Printer className="mr-2 h-4 w-4" />
+                            Print / Save as PDF
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
                   <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="gap-2">
                       <Share2 className="h-4 w-4" />
                       Share Results
@@ -199,8 +249,15 @@ export default function SubmissionsPage() {
               </div>
           )}
         </div>
+
+        {/* Print-only Header */}
+        <div className="hidden print:block mb-8 border-b pb-4">
+            <h1 className="text-2xl font-bold">Submission Report: {pdf?.name}</h1>
+            <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
+            <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
+        </div>
         
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto print:overflow-visible print:border-none">
           <Table>
             <TableHeader>
               <TableRow>
@@ -213,7 +270,7 @@ export default function SubmissionsPage() {
                   </TableHead>
                 ))}
                 <TableHead>Submission Date</TableHead>
-                <TableHead className="w-[120px] text-right">Actions</TableHead>
+                <TableHead className="w-[120px] text-right print:hidden">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -232,12 +289,18 @@ export default function SubmissionsPage() {
                       ) : <span className="truncate max-w-[200px] block">{value || <span className="text-muted-foreground italic">empty</span>}</span>;
                       return (
                         <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
-                          {idx === 0 ? <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:underline cursor-pointer">{content}</Link> : content}
+                          {idx === 0 ? (
+                              <div className="flex items-center gap-2">
+                                  <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:underline cursor-pointer print:no-underline">
+                                    {content}
+                                  </Link>
+                              </div>
+                          ) : content}
                         </TableCell>
                       );
                     })}
                     <TableCell className="text-muted-foreground">{format(new Date(submission.submittedAt), 'PPP p')}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right print:hidden">
                       <div className="flex items-center justify-end gap-1">
                         <Tooltip><TooltipTrigger asChild><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4" /><span className="sr-only">View Submission</span></Link></Button></TooltipTrigger><TooltipContent>View Details</TooltipContent></Tooltip>
                         <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>{downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="sr-only">Download PDF</span></Button></TooltipTrigger><TooltipContent>Download PDF</TooltipContent></Tooltip>

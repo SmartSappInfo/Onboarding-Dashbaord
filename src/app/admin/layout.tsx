@@ -141,7 +141,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <GlobalFilterProvider>
         <SidebarProvider defaultOpen={false}>
           <div className="flex h-screen w-full bg-background">
-            <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg">
+            <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
               <SidebarHeader className="p-2">
                  <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
                     <Link href="/admin" className="flex items-center gap-2 font-semibold">
@@ -190,7 +190,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             </Sidebar>
             
             <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden">
-              <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm">
+              <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm print:hidden">
                 <SidebarTrigger className="md:hidden" />
                 <div className="flex-1 min-w-0">
                   <h1 className="text-lg font-semibold truncate">{pageTitle}</h1>
