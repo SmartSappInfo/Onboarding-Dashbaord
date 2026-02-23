@@ -493,7 +493,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 submissionId={downloadingId} 
                 fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
                 batchProgress={isProcessingBatch ? { current: currentBatchIndex, total: totalBatchSize } : undefined}
-                onFinished={onDownloadFinished}
+                onDownloadFinished={onDownloadFinished}
                 onCancel={handleCancelBatch}
             />
         )}
@@ -507,14 +507,14 @@ function HighFidelityDownloader({
     submissionId, 
     fileName, 
     batchProgress,
-    onFinished, 
+    onDownloadFinished, 
     onCancel 
 }: { 
     pdfForm: PDFForm, 
     submissionId: string, 
     fileName: string, 
     batchProgress?: { current: number, total: number },
-    onFinished: (success: boolean) => void, 
+    onDownloadFinished: (success: boolean) => void, 
     onCancel: () => void 
 }) {
     const firestore = useFirestore();
@@ -529,17 +529,18 @@ function HighFidelityDownloader({
         const load = async () => {
             try {
                 const pdfjs = await pdfjsPromise;
+                const pdfjsVersion = '4.4.168';
                 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
                 const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
                 setPdfDoc(loaded);
             } catch (e) {
                 console.error("Renderer: Failed to load PDF", e);
                 setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
-                onFinished(false);
+                onDownloadFinished(false);
             }
         };
         load();
-    }, [pdfForm.downloadUrl, onFinished, toast]);
+    }, [pdfForm.downloadUrl, onDownloadFinished, toast]);
 
     const handleGenerate = React.useCallback(async () => {
         if (isCapturing || !containerRef.current) return;
@@ -559,11 +560,11 @@ function HighFidelityDownloader({
             const blob = new Blob([await pdfBundle.save()], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            onFinished(true);
+            onDownloadFinished(true);
         } catch (e) {
-            onFinished(false);
+            onDownloadFinished(false);
         } finally { setIsCapturing(false); }
-    }, [fileName, onFinished, isCapturing]);
+    }, [fileName, onDownloadFinished, isCapturing]);
 
     React.useEffect(() => {
         if (pdfDoc && submission && !isCapturing) {

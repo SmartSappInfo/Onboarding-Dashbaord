@@ -122,6 +122,7 @@ export default function SignaturePadModal({ open, onClose, onSave }: SignaturePa
             const video = videoRef.current;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
+            // set willReadFrequently to true for performance and to clear console warning
             const ctx = canvas.getContext('2d', { willReadFrequently: true });
             ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
             setCapturedImage(canvas.toDataURL('image/png'));
