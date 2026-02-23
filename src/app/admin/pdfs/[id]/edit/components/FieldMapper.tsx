@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -677,6 +676,54 @@ const PropertiesSidebar = ({
       
       <ScrollArea className="flex-grow">
         <div className={cn("space-y-4 p-4", isCollapsed && "p-2")}>
+            {/* Quick Add Elements Section (Added based on user request) */}
+            {!isCollapsed && (
+                <Card>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-xs font-bold uppercase text-muted-foreground">Quick Add</CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-2 gap-2 pb-4">
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('text')}><Text className="h-3 w-3 mr-1.5 text-primary" /> Text</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('signature')}><Signature className="h-3 w-3 mr-1.5 text-primary" /> Sig</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('date')}><Calendar className="h-3 w-3 mr-1.5 text-primary" /> Date</Button>
+                        <Button variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-3 w-3 mr-1.5 text-primary" /> Select</Button>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* AI Tools Card (Dynamic Detect vs Accept/Reject) */}
+            {!isCollapsed && (
+                <Card className={cn(hasSuggestions && "border-green-500 bg-green-50/10")}>
+                    <CardHeader className="py-3">
+                        <CardTitle className="text-xs font-bold uppercase flex items-center gap-1.5">
+                            <Sparkles className="h-3 w-3 text-primary" /> 
+                            <span>AI Assistant</span>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 pb-4">
+                        {!hasSuggestions ? (
+                            <Button 
+                                onClick={onDetect} 
+                                disabled={isDetecting} 
+                                className="w-full h-9 text-xs font-bold bg-primary text-primary-foreground"
+                            >
+                                {isDetecting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />}
+                                Auto-Detect Fields
+                            </Button>
+                        ) : (
+                            <div className="flex flex-col gap-2">
+                                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-xs" onClick={acceptAllSuggestions}>
+                                    <Check className="h-3 w-3 mr-2" /> Accept Suggestions
+                                </Button>
+                                <Button size="sm" variant="outline" className="w-full border-red-200 text-red-600 hover:bg-red-50 text-xs" onClick={rejectAllSuggestions}>
+                                    <X className="h-3 w-3 mr-2" /> Reject All
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             <Card className={cn(isCollapsed && "border-none shadow-none bg-transparent")}>
               <CardHeader className={cn("flex flex-row items-center justify-between space-y-0 py-4", isCollapsed && "hidden")}>
                 <CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle>
@@ -687,7 +734,7 @@ const PropertiesSidebar = ({
                 </div>
               </CardHeader>
               <CardContent className={cn("px-2 pb-2", isCollapsed && "px-0")}>
-                  <ScrollArea className={cn("h-[calc(100vh-250px)] px-2", isCollapsed && "px-0")}>
+                  <ScrollArea className={cn("h-[calc(100vh-450px)] px-2", isCollapsed && "px-0")}>
                       <DndContext sensors={useSensors(useSensor(PointerSensor))} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                           <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
                               <div className="space-y-1">
@@ -748,6 +795,14 @@ const PropertiesSidebar = ({
                             </CardContent>
                         </Card>
                     ) : null}
+                    
+                    {/* Delete All Fields button added to sidebar as requested */}
+                    {!selectedField && selectedFieldIds.length === 0 && fields.length > 0 && (
+                        <Button variant="destructive" size="sm" className="w-full h-9 text-xs gap-2" onClick={() => setIsDeleteDialogOpen(true)}>
+                            <Trash2 className="h-3 w-3" /> Clear All Fields
+                        </Button>
+                    )}
+
                     <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Security</CardTitle></CardHeader><CardContent className="space-y-4"><div className="flex items-center justify-between rounded-lg border p-3"><div className="space-y-0.5"><Label className="text-xs">Password Protect</Label><p className="text-[10px] text-muted-foreground">Require a password to view.</p></div><Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} /></div>{passwordProtected && <div className="relative"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} className="h-8 text-sm pr-8" /><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button></div>}</CardContent></Card>
                     <Card><CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Status</CardTitle></CardHeader><CardContent><Select value={pdf.status} onValueChange={(v: PDFForm['status']) => onStatusChange(v)} disabled={isStatusChanging}><SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Set status..." /></SelectTrigger><SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></CardContent></Card>
                 </>
@@ -886,7 +941,7 @@ export default function FieldMapper({
           <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))} onDragEnd={handleDragEnd}>
               <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
                 <div className="p-4 sm:p-12 pb-48 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }} onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={() => setMarquee(null)}>
-                    {!pdfDoc ? Array.from({ length: 3 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />) : Array.from({ length: pdfDoc.numPages }).map((_, i) => (
+                    {!pdfDoc ? Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />) : Array.from({ length: pdfDoc.numPages }).map((_, i) => (
                         <PageRenderer
                             key={i} pdf={pdfDoc} pageNumber={i + 1} fields={fields.filter(f => f.pageNumber === i + 1)}
                             selectedFieldIds={selectedFieldIds} namingFieldId={namingFieldId}
@@ -901,6 +956,7 @@ export default function FieldMapper({
               </ScrollArea>
           </DndContext>
           
+          {/* Zoom Component Vertically Centered */}
           <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">
               <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mb-2" onClick={() => setDisplayZoom(p => Math.min(p+0.1, 3))}><ZoomIn className="h-4 w-4 text-primary" /></Button>
@@ -912,30 +968,37 @@ export default function FieldMapper({
               </div>
           </div>
 
-          {/* Docker at the bottom */}
+          {/* Tool Docker at the bottom centre */}
           <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
               <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl">
                   <TooltipProvider>
-                      <div className="flex items-center gap-1.5 px-2 mr-2">
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('text')}><Text className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Text Field</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('signature')}><Signature className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Signature</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('date')}><Calendar className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Date</TooltipContent></Tooltip>
-                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Dropdown</TooltipContent></Tooltip>
+                      <div className="flex items-center gap-1.5 px-2">
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('text')}><Text className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Text</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('signature')}><Signature className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Signature</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('date')}><Calendar className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Date</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="outline" size="icon" className="h-10 w-10 rounded-xl border-none hover:bg-primary/10" onClick={() => addField('dropdown')}><ChevronDownSquare className="h-5 w-5 text-primary" /></Button></TooltipTrigger><TooltipContent side="top">Add Dropdown</TooltipContent></Tooltip>
                       </div>
-                      <Separator orientation="vertical" className="h-8" />
-                      <Tooltip>
-                          <TooltipTrigger asChild>
-                              <Button 
-                                onClick={onDetect} 
-                                disabled={isDetecting} 
-                                className="h-10 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
-                              >
-                                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                                {isDetecting ? 'Analyzing...' : 'AI Detect'}
-                              </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="top">Auto-detect all form fields with AI</TooltipContent>
-                      </Tooltip>
+                      <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
+                      <div className="flex items-center gap-1.5 px-2">
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={undo} disabled={!canUndo}><Undo className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent side="top">Undo (Ctrl+Z)</TooltipContent></Tooltip>
+                          <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" onClick={redo} disabled={!canRedo}><Redo className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent side="top">Redo (Ctrl+Y)</TooltipContent></Tooltip>
+                      </div>
+                      <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
+                      <div className="px-2">
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <Button 
+                                    onClick={onDetect} 
+                                    disabled={isDetecting} 
+                                    className="h-10 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                                  >
+                                    {isDetecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                                    {isDetecting ? 'Analyzing...' : 'AI Detect'}
+                                  </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Auto-detect with AI</TooltipContent>
+                          </Tooltip>
+                      </div>
                   </TooltipProvider>
               </div>
           </div>
