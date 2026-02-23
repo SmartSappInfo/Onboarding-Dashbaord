@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -236,6 +235,8 @@ export interface PDFForm {
     displayFieldIds?: string[];
     password?: string;
     passwordProtected?: boolean;
+    resultsShared?: boolean;
+    resultsPassword?: string;
 }
 
 export interface Submission {

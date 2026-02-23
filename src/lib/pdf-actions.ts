@@ -194,6 +194,16 @@ export async function updatePdfFormMapping(pdfId: string, data: any) {
   return { success: true };
 }
 
+export async function updatePdfResultsSharing(pdfId: string, data: { shared: boolean; password?: string }) {
+  await adminDb.collection('pdfs').doc(pdfId).update({
+    resultsShared: data.shared,
+    resultsPassword: data.password || '',
+    updatedAt: new Date().toISOString(),
+  });
+  revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
+  return { success: true };
+}
+
 export async function updatePdfFormStatus(pdfId: string, status: string, userId: string) {
     const pdfRef = adminDb.collection('pdfs').doc(pdfId);
     const pdfSnap = await pdfRef.get();

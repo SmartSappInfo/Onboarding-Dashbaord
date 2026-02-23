@@ -1,9 +1,4 @@
-
 rules_version = '2';
-
-// Re-deploying rules to ensure synchronization with project studio-9220106300-f74cb.
-// This is a trigger for redeployment.
-// Triggering synchronization again to be certain.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -13,8 +8,6 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      // Check if the user is an admin by looking at their profile.
-      // This is now safer and checks for the document's existence first.
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
       return isSignedIn() && userDoc != null && userDoc.data.isAuthorized == true;
     }
@@ -25,7 +18,6 @@ service cloud.firestore {
     }
     
     // --- Admin-Only Collections ---
-    // Allow authenticated admins full read/write access to these collections.
     match /onboardingStages/{document=**} {
       allow read, write: if isAuthorized();
     }
@@ -38,93 +30,68 @@ service cloud.firestore {
 
     // --- School Rules ---
     match /schools/{schoolId} {
-      // Admins can perform any action on schools
       allow write: if isAuthorized();
-      // Public can read school documents for meeting pages
       allow read: if true;
     }
     
     // --- Meeting Rules ---
     match /meetings/{meetingId} {
-        // Admins can create, update, and delete any meeting
         allow write: if isAuthorized();
-        // Anyone can read meeting documents
         allow read: if true;
 
-        // Rule for attendees subcollection
         match /attendees/{attendeeId} {
           allow create: if true;
-          // Only admins can view or manage attendee lists
           allow read, list, update, delete: if isAuthorized();
         }
     }
     
     // --- User-Specific Rules ---
-    // Allow users to manage their own dashboard layout
     match /dashboardLayouts/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
     
     // --- User Management Rules ---
     match /users/{userId} {
-      // Admins can read/write any user profile to authorize them.
       allow list, write: if isAuthorized();
-      // Users can create their own profile on signup.
       allow create: if isSignedIn() && request.auth.uid == userId;
-      // Users can read their own profile, and admins can read any profile.
       allow get: (isSignedIn() && request.auth.uid == userId) || isAuthorized();
     }
     
     // --- Survey Rules ---
     match /surveys/{surveyId} {
-      // Admins can create, update, delete surveys.
       allow write: if isAuthorized();
-      // Anyone can read a published survey, and admins can read any survey.
       allow get: resource.data.status == 'published' || isAuthorized();
-      // Admins can list all surveys.
       allow list: if isAuthorized();
     }
 
     match /surveys/{surveyId}/responses/{responseId} {
-      // Anyone can create a response for a published survey.
       allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
-      // Admins can read and list all responses.
       allow read, list: if isAuthorized();
     }
 
     match /surveys/{surveyId}/summaries/{summaryId} {
-      // Admins can create, read, list, and delete all summaries for a survey.
       allow create, read, list, delete: if isAuthorized();
     }
 
     // --- Doc Signing Rules ---
     match /pdfs/{pdfId} {
-      // Admins can manage all aspects of documents for signing
       allow write, list: if isAuthorized();
-      // Public can read a single published document to fill it out
-      allow get: resource.data.status == 'published' || isAuthorized();
+      allow get: resource.data.status == 'published' || resource.data.resultsShared == true || isAuthorized();
       
-      // Submissions subcollection
       match /submissions/{submissionId} {
-        // Anyone can create a submission for a published document
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
-        // Only admins can read/list submissions
-        allow read, list: if isAuthorized();
-        // Submissions are immutable
+        
+        // Allow public to read/list submissions if the admin has explicitly enabled results sharing
+        allow read, list: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.resultsShared == true || isAuthorized();
+        
         allow update, delete: if false;
       }
     }
 
     // --- Activity Log Rules ---
     match /activities/{activityId} {
-      // Authorized users can create activities (typically via server-side logic).
       allow create: if isAuthorized();
-      
-      // Authorized users can read the activity feed.
       allow read, list: if isAuthorized();
-      
-      // Allow a user to update or delete ONLY their own activities of type 'note'.
-      // All other activity types are immutable to preserve the audit trail.
       allow update, delete: if request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
   }
