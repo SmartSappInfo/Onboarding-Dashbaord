@@ -232,9 +232,6 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                 </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant="outline" size="sm" onClick={() => window.print()} className="h-9">
-                    <Printer className="mr-2 h-4 w-4" /> Print
-                </Button>
                 <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9">
                     {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
                     <span className="hidden sm:inline">Download Signed PDF</span>

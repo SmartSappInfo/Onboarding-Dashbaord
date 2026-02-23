@@ -169,10 +169,6 @@ export default function SubmissionDetailPage() {
             </h1>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
-          <Button variant="outline" size="sm" onClick={() => window.print()} disabled={isLoading} className="h-9">
-            <Printer className="sm:mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
           <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex">
             {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
             Front-end
