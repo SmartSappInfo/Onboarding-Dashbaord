@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,8 +35,6 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
-
-  const tableRef = React.useRef<HTMLDivElement>(null);
 
   const submissionsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -142,40 +140,116 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   };
 
   const handleExportPDF = async () => {
-    if (!tableRef.current || isExportingPDF) return;
+    if (!submissions || !pdfForm || isExportingPDF) return;
     setIsExportingPDF(true);
     
     try {
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        const canvas = await html2canvas(tableRef.current, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: 'white',
-            ignoreElements: (el) => el.classList.contains('print:hidden') || el.tagName === 'BUTTON'
-        });
+        // A4 Pixel sizing @ 96 DPI
+        const A4_WIDTH = 794;
+        const A4_HEIGHT = 1123;
+        const ROWS_PER_PAGE = 18;
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-        
         const pdfDoc = await PDFDocument.create();
-        const image = await pdfDoc.embedJpg(imgBytes);
-        const page = pdfDoc.addPage([image.width, image.height]);
-        page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+        const rowChunks = [];
+        for (let i = 0; i < submissions.length; i += ROWS_PER_PAGE) {
+            rowChunks.push(submissions.slice(i, i + ROWS_PER_PAGE));
+        }
+
+        const exportContainer = document.createElement('div');
+        exportContainer.style.position = 'fixed';
+        exportContainer.style.left = '-9999px';
+        exportContainer.style.top = '-9999px';
+        exportContainer.style.width = `${A4_WIDTH}px`;
+        document.body.appendChild(exportContainer);
+
+        for (let pageIdx = 0; pageIdx < rowChunks.length; pageIdx++) {
+            const chunk = rowChunks[pageIdx];
+            const pageEl = document.createElement('div');
+            pageEl.className = "p-10 bg-white text-black font-sans";
+            pageEl.style.width = `${A4_WIDTH}px`;
+            pageEl.style.minHeight = `${A4_HEIGHT}px`;
+            pageEl.style.boxSizing = 'border-box';
+
+            if (pageIdx === 0) {
+                pageEl.innerHTML = `
+                    <div class="mb-8 border-b-2 pb-4 border-gray-200">
+                        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight">Shared Results Report</h1>
+                        <h2 class="text-xl font-bold text-primary mt-1">${pdfForm.name}</h2>
+                        <div class="flex justify-between items-end mt-4">
+                            <p class="text-xs text-gray-500 font-medium">Generated: ${format(new Date(), "PPPP 'at' p")}</p>
+                            <p class="text-xs font-bold text-gray-700">${submissions.length} total records</p>
+                        </div>
+                    </div>
+                `;
+            } else {
+                pageEl.innerHTML = `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
+            }
+
+            let tableHtml = `
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-primary text-white">
+                            ${displayFields.map(f => `<th class="p-3 text-[10px] font-black uppercase text-left border border-primary">${f.label || 'Field'}</th>`).join('')}
+                            <th class="p-3 text-[10px] font-black uppercase text-left border border-primary">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chunk.map(sub => `
+                            <tr class="border-b border-gray-200">
+                                ${displayFields.map(f => {
+                                    const val = sub.formData[f.id];
+                                    if (f.type === 'signature') {
+                                        return `<td class="p-2 border border-gray-100 h-12"><div class="h-full flex items-center justify-center">${val ? `<img src="${val}" style="max-height: 40px; object-fit: contain;" />` : '-'}</div></td>`;
+                                    }
+                                    return `<td class="p-3 text-xs text-gray-800 font-medium border border-gray-100 break-words">${val || '-'}</td>`;
+                                }).join('')}
+                                <td class="p-3 text-[10px] text-gray-500 border border-gray-100">${format(new Date(sub.submittedAt), 'MMM d, yyyy p')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            pageEl.innerHTML += tableHtml;
+
+            if (pageIdx === rowChunks.length - 1) {
+                pageEl.innerHTML += `<div class="mt-12 pt-4 border-t border-gray-100 text-center text-[10px] text-gray-400 font-medium italic">Authorized Shared Report via SmartSapp</div>`;
+            }
+
+            exportContainer.appendChild(pageEl);
+
+            const canvas = await html2canvas(pageEl, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: 'white',
+                logging: false,
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+            const image = await pdfDoc.embedJpg(imgBytes);
+            
+            const page = pdfDoc.addPage([595.28, 841.89]);
+            page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
+
+            exportContainer.removeChild(pageEl);
+        }
+
+        document.body.removeChild(exportContainer);
 
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `${pdfForm.name}_shared_report.pdf`);
+        link.setAttribute("download", `${pdfForm.name}_Shared_Report.pdf`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        toast({ title: 'PDF Export Complete' });
+        toast({ title: 'PDF Report Generated' });
     } catch (e) {
         console.error(e);
         toast({ variant: 'destructive', title: 'PDF Generation Failed' });
@@ -223,16 +297,9 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
             </div>
         </header>
 
-        <div className="flex-grow overflow-auto p-4 sm:p-8" ref={tableRef}>
+        <div className="flex-grow overflow-auto p-4 sm:p-8">
             <div className="max-w-6xl mx-auto">
-                {/* PDF Header Capture Only */}
-                <div className={cn("hidden mb-8 border-b pb-4", isExportingPDF && "block")}>
-                    <h1 className="text-2xl font-bold">Shared Results Report: {pdfForm.name}</h1>
-                    <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
-                </div>
-
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden print:border-none print:shadow-none print:overflow-visible">
+                <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -245,7 +312,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </TableHead>
                                 ))}
                                 <TableHead>Date</TableHead>
-                                <TableHead className="w-[100px] text-right print:hidden">Actions</TableHead>
+                                <TableHead className="w-[100px] text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -264,12 +331,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                         ) : <span className="truncate max-w-[200px] block">{value || '-'}</span>;
                                         return (
                                             <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
-                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:underline print:no-underline">{content}</Link> : content}
+                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:underline">{content}</Link> : content}
                                             </TableCell>
                                         );
                                     })}
                                     <TableCell className="text-muted-foreground text-xs">{format(new Date(submission.submittedAt), 'PPP')}</TableCell>
-                                    <TableCell className="text-right print:hidden">
+                                    <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`}><Eye className="h-4 w-4" /></Link></Button>
                                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId || isProcessingBatch}><Download className="h-4 w-4" /></Button>
@@ -296,7 +363,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                         </div>
                         <div className="text-center">
                             <h2 className="font-bold text-lg">Generating Report</h2>
-                            <p className="text-sm text-muted-foreground">Capturing data and formatting PDF...</p>
+                            <p className="text-sm text-muted-foreground">Creating A4 multi-page document...</p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
                     </CardContent>
@@ -353,8 +420,8 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                 const el = pageWrappers[i] as HTMLElement;
                 const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
                 const image = await pdfBundle.embedJpg(await fetch(canvas.toDataURL('image/jpeg', 0.9)).then(res => res.arrayBuffer()));
-                const page = pdfBundle.addPage([image.width, image.height]);
-                page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                const page = pdfBundle.addPage([595.28, 841.89]);
+                page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
             }
             const blob = new Blob([await pdfBundle.save()], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);

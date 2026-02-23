@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, doc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -32,6 +32,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent } from '@/components/ui/card';
 import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
+import SubmissionCount from '../components/SubmissionCount';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -50,8 +51,6 @@ export default function SubmissionsPage() {
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
-
-  const tableRef = React.useRef<HTMLDivElement>(null);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -176,7 +175,6 @@ export default function SubmissionsPage() {
     setIsExportingCSV(true);
 
     try {
-        // Use all non-signature fields for CSV export
         const dataFields = pdf.fields.filter(f => f.type !== 'signature');
         const headers = ["Submission ID", "Submitted At", ...dataFields.map(f => f.label || f.id)];
         const csvRows = [headers.join(",")];
@@ -210,45 +208,131 @@ export default function SubmissionsPage() {
   };
 
   const handleExportPDF = async () => {
-    if (!tableRef.current || isExportingPDF) return;
+    if (!submissions || !pdf || isExportingPDF) return;
     setIsExportingPDF(true);
     
     try {
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        const canvas = await html2canvas(tableRef.current, {
-            scale: 2,
-            useCORS: true,
-            logging: false,
-            backgroundColor: 'white',
-            ignoreElements: (el) => el.classList.contains('print:hidden') || el.tagName === 'BUTTON'
-        });
+        // Configuration for A4 at 96 DPI
+        const A4_WIDTH = 794;
+        const A4_HEIGHT = 1123;
+        const ROWS_PER_PAGE = 18; // Adjusted for header space
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-        
         const pdfDoc = await PDFDocument.create();
-        const image = await pdfDoc.embedJpg(imgBytes);
-        
-        // Create a page that fits the table
-        const page = pdfDoc.addPage([image.width, image.height]);
-        page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+        const rowChunks = [];
+        for (let i = 0; i < submissions.length; i += ROWS_PER_PAGE) {
+            rowChunks.push(submissions.slice(i, i + ROWS_PER_PAGE));
+        }
+
+        // Create a temporary container for rendering pages
+        const exportContainer = document.createElement('div');
+        exportContainer.style.position = 'fixed';
+        exportContainer.style.left = '-9999px';
+        exportContainer.style.top = '-9999px';
+        exportContainer.style.width = `${A4_WIDTH}px`;
+        document.body.appendChild(exportContainer);
+
+        for (let pageIdx = 0; pageIdx < rowChunks.length; pageIdx++) {
+            const chunk = rowChunks[pageIdx];
+            
+            // Create Page Element
+            const pageEl = document.createElement('div');
+            pageEl.className = "p-10 bg-white text-black font-sans";
+            pageEl.style.width = `${A4_WIDTH}px`;
+            pageEl.style.minHeight = `${A4_HEIGHT}px`;
+            pageEl.style.boxSizing = 'border-box';
+
+            // Add Header only on first page
+            if (pageIdx === 0) {
+                const headerHtml = `
+                    <div class="mb-8 border-b-2 pb-4 border-gray-200">
+                        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight">Submission Report</h1>
+                        <h2 class="text-xl font-bold text-primary mt-1">${pdf.name}</h2>
+                        <div class="flex justify-between items-end mt-4">
+                            <p class="text-xs text-gray-500 font-medium">Generated: ${format(new Date(), "PPPP 'at' p")}</p>
+                            <p class="text-xs font-bold text-gray-700">${submissions.length} total records</p>
+                        </div>
+                    </div>
+                `;
+                pageEl.innerHTML += headerHtml;
+            } else {
+                pageEl.innerHTML += `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
+            }
+
+            // Build Table
+            let tableHtml = `
+                <table class="w-full border-collapse">
+                    <thead>
+                        <tr class="bg-primary text-white">
+                            ${displayFields.map(f => `<th class="p-3 text-[10px] font-black uppercase text-left border border-primary">${f.label || 'Field'}</th>`).join('')}
+                            <th class="p-3 text-[10px] font-black uppercase text-left border border-primary">Submission Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chunk.map(sub => `
+                            <tr class="border-b border-gray-200">
+                                ${displayFields.map(f => {
+                                    const val = sub.formData[f.id];
+                                    if (f.type === 'signature') {
+                                        return `<td class="p-2 border border-gray-100 h-12"><div class="h-full flex items-center justify-center">${val ? `<img src="${val}" style="max-height: 40px; object-fit: contain;" />` : '-'}</div></td>`;
+                                    }
+                                    return `<td class="p-3 text-xs text-gray-800 font-medium border border-gray-100 break-words">${val || '-'}</td>`;
+                                }).join('')}
+                                <td class="p-3 text-[10px] text-gray-500 border border-gray-100">${format(new Date(sub.submittedAt), 'MMM d, yyyy p')}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            pageEl.innerHTML += tableHtml;
+
+            if (pageIdx === rowChunks.length - 1) {
+                pageEl.innerHTML += `<div class="mt-12 pt-4 border-t border-gray-100 text-center text-[10px] text-gray-400 font-medium">© ${new Date().getFullYear()} SmartSapp Onboarding Workspace</div>`;
+            }
+
+            exportContainer.appendChild(pageEl);
+
+            const canvas = await html2canvas(pageEl, {
+                scale: 2,
+                useCORS: true,
+                backgroundColor: 'white',
+                logging: false,
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
+            const image = await pdfDoc.embedJpg(imgBytes);
+            
+            // Standard A4 Points: 595.28 x 841.89
+            const page = pdfDoc.addPage([595.28, 841.89]);
+            page.drawImage(image, {
+                x: 0,
+                y: 0,
+                width: 595.28,
+                height: 841.89,
+            });
+
+            exportContainer.removeChild(pageEl);
+        }
+
+        document.body.removeChild(exportContainer);
 
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `${pdf?.name || 'submissions'}_report.pdf`);
+        link.setAttribute("download", `${pdf.name.replace(/[^a-z0-9]/gi, '_')}_Report.pdf`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         
-        toast({ title: 'PDF Export Complete' });
+        toast({ title: 'PDF Report Generated' });
     } catch (e) {
         console.error(e);
-        toast({ variant: 'destructive', title: 'PDF Generation Failed' });
+        toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsExportingPDF(false);
     }
@@ -256,7 +340,7 @@ export default function SubmissionsPage() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8" ref={tableRef}>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
         <div className="flex items-center justify-between gap-4 mb-8 print:hidden">
           <div>
             <Button variant="ghost" size="sm" className="-ml-2 mb-2" onClick={() => router.push('/admin/pdfs')}>
@@ -322,14 +406,7 @@ export default function SubmissionsPage() {
           )}
         </div>
 
-        {/* Print-only Header */}
-        <div className={cn("hidden mb-8 border-b pb-4", isExportingPDF && "block")}>
-            <h1 className="text-2xl font-bold">Submission Report: {pdf?.name}</h1>
-            <p className="text-sm text-muted-foreground">Generated on {format(new Date(), "PPP p")}</p>
-            <p className="text-xs text-muted-foreground mt-1">{submissions?.length || 0} total records</p>
-        </div>
-        
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto print:overflow-visible print:border-none">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -342,7 +419,7 @@ export default function SubmissionsPage() {
                   </TableHead>
                 ))}
                 <TableHead>Submission Date</TableHead>
-                <TableHead className="w-[120px] text-right print:hidden">Actions</TableHead>
+                <TableHead className="w-[120px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -363,7 +440,7 @@ export default function SubmissionsPage() {
                         <TableCell key={field.id} className={cn("font-medium", idx === 0 && "text-primary")}>
                           {idx === 0 ? (
                               <div className="flex items-center gap-2">
-                                  <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:underline cursor-pointer print:no-underline">
+                                  <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:underline cursor-pointer">
                                     {content}
                                   </Link>
                               </div>
@@ -372,7 +449,7 @@ export default function SubmissionsPage() {
                       );
                     })}
                     <TableCell className="text-muted-foreground">{format(new Date(submission.submittedAt), 'PPP p')}</TableCell>
-                    <TableCell className="text-right print:hidden">
+                    <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Tooltip><TooltipTrigger asChild><Button asChild variant="ghost" size="icon" className="h-8 w-8"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4" /><span className="sr-only">View Submission</span></Link></Button></TooltipTrigger><TooltipContent>View Details</TooltipContent></Tooltip>
                         <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>{downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}<span className="sr-only">Download PDF</span></Button></TooltipTrigger><TooltipContent>Download PDF</TooltipContent></Tooltip>
@@ -408,7 +485,7 @@ export default function SubmissionsPage() {
                       </div>
                       <div className="text-center">
                           <h2 className="font-bold text-lg">Generating Report</h2>
-                          <p className="text-sm text-muted-foreground">Capturing data and formatting PDF...</p>
+                          <p className="text-sm text-muted-foreground">Creating A4 multi-page document...</p>
                       </div>
                       <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="mt-2">Cancel</Button>
                   </CardContent>
@@ -547,8 +624,14 @@ function HighFidelityDownloader({ pdfForm, submissionId, fileName, onFinished, o
                 const imgData = canvas.toDataURL('image/jpeg', 0.9);
                 const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
                 const image = await pdfBundle.embedJpg(imgBytes);
-                const page = pdfBundle.addPage([image.width, image.height]);
-                page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+                // Points: 595.28 x 841.89 (A4)
+                const page = pdfBundle.addPage([595.28, 841.89]);
+                page.drawImage(image, {
+                    x: 0,
+                    y: 0,
+                    width: 595.28,
+                    height: 841.89,
+                });
             }
             const pdfBytes = await pdfBundle.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -656,7 +739,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         const value = formData[field.id];
                         if (!value) return null;
                         return (
-                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', alignItems: 'flex-start', justifyItems: 'flex-start' }}>
                                 {field.type === 'signature' ? <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" /> : <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">{field.type === 'date' && value ? format(new Date(value), 'PPP') : value}</span>}
                             </div>
                         );
