@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm } from '@/lib/types';
+import type { PDFForm, PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
 
@@ -16,6 +16,11 @@ interface EditorContextType {
   marquee: MarqueeState | null;
   isDetecting: boolean;
   
+  // External settings managed by page but synced here for UI convenience
+  password?: string;
+  passwordProtected?: boolean;
+  isStatusChanging?: boolean;
+  
   // Actions
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
@@ -23,6 +28,14 @@ interface EditorContextType {
   setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   setNamingFieldId: (id: string | null) => void;
   setMarquee: React.Dispatch<React.SetStateAction<MarqueeState | null>>;
+  
+  // Callbacks
+  onDetect: () => void;
+  onStatusChange: (status: PDFForm['status']) => void;
+  onSave: () => void;
+  onPreview: () => void;
+  setPassword: (val: string) => void;
+  setPasswordProtected: (val: boolean) => void;
   
   // High-level Handlers
   addField: (type: LocalPDFFormField['type']) => void;
@@ -33,7 +46,7 @@ interface EditorContextType {
   distributeFields: (type: DistributionType) => void;
   selectField: (id: string, multi?: boolean, toggle?: boolean) => void;
   
-  // Undo/Redo (Proxied from page)
+  // Undo/Redo
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -53,7 +66,16 @@ export function EditorProvider({
   redo,
   canUndo,
   canRedo,
-  isDetecting
+  isDetecting,
+  onDetect,
+  onStatusChange,
+  onSave,
+  onPreview,
+  isStatusChanging,
+  password,
+  setPassword,
+  passwordProtected,
+  setPasswordProtected
 }: { 
   children: React.ReactNode; 
   pdf: PDFForm;
@@ -66,6 +88,15 @@ export function EditorProvider({
   canUndo: boolean;
   canRedo: boolean;
   isDetecting: boolean;
+  onDetect: () => void;
+  onStatusChange: (status: PDFForm['status']) => void;
+  onSave: () => void;
+  onPreview: () => void;
+  isStatusChanging: boolean;
+  password?: string;
+  setPassword: (val: string) => void;
+  passwordProtected?: boolean;
+  setPasswordProtected: (val: boolean) => void;
 }) {
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [zoom, setZoom] = React.useState(1.0);
@@ -130,12 +161,16 @@ export function EditorProvider({
 
   const value = React.useMemo(() => ({
     pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
+    password, passwordProtected, isStatusChanging,
     setFields, setSelectedFieldIds, setZoom, setIsSidebarCollapsed, setNamingFieldId, setMarquee,
+    onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
     pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
-    setFields, setNamingFieldId, addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
+    password, passwordProtected, isStatusChanging, setFields, setNamingFieldId,
+    onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
+    addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   ]);
 
