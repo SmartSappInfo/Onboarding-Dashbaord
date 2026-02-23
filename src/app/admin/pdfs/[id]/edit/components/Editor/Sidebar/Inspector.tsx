@@ -14,11 +14,10 @@ import {
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Sparkles, Key, Check, X, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Replace, Lock, Eye, EyeOff
+  Copy, Replace, Lock, Eye, EyeOff, Loader2
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
@@ -56,10 +55,6 @@ export function Inspector() {
   const isMulti = selectedFieldIds.length > 1;
   const hasSuggestions = fields.some(f => f.isSuggestion);
   const [showPassword, setShowPassword] = React.useState(false);
-
-  const bulkUpdate = (props: Partial<PDFFormField>) => {
-    setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, ...props } : f));
-  };
 
   if (isSidebarCollapsed) {
     return (
