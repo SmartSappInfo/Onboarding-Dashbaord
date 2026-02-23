@@ -275,22 +275,22 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
   return (
     <TooltipProvider>
       <div className="flex flex-col h-screen overflow-hidden bg-muted/10">
-        <header className="h-16 border-b bg-background px-6 flex items-center justify-between shrink-0 print:hidden shadow-sm z-30">
-            <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
-                    <SmartSappIcon className="h-6 w-6 text-primary" />
+        <header className="h-16 border-b bg-background px-4 sm:px-6 flex items-center justify-between shrink-0 print:hidden shadow-sm z-30">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
+                    <SmartSappIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                    <h1 className="font-black text-sm sm:text-lg leading-none truncate pr-4">{pdfForm.name}</h1>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Shared Results Portal</p>
+                    <h1 className="font-black text-xs sm:text-lg leading-tight truncate pr-2" title={pdfForm.name}>{pdfForm.name}</h1>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5 sm:mt-1 truncate">Shared Portal</p>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                        <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 font-bold shadow-sm" disabled={isExportingCSV || isExportingPDF}>
                             {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            Export List
+                            <span className="hidden sm:inline">Export List</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
@@ -306,11 +306,11 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 </DropdownMenu>
                 
                 {submissions?.length > 0 && (
-                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="font-bold shadow-sm">
+                    <Button size="sm" onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-4 font-bold shadow-sm">
                         {isProcessingBatch ? (
-                            <><Loader2 className="h-4 w-4 animate-spin mr-2" />Processing ({batchDownloadQueue.length} left)</>
+                            <><Loader2 className="h-4 w-4 animate-spin mr-0 sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
                         ) : (
-                            <><Download className="h-4 w-4 mr-2" />Download All PDFs</>
+                            <><Download className="h-4 w-4 mr-0 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
                         )}
                     </Button>
                 )}
@@ -322,7 +322,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 
                 {/* Stats Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Card className="bg-card shadow-sm border-border/50">
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4">
                             <div className="bg-primary/10 p-2.5 rounded-xl">
                                 <Users className="h-5 w-5 text-primary" />
@@ -333,7 +333,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                             </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-card shadow-sm border-border/50">
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4">
                             <div className="bg-green-500/10 p-2.5 rounded-xl">
                                 <Clock className="h-5 w-5 text-green-600" />

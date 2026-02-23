@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, BarChart3, Clock, Users } from 'lucide-react';
+import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, Clock, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,8 +30,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
+import { Card, CardContent } from '@/components/ui/card';
 import { updatePdfResultsSharing, updatePdfFormMapping } from '@/lib/pdf-actions';
 
 // Shared PDF.js promise
@@ -353,19 +352,19 @@ export default function SubmissionsPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Documents
             </Button>
-            <h1 className="text-3xl font-black tracking-tight text-foreground truncate" title={pdf?.name}>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground truncate pr-4" title={pdf?.name}>
               {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions for "${pdf?.name}"`}
             </h1>
-            <p className="text-muted-foreground text-sm font-medium">Manage and export signed document records.</p>
+            <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
           </div>
           
           {!isLoading && (
-              <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                        <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
                             {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            Export List
+                            <span className="hidden sm:inline">Export List</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
@@ -380,23 +379,23 @@ export default function SubmissionsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
 
-                  <Button variant="outline" onClick={() => setIsShareDialogOpen(true)} className="gap-2 shadow-sm">
+                  <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
                       <Share2 className="h-4 w-4" />
-                      Share Results
+                      <span className="hidden sm:inline">Share Results</span>
                   </Button>
                   
                   {submissions && submissions.length > 0 && (
                       <ButtonGroup className="shadow-sm">
-                          <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-10 px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
+                          <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
                               {isProcessingBatch ? (
-                                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing ({batchDownloadQueue.length} left)</>
+                                  <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
                               ) : (
-                                  <><Download className="mr-2 h-4 w-4" />Download All PDFs</>
+                                  <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
                               )}
                           </Button>
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                  <Button variant="default" size="icon" className="h-10 w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
+                                  <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
                                       <ChevronDown className="h-4 w-4" />
                                   </Button>
                               </DropdownMenuTrigger>
@@ -420,7 +419,7 @@ export default function SubmissionsPage() {
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-card shadow-sm border-border/50">
+            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                 <CardContent className="p-4 flex items-center gap-4">
                     <div className="bg-primary/10 p-2.5 rounded-xl">
                         <Users className="h-5 w-5 text-primary" />
@@ -431,7 +430,7 @@ export default function SubmissionsPage() {
                     </div>
                 </CardContent>
             </Card>
-            <Card className="bg-card shadow-sm border-border/50">
+            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                 <CardContent className="p-4 flex items-center gap-4">
                     <div className="bg-green-500/10 p-2.5 rounded-xl">
                         <Clock className="h-5 w-5 text-green-600" />
