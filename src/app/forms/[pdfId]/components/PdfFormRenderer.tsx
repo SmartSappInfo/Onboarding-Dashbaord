@@ -486,7 +486,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
+            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-3">
                 <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
                     <TooltipProvider>
                         <Tooltip>
@@ -590,20 +590,20 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     <AlertDialogDescription asChild>
                         <div className="space-y-4 pt-2 text-sm text-muted-foreground">
                             {hasSignature ? (
-                                <>
-                                    <p className="font-semibold text-foreground">Important Legal Notice:</p>
-                                    <p>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</p>
-                                    <p className="bg-muted p-3 rounded-md text-xs italic">
+                                <div className="space-y-4">
+                                    <div className="font-semibold text-foreground">Important Legal Notice:</div>
+                                    <div>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</div>
+                                    <div className="bg-muted p-3 rounded-md text-xs italic">
                                         "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
-                                    </p>
-                                </>
+                                    </div>
+                                </div>
                             ) : (
-                                <p>Are you ready to submit your responses? Please review your entries one last time.</p>
+                                <div>Are you ready to submit your responses? Please review your entries one last time.</div>
                             )}
-                            <p className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
+                            <div className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
                                 <AlertTriangle className="h-4 w-4" />
                                 This submission is final and irreversible.
-                            </p>
+                            </div>
                         </div>
                     </AlertDialogDescription>
                 </AlertDialogHeader>

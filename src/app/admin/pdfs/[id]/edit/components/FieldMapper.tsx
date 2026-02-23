@@ -824,7 +824,20 @@ export default function FieldMapper({
     let val: number;
     if (type === 'left') { val = Math.min(...sel.map(f => f.position.x)); setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: val } } : f)); }
     if (type === 'top') { val = Math.min(...sel.map(f => f.position.y)); setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: val } } : f)); }
-    // ...other alignments follow similar logic
+    if (type === 'right') { val = Math.max(...sel.map(f => f.position.x + f.dimensions.width)); setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: val - f.dimensions.width } } : f)); }
+    if (type === 'bottom') { val = Math.max(...sel.map(f => f.position.y + f.dimensions.height)); setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: val - f.dimensions.height } } : f)); }
+    if (type === 'center-h') {
+        const minX = Math.min(...sel.map(f => f.position.x));
+        const maxX = Math.max(...sel.map(f => f.position.x + f.dimensions.width));
+        const mid = (minX + maxX) / 2;
+        setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, x: mid - (f.dimensions.width / 2) } } : f));
+    }
+    if (type === 'center-v') {
+        const minY = Math.min(...sel.map(f => f.position.y));
+        const maxY = Math.max(...sel.map(f => f.position.y + f.dimensions.height));
+        const mid = (minY + maxY) / 2;
+        setFields(prev => prev.map(f => selectedFieldIds.includes(f.id) ? { ...f, position: { ...f.position, y: mid - (f.dimensions.height / 2) } } : f));
+    }
   }, [fields, selectedFieldIds, setFields]);
 
   const distributeFields = React.useCallback((type: 'horizontal' | 'vertical') => {
@@ -879,7 +892,7 @@ export default function FieldMapper({
               </ScrollArea>
           </DndContext>
           
-          <div className="absolute right-6 bottom-8 z-40 flex flex-col items-center gap-3">
+          <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">
               <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                   <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full mb-2" onClick={() => setDisplayZoom(p => Math.min(p+0.1, 3))}><ZoomIn className="h-4 w-4 text-primary" /></Button>
                   <Slider orientation="vertical" min={0.5} max={3} step={0.05} value={[displayZoom]} onValueChange={([v]) => setDisplayZoom(v)} className="flex-grow py-2" />
