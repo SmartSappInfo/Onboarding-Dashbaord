@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
@@ -36,7 +36,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MediaSelect } from '../../../schools/components/media-select';
+import { MediaSelect } from '../../components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -148,62 +148,6 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
         </div>
     );
 };
-
-function LogicSimulator({ form }: { form: any }) {
-    const [testScore, setTestScore] = React.useState<number>(0);
-    const rules = form.watch('resultRules') || [];
-    const pages = form.watch('resultPages') || [];
-    const scoringEnabled = form.watch('scoringEnabled');
-
-    if (!scoringEnabled) return null;
-
-    const matchedRule = rules
-        .sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0))
-        .find((r: any) => testScore >= (r.minScore || 0) && testScore <= (r.maxScore || 0));
-    
-    const matchedPage = pages.find((p: any) => p.id === matchedRule?.pageId);
-
-    return (
-        <Card className="bg-primary/5 border-primary/20">
-            <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
-                    <BrainCircuit className="h-4 w-4" /> Outcome Simulator
-                </CardTitle>
-                <CardDescription>Test your scoring logic by entering a dummy score.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="flex items-center gap-4">
-                    <div className="flex-grow">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Test Score</Label>
-                        <Input 
-                            type="number" 
-                            value={testScore} 
-                            onChange={(e) => setTestScore(Number(e.target.value))} 
-                            className="bg-background font-bold text-lg h-12"
-                        />
-                    </div>
-                    <div className="shrink-0 pt-5">
-                        <ArrowRight className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div className="flex-grow">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Result Outcome</Label>
-                        <div className="h-12 flex items-center px-4 rounded-md border bg-background font-bold text-primary">
-                            {matchedRule ? (
-                                <div className="flex items-center gap-2">
-                                    <Trophy className="h-4 w-4" />
-                                    <span>{matchedRule.label}</span>
-                                    <span className="text-[10px] text-muted-foreground font-normal ml-2">→ {matchedPage?.name || 'Untitled Page'}</span>
-                                </div>
-                            ) : (
-                                <span className="text-muted-foreground font-normal italic">Default Fallback</span>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </CardContent>
-        </Card>
-    );
-}
 
 function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const { toast } = useToast();
@@ -508,80 +452,80 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 </div>
 
                 <div className={cn("space-y-8", step !== 4 && 'hidden')}>
-                    <LogicSimulator form={form} />
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Publish</CardTitle>
-                            <CardDescription>Configure the final settings and publish your survey.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-8">
-                                <FormField
-                                    control={form.control}
-                                    name="bannerImageUrl"
-                                    render={({ field }) => (
+                    <div className="space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Publish</CardTitle>
+                                <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="space-y-8">
+                                    <FormField
+                                        control={form.control}
+                                        name="bannerImageUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Banner Image</FormLabel>
+                                                <FormControl>
+                                                    <MediaSelect {...field} filterType="image" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Banner Image</FormLabel>
+                                            <FormLabel>Status</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
-                                                <MediaSelect {...field} filterType="image" />
+                                                <SelectTrigger>
+                                                <SelectValue placeholder="Select survey status" />
+                                                </SelectTrigger>
                                             </FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="draft">Draft</SelectItem>
+                                                <SelectItem value="published">Published</SelectItem>
+                                                <SelectItem value="archived">Archived</SelectItem>
+                                            </SelectContent>
+                                            </Select>
                                             <FormMessage />
                                         </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="status"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Status</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                        <FormControl>
-                                            <SelectTrigger>
-                                            <SelectValue placeholder="Select survey status" />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                            <SelectItem value="draft">Draft</SelectItem>
-                                            <SelectItem value="published">Published</SelectItem>
-                                            <SelectItem value="archived">Archived</SelectItem>
-                                        </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="slug"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Survey URL</FormLabel>
-                                        <div className="flex flex-col sm:flex-row group transition-all">
-                                            <div 
-                                                className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
-                                                title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                            >
-                                                <span className="truncate max-w-[180px] sm:max-w-[250px] md:max-w-[300px]">
-                                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                </span>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="slug"
+                                        render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Survey URL</FormLabel>
+                                            <div className="flex flex-col sm:flex-row group transition-all">
+                                                <div 
+                                                    className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
+                                                    title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                >
+                                                    <span className="truncate max-w-xs">
+                                                        {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                    </span>
+                                                </div>
+                                                <FormControl>
+                                                    <Input 
+                                                        {...field} 
+                                                        className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
+                                                    />
+                                                </FormControl>
                                             </div>
-                                            <FormControl>
-                                                <Input 
-                                                    {...field} 
-                                                    className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
-                                                />
-                                            </FormControl>
-                                        </div>
-                                        <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
-                                        <FormMessage className="text-xs font-bold" />
-                                    </FormItem>
-                                    )}
-                                />
-                            </div>
-                        </CardContent>
-                    </Card>
+                                            <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
+                                            <FormMessage className="text-xs font-bold" />
+                                        </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </div>
 
                 <div className="flex justify-between items-center mt-12">
@@ -618,7 +562,7 @@ export default function EditSurveyPage() {
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="w-full md:w-[70%] mx-auto">
+            <div className="w-full md:w-[90%] mx-auto">
                 {surveyId ? <EditSurveyForm surveyId={surveyId} /> : <p>Survey ID not found.</p>}
             </div>
         </div>

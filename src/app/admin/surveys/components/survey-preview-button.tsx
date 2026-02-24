@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -75,21 +74,21 @@ export default function SurveyPreviewButton({ variant, size, className, children
                         <ScrollArea className="h-full">
                             <div className="bg-muted min-h-full">
                                 {previewData && !isSubmitted && (
-                                    <div className="max-w-2xl mx-auto py-12 px-4">
+                                    <div className="max-w-4xl mx-auto py-12 px-4">
                                         {previewData.bannerImageUrl && (
                                             <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
                                                 <Image src={previewData.bannerImageUrl} alt={previewData.title || ''} fill className="object-cover" />
                                             </div>
                                         )}
-                                        <h1 className="text-3xl md:text-4xl font-bold mb-2">{previewData.title || '[Untitled Survey]'}</h1>
-                                        <p className="text-muted-foreground mb-8">{previewData.description || '[No description]'}</p>
+                                        <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center">{previewData.title || '[Untitled Survey]'}</h1>
+                                        <p className="text-muted-foreground mb-8 text-center">{previewData.description || '[No description]'}</p>
                                         
                                         <SurveyForm survey={previewData} onSubmitted={() => setIsSubmitted(true)} isPreview />
                                     </div>
                                 )}
                                 {previewData && isSubmitted && (
                                     <div className="flex items-center justify-center h-full min-h-[50vh] p-4">
-                                        <div className="max-w-2xl w-full mx-auto text-center">
+                                        <div className="max-w-4xl w-full mx-auto text-center">
                                             <SmartSappLogo className="h-12 mx-auto mb-8" />
                                             {previewData.bannerImageUrl && (
                                                 <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
