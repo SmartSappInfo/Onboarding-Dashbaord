@@ -14,6 +14,7 @@ import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/typ
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
 import { Separator } from '@/components/ui/separator';
+import AiChatEditor from './ai-chat-editor';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -278,6 +279,8 @@ export default function SurveyFormBuilder() {
                 onOpenChange={setIsAddElementModalOpen}
                 onSelect={handleElementSelect}
             />
+
+            <AiChatEditor />
         </div>
     );
 }
