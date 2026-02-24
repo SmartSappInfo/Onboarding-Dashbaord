@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -127,16 +128,16 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
                     <div className="flex flex-col items-center">
                         <div
                             className={cn(
-                                'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-colors',
+                                'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors',
                                 currentStep > index + 1 ? 'bg-primary border-primary text-primary-foreground' : '',
                                 currentStep === index + 1 ? 'border-primary' : 'border-border',
                             )}
                         >
-                            {currentStep > index + 1 ? <Check className="w-6 h-6" /> : <span className={cn('text-lg', currentStep === index + 1 ? 'text-primary' : 'text-muted-foreground')}>{index + 1}</span>}
+                            {currentStep > index + 1 ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === index + 1 ? 'text-primary' : 'text-muted-foreground')}>{index + 1}</span>}
                         </div>
-                        <p className={cn('mt-2 text-sm', currentStep >= index + 1 ? 'font-semibold text-primary' : 'text-muted-foreground')}>{step}</p>
+                        <p className={cn('mt-2 text-[10px] uppercase tracking-wider', currentStep >= index + 1 ? 'font-bold text-primary' : 'text-muted-foreground font-medium')}>{step}</p>
                     </div>
-                    {index < steps.length - 1 && <div className="flex-1 h-px bg-border mx-4"></div>}
+                    {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
                 </React.Fragment>
             ))}
         </div>
@@ -477,11 +478,11 @@ export default function NewSurveyPage() {
                                             <FormItem>
                                                 <FormLabel>Survey URL</FormLabel>
                                                 <div className="flex flex-col sm:flex-row group transition-all">
-                                                    <div className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0">
-                                                        <span 
-                                                            className="truncate max-w-[180px] sm:max-w-[250px] md:max-w-[300px]" 
-                                                            title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                        >
+                                                    <div 
+                                                        className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
+                                                        title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                    >
+                                                        <span className="truncate max-w-[180px] sm:max-w-[250px] md:max-w-[300px]">
                                                             {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
                                                         </span>
                                                     </div>

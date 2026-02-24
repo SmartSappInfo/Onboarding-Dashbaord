@@ -471,7 +471,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                     return (
                         <div key={index} className="flex-1 relative flex flex-col items-center">
                             {!isLast && (
-                                <div className="absolute left-[50%] right-[-50%] top-5 h-0.5 bg-muted z-0">
+                                <div className="absolute left-[50%] right-[-50%] top-3 h-[1px] bg-muted z-0">
                                     <motion.div 
                                         initial={false}
                                         animate={{ width: isCompleted ? '100%' : '0%' }}
@@ -489,35 +489,25 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                         scale: isActive ? 1.1 : 1,
                                     }}
                                     className={cn(
-                                        "w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
+                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
                                         isCompleted ? "bg-green-500 border-green-500 text-white" : isActive ? "border-primary bg-primary text-white" : "bg-card border-border text-muted-foreground"
                                     )}
                                 >
                                     {isCompleted ? (
-                                        <Check className="w-6 h-6" />
+                                        <Check className="w-3 h-3" />
                                     ) : (
-                                        <span className="text-sm font-bold">{index + 1}</span>
+                                        <span className="text-[10px] font-bold">{index + 1}</span>
                                     )}
                                 </motion.div>
                             </div>
 
-                            <div className="mt-3 text-center px-2 min-w-[80px]">
-                                <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground mb-0.5">Step {index + 1}</p>
+                            <div className="mt-2 text-center px-2 min-w-[80px]">
                                 <p className={cn(
-                                    "text-xs font-bold leading-tight line-clamp-2 h-8",
+                                    "text-[10px] font-bold leading-tight line-clamp-2 h-8",
                                     isActive ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {title}
                                 </p>
-                                <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                        "mt-2 text-[9px] h-5 uppercase tracking-tighter px-1.5",
-                                        isCompleted ? "bg-green-50 text-green-700 border-green-200" : isActive ? "bg-primary/10 text-primary border-primary/20" : "opacity-50"
-                                    )}
-                                >
-                                    {isCompleted ? 'Completed' : isActive ? 'In Progress' : 'Pending'}
-                                </Badge>
                             </div>
                         </div>
                     );
