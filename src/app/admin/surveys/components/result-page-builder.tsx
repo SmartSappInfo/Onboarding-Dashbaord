@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -20,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SmartSappLogo } from '@/components/icons';
 import VideoEmbed from '@/components/video-embed';
 import Image from 'next/image';
+import { Badge } from '@/components/ui/badge';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
