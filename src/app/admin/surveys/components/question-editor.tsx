@@ -701,7 +701,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const { control, getValues, setValue } = useFormContext();
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
-    const isRadioQuestion = isElemQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
     
     // Local state to manage UI toggles
     const [useMin, setUseMin] = React.useState(false);
@@ -750,22 +749,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                             </div>
                             {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                         </>
-                    )}
-
-                    {isRadioQuestion && (
-                        <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5 border-primary/20">
-                            <div className="space-y-0.5">
-                                <Label htmlFor={`auto-advance-toggle-${index}`} className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Auto-advance</Label>
-                                <p className="text-[10px] text-muted-foreground">Move to next page on selection.</p>
-                            </div>
-                            <Controller 
-                                name={`elements.${index}.autoAdvance`} 
-                                control={control} 
-                                render={({ field }) => (
-                                    <Switch id={`auto-advance-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
-                                )} 
-                            />
-                        </div>
                     )}
                 </div>
             )}
@@ -858,6 +841,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const ElementIcon = getElementIcon(element.type);
   const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
   const isScoreable = isElementQuestion && SCOREABLE_TYPES.includes(element.type);
+  const isAutoAdvanceable = isElementQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
   
   return (
     <div ref={setNodeRef} style={style} className="relative group">
@@ -995,15 +979,32 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                              {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                         </div>
-                         {isScoreable && (
-                            <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-                                <div className="space-y-0.5">
-                                    <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
-                                    <p className="text-sm text-muted-foreground">Assign numerical values to answers.</p>
+                        <div className="space-y-4">
+                            {isAutoAdvanceable && (
+                                <div className="flex items-center justify-between rounded-lg border p-4 bg-primary/5 border-primary/20">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor={`auto-advance-toggle-${index}`} className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Auto-advance</Label>
+                                        <p className="text-sm text-muted-foreground">Move to next page immediately on selection.</p>
+                                    </div>
+                                    <Controller 
+                                        name={`elements.${index}.autoAdvance`} 
+                                        control={control} 
+                                        render={({ field }) => (
+                                            <Switch id={`auto-advance-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                        )} 
+                                    />
                                 </div>
-                                <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
-                            </div>
-                        )}
+                            )}
+                            {isScoreable && (
+                                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
+                                    <div className="space-y-0.5">
+                                        <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
+                                        <p className="text-sm text-muted-foreground">Assign numerical values to answers.</p>
+                                    </div>
+                                    <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 ) : isElementLayout ? (
                      <div className={cn(isMediaLayout && "bg-card rounded-lg border p-4")}>
