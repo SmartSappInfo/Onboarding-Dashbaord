@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import SurveyFormBuilder from '../../components/survey-form-builder';
@@ -35,7 +35,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MediaSelect } from '../../../schools/components/media-select';
+import { MediaSelect } from '../../components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -173,7 +173,7 @@ function LogicSimulator({ form }: { form: any }) {
             <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                     <div className="flex-grow">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block">Test Score</Label>
+                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Test Score</Label>
                         <Input 
                             type="number" 
                             value={testScore} 
@@ -185,7 +185,7 @@ function LogicSimulator({ form }: { form: any }) {
                         <ArrowRight className="h-6 w-6 text-muted-foreground" />
                     </div>
                     <div className="flex-grow">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block">Result Outcome</Label>
+                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Result Outcome</Label>
                         <div className="h-12 flex items-center px-4 rounded-md border bg-background font-bold text-primary">
                             {matchedRule ? (
                                 <div className="flex items-center gap-2">
@@ -557,16 +557,24 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                                     render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Survey URL</FormLabel>
-                                        <div className="flex flex-col sm:flex-row">
-                                            <span className="flex h-10 items-center justify-center whitespace-nowrap rounded-t-md border border-b-0 bg-muted px-3 text-sm text-muted-foreground sm:w-auto sm:justify-start sm:rounded-l-md sm:rounded-t-none sm:border-b sm:border-r-0">
-                                                {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                            </span>
+                                        <div className="flex flex-col sm:flex-row group transition-all">
+                                            <div className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0">
+                                                <span 
+                                                    className="truncate max-w-[180px] sm:max-w-[250px] md:max-w-[300px]" 
+                                                    title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                >
+                                                    {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                </span>
+                                            </div>
                                             <FormControl>
-                                                <Input {...field} className="rounded-b-md rounded-t-none sm:rounded-l-none sm:rounded-b-none" />
+                                                <Input 
+                                                    {...field} 
+                                                    className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
+                                                />
                                             </FormControl>
                                         </div>
-                                        <FormDescription>This is the unique last part of your survey URL.</FormDescription>
-                                        <FormMessage />
+                                        <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
+                                        <FormMessage className="text-xs font-bold" />
                                     </FormItem>
                                     )}
                                 />
