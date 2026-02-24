@@ -14,8 +14,8 @@ export function GtmProvider() {
     setIsClient(true);
   }, []);
 
-  // Don't render GTM scripts on server, admin pages, or public doc signing pages (/forms)
-  if (!isClient || pathname.startsWith('/admin') || pathname.startsWith('/forms')) {
+  // Don't render GTM scripts on server, admin pages, public doc signing pages (/forms), or public surveys (/surveys)
+  if (!isClient || pathname.startsWith('/admin') || pathname.startsWith('/forms') || pathname.startsWith('/surveys')) {
     return null;
   }
 

@@ -266,16 +266,16 @@ const ElementRenderer = ({
 
         return (
             <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
-                <Label className="text-lg font-black block leading-tight text-foreground/90">
+                <Label className="text-lg font-bold block leading-tight text-foreground/90">
                     <span dangerouslySetInnerHTML={{ __html: question.title }} />
                     {isRequired && <span className="text-destructive ml-1">*</span>}
                 </Label>
                 <div className="mt-2">
                     {question.type === 'text' && (
-                        <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base h-12 bg-muted/20 border-border/50" />} />
+                        <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base h-12 bg-white border-border/50" />} />
                     )}
                     {question.type === 'long-text' && (
-                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base min-h-[120px] bg-muted/20 border-border/50" />} />
+                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base min-h-[120px] bg-white border-border/50" />} />
                     )}
                     {question.type === 'yes-no' && (
                         <Controller
@@ -283,11 +283,11 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                     <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                    <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                                         <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
                                         Yes
                                     </Label>
-                                    <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                                         <RadioGroupItem value="No" id={`${question.id}-no`} />
                                         No
                                     </Label>
@@ -302,7 +302,7 @@ const ElementRenderer = ({
                             render={({ field }) => (
                                 <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     {question.options?.map(opt => (
-                                        <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                        <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
                                             {opt}
                                         </Label>
@@ -321,7 +321,7 @@ const ElementRenderer = ({
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
-                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent", isChecked && "border-primary bg-primary/5")}>
+                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent", isChecked && "border-primary bg-primary/5")}>
                                                 <Checkbox
                                                     id={`${question.id}-${opt}`}
                                                     checked={isChecked}
@@ -342,7 +342,7 @@ const ElementRenderer = ({
                                         )
                                     })}
                                     {question.allowOther && (
-                                        <div className={cn("flex items-center gap-3 rounded-xl border-2 p-4 transition-all", (field.value?.other || '') && "border-primary bg-primary/5")}>
+                                        <div className={cn("flex items-center gap-3 rounded-xl border bg-white p-4 transition-all", (field.value?.other || '') && "border-primary bg-primary/5")}>
                                             <Checkbox
                                                 id={`${question.id}-other-checkbox`}
                                                 checked={!!(field.value?.other || '')}
@@ -357,7 +357,7 @@ const ElementRenderer = ({
                                             <Input
                                                 id={`${question.id}-other-input`}
                                                 placeholder="Other (please specify)"
-                                                className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 font-medium"
+                                                className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 font-normal"
                                                 value={field.value?.other || ''}
                                                 onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
                                             />
@@ -373,12 +373,12 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-muted/20 border-border/50", textAlign === 'center' && 'mx-auto')}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-white border-border/50", textAlign === 'center' && 'mx-auto')}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {question.options?.map(opt => (
-                                            <SelectItem key={opt} value={opt} className="text-base">{opt}</SelectItem>
+                                            <SelectItem key={opt} value={opt} className="text-base font-normal">{opt}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -399,7 +399,7 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-border/50 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4" {...field} value={field.value || ''} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-white border-border/50 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-normal" {...field} value={field.value || ''} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -882,19 +882,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
             
-            <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-card/95 backdrop-blur-sm">
-                <CardContent className="p-6 sm:p-12 space-y-12">
-                    {pageSection && (
-                        <div className="text-center space-y-3 mb-12">
-                            <h2 className="text-3xl font-black tracking-tight text-foreground">{(pageSection as any).title}</h2>
-                            {(pageSection as any).description && (
-                                <p className="text-muted-foreground text-lg font-medium leading-relaxed max-w-2xl mx-auto italic">
-                                    {(pageSection as any).description}
-                                </p>
-                            )}
-                        </div>
+            {pageSection && (
+                <div className="text-center space-y-2 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                    {(pageSection as any).description && (
+                        <p className="text-muted-foreground text-base leading-relaxed max-w-2xl mx-auto italic">
+                            {(pageSection as any).description}
+                        </p>
                     )}
+                </div>
+            )}
 
+            <Card className="border border-primary/20 shadow-xl rounded-3xl overflow-hidden bg-[#F0F7FF]/90 backdrop-blur-sm">
+                <CardContent className="p-6 sm:p-12 space-y-12">
                     <div className="space-y-12">
                         {currentElements.map((el) => {
                             if (el.id === pageSection?.id) return null;
