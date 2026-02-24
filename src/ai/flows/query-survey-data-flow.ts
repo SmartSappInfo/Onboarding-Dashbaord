@@ -28,28 +28,37 @@ const queryPrompt = ai.definePrompt({
         elementsJson: z.string(),
         responsesJson: z.string(),
         userQuery: z.string(),
+        scoringEnabled: z.boolean(),
+        maxScore: z.number().optional(),
     }) },
     output: { schema: QuerySurveyDataOutputSchema },
     prompt: `You are an expert data analyst. Your task is to answer a specific question from a user about a given set of survey data.
 
-    Here is the survey structure:
+    --- CONTEXT ---
     Title: {{{title}}}
+    Scoring Enabled: {{{scoringEnabled}}}
+    {{#if scoringEnabled}}
+    Max Possible Score: {{{maxScore}}}
+    {{/if}}
     
-    Survey elements (questions and layout):
+    --- SURVEY STRUCTURE ---
     \`\`\`json
     {{{elementsJson}}}
     \`\`\`
 
-    Raw responses:
+    --- RESPONSES ---
     \`\`\`json
     {{{responsesJson}}}
     \`\`\`
 
-    ---
-    User Query: "{{{userQuery}}}"
-    ---
+    --- USER QUERY ---
+    "{{{userQuery}}}"
 
+    --- INSTRUCTIONS ---
     Based on the data provided, please provide a clear and concise answer to the user's query.
+    {{#if scoringEnabled}}
+    - IMPORTANT: Since scoring is enabled, use the scores and result page logic to provide more meaningful context if relevant to the user's question.
+    {{/if}}
     - If possible, provide quantitative data (percentages, counts) to support your answer.
     - If the query is about qualitative data (text responses), identify common themes or provide representative examples.
     - Format your response in simple, clean HTML using tags like <p>, <strong>, <ul>, and <blockquote>. Ensure each paragraph, list item, and heading is enclosed in its own tag to ensure proper spacing. Do not use complex HTML, inline styles, or <style> tags.
@@ -71,6 +80,8 @@ const querySurveyDataFlow = ai.defineFlow(
             elementsJson: surveyElementsJson,
             responsesJson: responsesJson,
             userQuery: query,
+            scoringEnabled: !!survey.scoringEnabled,
+            maxScore: survey.maxScore,
         };
 
         const { output } = await queryPrompt(promptInput);
