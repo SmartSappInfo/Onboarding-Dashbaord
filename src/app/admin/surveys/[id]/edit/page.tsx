@@ -8,8 +8,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Separator
+    Check, Loader2, Palette, Layout, Eye, X
 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm } from 'react-hook-form';

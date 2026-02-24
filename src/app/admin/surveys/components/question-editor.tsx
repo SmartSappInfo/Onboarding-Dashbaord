@@ -829,7 +829,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isAutoAdvanceable = isElementQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
   
   return (
-    <div ref={setNodeRef} style={style} className="relative group">
+    <div className="relative group" ref={setNodeRef} style={style}>
         <div
             className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
