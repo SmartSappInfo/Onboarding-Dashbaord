@@ -198,7 +198,10 @@ export interface Survey {
   title: string;
   description: string;
   slug: string;
+  logoUrl?: string;
   bannerImageUrl?: string;
+  backgroundColor?: string;
+  backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes';
   status: 'draft' | 'published' | 'archived';
   elements: SurveyElement[];
   createdAt: string; // ISO string
