@@ -28,6 +28,8 @@ import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import SurveyPreviewButton from '../components/survey-preview-button';
+import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
+import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -69,6 +71,7 @@ const layoutBlockSchema = z.object({
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
+    if (data.type === 'section' && !data.title) return false;
     return true;
 }, {
     message: 'This block requires content.',
@@ -141,6 +144,10 @@ export default function NewSurveyPage() {
     const router = useRouter();
     const firestore = useFirestore();
     const [step, setStep] = React.useState(1);
+    
+    // Validation Error Modal State
+    const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
+    const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -167,76 +174,63 @@ export default function NewSurveyPage() {
 
     const { getValues } = form;
 
-    const scrollToFirstError = (errors: any) => {
-        if (errors.elements) {
-            const firstErrorIndex = errors.elements.findIndex((e: any) => !!e);
-            if (firstErrorIndex !== -1) {
-                const elementId = getValues(`elements.${firstErrorIndex}.id`);
-                setTimeout(() => {
-                    const el = document.getElementById(elementId);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 100);
+    const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
+        const parsed: ValidationError[] = [];
+        if (!errors.elements || !Array.isArray(errors.elements)) return parsed;
+
+        errors.elements.forEach((err: any, index: number) => {
+            if (!err) return;
+            const element = elements[index];
+            const blockType = element.type.charAt(0).toUpperCase() + element.type.slice(1);
+            
+            // Generate a readable block title
+            let blockTitle = `Block #${index + 1} (${blockType})`;
+            if ('title' in element && element.title) {
+                blockTitle = `Block #${index + 1}: "${element.title}"`;
+            } else if ('isRequired' in element && (element as SurveyQuestion).title) {
+                blockTitle = `Question #${index + 1}: "${(element as SurveyQuestion).title}"`;
             }
-        }
+
+            // Iterate over fields in this element that have errors
+            Object.keys(err).forEach(field => {
+                const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
+                parsed.push({
+                    elementId: element.id,
+                    blockTitle,
+                    field: fieldName,
+                    message: err[field]?.message || 'Invalid value',
+                });
+            });
+        });
+
+        return parsed;
     };
 
-    const onSubmit = (data: FormData) => {
-        if (!firestore) {
-            toast({
-                variant: "destructive",
-                title: "Firestore not available",
-            });
-            return;
-        }
-
-        const surveyData = {
-            ...data,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
-
-        // Clean up data: Remove undefined values entirely instead of setting to null
-        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => {
-            if (value === undefined) return undefined;
-            return value;
-        }));
-
-        const surveysCollection = collection(firestore, 'surveys');
-        form.control.disabled = true;
-
-        addDoc(surveysCollection, cleanedData)
-            .then(() => {
-                toast({
-                    title: 'Survey Created',
-                    description: `The survey "${data.title}" has been saved.`,
-                });
-                router.push('/admin/surveys');
-            })
-            .catch((error) => {
-                const permissionError = new FirestorePermissionError({
-                    path: surveysCollection.path,
-                    operation: 'create',
-                    requestResourceData: cleanedData,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({
-                    variant: 'destructive',
-                    title: 'Uh oh! Something went wrong.',
-                    description: 'There was a problem saving the survey.',
-                });
-            }).finally(() => {
-                form.control.disabled = false;
-            });
+    const scrollToError = (elementId: string) => {
+        setIsErrorModalOpen(false);
+        setTimeout(() => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
     };
 
     const onInvalid = (errors: any) => {
         console.error("Survey Validation Failed:", errors);
         
+        const elements = getValues('elements');
+        const elementErrors = parseValidationErrors(errors, elements);
+
+        if (elementErrors.length > 0) {
+            setValidationErrors(elementErrors);
+            setIsErrorModalOpen(true);
+            setStep(2); // Jump to builder if errors are there
+            return;
+        }
+
         let targetStep = 4;
         if (errors.title || errors.description) targetStep = 1;
-        else if (errors.elements) targetStep = 2;
         else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
         
         setStep(targetStep);
@@ -246,10 +240,6 @@ export default function NewSurveyPage() {
             title: 'Form Incomplete',
             description: 'Please check all steps for missing or incorrect information.',
         });
-
-        if (targetStep === 2) {
-            scrollToFirstError(errors);
-        }
     };
     
     const handleNext = async () => {
@@ -261,14 +251,21 @@ export default function NewSurveyPage() {
         const isStepValid = await form.trigger(fieldsToValidate);
         
         if (!isStepValid) {
+            if (step === 2) {
+                const elements = getValues('elements');
+                const elementErrors = parseValidationErrors(form.formState.errors, elements);
+                if (elementErrors.length > 0) {
+                    setValidationErrors(elementErrors);
+                    setIsErrorModalOpen(true);
+                    return;
+                }
+            }
+
             toast({
                 variant: 'destructive',
                 title: 'Validation Error',
                 description: 'Please fix the errors before proceeding.',
             });
-            if (step === 2) {
-                scrollToFirstError(form.formState.errors);
-            }
             return;
         }
 
@@ -288,7 +285,15 @@ export default function NewSurveyPage() {
             <div className="w-full md:w-[70%] mx-auto">
                 <FormProvider {...form}>
                     <Stepper currentStep={step} />
-                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+                    <form onSubmit={form.handleSubmit((data) => {
+                        if (!firestore) return;
+                        const surveyData = { ...data, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+                        const cleanedData = JSON.parse(JSON.stringify(surveyData));
+                        addDoc(collection(firestore, 'surveys'), cleanedData).then(() => {
+                            toast({ title: 'Survey Created' });
+                            router.push('/admin/surveys');
+                        });
+                    }, onInvalid)} className="space-y-8">
                         
                         {/* Step 1: Details */}
                         <Card className={cn(step !== 1 && 'hidden')}>
@@ -456,6 +461,13 @@ export default function NewSurveyPage() {
                     </form>
                 </FormProvider>
             </div>
+
+            <ValidationErrorModal
+                open={isErrorModalOpen}
+                onOpenChange={setIsErrorModalOpen}
+                errors={validationErrors}
+                onFix={scrollToError}
+            />
         </div>
     );
 }

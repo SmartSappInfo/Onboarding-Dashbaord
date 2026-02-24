@@ -30,6 +30,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import SurveyPreviewButton from '../../components/survey-preview-button';
+import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
 
 
 const questionSchema = z.object({
@@ -72,6 +73,7 @@ const layoutBlockSchema = z.object({
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
+    if (data.type === 'section' && !data.title) return false;
     return true;
 }, {
     message: 'This block requires content.',
@@ -145,6 +147,10 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const router = useRouter();
     const firestore = useFirestore();
     const [step, setStep] = React.useState(1);
+    
+    // Validation Error Modal State
+    const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
+    const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -184,19 +190,44 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         }
     }, [survey, form]);
 
-    const scrollToFirstError = (errors: any) => {
-        if (errors.elements) {
-            const firstErrorIndex = errors.elements.findIndex((e: any) => !!e);
-            if (firstErrorIndex !== -1) {
-                const elementId = getValues(`elements.${firstErrorIndex}.id`);
-                setTimeout(() => {
-                    const el = document.getElementById(elementId);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                }, 100);
+    const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
+        const parsed: ValidationError[] = [];
+        if (!errors.elements || !Array.isArray(errors.elements)) return parsed;
+
+        errors.elements.forEach((err: any, index: number) => {
+            if (!err) return;
+            const element = elements[index];
+            const blockType = element.type.charAt(0).toUpperCase() + element.type.slice(1);
+            
+            let blockTitle = `Block #${index + 1} (${blockType})`;
+            if ('title' in element && element.title) {
+                blockTitle = `Block #${index + 1}: "${element.title}"`;
+            } else if ('isRequired' in element && (element as SurveyQuestion).title) {
+                blockTitle = `Question #${index + 1}: "${(element as SurveyQuestion).title}"`;
             }
-        }
+
+            Object.keys(err).forEach(field => {
+                const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
+                parsed.push({
+                    elementId: element.id,
+                    blockTitle,
+                    field: fieldName,
+                    message: err[field]?.message || 'Invalid value',
+                });
+            });
+        });
+
+        return parsed;
+    };
+
+    const scrollToError = (elementId: string) => {
+        setIsErrorModalOpen(false);
+        setTimeout(() => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
     };
 
     const onSubmit = (data: FormData) => {
@@ -207,7 +238,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
           updatedAt: new Date().toISOString(),
         };
 
-        // Clean up data: Remove undefined values entirely instead of setting to null
         const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => {
             if (value === undefined) return undefined;
             return value;
@@ -244,9 +274,18 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const onInvalid = (errors: any) => {
         console.error("Survey Edit Validation Failed:", errors);
         
+        const elements = getValues('elements');
+        const elementErrors = parseValidationErrors(errors, elements);
+
+        if (elementErrors.length > 0) {
+            setValidationErrors(elementErrors);
+            setIsErrorModalOpen(true);
+            setStep(2); 
+            return;
+        }
+
         let targetStep = 4;
         if (errors.title || errors.description) targetStep = 1;
-        else if (errors.elements) targetStep = 2;
         else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
         
         setStep(targetStep);
@@ -256,10 +295,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             title: 'Form Incomplete',
             description: 'Please fix the errors before saving.',
         });
-
-        if (targetStep === 2) {
-            scrollToFirstError(errors);
-        }
     };
     
     const handleNext = async () => {
@@ -271,14 +306,21 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         const isStepValid = await form.trigger(fieldsToValidate);
         
         if (!isStepValid) {
+            if (step === 2) {
+                const elements = getValues('elements');
+                const elementErrors = parseValidationErrors(form.formState.errors, elements);
+                if (elementErrors.length > 0) {
+                    setValidationErrors(elementErrors);
+                    setIsErrorModalOpen(true);
+                    return;
+                }
+            }
+
             toast({
                 variant: 'destructive',
                 title: 'Validation Error',
                 description: 'Please fix the errors before proceeding.',
             });
-            if (step === 2) {
-                scrollToFirstError(form.formState.errors);
-            }
             return;
         }
         setStep(s => s + 1);
@@ -473,6 +515,13 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     </div>
                 </div>
             </form>
+
+            <ValidationErrorModal
+                open={isErrorModalOpen}
+                onOpenChange={setIsErrorModalOpen}
+                errors={validationErrors}
+                onFix={scrollToError}
+            />
         </FormProvider>
     );
 }
