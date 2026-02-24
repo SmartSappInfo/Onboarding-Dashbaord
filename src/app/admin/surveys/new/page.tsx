@@ -423,7 +423,7 @@ export default function NewSurveyPage() {
                             <ResultsStep />
                         </div>
 
-                        <div className={cn(step !== 4 && 'hidden')} className="space-y-8">
+                        <div className={cn("space-y-8", step !== 4 && 'hidden')}>
                             <LogicSimulator form={form} />
 
                             <Card>

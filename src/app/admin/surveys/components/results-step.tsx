@@ -1,10 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BrainCircuit, Layout, Trophy, ArrowRight, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import ResultRuleManager from './result-rule-manager';
 import ResultPageBuilder from './result-page-builder';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -144,5 +144,3 @@ export default function ResultsStep() {
         </div>
     );
 }
-
-import { cn } from '@/lib/utils';
