@@ -36,7 +36,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MediaSelect } from '../../components/media-select';
+import { MediaSelect } from '../../../schools/components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
