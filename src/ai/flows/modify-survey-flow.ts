@@ -17,6 +17,7 @@ const resultBlockSchema = z.object({
   url: z.string().optional(),
   link: z.string().optional(),
   openInNewTab: z.boolean().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
   style: z.object({
     textAlign: z.enum(['left', 'center', 'right']).optional(),
     variant: z.string().optional(),
@@ -69,6 +70,7 @@ const layoutBlockSchema = z.object({
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
   stepperTitle: z.string().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
 });
 
 const logicActionSchema = z.object({
@@ -132,7 +134,8 @@ Review the current survey structure and the user's request. Modify the survey to
 2. **Logic Updates**: If you add or remove questions, update any 'logic' blocks or 'resultRules' that might be affected.
 3. **Scoring**: If 'scoringEnabled' is true, ensure new questions have appropriate scores and 'maxScore' is updated to the new possible maximum.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
-5. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+5. **Layouts**: When adding 'heading' blocks, use an appropriate 'variant' (h1, h2, h3).
+6. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- CURRENT SURVEY ---
 Title: {{{currentSurvey.title}}}

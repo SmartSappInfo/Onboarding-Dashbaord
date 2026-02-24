@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -60,7 +59,11 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
                                     "w-full",
                                     block.style?.textAlign === 'center' ? 'text-center flex flex-col items-center' : block.style?.textAlign === 'right' ? 'text-right flex flex-col items-end' : 'text-left'
                                 )}>
-                                    {block.type === 'heading' && <h2 className="text-3xl font-black tracking-tight">{block.title}</h2>}
+                                    {block.type === 'heading' && (
+                                        block.variant === 'h1' ? <h1 className="text-4xl font-black tracking-tight">{block.title}</h1> :
+                                        block.variant === 'h3' ? <h3 className="text-xl font-bold tracking-tight">{block.title}</h3> :
+                                        <h2 className="text-3xl font-black tracking-tight">{block.title}</h2>
+                                    )}
                                     {block.type === 'text' && <div className="prose prose-slate max-w-none text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: block.content || '' }} />}
                                     {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-white"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
                                     {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} /></div>}
@@ -100,9 +103,33 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
     return (
         <div className="space-y-6 pt-4 border-t mt-4">
             <div className="grid gap-4">
-                {['heading', 'button'].includes(block.type) && (
+                {block.type === 'heading' && (
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Heading Level</Label>
+                            <Select 
+                                value={block.variant || 'h2'} 
+                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.variant`, val, { shouldDirty: true })}
+                            >
+                                <SelectTrigger className="h-9">
+                                    <SelectValue placeholder="Select level" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="h1">Heading 1 (Large)</SelectItem>
+                                    <SelectItem value="h2">Heading 2 (Medium)</SelectItem>
+                                    <SelectItem value="h3">Heading 3 (Small)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase text-muted-foreground">Heading Text</Label>
+                            <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
+                        </div>
+                    </div>
+                )}
+                {block.type === 'button' && (
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Title / Text</Label>
+                        <Label className="text-xs font-bold uppercase text-muted-foreground">Button Text</Label>
                         <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
                     </div>
                 )}
@@ -297,7 +324,10 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
             style: { textAlign: 'center', animate: true, variant: 'default' },
         };
 
-        if (type === 'heading') newBlock.title = 'Outcome Heading';
+        if (type === 'heading') {
+            newBlock.title = 'Outcome Heading';
+            newBlock.variant = 'h2';
+        }
         if (type === 'text') newBlock.content = '<p>Your descriptive text here...</p>';
         if (type === 'button') {
             newBlock.title = 'Next Step';

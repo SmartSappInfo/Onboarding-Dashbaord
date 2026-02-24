@@ -165,6 +165,7 @@ export interface SurveyResultBlock {
     url?: string;
     link?: string;
     openInNewTab?: boolean;
+    variant?: 'h1' | 'h2' | 'h3'; // Added for headings
     style?: {
         textAlign?: 'left' | 'center' | 'right';
         variant?: 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost' | 'link';

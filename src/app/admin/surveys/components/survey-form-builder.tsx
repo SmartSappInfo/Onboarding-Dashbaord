@@ -82,7 +82,10 @@ export default function SurveyFormBuilder() {
             (newElement as SurveyLayoutBlock).description = '';
             (newElement as SurveyLayoutBlock).renderAsPage = false;
         } else if (isLayoutBlock(newElement as SurveyElement)) {
-            if(type === 'heading') (newElement as SurveyLayoutBlock).title = 'New Heading';
+            if(type === 'heading') {
+                (newElement as SurveyLayoutBlock).title = 'New Heading';
+                (newElement as SurveyLayoutBlock).variant = 'h2'; // Default to Heading 2
+            }
             if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
             if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
             if(['image', 'video', 'audio', 'document'].includes(type)) (newElement as SurveyLayoutBlock).url = '';

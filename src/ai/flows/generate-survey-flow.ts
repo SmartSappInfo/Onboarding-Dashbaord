@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to generate an intelligent, scored survey from various content sources.
@@ -17,6 +16,7 @@ const resultBlockSchema = z.object({
   url: z.string().optional(),
   link: z.string().optional(),
   openInNewTab: z.boolean().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
   style: z.object({
     textAlign: z.enum(['left', 'center', 'right']).optional(),
     variant: z.string().optional(),
@@ -71,6 +71,7 @@ const layoutBlockSchema = z.object({
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
   stepperTitle: z.string().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
 });
 
 const logicActionSchema = z.object({
@@ -138,6 +139,7 @@ If the content suggests an assessment, quiz, or qualification flow, ENABLE SCORI
 3. **Structure Elements**:
    - Use 'section' blocks with 'renderAsPage: true' to group questions.
    - Provide a 'stepperTitle' for every section (e.g., "Your Profile", "Risk Assessment").
+   - For 'heading' blocks, choose an appropriate 'variant' (h1, h2, or h3).
 4. **Logic Blocks**:
    - Use 'logic' blocks to skip irrelevant questions based on previous answers if the content allows.
 

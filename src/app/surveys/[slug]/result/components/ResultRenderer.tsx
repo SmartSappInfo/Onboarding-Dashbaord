@@ -99,8 +99,18 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     );
 
     switch (block.type) {
-        case 'heading':
-            return <h2 className={cn("text-2xl sm:text-3xl font-black tracking-tight", containerClasses)} style={{ color: block.style?.color }}>{block.title}</h2>;
+        case 'heading': {
+            const Tag = block.variant || 'h2';
+            const sizeClass = Tag === 'h1' ? "text-3xl sm:text-5xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-black";
+            return (
+                <Tag 
+                    className={cn(sizeClass, "tracking-tight", containerClasses)} 
+                    style={{ color: block.style?.color }}
+                >
+                    {block.title}
+                </Tag>
+            );
+        }
         case 'text':
             return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
         case 'image':
