@@ -10,7 +10,7 @@ import type { Survey } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -198,7 +198,7 @@ export default function SurveysPage() {
           <p>Edit Survey</p>
         </TooltipContent>
       </Tooltip>
-      <DropdownMenu modal={false}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors">
             <span className="sr-only">Open menu</span>
@@ -267,45 +267,58 @@ export default function SurveysPage() {
         <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[120px] text-center">Responses</TableHead>
-                <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
-                <TableHead className="w-[160px] text-right">Actions</TableHead>
+              <TableRow className="bg-muted/50">
+                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4 pl-6">Title</TableHead>
+                <TableHead className="w-[120px] text-[10px] font-bold uppercase tracking-widest py-4">Status</TableHead>
+                <TableHead className="w-[120px] text-center text-[10px] font-bold uppercase tracking-widest py-4">Responses</TableHead>
+                <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-bold uppercase tracking-widest py-4">Created At</TableHead>
+                <TableHead className="w-[160px] text-right text-[10px] font-bold uppercase tracking-widest py-4 pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
                     <TableCell><Skeleton className="h-6 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
                     <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
+                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
                   </TableRow>
                 ))
               ) : surveys && surveys.length > 0 ? (
                 surveys.map((survey) => (
-                  <TableRow key={survey.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline">
-                        {survey.title}
-                      </Link>
+                  <TableRow key={survey.id} className="group hover:bg-muted/30 transition-colors">
+                    <TableCell className="font-medium pl-6">
+                      <div className="flex items-center gap-2">
+                        <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors">
+                          {survey.title}
+                        </Link>
+                        {survey.scoringEnabled && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-black gap-1">
+                                        <Trophy className="h-2.5 w-2.5" />
+                                        Scored
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>This survey uses the intelligent scoring engine.</TooltipContent>
+                            </Tooltip>
+                        )}
+                      </div>
                     </TableCell>
-                    <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize">{survey.status}</Badge></TableCell>
+                    <TableCell><Badge variant={getStatusVariant(survey.status)} className="capitalize text-[10px] font-bold rounded-full px-2.5">{survey.status}</Badge></TableCell>
                     <TableCell className="text-center">
-                        <Button variant="link" asChild className="font-semibold h-auto p-0">
+                        <Button variant="link" asChild className="font-black text-sm h-auto p-0">
                             <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
                                 <SurveyResponseCount surveyId={survey.id} />
                             </Link>
                         </Button>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">
+                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">
                       {survey.createdAt ? format(new Date(survey.createdAt), "PPP") : 'Not set'}
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="text-right pr-6">
                        {renderActions(survey)}
                     </TableCell>
                   </TableRow>
@@ -313,9 +326,9 @@ export default function SurveysPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={5} className="h-48 text-center">
-                    <PlusCircle className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No Surveys Yet</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Create your first survey manually or with AI.</p>
+                    <PlusCircle className="mx-auto h-12 w-12 text-muted-foreground/30" />
+                    <h3 className="mt-4 text-lg font-bold">No Surveys Yet</h3>
+                    <p className="mt-1 text-sm text-muted-foreground italic">Create your first intelligent survey manually or with AI.</p>
                   </TableCell>
                 </TableRow>
               )}
