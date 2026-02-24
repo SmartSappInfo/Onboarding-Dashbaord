@@ -81,10 +81,11 @@ const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'a
       return undefined;
 }
 
-function FormattingToolbar({ fieldName, alignValue, onAlignChange }: { 
+function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: { 
     fieldName: string;
     alignValue?: 'left' | 'center' | 'right';
     onAlignChange?: (val: 'left' | 'center' | 'right') => void;
+    minimal?: boolean;
 }) {
     const { getValues, setValue } = useFormContext();
 
@@ -109,15 +110,15 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange }: {
     };
 
     return (
-        <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-md mb-2">
+        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted/50 p-1 rounded-md mb-2")}>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('b')} title="Bold">
-                <Bold className="h-3.5 w-3.5" />
+                <Bold className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('i')} title="Italic">
-                <Italic className="h-3.5 w-3.5" />
+                <Italic className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('u')} title="Underline">
-                <Underline className="h-3.5 w-3.5" />
+                <Underline className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             
             {onAlignChange && (
@@ -830,11 +831,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   return (
     <div ref={setNodeRef} style={style} className="relative group">
         <div
-            className="absolute top-0 left-[-32px] top-1/2 -translate-y-1/2 z-20 cursor-grab p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
             {...listeners}
         >
-            <GripVertical className="h-5 w-5 text-muted-foreground" />
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         <Card 
             id={element.id}
@@ -846,22 +847,56 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         >
              <CardHeader className={cn(isMediaLayout && 'p-0 mb-4')}>
                 <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        {(!isElementLayout || isElementSection) && (
-                            <>
-                                <ElementIcon className="w-5 h-5 shrink-0" />
-                                {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                                <span className="font-bold">
-                                  {isElementQuestion ? `Question #${watch('elements').filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
-                                    : isElementSection ? '' 
-                                    : 'Logic Block'}
-                                </span>
-                            </>
-                        )}
-                        {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <div className={cn(
+                            "flex items-center justify-center rounded border p-1 bg-primary/5",
+                            element.hidden && "opacity-50"
+                        )}>
+                            <ElementIcon className="w-4 h-4 text-primary shrink-0" />
+                        </div>
+                        <span>
+                            {isElementQuestion ? `Question #${watch('elements').filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
+                            : isElementSection ? element.title || 'New Section'
+                            : isElementLayout ? `${element.type} Block`
+                            : 'Logic Block'}
+                        </span>
+                        {element.hidden && <Badge variant="outline" className="ml-2 h-5 text-[8px] font-bold">Hidden</Badge>}
                     </div>
                     <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <TooltipProvider>
+                            {/* Formatting and Level Controls */}
+                            {element.type === 'heading' && (
+                                <>
+                                    <Select 
+                                        value={element.variant || 'h2'} 
+                                        onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
+                                    >
+                                        <SelectTrigger className="w-24 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="h1">H1</SelectItem>
+                                            <SelectItem value="h2">H2</SelectItem>
+                                            <SelectItem value="h3">H3</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Separator orientation="vertical" className="h-4 mx-1" />
+                                </>
+                            )}
+
+                            {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && (
+                                <>
+                                    <FormattingToolbar 
+                                        fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
+                                        alignValue={element.style?.textAlign}
+                                        onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
+                                        minimal
+                                    />
+                                    <Separator orientation="vertical" className="h-4 mx-1" />
+                                </>
+                            )}
+
+                            {/* System Actions */}
                             {isElementQuestion && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -940,17 +975,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                  {isElementQuestion ? (
                     <div className="grid grid-cols-1 gap-y-6">
                         <div className="space-y-2">
-                            <Label>Question Text</Label>
-                            <FormattingToolbar 
-                                fieldName={`elements.${index}.title`} 
-                                alignValue={element.style?.textAlign}
-                                onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
-                            />
-                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" className={cn(elementErrors?.title && "border-destructive")} />} />
+                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" className={cn("text-lg font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent", elementErrors?.title && "text-destructive")} />} />
                             {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
                         <div className="space-y-2">
-                             <Label>{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
+                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{(element.type === 'text' || element.type === 'long-text') ? 'Placeholder' : 'Default Value'}</Label>
                              
                              {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
                                  <Controller
@@ -1052,35 +1081,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                          )}
                         {element.type === 'heading' && (
                             <div className="space-y-4">
-                                <div className="flex items-center gap-2">
-                                    <Select 
-                                        value={element.variant || 'h2'} 
-                                        onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
-                                    >
-                                        <SelectTrigger className="w-32 h-8 text-xs">
-                                            <SelectValue placeholder="Level" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="h1">Heading 1</SelectItem>
-                                            <SelectItem value="h2">Heading 2</SelectItem>
-                                            <SelectItem value="h3">Heading 3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <Separator orientation="vertical" className="h-4" />
-                                    <FormattingToolbar 
-                                        fieldName={`elements.${index}.title`} 
-                                        alignValue={element.style?.textAlign}
-                                        onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
-                                    />
-                                </div>
                                 <Controller name={`elements.${index}.title`} control={control} render={({ field }) => (
                                     <Input 
                                         {...field} 
                                         value={field.value ?? ''} 
-                                        placeholder="Heading" 
+                                        placeholder="Heading Text" 
                                         className={cn(
                                             "border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent",
-                                            element.variant === 'h1' ? "text-3xl font-black" : element.variant === 'h3' ? "text-xl font-bold" : "text-2xl font-bold"
+                                            element.variant === 'h1' ? "text-3xl font-black" : element.variant === 'h3' ? "text-xl font-bold" : "text-2xl sm:text-3xl font-bold"
                                         )} 
                                     />
                                 )} />
@@ -1088,12 +1096,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         )}
                         {element.type === 'description' && (
                             <div className="space-y-2">
-                                <FormattingToolbar 
-                                    fieldName={`elements.${index}.text`} 
-                                    alignValue={element.style?.textAlign}
-                                    onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
-                                />
-                                <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px]" />} />
+                                <Controller name={`elements.${index}.text`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Description text..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent min-h-[40px] text-lg" />} />
                             </div>
                         )}
                         {element.type === 'divider' && <hr className="my-4 border-border" />}

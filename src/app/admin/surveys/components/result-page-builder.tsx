@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { 
     Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
     Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, 
-    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle
+    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle, Bold, Italic, Underline
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -28,6 +28,8 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEn
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import AddResultBlockModal from './add-result-block-modal';
+import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -94,6 +96,57 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
     )
 }
 
+function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex: number, blockIndex: number, minimal?: boolean }) {
+    const { getValues, setValue } = useFormContext();
+    const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
+
+    const applyFormatting = (tag: string) => {
+        const fieldName = `resultPages.${pageIndex}.blocks.${blockIndex}.${block.type === 'heading' || block.type === 'button' ? 'title' : 'content'}`;
+        const input = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
+        if (!input || !['TEXTAREA', 'INPUT'].includes(input.tagName)) return;
+
+        const start = input.selectionStart || 0;
+        const end = input.selectionEnd || 0;
+        const text = getValues(fieldName) || '';
+        
+        const selectedText = text.substring(start, end);
+        if (!selectedText) return;
+
+        const newText = text.substring(0, start) + `<${tag}>${selectedText}</${tag}>` + text.substring(end);
+        setValue(fieldName, newText, { shouldDirty: true });
+        
+        setTimeout(() => {
+            input.focus();
+            input.setSelectionRange(start, start + selectedText.length + (tag.length * 2) + 5);
+        }, 0);
+    };
+
+    return (
+        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted/50 p-1 rounded-md mb-2")}>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('b')} title="Bold">
+                <Bold className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('i')} title="Italic">
+                <Italic className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyFormatting('u')} title="Underline">
+                <Underline className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            
+            <Separator orientation="vertical" className="mx-1 h-4" />
+            <Button type="button" variant={block.style?.textAlign === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'left', { shouldDirty: true })}>
+                <AlignLeft className="h-3.5 w-3.5" />
+            </Button>
+            <Button type="button" variant={block.style?.textAlign === 'center' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'center', { shouldDirty: true })}>
+                <AlignCenter className="h-3.5 w-3.5" />
+            </Button>
+            <Button type="button" variant={block.style?.textAlign === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'right', { shouldDirty: true })}>
+                <AlignRight className="h-3.5 w-3.5" />
+            </Button>
+        </div>
+    );
+}
+
 function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockIndex: number }) {
     const { register, setValue } = useFormContext();
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
@@ -101,53 +154,35 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
     if (!block) return null;
 
     return (
-        <div className="space-y-6 pt-4 border-t mt-4">
+        <div className="space-y-6 pt-4">
             <div className="grid gap-4">
                 {block.type === 'heading' && (
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Heading Level</Label>
-                            <Select 
-                                value={block.variant || 'h2'} 
-                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.variant`, val, { shouldDirty: true })}
-                            >
-                                <SelectTrigger className="h-9">
-                                    <SelectValue placeholder="Select level" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="h1">Heading 1 (Large)</SelectItem>
-                                    <SelectItem value="h2">Heading 2 (Medium)</SelectItem>
-                                    <SelectItem value="h3">Heading 3 (Small)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Heading Text</Label>
-                            <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
-                        </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Heading Text</Label>
+                        <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" />
                     </div>
                 )}
                 {block.type === 'button' && (
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Button Text</Label>
-                        <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} />
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Button Text</Label>
+                        <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.title`)} className="font-bold" />
                     </div>
                 )}
                 {block.type === 'text' && (
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Content (HTML Supported)</Label>
-                        <Textarea {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.content`)} className="min-h-[150px] text-sm" />
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Content (HTML Supported)</Label>
+                        <Textarea {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.content`)} className="min-h-[150px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent" />
                     </div>
                 )}
                 {block.type === 'quote' && (
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Quote Text</Label>
-                        <Textarea {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.content`)} className="text-sm italic" />
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quote Text</Label>
+                        <Textarea {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.content`)} className="text-lg italic border-none shadow-none focus-visible:ring-0 p-0 bg-transparent" />
                     </div>
                 )}
                 {['image', 'video'].includes(block.type) && (
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase text-muted-foreground">Media URL</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Media URL</Label>
                         <MediaSelect 
                             value={block.url} 
                             onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.url`, val, { shouldDirty: true })}
@@ -156,70 +191,42 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                     </div>
                 )}
                 {block.type === 'button' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-4 border-t">
                         <div className="space-y-2">
-                            <Label className="text-xs font-bold uppercase text-muted-foreground">Link URL</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Link URL</Label>
                             <Input placeholder="https://..." {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.link`)} />
                         </div>
                         <div className="flex items-center justify-between">
-                            <Label className="text-xs">Open in New Tab</Label>
+                            <Label className="text-xs font-bold uppercase tracking-widest">Open in New Tab</Label>
                             <Switch 
                                 checked={!!block.openInNewTab} 
                                 onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.openInNewTab`, val, { shouldDirty: true })}
                             />
                         </div>
-                    </div>
-                )}
-
-                <div className="pt-4 border-t space-y-4">
-                    <Label className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground">Block Styling</Label>
-                    
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-bold text-muted-foreground">Text Alignment</Label>
-                        <div className="flex gap-1">
-                            {['left', 'center', 'right'].map((align) => {
-                                const Icon = align === 'left' ? AlignLeft : align === 'center' ? AlignCenter : AlignRight;
-                                return (
-                                    <Button
-                                        key={align}
-                                        type="button"
-                                        variant={block.style?.textAlign === align ? 'default' : 'outline'}
-                                        size="icon"
-                                        className="h-8 w-8"
-                                        onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, align, { shouldDirty: true })}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                    </Button>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    {block.type === 'button' && (
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-bold text-muted-foreground">Button Variant</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Button Style</Label>
                             <Select 
                                 value={block.style?.variant || 'default'} 
                                 onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.variant`, val, { shouldDirty: true })}
                             >
-                                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                                <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                     {['default', 'outline', 'secondary', 'destructive', 'ghost'].map(v => <SelectItem key={v} value={v} className="capitalize">{v}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         </div>
-                    )}
+                    </div>
+                )}
 
-                    {block.type === 'score-card' && (
-                        <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
-                            <Label className="text-xs font-bold">Animate Celebration</Label>
-                            <Switch 
-                                checked={!!block.style?.animate} 
-                                onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.animate`, val, { shouldDirty: true })}
-                            />
-                        </div>
-                    )}
-                </div>
+                {block.type === 'score-card' && (
+                    <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/30">
+                        <Label className="text-sm font-bold uppercase tracking-widest">Animate Celebration</Label>
+                        <Switch 
+                            checked={!!block.style?.animate} 
+                            onCheckedChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.animate`, val, { shouldDirty: true })}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -244,6 +251,7 @@ function SortableResultBlock({
     duplicate: (i: number) => void,
     requestAddBlock: (i: number) => void
 }) {
+    const { setValue } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const blockType = block.type;
     const Icon = blockIcons[blockType] || Type;
@@ -264,17 +272,46 @@ function SortableResultBlock({
             </div>
             <Card className="bg-card shadow-none border hover:border-primary/50 transition-colors">
                 <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-1.5 bg-background rounded border">
+                    <div className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <div className="flex items-center justify-center rounded border p-1 bg-background">
                             <Icon className="h-4 w-4 text-primary" />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{blockType} Block</span>
+                        <span>{blockType} Block</span>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicate(index)}><Copy className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <TooltipProvider>
+                            {/* Formatting and Level Controls */}
+                            {block.type === 'heading' && (
+                                <>
+                                    <Select 
+                                        value={block.variant || 'h2'} 
+                                        onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${index}.variant`, val, { shouldDirty: true })}
+                                    >
+                                        <SelectTrigger className="w-24 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="h1">H1</SelectItem>
+                                            <SelectItem value="h2">H2</SelectItem>
+                                            <SelectItem value="h3">H3</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Separator orientation="vertical" className="h-4 mx-1" />
+                                </>
+                            )}
+
+                            {['heading', 'text', 'quote', 'button'].includes(block.type) && (
+                                <>
+                                    <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
+                                    <Separator orientation="vertical" className="h-4 mx-1" />
+                                </>
+                            )}
+
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicate(index)}><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </TooltipProvider>
                     </div>
                 </CardHeader>
                 <CardContent className="px-4 pb-4">
