@@ -239,11 +239,12 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
     
     if (isQuestion(element)) {
         const question = element;
+        const textAlign = question.style?.textAlign || 'left';
         return (
             <Card id={question.id}>
-                <CardContent className="pt-6">
-                    <Label className="text-lg font-semibold">
-                        {question.title}
+                <CardContent className={cn("pt-6", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+                    <Label className="text-lg font-semibold block leading-tight">
+                        <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     <div className="mt-4">
@@ -258,7 +259,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                     <RadioGroup onValueChange={field.onChange} value={field.value} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                     <RadioGroup onValueChange={field.onChange} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                         <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
                                             <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
                                             Yes
@@ -276,7 +277,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className="space-y-3">
+                                    <RadioGroup onValueChange={field.onChange} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                         {question.options?.map(opt => (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
                                                 <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
@@ -293,7 +294,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 render={({ field }) => {
                                     return (
-                                    <div className="space-y-3">
+                                    <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                         {question.options?.map(opt => {
                                             const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                             return (
@@ -349,7 +350,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 name={question.id}
                                 render={({ field }) => (
                                     <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className="w-full sm:w-1/2 text-base h-11">
+                                        <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-11", textAlign === 'center' && 'mx-auto')}>
                                             <SelectValue placeholder="Select an option" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -362,27 +363,37 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                             />
                         )}
                         {question.type === 'rating' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <StarRating {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => (
+                                <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                                    <StarRating {...field} />
+                                </div>
+                            )} />
                         )}
                         {question.type === 'date' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
+                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                                <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
+                            </div>
                         )}
                         {question.type === 'time' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} value={field.value || ''} />} />
+                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                                <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} value={field.value || ''} />} />
+                            </div>
                         )}
                         {question.type === 'file-upload' && (
-                            <Controller
-                                control={control}
-                                name={question.id}
-                                render={({ field }) => (
-                                    <FileUpload
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={false}
-                                        surveyId={surveyId}
-                                    />
-                                )}
-                            />
+                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                                <Controller
+                                    control={control}
+                                    name={question.id}
+                                    render={({ field }) => (
+                                        <FileUpload
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            disabled={false}
+                                            surveyId={surveyId}
+                                        />
+                                    )}
+                                />
+                            </div>
                         )}
                         {errors[question.id] && (
                             <p className="text-sm font-medium text-destructive mt-2">
@@ -395,24 +406,46 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
         )
     } else {
         const block = element as SurveyLayoutBlock;
+        const textAlign = block.style?.textAlign || 'left';
+        const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left';
+
         switch (block.type) {
             case 'section':
-                 if (block.renderAsPage) return null; // Handled by page-level component
-                return <h2 id={block.id} className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2">{block.title}</h2>;
-            case 'heading':
-                return <h2 id={block.id} className="text-2xl font-bold mt-8 mb-4 border-b pb-2">{block.title}</h2>;
+                 if (block.renderAsPage) return null; 
+                return <h2 id={block.id} className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2 text-center">{block.title}</h2>;
+            case 'heading': {
+                const Tag = block.variant || 'h2';
+                const sizeClass = Tag === 'h1' ? "text-4xl font-black" : Tag === 'h3' ? "text-xl font-bold" : "text-3xl font-bold";
+                return (
+                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-8 mb-4 border-b pb-2")}>
+                        <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
+                    </Tag>
+                );
+            }
             case 'description':
-                return <p className="text-muted-foreground my-4 text-base">{block.text}</p>;
+                return (
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base", alignmentClass)}>
+                        <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
+                    </div>
+                );
             case 'divider':
                 return <hr className="my-8" />;
             case 'image':
-                return block.url ? <div className="relative aspect-video my-6 rounded-lg overflow-hidden"><Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" /></div> : null;
+                return block.url ? (
+                    <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
+                        <Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" />
+                    </div>
+                ) : null;
             case 'video':
-                 return block.url ? <div className="my-6"><VideoEmbed url={block.url} /></div> : null;
+                 return block.url ? <div className={cn("my-6", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
                 return block.url ? <audio controls src={block.url} className="w-full my-6">Your browser does not support the audio element.</audio> : null;
             case 'document':
-                 return block.url ? <Button asChild variant="outline" className="my-6"><a href={block.url} target="_blank" rel="noopener noreferrer">Download Document</a></Button> : null;
+                 return (
+                    <div className={cn("my-6", alignmentClass)}>
+                        <Button asChild variant="outline"><a href={block.url} target="_blank" rel="noopener noreferrer">Download Document</a></Button>
+                    </div>
+                 );
             case 'embed':
                 return block.html ? <div className="my-6" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:

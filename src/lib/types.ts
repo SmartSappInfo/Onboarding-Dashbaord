@@ -116,6 +116,9 @@ export interface SurveyQuestion {
   optionScores?: number[];
   yesScore?: number;
   noScore?: number;
+  style?: {
+    textAlign?: 'left' | 'center' | 'right';
+  };
 }
 
 export interface SurveyLayoutBlock {
@@ -129,6 +132,10 @@ export interface SurveyLayoutBlock {
   html?: string; // For embed
   hidden?: boolean;
   renderAsPage?: boolean;
+  variant?: 'h1' | 'h2' | 'h3'; // For headings
+  style?: {
+    textAlign?: 'left' | 'center' | 'right';
+  };
 }
 
 export interface SurveyLogicAction {
