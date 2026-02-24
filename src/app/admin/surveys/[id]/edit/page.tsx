@@ -222,13 +222,13 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundP
     );
 };
 
-function EditSurveyForm({ surveyId }: { surveyId: string }) {
-    const { toast } = useToast();
+export default function EditSurveyPage() {
+    const params = useParams();
     const router = useRouter();
     const firestore = useFirestore();
+    const surveyId = params.id as string;
+    const { toast } = useToast();
     const [step, setStep] = React.useState(1);
-    
-    // Validation Error Modal State
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
 
@@ -263,14 +263,14 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         }
     });
 
-    const { getValues, setValue, watch } = form;
+    const { getValues, setValue, watch, reset } = form;
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
-            form.reset({
+            reset({
                 title: survey.title,
                 description: survey.description,
                 elements: survey.elements || [],
@@ -299,7 +299,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 });
             }
         }
-    }, [survey, form, firestore, surveyId, setValue]);
+    }, [survey, reset, firestore, surveyId, setValue]);
 
     const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
         const parsed: ValidationError[] = [];
@@ -372,7 +372,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 await setDoc(doc(pagesCol, page.id), page);
             }
 
-            // Success: Purge Local Auto-save Cache
             localStorage.removeItem(`survey-autosave-${surveyId}`);
 
             toast({ title: 'Survey Updated' });
@@ -453,19 +452,17 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     const isProgrammaticChange = React.useRef(false);
 
-    // Sync fields to history
     React.useEffect(() => {
         if (isProgrammaticChange.current) return;
         setHistory(debouncedForm.elements);
     }, [debouncedForm.elements, setHistory]);
 
-    // Apply history changes back to fields
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
-            form.setValue('elements', historyState, { shouldDirty: true });
+            setValue('elements', historyState, { shouldDirty: true });
             isProgrammaticChange.current = false;
         }
-    }, [historyState, form]);
+    }, [historyState, setValue]);
 
     if (isLoading) {
         return (
@@ -477,308 +474,312 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     return (
         <FormProvider {...form}>
-            <Stepper currentStep={step} />
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-                
-                <div className={cn(step !== 1 && 'hidden')}>
-                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                        <Card className="xl:col-span-2">
-                            <CardHeader>
-                                <CardTitle>Survey Details</CardTitle>
-                                <CardDescription>Basic information and structural settings.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
+            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+                <div className="w-full md:w-[90%] mx-auto">
+                    <Stepper currentStep={step} />
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
+                        
+                        <div className={cn(step !== 1 && 'hidden')}>
+                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                <Card className="xl:col-span-2">
+                                    <CardHeader>
+                                        <CardTitle>Survey Details</CardTitle>
+                                        <CardDescription>Basic information and structural settings.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-8">
+                                            <FormField
+                                                control={form.control}
+                                                name="title"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Survey Title</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="description"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Description / Instructions</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <Separator />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <FormField
+                                                    control={form.control}
+                                                    name="startButtonText"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Start Button Text</FormLabel>
+                                                            <FormControl>
+                                                                <Input placeholder="e.g., Let's Start" {...field} />
+                                                            </FormControl>
+                                                            <FormDescription>The label for the button on the cover page.</FormDescription>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={form.control}
+                                                    name="showCoverPage"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                            <div className="space-y-0.5">
+                                                                <FormLabel className="text-base">Use Cover Page</FormLabel>
+                                                                <FormDescription>Show title and description on a separate first page.</FormDescription>
+                                                            </div>
+                                                            <FormControl>
+                                                                <Switch
+                                                                    checked={field.value}
+                                                                    onCheckedChange={field.onChange}
+                                                                />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
                                 <div className="space-y-8">
-                                    <FormField
-                                        control={form.control}
-                                        name="title"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Survey Title</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Description / Instructions</FormLabel>
-                                                <FormControl>
-                                                    <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Separator />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <FormField
-                                            control={form.control}
-                                            name="startButtonText"
-                                            render={({ field }) => (
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Branding</CardTitle>
+                                            <CardDescription>Logo and hero imagery.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            <FormField
+                                                control={form.control}
+                                                name="logoUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Brand Logo</FormLabel>
+                                                        <FormControl>
+                                                            <MediaSelect {...field} filterType="image" />
+                                                        </FormControl>
+                                                        <FormDescription>Leave empty to use SmartSapp default logo.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="bannerImageUrl"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Cover / Banner Image</FormLabel>
+                                                        <FormControl>
+                                                            <MediaSelect {...field} filterType="image" />
+                                                        </FormControl>
+                                                        <FormDescription>High-fidelity banner for the introduction.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </CardContent>
+                                    </Card>
+
+                                    <Card>
+                                        <CardHeader>
+                                            <CardTitle className="flex items-center gap-2"><Layout className="h-5 w-5" /> Appearance</CardTitle>
+                                            <CardDescription>Colors and background patterns.</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="space-y-6">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                                <div className="space-y-6">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="backgroundColor"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Background Color</FormLabel>
+                                                                <div className="flex items-center gap-2">
+                                                                    <FormControl>
+                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                    </FormControl>
+                                                                    <Input 
+                                                                        value={field.value} 
+                                                                        onChange={e => field.onChange(e.target.value)} 
+                                                                        className="flex-1 font-mono uppercase" 
+                                                                    />
+                                                                </div>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="patternColor"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Pattern Color</FormLabel>
+                                                                <div className="flex items-center gap-2">
+                                                                    <FormControl>
+                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                    </FormControl>
+                                                                    <Input 
+                                                                        value={field.value} 
+                                                                        onChange={e => field.onChange(e.target.value)} 
+                                                                        className="flex-1 font-mono uppercase" 
+                                                                    />
+                                                                </div>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="backgroundPattern"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Background Pattern</FormLabel>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <FormControl>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue placeholder="Select a pattern" />
+                                                                        </SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">None (Solid)</SelectItem>
+                                                                        <SelectItem value="dots">Dots</SelectItem>
+                                                                        <SelectItem value="grid">Grid</SelectItem>
+                                                                        <SelectItem value="circuit">Circuit</SelectItem>
+                                                                        <SelectItem value="topography">Topography</SelectItem>
+                                                                        <SelectItem value="cubes">Cubes</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Design Preview</Label>
+                                                    <div 
+                                                        className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
+                                                        style={{ backgroundColor: watchedBgColor }}
+                                                    >
+                                                        <BackgroundPattern pattern={watchedPattern} color={watchedPatternColor} />
+                                                        <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className={cn(step !== 2 && 'hidden')}>
+                            <SurveyFormBuilder />
+                        </div>
+                        
+                        <div className={cn(step !== 3 && 'hidden')}>
+                            <ResultsStep />
+                        </div>
+
+                        <div className={cn("space-y-8", step !== 4 && 'hidden')}>
+                            <div className="space-y-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle>Publish</CardTitle>
+                                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-8">
+                                            <FormField
+                                                control={form.control}
+                                                name="status"
+                                                render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Start Button Text</FormLabel>
+                                                    <FormLabel>Status</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
-                                                        <Input placeholder="e.g., Let's Start" {...field} />
+                                                        <SelectTrigger>
+                                                        <SelectValue placeholder="Select survey status" />
+                                                        </SelectTrigger>
                                                     </FormControl>
-                                                    <FormDescription>The label for the button on the cover page.</FormDescription>
+                                                    <SelectContent>
+                                                        <SelectItem value="draft">Draft</SelectItem>
+                                                        <SelectItem value="published">Published</SelectItem>
+                                                        <SelectItem value="archived">Archived</SelectItem>
+                                                    </SelectContent>
+                                                    </Select>
                                                     <FormMessage />
                                                 </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="showCoverPage"
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                    <div className="space-y-0.5">
-                                                        <FormLabel className="text-base">Use Cover Page</FormLabel>
-                                                        <FormDescription>Show title and description on a separate first page.</FormDescription>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="slug"
+                                                render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Survey URL</FormLabel>
+                                                    <div className="flex flex-col sm:flex-row group transition-all">
+                                                        <div 
+                                                            className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
+                                                            title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                        >
+                                                            <span className="truncate max-w-[200px]">
+                                                                {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                                            </span>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Input 
+                                                                {...field} 
+                                                                className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
+                                                            />
+                                                        </FormControl>
                                                     </div>
-                                                    <FormControl>
-                                                        <Switch
-                                                            checked={field.value}
-                                                            onCheckedChange={field.onChange}
-                                                        />
-                                                    </FormControl>
+                                                    <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
+                                                    <FormMessage className="text-xs font-bold" />
                                                 </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <div className="space-y-8">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Branding</CardTitle>
-                                    <CardDescription>Logo and hero imagery.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="logoUrl"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Brand Logo</FormLabel>
-                                                <FormControl>
-                                                    <MediaSelect {...field} filterType="image" />
-                                                </FormControl>
-                                                <FormDescription>Leave empty to use SmartSapp default logo.</FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="bannerImageUrl"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Cover / Banner Image</FormLabel>
-                                                <FormControl>
-                                                    <MediaSelect {...field} filterType="image" />
-                                                </FormControl>
-                                                <FormDescription>High-fidelity banner for the introduction.</FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
-
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Layout className="h-5 w-5" /> Appearance</CardTitle>
-                                    <CardDescription>Colors and background patterns.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                                        <div className="space-y-6">
-                                            <FormField
-                                                control={form.control}
-                                                name="backgroundColor"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Background Color</FormLabel>
-                                                        <div className="flex items-center gap-2">
-                                                            <FormControl>
-                                                                <Input type="color" {...field} className="w-12 h-10 p-1" />
-                                                            </FormControl>
-                                                            <Input 
-                                                                value={field.value} 
-                                                                onChange={e => field.onChange(e.target.value)} 
-                                                                className="flex-1 font-mono uppercase" 
-                                                            />
-                                                        </div>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="patternColor"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Pattern Color</FormLabel>
-                                                        <div className="flex items-center gap-2">
-                                                            <FormControl>
-                                                                <Input type="color" {...field} className="w-12 h-10 p-1" />
-                                                            </FormControl>
-                                                            <Input 
-                                                                value={field.value} 
-                                                                onChange={e => field.onChange(e.target.value)} 
-                                                                className="flex-1 font-mono uppercase" 
-                                                            />
-                                                        </div>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="backgroundPattern"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Background Pattern</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl>
-                                                                <SelectTrigger>
-                                                                    <SelectValue placeholder="Select a pattern" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">None (Solid)</SelectItem>
-                                                                <SelectItem value="dots">Dots</SelectItem>
-                                                                <SelectItem value="grid">Grid</SelectItem>
-                                                                <SelectItem value="circuit">Circuit</SelectItem>
-                                                                <SelectItem value="topography">Topography</SelectItem>
-                                                                <SelectItem value="cubes">Cubes</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
                                                 )}
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Design Preview</Label>
-                                            <div 
-                                                className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
-                                                style={{ backgroundColor: watchedBgColor }}
-                                            >
-                                                <BackgroundPattern pattern={watchedPattern} color={watchedPatternColor} />
-                                                <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className={cn(step !== 2 && 'hidden')}>
-                    <SurveyFormBuilder />
-                </div>
-                
-                <div className={cn(step !== 3 && 'hidden')}>
-                    <ResultsStep />
-                </div>
-
-                <div className={cn("space-y-8", step !== 4 && 'hidden')}>
-                    <div className="space-y-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Publish</CardTitle>
-                                <CardDescription>Configure the final settings and publish your survey.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-8">
-                                    <FormField
-                                        control={form.control}
-                                        name="status"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Status</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                <SelectValue placeholder="Select survey status" />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="draft">Draft</SelectItem>
-                                                <SelectItem value="published">Published</SelectItem>
-                                                <SelectItem value="archived">Archived</SelectItem>
-                                            </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="slug"
-                                        render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Survey URL</FormLabel>
-                                            <div className="flex flex-col sm:flex-row group transition-all">
-                                                <div 
-                                                    className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
-                                                    title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                >
-                                                    <span className="truncate max-w-[200px]">
-                                                        {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                    </span>
-                                                </div>
-                                                <FormControl>
-                                                    <Input 
-                                                        {...field} 
-                                                        className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
-                                                    />
-                                                </FormControl>
-                                            </div>
-                                            <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
-                                            <FormMessage className="text-xs font-bold" />
-                                        </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </div>
-                </div>
-
-                <div className="flex justify-between items-center mt-12">
-                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
-                    <div className="flex items-center gap-4">
-                        {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
-                        {step < 4 ? (
-                            <Button type="button" onClick={handleNext}>Next</Button>
-                        ) : (
-                            <div className="flex items-center gap-4">
-                                <SurveyPreviewButton />
-                                <Button type="submit" disabled={form.formState.isSubmitting}>
-                                    {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
-                                </Button>
+                                    </CardContent>
+                                </Card>
                             </div>
-                        )}
-                    </div>
-                </div>
-            </form>
+                        </div>
 
-            <ValidationErrorModal
-                open={isErrorModalOpen}
-                onOpenChange={setIsErrorModalOpen}
-                errors={validationErrors}
-                onFix={scrollToError}
-            />
+                        <div className="flex justify-between items-center mt-12">
+                            <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
+                            <div className="flex items-center gap-4">
+                                {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                                {step < 4 ? (
+                                    <Button type="button" onClick={handleNext}>Next</Button>
+                                ) : (
+                                    <div className="flex items-center gap-4">
+                                        <SurveyPreviewButton />
+                                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                                        </Button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </form>
+
+                    <ValidationErrorModal
+                        open={isErrorModalOpen}
+                        onOpenChange={setIsErrorModalOpen}
+                        errors={validationErrors}
+                        onFix={scrollToError}
+                    />
+                </div>
+            </div>
         </FormProvider>
     );
 }

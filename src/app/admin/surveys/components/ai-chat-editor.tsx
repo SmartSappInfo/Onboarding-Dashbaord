@@ -175,8 +175,6 @@ export default function AiChatEditor() {
             <RainbowButton
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                variant={isOpen ? "default" : "outline"}
-                size="sm"
                 className="h-9 px-4 gap-2 font-bold"
             >
                 {isOpen ? (
