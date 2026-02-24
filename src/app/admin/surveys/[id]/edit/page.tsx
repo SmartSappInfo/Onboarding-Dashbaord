@@ -35,7 +35,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MediaSelect } from '../../schools/components/media-select';
+import { MediaSelect } from '../../../schools/components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -416,7 +416,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         canUndo,
         canRedo,
         reset: resetHistory
-    } = useUndoRedo<PDFFormField[]>([]);
+    } = useUndoRedo<any>([]);
 
     const isProgrammaticChange = React.useRef(false);
 
