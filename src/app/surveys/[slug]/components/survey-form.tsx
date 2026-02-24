@@ -19,13 +19,14 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -247,7 +248,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                             <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base" />} />
                         )}
                         {question.type === 'long-text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base"/>} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base" />} />
                         )}
                         {question.type === 'yes-no' && (
                             <Controller
@@ -450,6 +451,81 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
     });
     return initialStates;
 };
+
+function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], currentIndex: number }) {
+    if (pages.length <= 1) return null;
+
+    return (
+        <div className="w-full mb-12 overflow-x-auto pb-4 no-scrollbar">
+            <div className="min-w-full flex items-start justify-center gap-0 sm:gap-2">
+                {pages.map((page, index) => {
+                    const section = page[0] as SurveyLayoutBlock;
+                    const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
+                    const isCompleted = index < currentIndex;
+                    const isActive = index === currentIndex;
+                    const isLast = index === pages.length - 1;
+
+                    return (
+                        <div key={index} className="flex-1 relative flex flex-col items-center">
+                            {/* Connecting Line */}
+                            {!isLast && (
+                                <div className="absolute left-[50%] right-[-50%] top-5 h-0.5 bg-muted z-0">
+                                    <motion.div 
+                                        initial={false}
+                                        animate={{ width: isCompleted ? '100%' : '0%' }}
+                                        className="h-full bg-green-500"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Circle */}
+                            <div className="relative z-10 flex items-center justify-center">
+                                <motion.div
+                                    initial={false}
+                                    animate={{
+                                        backgroundColor: isCompleted ? 'hsl(var(--primary))' : isActive ? 'hsl(var(--primary))' : 'hsl(var(--background))',
+                                        borderColor: isCompleted ? 'hsl(var(--primary))' : isActive ? 'hsl(var(--primary))' : 'hsl(var(--border))',
+                                        scale: isActive ? 1.1 : 1,
+                                    }}
+                                    className={cn(
+                                        "w-10 h-10 rounded-full border-2 flex items-center justify-center shadow-sm transition-colors",
+                                        isCompleted ? "bg-green-500 border-green-500 text-white" : isActive ? "border-primary bg-primary text-white" : "bg-card border-border text-muted-foreground"
+                                    )}
+                                >
+                                    {isCompleted ? (
+                                        <Check className="w-6 h-6" />
+                                    ) : (
+                                        <span className="text-sm font-bold">{index + 1}</span>
+                                    )}
+                                </motion.div>
+                            </div>
+
+                            {/* Labels */}
+                            <div className="mt-3 text-center px-2 min-w-[80px]">
+                                <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground mb-0.5">Step {index + 1}</p>
+                                <p className={cn(
+                                    "text-xs font-bold leading-tight line-clamp-2 h-8",
+                                    isActive ? "text-foreground" : "text-muted-foreground"
+                                )}>
+                                    {title}
+                                </p>
+                                <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                        "mt-2 text-[9px] h-5 uppercase tracking-tighter px-1.5",
+                                        isCompleted ? "bg-green-50 text-green-700 border-green-200" : isActive ? "bg-primary/10 text-primary border-primary/20" : "opacity-50"
+                                    )}
+                                >
+                                    {isCompleted ? 'Completed' : isActive ? 'In Progress' : 'Pending'}
+                                </Badge>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
 
 export default function SurveyForm({ survey, onSubmitted, isPreview = false }: SurveyFormProps) {
     const firestore = useFirestore();
@@ -673,7 +749,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {isMultiPage && <Progress value={((currentPageIndex + 1) / pages.length) * 100} className="w-full mb-8" />}
+            <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
             
             {pageSection && (
                  <div className="mb-8 text-center">
@@ -717,5 +793,3 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         </form>
     );
 }
-
-    

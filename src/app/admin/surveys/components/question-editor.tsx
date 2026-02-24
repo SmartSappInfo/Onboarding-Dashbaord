@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFormContext, Controller, get } from 'react-hook-form';
@@ -906,16 +905,23 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                 ) : isElementLayout ? (
                      <div className={cn(isMediaLayout && "bg-card rounded-lg border p-4")}>
                         {element.type === 'section' && (
-                             <div className="w-full text-center space-y-2 p-4 border rounded-lg bg-muted/50">
+                             <div className="w-full text-center space-y-4 p-4 border rounded-lg bg-muted/50">
                                  <div className="flex items-center gap-2">
                                      <div className="flex-grow h-px bg-border" />
                                      <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
                                      <div className="flex-grow h-px bg-border" />
                                  </div>
                                  <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
-                                <div className="flex justify-center items-center gap-2 pt-2">
-                                    <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
-                                    <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
+                                    <div className="flex justify-center items-center gap-2">
+                                        <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
+                                        <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
+                                    </div>
+                                    <div className="space-y-1 text-left">
+                                        <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Stepper Title</Label>
+                                        <Controller name={`elements.${index}.stepperTitle`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="e.g., Company Details" className="h-8 text-sm" />} />
+                                    </div>
                                 </div>
                              </div>
                          )}

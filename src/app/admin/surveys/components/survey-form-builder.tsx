@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -77,6 +76,7 @@ export default function SurveyFormBuilder() {
         } else if (type === 'section') {
             const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
             (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
+            (newElement as SurveyLayoutBlock).stepperTitle = `Step ${sections.length + 1}`;
             (newElement as SurveyLayoutBlock).description = '';
             (newElement as SurveyLayoutBlock).renderAsPage = false;
         } else if (isLayoutBlock(newElement as SurveyElement)) {
@@ -248,5 +248,3 @@ export default function SurveyFormBuilder() {
         </div>
     );
 }
-
-    

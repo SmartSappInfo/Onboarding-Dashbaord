@@ -122,6 +122,7 @@ export interface SurveyLayoutBlock {
   type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
   title?: string; // For heading and section
   description?: string; // For section
+  stepperTitle?: string; // For section progress tracking
   text?: string; // For description
   url?: string; // For media types
   html?: string; // For embed
