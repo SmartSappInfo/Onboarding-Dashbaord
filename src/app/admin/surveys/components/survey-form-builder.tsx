@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, Loader2 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
