@@ -69,7 +69,7 @@ export default async function SurveyResultPage({ params }: { params: Promise<{ s
                 <div className="flex flex-col items-center gap-4">
                     <SmartSappLogo className="h-8 grayscale opacity-50" />
                     <p className="text-sm text-muted-foreground font-medium italic">
-                        Transforming school experiences through smart automation.
+                        Child Security, Parents' Convenience, Smarter Schools
                     </p>
                     <p className="text-xs text-muted-foreground/60">&copy; {new Date().getFullYear()} SmartSapp Onboarding. All rights reserved.</p>
                 </div>
