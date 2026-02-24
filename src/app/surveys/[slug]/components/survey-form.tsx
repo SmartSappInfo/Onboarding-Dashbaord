@@ -4,10 +4,10 @@
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { addDoc, collection } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResponse, SurveyResultRule } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -27,8 +27,9 @@ import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 interface SurveyFormProps {
     survey: Survey;
