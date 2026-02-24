@@ -782,16 +782,3 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         </FormProvider>
     );
 }
-
-export default function EditSurveyPage() {
-    const params = useParams();
-    const surveyId = params?.id as string;
-
-    return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="w-full md:w-[90%] mx-auto">
-                {surveyId ? <EditSurveyForm surveyId={surveyId} /> : <p>Survey ID not found.</p>}
-            </div>
-        </div>
-    );
-}
