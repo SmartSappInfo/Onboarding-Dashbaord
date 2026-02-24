@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
     ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
-    RefreshCcw, Play, AlertCircle, Eye, ArrowRight, Trophy
+    RefreshCcw, Play, AlertCircle, Eye, ArrowRight, Trophy, BrainCircuit
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
-import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,11 +24,18 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MediaSelect } from '../../../schools/components/media-select';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
-import { BrainCircuit } from 'lucide-react';
+import {
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { MediaSelect } from '../../schools/components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -398,6 +404,35 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         }
         setStep(s => s + 1);
     };
+
+    const watchedForm = form.watch();
+    const debouncedForm = useDebounce(watchedForm, 800);
+
+    const {
+        state: historyState,
+        set: setHistory,
+        undo: undoHistory,
+        redo: redoHistory,
+        canUndo,
+        canRedo,
+        reset: resetHistory
+    } = useUndoRedo<PDFFormField[]>([]);
+
+    const isProgrammaticChange = React.useRef(false);
+
+    // Sync fields to history
+    React.useEffect(() => {
+        if (isProgrammaticChange.current) return;
+        setHistory(debouncedForm.elements);
+    }, [debouncedForm.elements, setHistory]);
+
+    // Apply history changes back to fields
+    React.useEffect(() => {
+        if (isProgrammaticChange.current) {
+            form.setValue('elements', historyState, { shouldDirty: true });
+            isProgrammaticChange.current = false;
+        }
+    }, [historyState, form]);
 
     if (isLoading) {
         return (
