@@ -30,6 +30,7 @@ import { Progress } from '@/components/ui/progress';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import { SmartSappLogo } from '@/components/icons';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -489,17 +490,27 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
 };
 
 function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], currentIndex: number }) {
-    if (pages.length <= 1) return null;
+    // If there is a cover page, we only show stepper if there's more than 1 *content* page
+    const actualPagesCount = pages.some(p => p.length === 0) ? pages.length - 1 : pages.length;
+    if (actualPagesCount <= 1) return null;
+
+    // Check if the current page is the cover page
+    if (pages[currentIndex].length === 0) return null;
+
+    // Adjust indices for the stepper display (Step 1 should be the first content page)
+    const hasCover = pages[0].length === 0;
+    const displayIndex = hasCover ? currentIndex - 1 : currentIndex;
+    const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
         <div className="w-full mb-12 overflow-x-auto pb-4 no-scrollbar">
             <div className="min-w-full flex items-start justify-center gap-0 sm:gap-2">
-                {pages.map((page, index) => {
+                {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
                     const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
-                    const isCompleted = index < currentIndex;
-                    const isActive = index === currentIndex;
-                    const isLast = index === pages.length - 1;
+                    const isCompleted = index < displayIndex;
+                    const isActive = index === displayIndex;
+                    const isLast = index === displayPages.length - 1;
 
                     return (
                         <div key={index} className="flex-1 relative flex flex-col items-center">
@@ -594,6 +605,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
+
+        // Identify if there is a cover page (first section is renderAsPage)
+        const firstElem = survey.elements[0];
+        if (firstElem?.type === 'section' && firstElem.renderAsPage) {
+            p.push([]); // Placeholder for cover page
+        }
 
         survey.elements.forEach(element => {
             if (element.type === 'section' && element.renderAsPage && currentPage.length > 0) {
@@ -763,7 +780,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     };
 
     const handleNext = async () => {
-        const questionIdsOnPage = pages[currentPageIndex].filter(isQuestion).map(q => q.id);
+        const currentElements = pages[currentPageIndex];
+        if (currentElements.length === 0) {
+            // This is the cover page transition
+            setCurrentPageIndex(1);
+            window.scrollTo(0, 0);
+            return;
+        }
+
+        const questionIdsOnPage = currentElements.filter(isQuestion).map(q => q.id);
         const isValid = await form.trigger(questionIdsOnPage);
 
         if (isValid) {
@@ -805,7 +830,30 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     };
 
     const currentElements = pages[currentPageIndex];
-    const pageSection = currentElements[0]?.type === 'section' && currentElements[0].renderAsPage ? currentElements[0] : null;
+    const isCoverPage = currentElements.length === 0;
+    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' && currentElements[0].renderAsPage ? currentElements[0] : null;
+
+    if (isCoverPage) {
+        return (
+            <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex justify-center">
+                    <SmartSappLogo className="h-12 mb-8" />
+                </div>
+                {survey.bannerImageUrl && (
+                    <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden shadow-lg">
+                        <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" />
+                    </div>
+                )}
+                <div className="space-y-4 max-w-2xl mx-auto">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tight">{survey.title}</h1>
+                    <div className="text-xl text-muted-foreground leading-relaxed prose prose-slate" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                </div>
+                <Button size="lg" className="h-14 px-10 text-xl font-bold rounded-xl shadow-xl transition-transform hover:scale-105 active:scale-95" onClick={handleNext}>
+                    {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
+                </Button>
+            </div>
+        )
+    }
 
     return (
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -113,6 +114,7 @@ const formSchema = z.object({
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
   resultPages: z.array(z.any()).default([]),
+  startButtonText: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -176,6 +178,7 @@ export default function NewSurveyPage() {
             maxScore: 100,
             resultRules: [],
             resultPages: [],
+            startButtonText: 'Let\'s Start',
         },
     });
 
@@ -247,7 +250,7 @@ export default function NewSurveyPage() {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description'];
+        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -356,6 +359,20 @@ export default function NewSurveyPage() {
                                                 </FormItem>
                                             )}
                                         />
+                                        <FormField
+                                            control={form.control}
+                                            name="startButtonText"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Start Button Text</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="e.g., Let's Start" {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>The label for the button on the cover page.</FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </CardContent>
                             </Card>
@@ -424,7 +441,7 @@ export default function NewSurveyPage() {
                                                             className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
                                                             title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
                                                         >
-                                                            <span className="truncate max-w-xs">
+                                                            <span className="truncate max-w-[200px]">
                                                                 {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
                                                             </span>
                                                         </div>

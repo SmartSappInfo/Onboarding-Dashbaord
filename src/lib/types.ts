@@ -207,6 +207,7 @@ export interface Survey {
   scoringEnabled?: boolean;
   maxScore?: number;
   resultRules?: SurveyResultRule[];
+  startButtonText?: string;
 }
 
 export interface SurveyResponse {

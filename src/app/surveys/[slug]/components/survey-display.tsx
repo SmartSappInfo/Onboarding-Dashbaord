@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -60,7 +61,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                             </div>
                         )}
                         <h1 className="text-3xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been submitted successfully.'}</p>
+                        <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
                  <footer className="py-8 text-center text-sm text-muted-foreground">
@@ -71,20 +72,28 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         )
     }
 
+    // Determine if we should show title/description based on if there's a cover page
+    const firstElement = survey.elements[0];
+    const hasCoverPage = firstElement?.type === 'section' && firstElement.renderAsPage;
+
     return (
         <div className="light min-h-screen flex flex-col bg-slate-100">
             <main className="flex-grow">
                 <div className="max-w-4xl mx-auto py-12 px-4">
-                    <div className="flex justify-center">
-                      <SmartSappLogo className="h-12 mb-8" />
-                    </div>
-                    {survey.bannerImageUrl && (
-                        <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
-                            <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" />
+                    {!hasCoverPage && (
+                        <div className="text-center mb-8">
+                            <div className="flex justify-center">
+                                <SmartSappLogo className="h-12 mb-8" />
+                            </div>
+                            {survey.bannerImageUrl && (
+                                <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
+                                    <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" />
+                                </div>
+                            )}
+                            <h1 className="text-3xl md:text-4xl font-bold mb-2">{survey.title}</h1>
+                            <p className="text-muted-foreground">{survey.description}</p>
                         </div>
                     )}
-                    <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center">{survey.title}</h1>
-                    <p className="text-muted-foreground mb-8 text-center">{survey.description}</p>
 
                     {isMounted ? (
                         <SurveyForm survey={survey} onSubmitted={() => setIsSubmitted(true)} />
