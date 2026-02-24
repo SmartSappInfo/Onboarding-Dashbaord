@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useFormContext, Controller, get } from 'react-hook-form';
@@ -31,7 +30,7 @@ import { format, isValid, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
-import { MediaSelectorDialog } from '../../media/components/media-selector-dialog';
+import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
