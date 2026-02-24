@@ -14,8 +14,8 @@ export function GtmProvider() {
     setIsClient(true);
   }, []);
 
-  // Don't render GTM scripts on server, or on admin pages
-  if (!isClient || pathname.startsWith('/admin')) {
+  // Don't render GTM scripts on server, admin pages, or public doc signing pages (/forms)
+  if (!isClient || pathname.startsWith('/admin') || pathname.startsWith('/forms')) {
     return null;
   }
 
