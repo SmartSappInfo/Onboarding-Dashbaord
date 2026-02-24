@@ -5,9 +5,9 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
 
-import type { Survey, SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import type { Survey, SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyResultPage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -26,11 +26,12 @@ import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissio
 import { Skeleton } from '@/components/ui/skeleton';
 import { MediaSelect } from '../../../schools/components/media-select';
 import SurveyFormBuilder from '../../components/survey-form-builder';
-import { Check, Loader2 } from 'lucide-react';
+import { Check, Loader2, BrainCircuit, ArrowRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import SurveyPreviewButton from '../../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
+import ResultsStep from '../../components/results-step';
 
 
 const questionSchema = z.object({
@@ -110,13 +111,17 @@ const formSchema = z.object({
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
+  scoringEnabled: z.boolean().default(false),
+  maxScore: z.number().min(0).default(100),
+  resultRules: z.array(z.any()).default([]),
+  resultPages: z.array(z.any()).default([]),
 });
 
 type FormData = z.infer<typeof formSchema>;
 
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
-    const steps = ['Details', 'Builder', 'Thank You', 'Publish'];
+    const steps = ['Details', 'Builder', 'Results', 'Publish'];
 
     return (
         <div className="flex justify-center items-center mb-12">
@@ -141,6 +146,61 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
     );
 };
 
+function LogicSimulator({ form }: { form: any }) {
+    const [testScore, setTestScore] = React.useState<number>(0);
+    const rules = form.watch('resultRules') || [];
+    const pages = form.watch('resultPages') || [];
+    const scoringEnabled = form.watch('scoringEnabled');
+
+    if (!scoringEnabled) return null;
+
+    const matchedRule = rules
+        .sort((a: any, b: any) => (a.priority || 0) - (b.priority || 0))
+        .find((r: any) => testScore >= (r.minScore || 0) && testScore <= (r.maxScore || 0));
+    
+    const matchedPage = pages.find((p: any) => p.id === matchedRule?.pageId);
+
+    return (
+        <Card className="bg-primary/5 border-primary/20">
+            <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                    <BrainCircuit className="h-4 w-4" /> Outcome Simulator
+                </CardTitle>
+                <CardDescription>Test your scoring logic by entering a dummy score.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                    <div className="flex-grow">
+                        <Label className="text-[10px] font-bold uppercase mb-1 block">Test Score</Label>
+                        <Input 
+                            type="number" 
+                            value={testScore} 
+                            onChange={(e) => setTestScore(Number(e.target.value))} 
+                            className="bg-background font-bold text-lg h-12"
+                        />
+                    </div>
+                    <div className="shrink-0 pt-5">
+                        <ArrowRight className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <div className="flex-grow">
+                        <Label className="text-[10px] font-bold uppercase mb-1 block">Result Outcome</Label>
+                        <div className="h-12 flex items-center px-4 rounded-md border bg-background font-bold text-primary">
+                            {matchedRule ? (
+                                <div className="flex items-center gap-2">
+                                    <Trophy className="h-4 w-4" />
+                                    <span>{matchedRule.label}</span>
+                                    <span className="text-[10px] text-muted-foreground font-normal ml-2">→ {matchedPage?.name || 'Untitled Page'}</span>
+                                </div>
+                            ) : (
+                                <span className="text-muted-foreground font-normal italic">Default Fallback</span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const { toast } = useToast();
@@ -170,10 +230,14 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             bannerImageUrl: "",
             status: "draft",
             slug: "",
+            scoringEnabled: false,
+            maxScore: 100,
+            resultRules: [],
+            resultPages: [],
         }
     });
 
-    const { getValues } = form;
+    const { getValues, setValue } = form;
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
@@ -186,9 +250,22 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 bannerImageUrl: survey.bannerImageUrl || '',
                 status: survey.status,
                 slug: survey.slug,
+                scoringEnabled: survey.scoringEnabled || false,
+                maxScore: survey.maxScore || 100,
+                resultRules: survey.resultRules || [],
+                resultPages: [], // Will load separately
             });
+
+            // Load result pages from subcollection
+            if (firestore) {
+                const pagesCol = collection(firestore, `surveys/${surveyId}/resultPages`);
+                getDocs(pagesCol).then(snap => {
+                    const pages = snap.docs.map(d => ({ ...d.data(), id: d.id } as SurveyResultPage));
+                    setValue('resultPages', pages);
+                });
+            }
         }
-    }, [survey, form]);
+    }, [survey, form, firestore, surveyId, setValue]);
 
     const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
         const parsed: ValidationError[] = [];
@@ -230,45 +307,48 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         }, 300);
     };
 
-    const onSubmit = (data: FormData) => {
+    const onSubmit = async (data: FormData) => {
         if (!firestore || !surveyId) return;
 
+        const { resultPages, ...mainData } = data;
+        
         const surveyData = {
-          ...data,
+          ...mainData,
           updatedAt: new Date().toISOString(),
         };
-
-        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => {
-            if (value === undefined) return undefined;
-            return value;
-        }));
 
         const docRef = doc(firestore, 'surveys', surveyId);
         form.control.disabled = true;
         
-        updateDoc(docRef, cleanedData)
-            .then(() => {
-                toast({
-                    title: 'Survey Updated',
-                    description: `The survey "${data.title}" has been updated.`,
-                });
-                router.push('/admin/surveys');
-            })
-            .catch((error) => {
-                const permissionError = new FirestorePermissionError({
-                    path: docRef.path,
-                    operation: 'update',
-                    requestResourceData: cleanedData,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({
-                    variant: 'destructive',
-                    title: 'Uh oh! Something went wrong.',
-                    description: 'There was a problem updating the survey.',
-                });
-            }).finally(() => {
-                form.control.disabled = false;
-            });
+        try {
+            await updateDoc(docRef, JSON.parse(JSON.stringify(surveyData)));
+            
+            // Sync result pages subcollection
+            const pagesCol = collection(firestore, `surveys/${surveyId}/resultPages`);
+            const existingPagesSnap = await getDocs(pagesCol);
+            const existingIds = new Set(existingPagesSnap.docs.map(d => d.id));
+            const newIds = new Set(resultPages.map(p => p.id));
+
+            // Delete removed pages
+            for (const oldId of existingIds) {
+                if (!newIds.has(oldId)) {
+                    await deleteDoc(doc(pagesCol, oldId));
+                }
+            }
+
+            // Upsert new/updated pages
+            for (const page of resultPages) {
+                await setDoc(doc(pagesCol, page.id), page);
+            }
+
+            toast({ title: 'Survey Updated' });
+            router.push('/admin/surveys');
+        } catch (error) {
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Save Failed' });
+        } finally {
+            form.control.disabled = false;
+        }
     };
 
     const onInvalid = (errors: any) => {
@@ -301,7 +381,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         let fieldsToValidate: any[] = [];
         if (step === 1) fieldsToValidate = ['title', 'description'];
         if (step === 2) fieldsToValidate = ['elements'];
-        if (step === 3) fieldsToValidate = ['thankYouTitle', 'thankYouDescription'];
+        if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
         const isStepValid = await form.trigger(fieldsToValidate);
         
@@ -394,109 +474,80 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     <SurveyFormBuilder />
                 </div>
                 
-                {/* Step 3: Thank You Page */}
-                <Card className={cn(step !== 3 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Thank You Page</CardTitle>
-                        <CardDescription>Customize the message users see after they complete the survey.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                         <div className="space-y-8">
-                            <FormField
-                                control={form.control}
-                                name="thankYouTitle"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Thank You Title</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="Thank You!" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="thankYouDescription"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Thank You Message</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Your response has been recorded." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* Step 3: Results Builder */}
+                <div className={cn(step !== 3 && 'hidden')}>
+                    <ResultsStep />
+                </div>
 
                 {/* Step 4: Publish */}
-                <Card className={cn(step !== 4 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Publish</CardTitle>
-                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-8">
-                            <FormField
-                                control={form.control}
-                                name="bannerImageUrl"
-                                render={({ field }) => (
+                <div className={cn(step !== 4 && 'hidden')} className="space-y-8">
+                    <LogicSimulator form={form} />
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Publish</CardTitle>
+                            <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-8">
+                                <FormField
+                                    control={form.control}
+                                    name="bannerImageUrl"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Banner Image</FormLabel>
+                                            <FormControl>
+                                                <MediaSelect {...field} filterType="image" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Banner Image</FormLabel>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
-                                            <MediaSelect {...field} filterType="image" />
+                                            <SelectTrigger>
+                                            <SelectValue placeholder="Select survey status" />
+                                            </SelectTrigger>
                                         </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="draft">Draft</SelectItem>
+                                            <SelectItem value="published">Published</SelectItem>
+                                            <SelectItem value="archived">Archived</SelectItem>
+                                        </SelectContent>
+                                        </Select>
                                         <FormMessage />
                                     </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Status</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger>
-                                        <SelectValue placeholder="Select survey status" />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                        <SelectItem value="draft">Draft</SelectItem>
-                                        <SelectItem value="published">Published</SelectItem>
-                                        <SelectItem value="archived">Archived</SelectItem>
-                                    </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="slug"
-                                render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Survey URL</FormLabel>
-                                    <div className="flex flex-col sm:flex-row">
-                                        <span className="flex h-10 items-center justify-center whitespace-nowrap rounded-t-md border border-b-0 bg-muted px-3 text-sm text-muted-foreground sm:w-auto sm:justify-start sm:rounded-l-md sm:rounded-t-none sm:border-b sm:border-r-0">
-                                            {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                        </span>
-                                        <FormControl>
-                                            <Input {...field} className="rounded-b-md rounded-t-none sm:rounded-l-none sm:rounded-b-none" />
-                                        </FormControl>
-                                    </div>
-                                    <FormDescription>This is the unique last part of your survey URL.</FormDescription>
-                                    <FormMessage />
-                                </FormItem>
-                                )}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="slug"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Survey URL</FormLabel>
+                                        <div className="flex flex-col sm:flex-row">
+                                            <span className="flex h-10 items-center justify-center whitespace-nowrap rounded-t-md border border-b-0 bg-muted px-3 text-sm text-muted-foreground sm:w-auto sm:justify-start sm:rounded-l-md sm:rounded-t-none sm:border-b sm:border-r-0">
+                                                {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
+                                            </span>
+                                            <FormControl>
+                                                <Input {...field} className="rounded-b-md rounded-t-none sm:rounded-l-none sm:rounded-b-none" />
+                                            </FormControl>
+                                        </div>
+                                        <FormDescription>This is the unique last part of your survey URL.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
 
                 <div className="flex justify-between items-center mt-12">
                     <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
