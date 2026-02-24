@@ -154,9 +154,35 @@ const modifySurveyFlow = ai.defineFlow(
         outputSchema: ModifySurveyOutputSchema,
     },
     async (input) => {
-        const { output } = await modifyPrompt(input);
-        if (!output) throw new Error("The AI model failed to process the request.");
-        return output;
+        let retries = 0;
+        const maxRetries = 3;
+        
+        while (retries < maxRetries) {
+            try {
+                const { output } = await modifyPrompt(input);
+                if (!output) throw new Error("The AI model failed to process the request.");
+                return output;
+            } catch (error: any) {
+                retries++;
+                // Check for 503 (Service Unavailable) or 429 (Too Many Requests)
+                const isRetryable = error.message?.includes('503') || 
+                                  error.message?.includes('429') || 
+                                  error.status === 503 || 
+                                  error.status === 429;
+
+                if (isRetryable && retries < maxRetries) {
+                    // Exponential backoff: 1s, 2s, 4s... plus jitter
+                    const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
+                    console.warn(`AI Model Busy (Attempt ${retries}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                }
+                
+                // If not retryable or max retries reached, throw the error
+                throw error;
+            }
+        }
+        throw new Error("The AI service is currently unavailable. Please try again in a few moments.");
     }
 );
 
