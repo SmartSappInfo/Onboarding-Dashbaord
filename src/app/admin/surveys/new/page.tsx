@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -166,7 +165,7 @@ export default function NewSurveyPage() {
         defaultValues: {
             title: '',
             description: '',
-            status: 'draft',
+            status: 'published',
             elements: [
                 {
                     id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,

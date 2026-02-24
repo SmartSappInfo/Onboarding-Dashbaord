@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -103,7 +102,7 @@ export default function AiSurveyGenerator() {
         const newSurvey: Omit<Survey, 'id'> = {
             ...mainSurveyData,
             slug,
-            status: 'draft',
+            status: 'published',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
