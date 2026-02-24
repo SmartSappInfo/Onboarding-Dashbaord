@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useFormContext, useFieldArray, useWatch, Controller } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { 
     Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
     Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, 
-    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon
+    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import AddResultBlockModal from './add-result-block-modal';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -39,30 +40,6 @@ const blockIcons: Record<string, React.ElementType> = {
     divider: Square,
     'score-card': TrophyIcon,
 };
-
-function Trophy(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-            <path d="M4 22h16" />
-            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
-            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
-            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-        </svg>
-    )
-}
 
 function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number }) {
     return (
@@ -228,7 +205,8 @@ function SortableResultBlock({
     block, 
     remove, 
     swap, 
-    duplicate 
+    duplicate,
+    requestAddBlock
 }: { 
     id: string, 
     index: number, 
@@ -236,7 +214,8 @@ function SortableResultBlock({
     block: any, 
     remove: (i: number) => void,
     swap: (a: number, b: number) => void,
-    duplicate: (i: number) => void
+    duplicate: (i: number) => void,
+    requestAddBlock: (i: number) => void
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
     const blockType = block.type;
@@ -275,6 +254,12 @@ function SortableResultBlock({
                     <BlockInspector pageIndex={pageIndex} blockIndex={index} />
                 </CardContent>
             </Card>
+            <div
+                className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 z-20 cursor-pointer p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => requestAddBlock(index)}
+            >
+                <PlusCircle className="h-5 w-5 text-muted-foreground" />
+            </div>
         </div>
     );
 }
@@ -285,6 +270,9 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
         control,
         name: `resultPages.${pageIndex}.blocks`,
     });
+
+    const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
+    const [insertionIndex, setInsertionIndex] = React.useState(0);
 
     const sensors = useSensors(useSensor(PointerSensor));
 
@@ -297,16 +285,12 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
         }
     };
 
-    const duplicateBlock = (index: number) => {
-        const blockToDuplicate = getValues(`resultPages.${pageIndex}.blocks.${index}`);
-        const newBlock = {
-            ...JSON.parse(JSON.stringify(blockToDuplicate)),
-            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        };
-        insert(index + 1, newBlock);
+    const requestAddBlock = (index: number) => {
+        setInsertionIndex(index + 1);
+        setIsAddModalOpen(true);
     };
 
-    const addBlock = (type: SurveyResultBlock['type']) => {
+    const handleBlockSelect = (type: SurveyResultBlock['type']) => {
         const newBlock: Partial<SurveyResultBlock> = {
             id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             type,
@@ -321,26 +305,20 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
         }
         if (type === 'quote') newBlock.content = 'Inspirational or analytical quote...';
 
-        append(newBlock);
+        insert(insertionIndex, newBlock);
+    };
+
+    const duplicateBlock = (index: number) => {
+        const blockToDuplicate = getValues(`resultPages.${pageIndex}.blocks.${index}`);
+        const newBlock = {
+            ...JSON.parse(JSON.stringify(blockToDuplicate)),
+            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        };
+        insert(index + 1, newBlock);
     };
 
     return (
         <div className="space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-8 bg-muted/30 p-2 rounded-xl border border-dashed">
-                {Object.entries(blockIcons).map(([type, Icon]) => (
-                    <Button
-                        key={type}
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-10 text-[10px] font-black uppercase tracking-widest gap-2 hover:bg-background hover:shadow-sm transition-all"
-                        onClick={() => addBlock(type as any)}
-                    >
-                        <Icon className="h-3 w-3 text-primary" /> {type}
-                    </Button>
-                ))}
-            </div>
-
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                     <div className="space-y-6">
@@ -354,11 +332,27 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
                                 remove={remove}
                                 swap={swap}
                                 duplicate={duplicateBlock}
+                                requestAddBlock={requestAddBlock}
                             />
                         ))}
                     </div>
                 </SortableContext>
             </DndContext>
+
+            {blocks.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-muted/20">
+                    <p className="text-sm text-muted-foreground mb-4 font-medium italic">This page has no content yet.</p>
+                    <Button type="button" variant="outline" onClick={() => { setInsertionIndex(0); setIsAddModalOpen(true); }}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add First Block
+                    </Button>
+                </div>
+            )}
+
+            <AddResultBlockModal 
+                open={isAddModalOpen} 
+                onOpenChange={setIsAddModalOpen} 
+                onSelect={handleBlockSelect} 
+            />
         </div>
     );
 }
