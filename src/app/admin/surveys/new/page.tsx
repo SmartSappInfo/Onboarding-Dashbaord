@@ -229,7 +229,7 @@ export default function NewSurveyPage() {
     const router = useRouter();
     const firestore = useFirestore();
     const [step, setStep] = React.useState(1);
-    const [isSavingProgress, setIsSavingProgress] = React.useState(false);
+    const [isSaving, setIsSaving] = React.useState(false);
     
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
@@ -367,47 +367,18 @@ export default function NewSurveyPage() {
         if (step === 1) {
             const title = form.getValues('title');
             const currentSlug = form.getValues('slug');
-            let slug = currentSlug;
             if (title && !currentSlug) {
-                slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+                const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
                 form.setValue('slug', slug, { shouldValidate: true });
             }
-
-            // CREATE SURVEY ON FIRST NEXT
-            setIsSavingProgress(true);
-            const data = getValues();
-            const surveyData = { 
-                ...data, 
-                slug: slug || data.slug,
-                createdAt: new Date().toISOString(), 
-                updatedAt: new Date().toISOString() 
-            };
-            const { resultPages, ...mainData } = surveyData;
-            
-            try {
-                const surveyRef = await addDoc(collection(firestore!, 'surveys'), mainData);
-                if (resultPages && resultPages.length > 0) {
-                    const pagesCol = collection(firestore!, `surveys/${surveyRef.id}/resultPages`);
-                    for (const page of resultPages) {
-                        await setDoc(doc(pagesCol, page.id), page);
-                    }
-                }
-                localStorage.removeItem('survey-autosave-new-survey');
-                toast({ title: 'Survey Created', description: 'Progress saved. Moving to builder...' });
-                router.push(`/admin/surveys/${surveyRef.id}/edit?step=2`);
-            } catch (e) {
-                console.error(e);
-                toast({ variant: 'destructive', title: 'Save Failed' });
-            } finally {
-                setIsSavingProgress(false);
-            }
-        } else {
-            setStep(s => s + 1);
         }
+        
+        setStep(s => s + 1);
     };
 
     const onSubmit = async (data: FormData) => {
         if (!firestore) return;
+        setIsSaving(true);
         
         const surveyData = { 
             ...data, 
@@ -427,7 +398,6 @@ export default function NewSurveyPage() {
                 }
             }
 
-            // Success: Purge Local Auto-save Cache
             localStorage.removeItem('survey-autosave-new-survey');
 
             toast({ title: 'Survey Created' });
@@ -435,6 +405,8 @@ export default function NewSurveyPage() {
         } catch (e) {
             console.error(e);
             toast({ variant: 'destructive', title: 'Save Failed' });
+        } finally {
+            setIsSaving(false);
         }
     };
     
@@ -742,14 +714,14 @@ export default function NewSurveyPage() {
                             <div className="flex items-center gap-4">
                                 {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
                                 {step < 4 ? (
-                                    <Button type="button" onClick={handleNext} disabled={isSavingProgress}>
-                                        {isSavingProgress ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Next'}
+                                    <Button type="button" onClick={handleNext}>
+                                        Next
                                     </Button>
                                 ) : (
                                     <div className="flex items-center gap-4">
                                         <SurveyPreviewButton />
-                                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Survey'}
+                                        <Button type="submit" disabled={isSaving}>
+                                            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Survey'}
                                         </Button>
                                     </div>
                                 )}

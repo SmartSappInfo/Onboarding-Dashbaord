@@ -2,18 +2,17 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
-    RefreshCcw, Play, AlertCircle, Eye, ArrowRight, Trophy, BrainCircuit, Palette, Layout
+    Check, Loader2, Palette, Layout, Eye, X, Separator
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { FormProvider, useForm, Controller } from 'react-hook-form';
+import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import SurveyFormBuilder from '../../components/survey-form-builder';
@@ -25,8 +24,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useUndoRedo } from '@/hooks/use-undo-redo';
-import { useDebounce } from '@/hooks/use-debounce';
 import { cn } from '@/lib/utils';
 import {
   FormControl,
@@ -37,7 +34,6 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { MediaSelect } from '../../../schools/components/media-select';
-import { Separator } from '@/components/ui/separator';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -464,19 +460,9 @@ function EditSurveyContent() {
             return;
         }
 
-        // Save progress on next
-        setIsSaving(true);
-        const success = await saveData(getValues());
-        setIsSaving(false);
-
-        if (success) {
-            const nextStep = step + 1;
-            setStep(nextStep);
-            router.push(`${pathname}?step=${nextStep}`, { scroll: false });
-            toast({ title: 'Progress Saved' });
-        } else {
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save progress to server.' });
-        }
+        const nextStep = step + 1;
+        setStep(nextStep);
+        router.push(`${pathname}?step=${nextStep}`, { scroll: false });
     };
 
     const handlePrev = () => {
@@ -797,14 +783,14 @@ function EditSurveyContent() {
                             <div className="flex items-center gap-4">
                                 {step > 1 && <Button type="button" variant="outline" onClick={handlePrev}>Previous</Button>}
                                 {step < 4 ? (
-                                    <Button type="button" onClick={handleNext} disabled={isSaving}>
-                                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Next'}
+                                    <Button type="button" onClick={handleNext}>
+                                        Next
                                     </Button>
                                 ) : (
                                     <div className="flex items-center gap-4">
                                         <SurveyPreviewButton />
-                                        <Button type="submit" disabled={isSaving || form.formState.isSubmitting}>
-                                            {(isSaving || form.formState.isSubmitting) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                                        <Button type="submit" disabled={isSaving}>
+                                            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
                                         </Button>
                                     </div>
                                 )}
