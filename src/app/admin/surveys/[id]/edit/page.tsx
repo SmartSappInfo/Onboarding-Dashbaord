@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -225,10 +225,13 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundP
 function EditSurveyContent() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const pathname = usePathname();
     const firestore = useFirestore();
     const surveyId = params.id as string;
     const { toast } = useToast();
     const [step, setStep] = React.useState(1);
+    const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
 
@@ -267,6 +270,16 @@ function EditSurveyContent() {
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
+
+    React.useEffect(() => {
+        const urlStep = searchParams.get('step');
+        if (urlStep) {
+            const parsed = parseInt(urlStep, 10);
+            if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) {
+                setStep(parsed);
+            }
+        }
+    }, [searchParams]);
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
@@ -341,8 +354,8 @@ function EditSurveyContent() {
         }, 300);
     };
 
-    const onSubmit = async (data: FormData) => {
-        if (!firestore || !surveyId) return;
+    const saveData = async (data: FormData) => {
+        if (!firestore || !surveyId) return false;
 
         const { resultPages, ...mainData } = data;
         
@@ -352,7 +365,6 @@ function EditSurveyContent() {
         };
 
         const docRef = doc(firestore, 'surveys', surveyId);
-        form.control.disabled = true;
         
         try {
             await updateDoc(docRef, JSON.parse(JSON.stringify(surveyData)));
@@ -373,15 +385,23 @@ function EditSurveyContent() {
             }
 
             localStorage.removeItem(`survey-autosave-${surveyId}`);
+            return true;
+        } catch (error) {
+            console.error("Save Error:", error);
+            return false;
+        }
+    };
 
+    const onSubmit = async (data: FormData) => {
+        setIsSaving(true);
+        const success = await saveData(data);
+        if (success) {
             toast({ title: 'Survey Updated' });
             router.push('/admin/surveys');
-        } catch (error) {
-            console.error(error);
+        } else {
             toast({ variant: 'destructive', title: 'Save Failed' });
-        } finally {
-            form.control.disabled = false;
         }
+        setIsSaving(false);
     };
 
     const onInvalid = (errors: any) => {
@@ -434,7 +454,26 @@ function EditSurveyContent() {
             });
             return;
         }
-        setStep(s => s + 1);
+
+        // Save progress on next
+        setIsSaving(true);
+        const success = await saveData(getValues());
+        setIsSaving(false);
+
+        if (success) {
+            const nextStep = step + 1;
+            setStep(nextStep);
+            router.push(`${pathname}?step=${nextStep}`, { scroll: false });
+            toast({ title: 'Progress Saved' });
+        } else {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save progress to server.' });
+        }
+    };
+
+    const handlePrev = () => {
+        const prevStep = step - 1;
+        setStep(prevStep);
+        router.push(`${pathname}?step=${prevStep}`, { scroll: false });
     };
 
     if (isLoading) {
@@ -730,14 +769,16 @@ function EditSurveyContent() {
                         <div className="flex justify-between items-center mt-12">
                             <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
                             <div className="flex items-center gap-4">
-                                {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                                {step > 1 && <Button type="button" variant="outline" onClick={handlePrev}>Previous</Button>}
                                 {step < 4 ? (
-                                    <Button type="button" onClick={handleNext}>Next</Button>
+                                    <Button type="button" onClick={handleNext} disabled={isSaving}>
+                                        {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Next'}
+                                    </Button>
                                 ) : (
                                     <div className="flex items-center gap-4">
                                         <SurveyPreviewButton />
-                                        <Button type="submit" disabled={form.formState.isSubmitting}>
-                                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
+                                        <Button type="submit" disabled={isSaving || form.formState.isSubmitting}>
+                                            {(isSaving || form.formState.isSubmitting) ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
                                         </Button>
                                     </div>
                                 )}
@@ -758,5 +799,9 @@ function EditSurveyContent() {
 }
 
 export default function EditSurveyPage() {
-    return <EditSurveyContent />;
+    return (
+        <React.Suspense fallback={<div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+            <EditSurveyContent />
+        </React.Suspense>
+    );
 }
