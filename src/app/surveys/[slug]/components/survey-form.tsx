@@ -95,7 +95,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0">
+            <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={dateValue}
@@ -215,7 +215,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
   return (
     <div className="relative">
       <Button asChild variant="outline" disabled={disabled} className="h-11">
-        <div>
+        <div className="cursor-pointer">
             <Upload className="mr-2 h-4 w-4" />
             <span>Upload a file</span>
         </div>
@@ -282,12 +282,12 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                    <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                    <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5 active:scale-[0.98]">
                                         <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
                                         Yes
                                     </Label>
-                                    <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                    <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5 active:scale-[0.98]">
                                         <RadioGroupItem value="No" id={`${question.id}-no`} />
                                         No
                                     </Label>
@@ -302,9 +302,9 @@ const ElementRenderer = ({
                             render={({ field }) => (
                                 <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     {question.options?.map(opt => (
-                                        <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                        <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5 active:scale-[0.98]">
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
-                                            {opt}
+                                            <span className="flex-1">{opt}</span>
                                         </Label>
                                     ))}
                                 </RadioGroup>
@@ -321,7 +321,7 @@ const ElementRenderer = ({
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
-                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent", isChecked && "border-primary bg-primary/5")}>
+                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-4 text-base font-normal transition-all hover:bg-accent active:scale-[0.98]", isChecked && "border-primary bg-primary/5")}>
                                                 <Checkbox
                                                     id={`${question.id}-${opt}`}
                                                     checked={isChecked}
@@ -342,7 +342,7 @@ const ElementRenderer = ({
                                         )
                                     })}
                                     {question.allowOther && (
-                                        <div className={cn("flex items-center gap-3 rounded-xl border bg-white p-4 transition-all", (field.value?.other || '') && "border-primary bg-primary/5")}>
+                                        <div className={cn("flex items-center gap-3 rounded-xl border bg-white p-4 transition-all active:scale-[0.98]", (field.value?.other || '') && "border-primary bg-primary/5")}>
                                             <Checkbox
                                                 id={`${question.id}-other-checkbox`}
                                                 checked={!!(field.value?.other || '')}
@@ -437,7 +437,7 @@ const ElementRenderer = ({
                 return null; // Sections handled by the card wrapper
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-4xl font-black" : Tag === 'h3' ? "text-xl font-bold" : "text-3xl font-bold";
+                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
@@ -446,30 +446,30 @@ const ElementRenderer = ({
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-4 text-lg leading-relaxed", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
             case 'divider':
-                return <hr className="my-8 border-border/50" />;
+                return <hr className="my-6 sm:my-8 border-border/50" />;
             case 'image':
                 return block.url ? (
-                    <div className={cn("relative aspect-video my-6 rounded-2xl overflow-hidden shadow-md", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
+                    <div className={cn("relative aspect-video my-4 sm:my-6 rounded-xl sm:rounded-2xl overflow-hidden shadow-md", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
                         <Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" />
                     </div>
                 ) : null;
             case 'video':
-                 return block.url ? <div className={cn("my-6 shadow-md rounded-2xl overflow-hidden", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
+                 return block.url ? <div className={cn("my-4 sm:my-6 shadow-md rounded-xl sm:rounded-2xl overflow-hidden", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
-                return block.url ? <div className="my-6 p-4 bg-muted/30 rounded-xl"><audio controls src={block.url} className="w-full">Your browser does not support the audio element.</audio></div> : null;
+                return block.url ? <div className="my-4 sm:my-6 p-4 bg-muted/30 rounded-xl"><audio controls src={block.url} className="w-full">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                  return (
-                    <div className={cn("my-6", alignmentClass)}>
+                    <div className={cn("my-4 sm:my-6", alignmentClass)}>
                         <Button asChild variant="outline" className="h-11 px-6 rounded-xl"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4"/> Download Document</a></Button>
                     </div>
                  );
             case 'embed':
-                return block.html ? <div className="my-6 rounded-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
+                return block.html ? <div className="my-4 sm:my-6 rounded-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:
                 return null;
         }
@@ -521,8 +521,8 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
-        <div className="w-full mb-12 overflow-x-auto pb-4 no-scrollbar">
-            <div className="min-w-full flex items-start justify-center gap-0 sm:gap-2">
+        <div className="w-full mb-8 sm:mb-12 overflow-x-auto pb-4 no-scrollbar">
+            <div className="min-w-[max-content] sm:min-w-full flex items-start justify-center gap-0 sm:gap-2 px-4">
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
                     const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
@@ -531,7 +531,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                     const isLast = index === displayPages.length - 1;
 
                     return (
-                        <div key={index} className="flex-1 relative flex flex-col items-center">
+                        <div key={index} className="flex-1 relative flex flex-col items-center min-w-[80px] sm:min-w-0">
                             {!isLast && (
                                 <div className="absolute left-[50%] right-[-50%] top-3 h-[1px] bg-muted z-0">
                                     <motion.div 
@@ -563,9 +563,9 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 </motion.div>
                             </div>
 
-                            <div className="mt-2 text-center px-2 min-w-[80px]">
+                            <div className="mt-2 text-center px-1 sm:px-2 w-full">
                                 <p className={cn(
-                                    "text-[10px] font-bold leading-tight line-clamp-2 h-8",
+                                    "text-[9px] sm:text-[10px] font-bold leading-tight line-clamp-2 h-8",
                                     isActive ? "text-foreground" : "text-muted-foreground"
                                 )}>
                                     {title}
@@ -852,26 +852,26 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     if (isCoverPage) {
         return (
-            <div className="flex flex-col items-center text-center space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <div className="flex justify-center mb-8">
+            <div className="flex flex-col items-center text-center space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="flex justify-center mb-4 sm:mb-8">
                     {survey.logoUrl ? (
-                        <div className="relative h-12 w-48">
+                        <div className="relative h-10 w-40 sm:h-12 w-48">
                             <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
                         </div>
                     ) : (
-                        <SmartSappLogo className="h-12" />
+                        <SmartSappLogo className="h-10 sm:h-12" />
                     )}
                 </div>
                 {survey.bannerImageUrl && (
-                    <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden shadow-2xl border-4 border-white">
+                    <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 sm:border-4 border-white">
                         <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
                     </div>
                 )}
-                <div className="space-y-4 max-w-2xl mx-auto">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground">{survey.title}</h1>
-                    <div className="text-xl text-muted-foreground leading-relaxed prose prose-slate" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                <div className="space-y-4 max-w-2xl mx-auto px-2">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground">{survey.title}</h1>
+                    <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate" dangerouslySetInnerHTML={{ __html: survey.description }} />
                 </div>
-                <Button size="lg" className="h-14 px-10 text-xl font-bold rounded-xl shadow-xl transition-transform hover:scale-105 active:scale-95" onClick={handleNext}>
+                <Button size="lg" className="h-14 px-10 text-lg sm:text-xl font-bold rounded-xl shadow-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>
             </div>
@@ -879,59 +879,61 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     }
 
     return (
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
-            
-            {pageSection && (
-                <div className="text-center space-y-2 mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                    <h2 className="text-2xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
-                    {(pageSection as any).description && (
-                        <p className="text-muted-foreground text-base leading-relaxed max-w-2xl mx-auto italic">
-                            {(pageSection as any).description}
-                        </p>
+        <div className="pb-12">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 sm:space-y-8">
+                <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
+                
+                {pageSection && (
+                    <div className="text-center space-y-2 mb-6 sm:mb-8 animate-in fade-in slide-in-from-bottom-2 duration-500 px-2">
+                        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                        {(pageSection as any).description && (
+                            <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-2xl mx-auto italic">
+                                {(pageSection as any).description}
+                            </p>
+                        )}
+                    </div>
+                )}
+
+                <Card className="border border-primary/20 shadow-xl rounded-2xl sm:rounded-3xl overflow-hidden bg-[#F0F7FF]/90 backdrop-blur-sm">
+                    <CardContent className="p-5 sm:p-12 space-y-10 sm:space-y-12">
+                        <div className="space-y-10 sm:space-y-12">
+                            {currentElements.map((el) => {
+                                if (el.id === pageSection?.id) return null;
+                                return (
+                                    <ElementRenderer 
+                                        key={el.id}
+                                        element={el}
+                                        control={form.control}
+                                        errors={form.formState.errors}
+                                        isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
+                                        isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
+                                        surveyId={survey.id}
+                                        onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
+                                    />
+                                )
+                            })}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                 <div className={cn("flex flex-col sm:flex-row items-center mt-8 gap-4 px-2", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
+                    {isMultiPage && currentPageIndex > 0 && (
+                        <Button type="button" variant="outline" size="lg" className="h-12 px-8 rounded-xl font-bold w-full sm:w-auto" onClick={handlePrev} disabled={form.formState.isSubmitting}>
+                            Previous
+                        </Button>
+                    )}
+                     {isMultiPage && currentPageIndex < pages.length - 1 && (
+                         <Button type="button" size="lg" className="h-12 px-8 rounded-xl font-bold w-full sm:w-auto sm:ml-auto" onClick={handleNext} disabled={form.formState.isSubmitting}>
+                            Next <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                     )}
+                    {currentPageIndex === pages.length - 1 && (
+                        <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-xl font-black shadow-lg transition-all hover:scale-105 w-full sm:w-auto", isMultiPage && "sm:ml-auto")} disabled={form.formState.isSubmitting || isSubmitDisabled}>
+                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                        </Button>
                     )}
                 </div>
-            )}
-
-            <Card className="border border-primary/20 shadow-xl rounded-3xl overflow-hidden bg-[#F0F7FF]/90 backdrop-blur-sm">
-                <CardContent className="p-6 sm:p-12 space-y-12">
-                    <div className="space-y-12">
-                        {currentElements.map((el) => {
-                            if (el.id === pageSection?.id) return null;
-                            return (
-                                <ElementRenderer 
-                                    key={el.id}
-                                    element={el}
-                                    control={form.control}
-                                    errors={form.formState.errors}
-                                    isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
-                                    isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
-                                    surveyId={survey.id}
-                                    onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
-                                />
-                            )
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
-
-             <div className={cn("flex items-center mt-8", isMultiPage ? "justify-between" : "justify-end")}>
-                {isMultiPage && currentPageIndex > 0 && (
-                    <Button type="button" variant="outline" size="lg" className="h-12 px-8 rounded-xl font-bold" onClick={handlePrev} disabled={form.formState.isSubmitting}>
-                        Previous
-                    </Button>
-                )}
-                 {isMultiPage && currentPageIndex < pages.length - 1 && (
-                     <Button type="button" size="lg" className="h-12 px-8 rounded-xl font-bold ml-auto" onClick={handleNext} disabled={form.formState.isSubmitting}>
-                        Next <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                 )}
-                {currentPageIndex === pages.length - 1 && (
-                    <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-xl font-black shadow-lg transition-all hover:scale-105", isMultiPage && "ml-auto")} disabled={form.formState.isSubmitting || isSubmitDisabled}>
-                        {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
-                    </Button>
-                )}
-            </div>
-        </form>
+            </form>
+        </div>
     );
 }

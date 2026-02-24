@@ -117,15 +117,15 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                     <div className="max-w-4xl w-full mx-auto text-center">
                         <div className="flex justify-center mb-8">
                           {survey.logoUrl ? (
-                              <div className="relative h-12 w-48">
+                              <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                   <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
                               </div>
                           ) : (
-                              <SmartSappLogo className="h-12" />
+                              <SmartSappLogo className="h-10 sm:h-12" />
                           )}
                         </div>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8 shadow-xl">
+                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 shadow-xl">
                                 <Image 
                                     src={survey.bannerImageUrl} 
                                     alt={survey.title || 'Survey thank you banner'} 
@@ -134,13 +134,13 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 />
                             </div>
                         )}
-                        <h1 className="text-3xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-lg">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        <h1 className="text-2xl sm:text-3xl font-bold mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <p className="text-muted-foreground text-base sm:text-lg px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
-                 <footer className="py-8 text-center text-sm text-muted-foreground relative z-10">
+                 <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
                     <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                    <p>&copy; 2026 SmartSapp</p>
+                    <p>&copy; {new Date().getFullYear()} SmartSapp</p>
                 </footer>
             </div>
         )
@@ -152,25 +152,25 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow relative z-10">
-                <div className="max-w-4xl mx-auto py-12 px-4">
+                <div className="max-w-4xl mx-auto py-8 sm:py-12 px-4">
                     {!hasCoverPage && (
-                        <div className="text-center mb-12">
-                            <div className="flex justify-center mb-8">
+                        <div className="text-center mb-8 sm:mb-12">
+                            <div className="flex justify-center mb-6 sm:mb-8">
                                 {survey.logoUrl ? (
-                                    <div className="relative h-12 w-48">
+                                    <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                         <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
                                     </div>
                                 ) : (
-                                    <SmartSappLogo className="h-12" />
+                                    <SmartSappLogo className="h-10 sm:h-12" />
                                 )}
                             </div>
                             {survey.bannerImageUrl && (
-                                <div className="relative w-full aspect-[3/1] rounded-2xl overflow-hidden mb-10 shadow-2xl border-4 border-white">
+                                <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 sm:mb-10 shadow-2xl border-2 sm:border-4 border-white">
                                     <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
                                 </div>
                             )}
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-foreground">{survey.title}</h1>
-                            <div className="text-lg text-muted-foreground prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-foreground px-2">{survey.title}</h1>
+                            <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     )}
 
@@ -181,9 +181,9 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                     )}
                 </div>
             </main>
-            <footer className="py-8 text-center text-sm text-muted-foreground relative z-10">
+            <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
                 <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                <p>&copy; 2026 SmartSapp</p>
+                <p>&copy; {new Date().getFullYear()} SmartSapp</p>
             </footer>
         </div>
     );

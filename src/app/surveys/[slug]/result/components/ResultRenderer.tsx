@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -53,27 +52,27 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
     }, [score, style?.animate]);
 
     return (
-        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-3xl p-8 my-12">
+        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 my-8 sm:my-12">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="absolute -right-12 -top-12 opacity-10"
+                className="absolute -right-8 sm:-right-12 -top-8 sm:-top-12 opacity-10"
             >
-                <Trophy size={200} />
+                <Trophy size={160} className="sm:w-[200px] sm:h-[200px]" />
             </motion.div>
             
-            <CardContent className="relative z-10 flex flex-col items-center text-center">
-                <Badge variant="outline" className="mb-6 bg-white/10 text-white border-white/20 px-4 py-1 text-xs font-black tracking-widest uppercase">Your Result</Badge>
+            <CardContent className="relative z-10 flex flex-col items-center text-center p-0">
+                <Badge variant="outline" className="mb-4 sm:mb-6 bg-white/10 text-white border-white/20 px-4 py-1 text-[10px] sm:text-xs font-black tracking-widest uppercase">Your Result</Badge>
                 
                 <div className="flex flex-col gap-1">
-                    <span className="text-7xl sm:text-9xl font-black tabular-nums tracking-tighter">
+                    <span className="text-6xl sm:text-8xl md:text-9xl font-black tabular-nums tracking-tighter">
                         {displayScore}
                     </span>
-                    <span className="text-xl sm:text-2xl font-bold opacity-60">out of {maxScore} points</span>
+                    <span className="text-lg sm:text-xl md:text-2xl font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
                 </div>
 
-                <>
-                    <div className="mt-8 w-full h-2 bg-white/20 rounded-full overflow-hidden">
+                <div className="w-full max-w-md mx-auto">
+                    <div className="mt-6 sm:mt-8 w-full h-2 bg-white/20 rounded-full overflow-hidden">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${(score / maxScore) * 100}%` }}
@@ -81,10 +80,10 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
                             className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)]"
                         />
                     </div>
-                    <p className="mt-4 text-sm font-medium text-white/80">
+                    <p className="mt-4 text-xs sm:text-sm font-medium text-white/80">
                         That&apos;s better than {Math.round((score / maxScore) * 100 * 0.8)}% of other respondents!
                     </p>
-                </>
+                </div>
             </CardContent>
         </Card>
     );
@@ -94,19 +93,19 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     const alignment = block.style?.textAlign || 'left';
     
     const containerClasses = cn(
-        "w-full my-6",
+        "w-full my-4 sm:my-6 px-2 sm:px-0",
         alignment === 'center' && "text-center flex flex-col items-center",
         alignment === 'right' && "text-right flex flex-col items-end"
     );
 
     switch (block.type) {
         case 'heading':
-            return <h2 className={cn("text-3xl font-black tracking-tight", containerClasses)} style={{ color: block.style?.color }}>{block.title}</h2>;
+            return <h2 className={cn("text-2xl sm:text-3xl font-black tracking-tight", containerClasses)} style={{ color: block.style?.color }}>{block.title}</h2>;
         case 'text':
-            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-lg text-muted-foreground leading-relaxed", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
         case 'image':
             return block.url ? (
-                <div className={cn("relative aspect-video rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
+                <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
                     <Image src={block.url} alt="Result content" fill className="object-cover" />
                 </div>
             ) : null;
@@ -119,7 +118,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                         asChild 
                         size="lg" 
                         variant={block.style?.variant as any} 
-                        className="h-14 px-8 text-lg font-black rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95"
+                        className="h-14 px-8 text-lg font-black rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
                     >
                         <a href={block.link || '#'} target={block.openInNewTab ? "_blank" : "_self"} rel="noopener noreferrer">
                             {block.title} <ArrowRight className="ml-2 h-5 w-5" />
@@ -129,13 +128,13 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         case 'quote':
             return (
-                <div className={cn("p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-xl", containerClasses)}>
-                    <Quote className="h-8 w-8 text-primary/20 mb-4" />
+                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-lg sm:text-xl", containerClasses)}>
+                    <Quote className="h-6 w-6 sm:h-8 sm:w-8 text-primary/20 mb-4" />
                     {block.content}
                 </div>
             );
         case 'divider':
-            return <Separator className="my-12" />;
+            return <Separator className="my-8 sm:my-12" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} />;
         default:
@@ -146,29 +145,31 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
 export default function ResultRenderer({ survey, response, page }: ResultRendererProps) {
     if (!page) {
         return (
-            <div className="text-center py-20 bg-white rounded-2xl shadow-xl border p-8">
+            <div className="text-center py-16 sm:py-20 bg-white rounded-2xl shadow-xl border p-6 sm:p-8">
                 <div className="flex justify-center">
-                    <SmartSappLogo className="h-12 mb-8" />
+                    <SmartSappLogo className="h-10 sm:h-12 mb-6 sm:mb-8" />
                 </div>
-                <h1 className="text-4xl font-black mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                <p className="text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                <h1 className="text-3xl sm:text-4xl font-black mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                <p className="text-lg sm:text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
             </div>
         );
     }
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="flex justify-center mb-12">
-                <SmartSappLogo className="h-10 opacity-50 grayscale hover:opacity-100 transition-all cursor-pointer" />
+            <div className="flex justify-center mb-8 sm:mb-12">
+                <SmartSappLogo className="h-8 sm:h-10 opacity-50 grayscale hover:opacity-100 transition-all cursor-pointer" />
             </div>
-            {page.blocks.map(block => (
-                <BlockRenderer 
-                    key={block.id} 
-                    block={block} 
-                    score={response.score || 0} 
-                    maxScore={survey.maxScore || 100} 
-                />
-            ))}
+            <div className="space-y-2 sm:space-y-4">
+                {page.blocks.map(block => (
+                    <BlockRenderer 
+                        key={block.id} 
+                        block={block} 
+                        score={response.score || 0} 
+                        maxScore={survey.maxScore || 100} 
+                    />
+                ))}
+            </div>
         </div>
     );
 }
