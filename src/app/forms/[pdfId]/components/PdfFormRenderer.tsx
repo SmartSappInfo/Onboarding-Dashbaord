@@ -89,12 +89,30 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
-  const { register, handleSubmit, watch, setValue, formState: { isValid, errors } } = useForm({
+  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = useForm({
     resolver: zodResolver(validationSchema),
     mode: 'onChange',
   });
 
   const watchedValues = watch();
+
+  // Auto-populate date and time on mount
+  React.useEffect(() => {
+    const now = new Date();
+    const currentDate = format(now, 'yyyy-MM-dd');
+    const currentTime = format(now, 'HH:mm');
+
+    pdfForm.fields.forEach(field => {
+      const currentValue = getValues(field.id);
+      if (!currentValue) {
+        if (field.type === 'date') {
+          setValue(field.id, currentDate, { shouldValidate: true });
+        } else if (field.type === 'time') {
+          setValue(field.id, currentTime, { shouldValidate: true });
+        }
+      }
+    });
+  }, [pdfForm.fields, setValue, getValues]);
 
   React.useEffect(() => {
     pdfForm.fields.forEach(field => {
