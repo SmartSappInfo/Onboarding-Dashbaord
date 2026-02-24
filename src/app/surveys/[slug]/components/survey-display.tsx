@@ -37,6 +37,12 @@ function SurveyFormSkeleton() {
 const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPattern'], color?: string }) => {
     if (!pattern || pattern === 'none') return null;
 
+    if (pattern === 'gradient') {
+        return (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-90" />
+        );
+    }
+
     const patterns: Record<string, React.ReactNode> = {
         dots: (
             <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
@@ -125,7 +131,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                           )}
                         </div>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 shadow-xl">
+                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white">
                                 <Image 
                                     src={survey.bannerImageUrl} 
                                     alt={survey.title || 'Survey thank you banner'} 
@@ -134,8 +140,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 />
                             </div>
                         )}
-                        <h1 className="text-2xl sm:text-3xl font-bold mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-base sm:text-lg px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <p className="text-muted-foreground text-lg sm:text-xl px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
                  <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
@@ -154,10 +160,10 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow relative z-10">
-                <div className="max-w-4xl mx-auto py-8 sm:py-12 px-4">
+                <div className="max-w-4xl mx-auto py-8 sm:py-16 px-4">
                     {!hasCoverPage && (
                         <div className="text-center mb-8 sm:mb-12">
-                            <div className="flex justify-center mb-6 sm:mb-8">
+                            <div className="flex justify-center mb-6 sm:mb-10">
                                 {survey.logoUrl ? (
                                     <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                         <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
@@ -169,12 +175,12 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                             {showHeader && (
                                 <>
                                     {survey.bannerImageUrl && (
-                                        <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 sm:mb-10 shadow-2xl border-2 sm:border-4 border-white">
+                                        <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-3xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white">
                                             <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
                                         </div>
                                     )}
-                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-foreground px-2">{survey.title}</h1>
-                                    <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>
+                                    <div className="text-lg sm:text-2xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>

@@ -112,7 +112,7 @@ const formSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal('')),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   backgroundColor: z.string().optional(),
-  backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes']).default('none'),
+  backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
   patternColor: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
@@ -155,6 +155,12 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
 
 const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundPattern'], color?: string }) => {
     if (!pattern || pattern === 'none') return null;
+
+    if (pattern === 'gradient') {
+        return (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-80" />
+        );
+    }
 
     const patterns: Record<string, React.ReactNode> = {
         dots: (
@@ -620,15 +626,16 @@ export default function NewSurveyPage() {
                                                         name="backgroundPattern"
                                                         render={({ field }) => (
                                                             <FormItem>
-                                                                <FormLabel>Background Pattern</FormLabel>
+                                                                <FormLabel>Background Style</FormLabel>
                                                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                                                     <FormControl>
                                                                         <SelectTrigger>
-                                                                            <SelectValue placeholder="Select a pattern" />
+                                                                            <SelectValue placeholder="Select a style" />
                                                                         </SelectTrigger>
                                                                     </FormControl>
                                                                     <SelectContent>
                                                                         <SelectItem value="none">None (Solid)</SelectItem>
+                                                                        <SelectItem value="gradient">Linear Gradient</SelectItem>
                                                                         <SelectItem value="dots">Dots</SelectItem>
                                                                         <SelectItem value="grid">Grid</SelectItem>
                                                                         <SelectItem value="circuit">Circuit</SelectItem>

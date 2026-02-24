@@ -200,7 +200,7 @@ export interface Survey {
   logoUrl?: string;
   bannerImageUrl?: string;
   backgroundColor?: string;
-  backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes';
+  backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;
   status: 'draft' | 'published' | 'archived';
   elements: SurveyElement[];
