@@ -232,7 +232,23 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 };
 
 
-const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surveyId }: { element: SurveyElement; control: any, errors: any; isVisible: boolean; isRequired: boolean; surveyId: string; }) => {
+const ElementRenderer = ({ 
+    element, 
+    control, 
+    errors, 
+    isVisible, 
+    isRequired, 
+    surveyId,
+    onAutoAdvance
+}: { 
+    element: SurveyElement; 
+    control: any, 
+    errors: any; 
+    isVisible: boolean; 
+    isRequired: boolean; 
+    surveyId: string; 
+    onAutoAdvance?: () => void;
+}) => {
 
     if (isLogic(element) || !isVisible) {
         return null;
@@ -241,6 +257,14 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
+        
+        const handleRadioChange = (val: string, onChange: (v: string) => void) => {
+            onChange(val);
+            if (question.autoAdvance && onAutoAdvance) {
+                setTimeout(onAutoAdvance, 300); // Small delay for visual feedback of selection
+            }
+        };
+
         return (
             <Card id={question.id}>
                 <CardContent className={cn("pt-6", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
@@ -260,7 +284,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                     <RadioGroup onValueChange={field.onChange} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                     <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                         <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
                                             <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
                                             Yes
@@ -278,7 +302,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <RadioGroup onValueChange={field.onChange} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                         {question.options?.map(opt => (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
                                                 <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
@@ -307,7 +331,7 @@ const ElementRenderer = ({ element, control, errors, isVisible, isRequired, surv
                                                             if (question.allowOther) {
                                                                 const currentOptions = field.value?.options || [];
                                                                 const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                                field.onChange({ ...(field.value || {}), options: newOptions });
+                                                                field.onChange({ ...(field.value || {}), other: newOptions });
                                                             } else {
                                                                 const currentVal = field.value || [];
                                                                 const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
@@ -816,8 +840,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 if (jumpAction) break;
             }
 
-            setCurrentPageIndex(nextPageIndex);
-            window.scrollTo(0, 0);
+            if (nextPageIndex < pages.length) {
+                setCurrentPageIndex(nextPageIndex);
+                window.scrollTo(0, 0);
+            }
         } else {
             toast({ variant: 'destructive', title: 'Please fill out all required fields on this page.' });
         }
@@ -876,6 +902,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
                         isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
                         surveyId={survey.id}
+                        onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
                     />
                 )
             })}

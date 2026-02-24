@@ -55,6 +55,7 @@ const questionSchema = z.object({
   optionScores: z.array(z.number()).optional(),
   yesScore: z.number().optional(),
   noScore: z.number().optional(),
+  autoAdvance: z.boolean().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -388,21 +389,9 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
 
     if (isLoading) {
         return (
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-3/4" />
-                    <Skeleton className="h-4 w-1/2" />
-                </CardHeader>
-                <CardContent className="space-y-8 mt-6">
-                   <Skeleton className="h-10 w-full" />
-                   <Skeleton className="h-24 w-full" />
-                   <Skeleton className="h-24 w-full" />
-                   <Skeleton className="h-10 w-full" />
-                   <div className="mt-8">
-                        <Skeleton className="h-40 w-full" />
-                   </div>
-                </CardContent>
-            </Card>
+            <div className="flex h-full w-full items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
         )
     }
 

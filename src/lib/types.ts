@@ -116,6 +116,7 @@ export interface SurveyQuestion {
   optionScores?: number[];
   yesScore?: number;
   noScore?: number;
+  autoAdvance?: boolean;
   style?: {
     textAlign?: 'left' | 'center' | 'right';
   };

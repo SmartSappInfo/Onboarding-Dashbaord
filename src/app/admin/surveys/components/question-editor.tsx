@@ -15,7 +15,7 @@ import {
     Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, 
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight
+    AlignLeft, AlignCenter, AlignRight, Zap
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
@@ -701,6 +701,7 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const { control, getValues, setValue } = useFormContext();
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
+    const isRadioQuestion = isElemQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
     
     // Local state to manage UI toggles
     const [useMin, setUseMin] = React.useState(false);
@@ -749,6 +750,22 @@ function QuestionSettingsPopover({ element, index, changeType }: {
                             </div>
                             {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                         </>
+                    )}
+
+                    {isRadioQuestion && (
+                        <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5 border-primary/20">
+                            <div className="space-y-0.5">
+                                <Label htmlFor={`auto-advance-toggle-${index}`} className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Auto-advance</Label>
+                                <p className="text-[10px] text-muted-foreground">Move to next page on selection.</p>
+                            </div>
+                            <Controller 
+                                name={`elements.${index}.autoAdvance`} 
+                                control={control} 
+                                render={({ field }) => (
+                                    <Switch id={`auto-advance-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                )} 
+                            />
+                        </div>
                     )}
                 </div>
             )}

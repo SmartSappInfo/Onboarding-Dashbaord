@@ -50,6 +50,7 @@ const questionSchema = z.object({
   optionScores: z.array(z.number()).optional(),
   yesScore: z.number().optional(),
   noScore: z.number().optional(),
+  autoAdvance: z.boolean().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
