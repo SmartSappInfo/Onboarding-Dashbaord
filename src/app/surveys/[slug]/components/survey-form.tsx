@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -20,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2 } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -608,12 +607,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         // Identify if there is a cover page (first section is renderAsPage)
         const firstElem = survey.elements[0];
-        if (firstElem?.type === 'section' && firstElem.renderAsPage) {
+        if (firstElem?.type === 'section' && (firstElem as any).renderAsPage) {
             p.push([]); // Placeholder for cover page
         }
 
         survey.elements.forEach(element => {
-            if (element.type === 'section' && element.renderAsPage && currentPage.length > 0) {
+            if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
                 p.push(currentPage);
                 currentPage = [element];
             } else {
@@ -831,7 +830,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const currentElements = pages[currentPageIndex];
     const isCoverPage = currentElements.length === 0;
-    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' && currentElements[0].renderAsPage ? currentElements[0] : null;
+    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' && (currentElements[0] as any).renderAsPage ? currentElements[0] : null;
 
     if (isCoverPage) {
         return (
@@ -861,8 +860,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             
             {pageSection && (
                  <div className="mb-8 text-center">
-                    <h2 className="text-2xl font-bold">{pageSection.title}</h2>
-                    {pageSection.description && <p className="text-muted-foreground mt-1">{pageSection.description}</p>}
+                    <h2 className="text-2xl font-bold">{(pageSection as any).title}</h2>
+                    {(pageSection as any).description && <p className="text-muted-foreground mt-1">{(pageSection as any).description}</p>}
                 </div>
             )}
 

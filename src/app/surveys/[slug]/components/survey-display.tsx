@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -74,7 +73,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
 
     // Determine if we should show title/description based on if there's a cover page
     const firstElement = survey.elements[0];
-    const hasCoverPage = firstElement?.type === 'section' && firstElement.renderAsPage;
+    const hasCoverPage = firstElement?.type === 'section' && (firstElement as any).renderAsPage;
 
     return (
         <div className="light min-h-screen flex flex-col bg-slate-100">
@@ -86,12 +85,12 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 <SmartSappLogo className="h-12 mb-8" />
                             </div>
                             {survey.bannerImageUrl && (
-                                <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
+                                <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8 shadow-lg">
                                     <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" />
                                 </div>
                             )}
-                            <h1 className="text-3xl md:text-4xl font-bold mb-2">{survey.title}</h1>
-                            <p className="text-muted-foreground">{survey.description}</p>
+                            <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-2">{survey.title}</h1>
+                            <div className="text-muted-foreground prose prose-slate max-w-none" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     )}
 
