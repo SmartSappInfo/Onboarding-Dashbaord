@@ -147,6 +147,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     }
 
     const hasCoverPage = !!survey.showCoverPage;
+    const showHeader = !!survey.showSurveyTitles;
 
     return (
         <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
@@ -164,13 +165,17 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                     <SmartSappLogo className="h-10 sm:h-12" />
                                 )}
                             </div>
-                            {survey.bannerImageUrl && (
-                                <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 sm:mb-10 shadow-2xl border-2 sm:border-4 border-white">
-                                    <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
-                                </div>
+                            {showHeader && (
+                                <>
+                                    {survey.bannerImageUrl && (
+                                        <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden mb-8 sm:mb-10 shadow-2xl border-2 sm:border-4 border-white">
+                                            <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
+                                        </div>
+                                    )}
+                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-foreground px-2">{survey.title}</h1>
+                                    <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                </>
                             )}
-                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight mb-4 text-foreground px-2">{survey.title}</h1>
-                            <div className="text-base sm:text-lg text-muted-foreground prose prose-slate max-w-none px-4" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     )}
 

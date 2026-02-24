@@ -849,6 +849,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const currentElements = pages[currentPageIndex];
     const isCoverPage = currentElements.length === 0;
     const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? currentElements[0] : null;
+    const showTitles = survey.showSurveyTitles !== false;
 
     if (isCoverPage) {
         return (
@@ -862,15 +863,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         <SmartSappLogo className="h-10 sm:h-12" />
                     )}
                 </div>
-                {survey.bannerImageUrl && (
-                    <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 sm:border-4 border-white">
-                        <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
-                    </div>
+                {showTitles && (
+                    <>
+                        {survey.bannerImageUrl && (
+                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border-2 sm:border-4 border-white">
+                                <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
+                            </div>
+                        )}
+                        <div className="space-y-4 max-w-2xl mx-auto px-2">
+                            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground">{survey.title}</h1>
+                            <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                        </div>
+                    </>
                 )}
-                <div className="space-y-4 max-w-2xl mx-auto px-2">
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground">{survey.title}</h1>
-                    <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate" dangerouslySetInnerHTML={{ __html: survey.description }} />
-                </div>
                 <Button size="lg" className="h-14 px-10 text-lg sm:text-xl font-bold rounded-xl shadow-xl transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                 </Button>

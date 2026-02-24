@@ -127,6 +127,7 @@ const formSchema = z.object({
   resultPages: z.array(z.any()).default([]),
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
+  showSurveyTitles: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -263,6 +264,7 @@ function EditSurveyContent() {
             resultPages: [],
             startButtonText: 'Let\'s Start',
             showCoverPage: true,
+            showSurveyTitles: true,
         }
     });
 
@@ -302,6 +304,7 @@ function EditSurveyContent() {
                 resultPages: [],
                 startButtonText: survey.startButtonText || 'Let\'s Start',
                 showCoverPage: survey.showCoverPage ?? true,
+                showSurveyTitles: survey.showSurveyTitles ?? true,
             });
 
             if (firestore) {
@@ -430,7 +433,7 @@ function EditSurveyContent() {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -542,24 +545,40 @@ function EditSurveyContent() {
                                                         </FormItem>
                                                     )}
                                                 />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="showCoverPage"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel className="text-base">Use Cover Page</FormLabel>
-                                                                <FormDescription>Show title and description on a separate first page.</FormDescription>
-                                                            </div>
-                                                            <FormControl>
-                                                                <Switch
-                                                                    checked={field.value}
-                                                                    onCheckedChange={field.onChange}
+                                                <div className="space-y-4 pt-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="showCoverPage"
+                                                        render={({ field }) => (
+                                                            <div className="flex items-center gap-3">
+                                                                <Switch 
+                                                                    id="show-cover-page-edit" 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
                                                                 />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                                <Label htmlFor="show-cover-page-edit" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                                    <Layout className="h-3 w-3 text-primary" /> Use Cover Page
+                                                                </Label>
+                                                            </div>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="showSurveyTitles"
+                                                        render={({ field }) => (
+                                                            <div className="flex items-center gap-3">
+                                                                <Switch 
+                                                                    id="show-survey-titles-edit" 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
+                                                                />
+                                                                <Label htmlFor="show-survey-titles-edit" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                                    <Eye className="h-3 w-3 text-primary" /> Show Survey Titles
+                                                                </Label>
+                                                            </div>
+                                                        )}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>

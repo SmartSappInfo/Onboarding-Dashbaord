@@ -213,6 +213,7 @@ export interface Survey {
   resultRules?: SurveyResultRule[];
   startButtonText?: string;
   showCoverPage?: boolean;
+  showSurveyTitles?: boolean;
 }
 
 export interface SurveyResponse {

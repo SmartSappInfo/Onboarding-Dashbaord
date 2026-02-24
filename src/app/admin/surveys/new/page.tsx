@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy, Palette, Layout } from 'lucide-react';
+import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy, Palette, Layout, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
@@ -122,6 +122,7 @@ const formSchema = z.object({
   resultPages: z.array(z.any()).default([]),
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
+  showSurveyTitles: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -257,6 +258,7 @@ export default function NewSurveyPage() {
             resultPages: [],
             startButtonText: 'Let\'s Start',
             showCoverPage: true,
+            showSurveyTitles: true,
         },
     });
 
@@ -331,7 +333,7 @@ export default function NewSurveyPage() {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -488,24 +490,40 @@ export default function NewSurveyPage() {
                                                         </FormItem>
                                                     )}
                                                 />
-                                                <FormField
-                                                    control={form.control}
-                                                    name="showCoverPage"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                            <div className="space-y-0.5">
-                                                                <FormLabel className="text-base">Use Cover Page</FormLabel>
-                                                                <FormDescription>Show title and description on a separate first page.</FormDescription>
-                                                            </div>
-                                                            <FormControl>
-                                                                <Switch
-                                                                    checked={field.value}
-                                                                    onCheckedChange={field.onChange}
+                                                <div className="space-y-4 pt-2">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="showCoverPage"
+                                                        render={({ field }) => (
+                                                            <div className="flex items-center gap-3">
+                                                                <Switch 
+                                                                    id="show-cover-page" 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
                                                                 />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                                <Label htmlFor="show-cover-page" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                                    <Layout className="h-3 w-3 text-primary" /> Use Cover Page
+                                                                </Label>
+                                                            </div>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="showSurveyTitles"
+                                                        render={({ field }) => (
+                                                            <div className="flex items-center gap-3">
+                                                                <Switch 
+                                                                    id="show-survey-titles" 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
+                                                                />
+                                                                <Label htmlFor="show-survey-titles" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                                    <Eye className="h-3 w-3 text-primary" /> Show Survey Titles
+                                                                </Label>
+                                                            </div>
+                                                        )}
+                                                    />
+                                                </div>
                                             </div>
                                         </div>
                                     </CardContent>
