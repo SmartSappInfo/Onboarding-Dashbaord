@@ -222,7 +222,7 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundP
     );
 };
 
-export default function EditSurveyPage() {
+function EditSurveyContent() {
     const params = useParams();
     const router = useRouter();
     const firestore = useFirestore();
@@ -436,33 +436,6 @@ export default function EditSurveyPage() {
         }
         setStep(s => s + 1);
     };
-
-    const watchedForm = form.watch();
-    const debouncedForm = useDebounce(watchedForm, 800);
-
-    const {
-        state: historyState,
-        set: setHistory,
-        undo: undoHistory,
-        redo: redoHistory,
-        canUndo,
-        canRedo,
-        reset: resetHistory
-    } = useUndoRedo<any>([]);
-
-    const isProgrammaticChange = React.useRef(false);
-
-    React.useEffect(() => {
-        if (isProgrammaticChange.current) return;
-        setHistory(debouncedForm.elements);
-    }, [debouncedForm.elements, setHistory]);
-
-    React.useEffect(() => {
-        if (isProgrammaticChange.current) {
-            setValue('elements', historyState, { shouldDirty: true });
-            isProgrammaticChange.current = false;
-        }
-    }, [historyState, setValue]);
 
     if (isLoading) {
         return (
@@ -782,4 +755,8 @@ export default function EditSurveyPage() {
             </div>
         </FormProvider>
     );
+}
+
+export default function EditSurveyPage() {
+    return <EditSurveyContent />;
 }

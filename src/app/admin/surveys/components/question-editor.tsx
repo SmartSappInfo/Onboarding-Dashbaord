@@ -1,6 +1,6 @@
 'use client';
 
-import { useFormContext, Controller, get } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -830,7 +830,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   return (
     <div ref={setNodeRef} style={style} className="relative group">
         <div
-            className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+            className="absolute top-0 left-[-32px] top-1/2 -translate-y-1/2 z-20 cursor-grab p-2 opacity-0 group-hover:opacity-100 transition-opacity"
             {...attributes}
             {...listeners}
         >
@@ -845,13 +845,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             )}
         >
              <CardHeader className={cn(isMediaLayout && 'p-0 mb-4')}>
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {(!isElementLayout || isElementSection) && (
                             <>
-                                <ElementIcon className="w-5 h-5" />
+                                <ElementIcon className="w-5 h-5 shrink-0" />
                                 {isElementQuestion && element.isRequired && <span className="text-destructive font-bold">*</span>}
-                                <span>
+                                <span className="font-bold">
                                   {isElementQuestion ? `Question #${watch('elements').filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
                                     : isElementSection ? '' 
                                     : 'Logic Block'}
@@ -860,7 +860,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         )}
                         {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                     </div>
-                    <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <TooltipProvider>
                             {isElementQuestion && (
                                 <Tooltip>
@@ -869,7 +869,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             type="button" 
                                             variant="ghost" 
                                             size="icon" 
-                                            className={cn("h-8 w-8", element.isRequired ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                                            className={cn("h-8 w-8 rounded-lg", element.isRequired ? "text-primary bg-primary/10" : "text-muted-foreground")}
                                             onClick={() => toggleRequired(index)}
                                         >
                                             <Asterisk className="h-4 w-4" />
@@ -880,7 +880,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleHidden(index)}>
                                         {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                     </Button>
                                 </TooltipTrigger>
@@ -888,7 +888,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateElement(index)}>
                                         <Copy className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -896,7 +896,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={index === 0} onClick={() => swap(index, index - 1)} >
                                         <ArrowUp className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -904,7 +904,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
                                         <ArrowDown className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -912,7 +912,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </Tooltip>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
@@ -920,7 +920,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             </Tooltip>
                             <Popover>
                                 <PopoverTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                                         <MoreVertical className="h-4 w-4" />
                                     </Button>
                                 </PopoverTrigger>
@@ -1006,29 +1006,23 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
                              {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                         </div>
-                        <div className="space-y-4">
+                        <div className="flex items-center gap-6 pt-4 border-t">
                             {isAutoAdvanceable && (
-                                <div className="flex items-center justify-between rounded-lg border p-4 bg-primary/5 border-primary/20">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor={`auto-advance-toggle-${index}`} className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Auto-advance</Label>
-                                        <p className="text-sm text-muted-foreground">Move to next page immediately on selection.</p>
-                                    </div>
+                                <div className="flex items-center gap-2">
                                     <Controller 
                                         name={`elements.${index}.autoAdvance`} 
                                         control={control} 
                                         render={({ field }) => (
-                                            <Switch id={`auto-advance-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                            <Switch id={`auto-advance-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
                                         )} 
                                     />
+                                    <Label htmlFor={`auto-advance-${index}`} className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> Auto-advance</Label>
                                 </div>
                             )}
                             {isScoreable && (
-                                <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
-                                    <div className="space-y-0.5">
-                                        <Label htmlFor={`scoring-toggle-${index}`}>Enable Scoring</Label>
-                                        <p className="text-sm text-muted-foreground">Assign numerical values to answers.</p>
-                                    </div>
-                                    <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                                <div className="flex items-center gap-2">
+                                    <Controller name={`elements.${index}.enableScoring`} control={control} render={({ field }) => <Switch id={`scoring-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
+                                    <Label htmlFor={`scoring-${index}`} className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5"><TrophyIcon className="h-3 w-3 text-yellow-500" /> Enable Scoring</Label>
                                 </div>
                             )}
                         </div>
