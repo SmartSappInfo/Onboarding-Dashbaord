@@ -146,7 +146,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         )
     }
 
-    const hasCoverPage = !!survey.showCoverPage;
+    // Skip cover page if titles are hidden
+    const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
     const showHeader = !!survey.showSurveyTitles;
 
     return (

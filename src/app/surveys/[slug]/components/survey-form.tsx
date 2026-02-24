@@ -412,7 +412,7 @@ const ElementRenderer = ({
                                         value={field.value}
                                         onChange={field.onChange}
                                         disabled={false}
-                                        surveyId={surveyId}
+                                        surveyId={survey.id}
                                     />
                                 )}
                             />
@@ -624,7 +624,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
 
-        if (survey.showCoverPage) {
+        // Bypass cover page if titles are hidden
+        if (survey.showCoverPage && survey.showSurveyTitles !== false) {
             p.push([]); 
         }
 
@@ -641,7 +642,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             p.push(currentPage);
         }
         return p.length > 0 ? p : [[]];
-    }, [survey.elements, survey.showCoverPage]);
+    }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles]);
 
     const isMultiPage = pages.length > 1;
 
