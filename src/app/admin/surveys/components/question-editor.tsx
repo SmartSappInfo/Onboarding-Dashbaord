@@ -14,7 +14,7 @@ import {
     Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, 
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk
+    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
@@ -483,7 +483,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                 const Icon = getElementIcon(el.type);
                 const prefix = isQuestion(el) ? `Q${allElements.filter(isQuestion).findIndex(q => q.id === el.id) + 1}` : (el.type.charAt(0).toUpperCase() + el.type.slice(1));
                 const label = el.title ? `${prefix}: ${el.title}` : `${prefix}: untitled`;
-                return { value: el.id, label: label.length > 50 ? label.substring(0, 50) + '...' : label, icon: Icon };
+                return { value: el.id, label: label.label || label, icon: Icon };
             });
     }
 
