@@ -236,6 +236,8 @@ export default function SurveyFormBuilder() {
                                     </span>
                                 )}
                             </div>
+                            <AiChatEditor />
+                            <Separator orientation="vertical" className="h-6 mx-1" />
                             <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
                                 <Undo className="h-5 w-5" />
                             </Button>
@@ -279,8 +281,6 @@ export default function SurveyFormBuilder() {
                 onOpenChange={setIsAddElementModalOpen}
                 onSelect={handleElementSelect}
             />
-
-            <AiChatEditor />
         </div>
     );
 }

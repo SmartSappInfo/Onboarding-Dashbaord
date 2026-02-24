@@ -11,6 +11,7 @@ import { modifySurvey } from '@/ai/flows/modify-survey-flow';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 
 interface Message {
     role: 'user' | 'assistant';
@@ -86,14 +87,14 @@ export default function AiChatEditor() {
     };
 
     return (
-        <div className="fixed bottom-6 right-6 z-[60] flex flex-col items-end gap-4">
+        <div className="relative inline-block">
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
                         initial={{ opacity: 0, y: 20, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                        className="w-[400px] max-w-[90vw]"
+                        className="fixed bottom-6 right-6 z-[100] w-[400px] max-w-[90vw]"
                     >
                         <Card className="shadow-2xl border-primary/20 flex flex-col h-[500px] overflow-hidden">
                             <CardHeader className="bg-primary text-primary-foreground py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0">
@@ -171,27 +172,20 @@ export default function AiChatEditor() {
                 )}
             </AnimatePresence>
 
-            <Button
-                size="lg"
+            <RainbowButton
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className={cn(
-                    "h-14 px-6 rounded-2xl font-black gap-3 shadow-2xl transition-all hover:scale-105 active:scale-95",
-                    isOpen ? "bg-white text-primary hover:bg-slate-50 border" : "bg-primary text-primary-foreground"
-                )}
+                variant={isOpen ? "default" : "outline"}
+                size="sm"
+                className="h-9 px-4 gap-2 font-bold"
             >
                 {isOpen ? (
-                    <>
-                        <X className="h-5 w-5" />
-                        <span>Close AI Partner</span>
-                    </>
+                    <X className="h-4 w-4" />
                 ) : (
-                    <>
-                        <Sparkles className="h-5 w-5 animate-pulse" />
-                        <span>Ask AI Design Partner</span>
-                    </>
+                    <Sparkles className="h-4 w-4" />
                 )}
-            </Button>
+                <span>AI Partner</span>
+            </RainbowButton>
         </div>
     );
 }
