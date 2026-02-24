@@ -15,7 +15,6 @@ import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
 import { Separator } from '@/components/ui/separator';
 
-// isLayoutBlock helper function
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
     return layoutTypes.includes(element.type);
@@ -24,13 +23,15 @@ function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
 export default function SurveyFormBuilder() {
     const { getValues, setValue, watch, formState: { isDirty }, control, reset } = useFormContext();
     const { toast } = useToast();
-    const surveyId = (useParams() as { id?: string }).id || 'new-survey';
+    const params = useParams();
+    const surveyId = (params?.id as string) || 'new-survey';
     const storageKey = `survey-autosave-${surveyId}`;
     
     const { fields, append, remove, move, swap, insert } = useFieldArray({
       control,
       name: 'elements',
     });
+    
     const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
 
@@ -90,7 +91,7 @@ export default function SurveyFormBuilder() {
     };
 
     const watchedForm = watch();
-    const debouncedForm = useDebounce(watchedForm, 10000);
+    const debouncedForm = useDebounce(watchedForm, 5000);
 
     const {
         state: historyState,
@@ -105,6 +106,7 @@ export default function SurveyFormBuilder() {
     const isProgrammaticChange = React.useRef(false);
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
+    // Restore from localStorage on mount
     React.useEffect(() => {
         resetHistory(getValues());
 
@@ -113,6 +115,7 @@ export default function SurveyFormBuilder() {
             try {
                 const parsedData = JSON.parse(savedData);
                 
+                // Convert date strings back to Date objects
                 if (parsedData.elements) {
                     parsedData.elements.forEach((el: any) => {
                         if (el.type === 'date' && el.defaultValue && typeof el.defaultValue === 'string') {
@@ -121,21 +124,25 @@ export default function SurveyFormBuilder() {
                     });
                 }
 
-                toast({
-                    title: "Unsaved Changes Found",
-                    description: "Do you want to restore your unsaved changes from a previous session?",
-                    action: (
-                        <Button onClick={() => {
-                            reset(parsedData);
-                            resetHistory(parsedData);
-                            toast({ title: 'Success', description: 'Restored unsaved changes.' });
-                            localStorage.removeItem(storageKey);
-                        }}>
-                            Restore
-                        </Button>
-                    ),
-                    duration: 20000,
-                });
+                // Check if restored data is actually different from current initial data
+                const currentData = getValues();
+                if (JSON.stringify(parsedData.elements) !== JSON.stringify(currentData.elements)) {
+                    toast({
+                        title: "Unsaved Changes Found",
+                        description: "We found a newer version of this survey in your local cache. Would you like to restore it?",
+                        action: (
+                            <Button variant="default" size="sm" onClick={() => {
+                                reset(parsedData);
+                                resetHistory(parsedData);
+                                toast({ title: 'Restored', description: 'Your unsaved changes have been applied.' });
+                                localStorage.removeItem(storageKey);
+                            }}>
+                                Restore Changes
+                            </Button>
+                        ),
+                        duration: 10000,
+                    });
+                }
             } catch (e) {
                 console.error("Failed to parse autosaved data", e);
                 localStorage.removeItem(storageKey);
@@ -144,23 +151,13 @@ export default function SurveyFormBuilder() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // Push to history when changes happen
     React.useEffect(() => {
-        if (isProgrammaticChange.current) {
-            return;
-        }
+        if (isProgrammaticChange.current) return;
         setHistory(watchedForm);
     }, [watchedForm, setHistory]);
 
-    const handleUndo = () => {
-        isProgrammaticChange.current = true;
-        undoHistory();
-    };
-
-    const handleRedo = () => {
-        isProgrammaticChange.current = true;
-        redoHistory();
-    };
-
+    // Handle Undo/Redo apply
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
             reset(historyState, {
@@ -175,18 +172,31 @@ export default function SurveyFormBuilder() {
         }
     }, [historyState, reset]);
 
+    // Background Auto-save
     React.useEffect(() => {
         if (isDirty) {
             setAutosaveStatus('saving');
-            localStorage.setItem(storageKey, JSON.stringify(debouncedForm));
-            const timer = setTimeout(() => setAutosaveStatus('saved'), 500);
-            const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 2500);
+            localStorage.setItem(storageKey, JSON.stringify(watchedForm));
+            const timer = setTimeout(() => setAutosaveStatus('saved'), 1000);
+            const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 3000);
             return () => {
                 clearTimeout(timer);
                 clearTimeout(idleTimer);
             };
         }
-    }, [debouncedForm, storageKey, isDirty]);
+    }, [debouncedForm, storageKey, isDirty, watchedForm]);
+
+    const handleUndo = () => {
+        if (!canUndo) return;
+        isProgrammaticChange.current = true;
+        undoHistory();
+    };
+
+    const handleRedo = () => {
+        if (!canRedo) return;
+        isProgrammaticChange.current = true;
+        redoHistory();
+    };
 
     return (
         <div className="relative pb-24">
@@ -198,9 +208,9 @@ export default function SurveyFormBuilder() {
                             <CardDescription>Build your survey using the editor below.</CardDescription>
                         </div>
                          <div className="flex items-center gap-2">
-                             <span className="text-sm text-muted-foreground transition-opacity duration-500 w-28 text-right">
-                                {autosaveStatus === 'saving' && 'Saving...'}
-                                {autosaveStatus === 'saved' && 'Changes saved.'}
+                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-opacity duration-500 w-32 text-right">
+                                {autosaveStatus === 'saving' && <span className="text-primary flex items-center justify-end gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Saving...</span>}
+                                {autosaveStatus === 'saved' && <span className="text-green-600 flex items-center justify-end gap-1">Changes cached</span>}
                             </span>
                             <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
                                 <Undo className="h-5 w-5" />
@@ -208,7 +218,7 @@ export default function SurveyFormBuilder() {
                             <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
                                 <Redo className="h-5 w-5" />
                             </Button>
-                            <Separator orientation="vertical" className="h-6" />
+                            <Separator orientation="vertical" className="h-6 mx-1" />
                             <SurveyPreviewButton variant="ghost" size="icon" className="h-9 w-9">
                                 <Eye className="h-5 w-5" />
                             </SurveyPreviewButton>
@@ -227,7 +237,7 @@ export default function SurveyFormBuilder() {
                         />
                     ) : (
                          <div className="text-center py-20">
-                            <p className="text-muted-foreground mb-4">This survey has no elements yet.</p>
+                            <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
                             <Button type="button" variant="outline" size="lg" onClick={() => {
                                 setInsertionIndex(0);
                                 setIsAddElementModalOpen(true);

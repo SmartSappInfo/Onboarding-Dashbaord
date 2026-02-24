@@ -28,11 +28,9 @@ import { MediaSelect } from '../../../schools/components/media-select';
 import SurveyFormBuilder from '../../components/survey-form-builder';
 import { Check, Loader2, BrainCircuit, ArrowRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import SurveyPreviewButton from '../../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
 import ResultsStep from '../../components/results-step';
-
 
 const questionSchema = z.object({
   id: z.string(),
@@ -118,7 +116,6 @@ const formSchema = z.object({
 });
 
 type FormData = z.infer<typeof formSchema>;
-
 
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     const steps = ['Details', 'Builder', 'Results', 'Publish'];
@@ -253,10 +250,9 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 scoringEnabled: survey.scoringEnabled || false,
                 maxScore: survey.maxScore || 100,
                 resultRules: survey.resultRules || [],
-                resultPages: [], // Will load separately
+                resultPages: [],
             });
 
-            // Load result pages from subcollection
             if (firestore) {
                 const pagesCol = collection(firestore, `surveys/${surveyId}/resultPages`);
                 getDocs(pagesCol).then(snap => {
@@ -323,23 +319,23 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         try {
             await updateDoc(docRef, JSON.parse(JSON.stringify(surveyData)));
             
-            // Sync result pages subcollection
             const pagesCol = collection(firestore, `surveys/${surveyId}/resultPages`);
             const existingPagesSnap = await getDocs(pagesCol);
             const existingIds = new Set(existingPagesSnap.docs.map(d => d.id));
             const newIds = new Set(resultPages.map(p => p.id));
 
-            // Delete removed pages
             for (const oldId of existingIds) {
                 if (!newIds.has(oldId)) {
                     await deleteDoc(doc(pagesCol, oldId));
                 }
             }
 
-            // Upsert new/updated pages
             for (const page of resultPages) {
                 await setDoc(doc(pagesCol, page.id), page);
             }
+
+            // Success: Purge Local Auto-save Cache
+            localStorage.removeItem(`survey-autosave-${surveyId}`);
 
             toast({ title: 'Survey Updated' });
             router.push('/admin/surveys');
@@ -352,8 +348,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     };
 
     const onInvalid = (errors: any) => {
-        console.error("Survey Edit Validation Failed:", errors);
-        
         const elements = getValues('elements');
         const elementErrors = parseValidationErrors(errors, elements);
 
@@ -431,7 +425,6 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             <Stepper currentStep={step} />
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 
-                {/* Step 1: Details */}
                 <Card className={cn(step !== 1 && 'hidden')}>
                     <CardHeader>
                         <CardTitle>Survey Details</CardTitle>
@@ -469,17 +462,14 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                     </CardContent>
                 </Card>
                 
-                {/* Step 2: Builder */}
                 <div className={cn(step !== 2 && 'hidden')}>
                     <SurveyFormBuilder />
                 </div>
                 
-                {/* Step 3: Results Builder */}
                 <div className={cn(step !== 3 && 'hidden')}>
                     <ResultsStep />
                 </div>
 
-                {/* Step 4: Publish */}
                 <div className={cn(step !== 4 && 'hidden')} className="space-y-8">
                     <LogicSimulator form={form} />
 
@@ -577,10 +567,9 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     );
 }
 
-
 export default function EditSurveyPage() {
     const params = useParams();
-    const surveyId = params.id as string;
+    const surveyId = params?.id as string;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">

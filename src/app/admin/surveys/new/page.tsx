@@ -24,9 +24,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Sparkles, BrainCircuit, Play, Search, ArrowRight, Trophy } from 'lucide-react';
+import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
@@ -117,7 +116,6 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-
 const Stepper = ({ currentStep }: { currentStep: number }) => {
     const steps = ['Details', 'Builder', 'Results', 'Publish'];
 
@@ -206,7 +204,6 @@ export default function NewSurveyPage() {
     const firestore = useFirestore();
     const [step, setStep] = React.useState(1);
     
-    // Validation Error Modal State
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
 
@@ -248,7 +245,6 @@ export default function NewSurveyPage() {
             const element = elements[index];
             const blockType = element.type.charAt(0).toUpperCase() + element.type.slice(1);
             
-            // Generate a readable block title
             let blockTitle = `Block #${index + 1} (${blockType})`;
             if ('title' in element && element.title) {
                 blockTitle = `Block #${index + 1}: "${element.title}"`;
@@ -256,7 +252,6 @@ export default function NewSurveyPage() {
                 blockTitle = `Question #${index + 1}: "${(element as SurveyQuestion).title}"`;
             }
 
-            // Iterate over fields in this element that have errors
             Object.keys(err).forEach(field => {
                 const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
                 parsed.push({
@@ -282,15 +277,13 @@ export default function NewSurveyPage() {
     };
 
     const onInvalid = (errors: any) => {
-        console.error("Survey Validation Failed:", errors);
-        
         const elements = getValues('elements');
         const elementErrors = parseValidationErrors(errors, elements);
 
         if (elementErrors.length > 0) {
             setValidationErrors(elementErrors);
             setIsErrorModalOpen(true);
-            setStep(2); // Jump to builder if errors are there
+            setStep(2); 
             return;
         }
 
@@ -359,13 +352,15 @@ export default function NewSurveyPage() {
         try {
             const surveyRef = await addDoc(collection(firestore, 'surveys'), mainData);
             
-            // Save subcollection result pages
             if (resultPages && resultPages.length > 0) {
                 const pagesCol = collection(firestore, `surveys/${surveyRef.id}/resultPages`);
                 for (const page of resultPages) {
                     await setDoc(doc(pagesCol, page.id), page);
                 }
             }
+
+            // Success: Purge Local Auto-save Cache
+            localStorage.removeItem('survey-autosave-new-survey');
 
             toast({ title: 'Survey Created' });
             router.push('/admin/surveys');
@@ -382,7 +377,6 @@ export default function NewSurveyPage() {
                     <Stepper currentStep={step} />
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                         
-                        {/* Step 1: Details */}
                         <Card className={cn(step !== 1 && 'hidden')}>
                             <CardHeader>
                                 <CardTitle>Survey Details</CardTitle>
@@ -420,17 +414,14 @@ export default function NewSurveyPage() {
                             </CardContent>
                         </Card>
                         
-                        {/* Step 2: Builder */}
                         <div className={cn(step !== 2 && 'hidden')}>
                             <SurveyFormBuilder />
                         </div>
                         
-                        {/* Step 3: Results Builder */}
                         <div className={cn(step !== 3 && 'hidden')}>
                             <ResultsStep />
                         </div>
 
-                        {/* Step 4: Publish */}
                         <div className={cn(step !== 4 && 'hidden')} className="space-y-8">
                             <LogicSimulator form={form} />
 
