@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -490,14 +491,14 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
 
 function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], currentIndex: number }) {
     // If there is a cover page, we only show stepper if there's more than 1 *content* page
-    const actualPagesCount = pages.some(p => p.length === 0) ? pages.length - 1 : pages.length;
+    const hasCover = pages[0].length === 0;
+    const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
 
     // Check if the current page is the cover page
-    if (pages[currentIndex].length === 0) return null;
+    if (hasCover && currentIndex === 0) return null;
 
     // Adjust indices for the stepper display (Step 1 should be the first content page)
-    const hasCover = pages[0].length === 0;
     const displayIndex = hasCover ? currentIndex - 1 : currentIndex;
     const displayPages = hasCover ? pages.slice(1) : pages;
 
@@ -605,9 +606,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
 
-        // Identify if there is a cover page (first section is renderAsPage)
-        const firstElem = survey.elements[0];
-        if (firstElem?.type === 'section' && (firstElem as any).renderAsPage) {
+        // Identify if there is a cover page based on explicit setting
+        if (survey.showCoverPage) {
             p.push([]); // Placeholder for cover page
         }
 
@@ -624,7 +624,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             p.push(currentPage);
         }
         return p.length > 0 ? p : [[]];
-    }, [survey.elements]);
+    }, [survey.elements, survey.showCoverPage]);
 
     const isMultiPage = pages.length > 1;
 

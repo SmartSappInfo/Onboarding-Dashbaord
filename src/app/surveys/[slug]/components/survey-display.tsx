@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -71,9 +72,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         )
     }
 
-    // Determine if we should show title/description based on if there's a cover page
-    const firstElement = survey.elements[0];
-    const hasCoverPage = firstElement?.type === 'section' && (firstElement as any).renderAsPage;
+    const hasCoverPage = !!survey.showCoverPage;
 
     return (
         <div className="light min-h-screen flex flex-col bg-slate-100">

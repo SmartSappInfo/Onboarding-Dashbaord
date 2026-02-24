@@ -208,6 +208,7 @@ export interface Survey {
   maxScore?: number;
   resultRules?: SurveyResultRule[];
   startButtonText?: string;
+  showCoverPage?: boolean;
 }
 
 export interface SurveyResponse {

@@ -121,6 +121,7 @@ const formSchema = z.object({
   resultRules: z.array(z.any()).default([]),
   resultPages: z.array(z.any()).default([]),
   startButtonText: z.string().optional(),
+  showCoverPage: z.boolean().default(true),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -184,6 +185,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             resultRules: [],
             resultPages: [],
             startButtonText: 'Let\'s Start',
+            showCoverPage: true,
         }
     });
 
@@ -205,6 +207,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 resultRules: survey.resultRules || [],
                 resultPages: [],
                 startButtonText: survey.startButtonText || 'Let\'s Start',
+                showCoverPage: survey.showCoverPage ?? true,
             });
 
             if (firestore) {
@@ -327,7 +330,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText'];
+        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -442,20 +445,40 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                                         </FormItem>
                                     )}
                                 />
-                                <FormField
-                                    control={form.control}
-                                    name="startButtonText"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Start Button Text</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="e.g., Let's Start" {...field} />
-                                            </FormControl>
-                                            <FormDescription>The label for the button on the cover page.</FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <FormField
+                                        control={form.control}
+                                        name="startButtonText"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Start Button Text</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g., Let's Start" {...field} />
+                                                </FormControl>
+                                                <FormDescription>The label for the button on the cover page.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="showCoverPage"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-base">Use Cover Page</FormLabel>
+                                                    <FormDescription>Show title and description on a separate first page.</FormDescription>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
