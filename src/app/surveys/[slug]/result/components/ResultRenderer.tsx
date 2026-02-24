@@ -8,11 +8,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ArrowRight, Quote, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { SmartSappLogo } from '@/components/icons';
+import { Badge } from '@/components/ui/badge';
 
 interface ResultRendererProps {
     survey: Survey;
