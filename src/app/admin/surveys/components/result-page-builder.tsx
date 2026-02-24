@@ -1,12 +1,17 @@
+
 'use client';
 
 import * as React from 'react';
-import { useFormContext, useFieldArray, useWatch } from 'react-hook-form';
+import { useFormContext, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, ArrowRight } from 'lucide-react';
+import { 
+    Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
+    Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, 
+    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -20,6 +25,9 @@ import { SmartSappLogo } from '@/components/icons';
 import VideoEmbed from '@/components/video-embed';
 import Image from 'next/image';
 import { Badge } from '@/components/ui/badge';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -29,7 +37,7 @@ const blockIcons: Record<string, React.ElementType> = {
     button: MousePointer2,
     quote: Quote,
     divider: Square,
-    'score-card': Trophy,
+    'score-card': TrophyIcon,
 };
 
 function Trophy(props: any) {
@@ -107,7 +115,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
 }
 
 function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockIndex: number }) {
-    const { register, watch, setValue } = useFormContext();
+    const { register, setValue } = useFormContext();
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
 
     if (!block) return null;
@@ -213,16 +221,94 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
     );
 }
 
+function SortableResultBlock({ 
+    id, 
+    index, 
+    pageIndex, 
+    block, 
+    remove, 
+    swap, 
+    duplicate 
+}: { 
+    id: string, 
+    index: number, 
+    pageIndex: number, 
+    block: any, 
+    remove: (i: number) => void,
+    swap: (a: number, b: number) => void,
+    duplicate: (i: number) => void
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+    const blockType = block.type;
+    const Icon = blockIcons[blockType] || Type;
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} className="relative group">
+            <div
+                className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-card border rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                {...attributes}
+                {...listeners}
+            >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <Card className="bg-card shadow-none border hover:border-primary/50 transition-colors">
+                <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
+                    <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-background rounded border">
+                            <Icon className="h-4 w-4 text-primary" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{blockType} Block</span>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicate(index)}><Copy className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}><Trash2 className="h-3.5 w-3.5" /></Button>
+                    </div>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                    <BlockInspector pageIndex={pageIndex} blockIndex={index} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
 function PageEditor({ pageIndex }: { pageIndex: number }) {
-    const { control, register } = useFormContext();
-    const { fields: blocks, append, remove, move } = useFieldArray({
+    const { control, getValues } = useFormContext();
+    const { fields: blocks, append, remove, move, swap, insert } = useFieldArray({
         control,
         name: `resultPages.${pageIndex}.blocks`,
     });
 
+    const sensors = useSensors(useSensor(PointerSensor));
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = blocks.findIndex((b) => b.id === active.id);
+            const newIndex = blocks.findIndex((b) => b.id === over.id);
+            move(oldIndex, newIndex);
+        }
+    };
+
+    const duplicateBlock = (index: number) => {
+        const blockToDuplicate = getValues(`resultPages.${pageIndex}.blocks.${index}`);
+        const newBlock = {
+            ...JSON.parse(JSON.stringify(blockToDuplicate)),
+            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+        };
+        insert(index + 1, newBlock);
+    };
+
     const addBlock = (type: SurveyResultBlock['type']) => {
         const newBlock: Partial<SurveyResultBlock> = {
-            id: `blk_${Date.now()}`,
+            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             type,
             style: { textAlign: 'center', animate: true, variant: 'default' },
         };
@@ -255,31 +341,24 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
                 ))}
             </div>
 
-            <div className="space-y-4">
-                {blocks.map((block, bIndex) => {
-                    const blockType = (block as any).type;
-                    const Icon = blockIcons[blockType] || Type;
-                    return (
-                        <Card key={block.id} className="bg-card shadow-none border hover:border-primary/50 transition-colors">
-                            <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-1.5 bg-background rounded border">
-                                        <Icon className="h-4 w-4 text-primary" />
-                                    </div>
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{blockType} Block</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => move(bIndex, bIndex - 1)} disabled={bIndex === 0}><GripVertical className="h-3 w-3" /></Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => remove(bIndex)}><Trash2 className="h-3 w-3" /></Button>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="px-4 pb-4">
-                                <BlockInspector pageIndex={pageIndex} blockIndex={bIndex} />
-                            </CardContent>
-                        </Card>
-                    );
-                })}
-            </div>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-6">
+                        {blocks.map((block, bIndex) => (
+                            <SortableResultBlock 
+                                key={block.id}
+                                id={block.id}
+                                index={bIndex}
+                                pageIndex={pageIndex}
+                                block={block}
+                                remove={remove}
+                                swap={swap}
+                                duplicate={duplicateBlock}
+                            />
+                        ))}
+                    </div>
+                </SortableContext>
+            </DndContext>
         </div>
     );
 }
