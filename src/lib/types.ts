@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -149,6 +150,41 @@ export interface SurveyLogicBlock {
 
 export type SurveyElement = SurveyQuestion | SurveyLayoutBlock | SurveyLogicBlock;
 
+export interface SurveyResultBlock {
+    id: string;
+    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card';
+    title?: string;
+    content?: string; // Rich text / HTML
+    url?: string;
+    link?: string;
+    openInNewTab?: boolean;
+    style?: {
+        textAlign?: 'left' | 'center' | 'right';
+        variant?: 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost' | 'link';
+        color?: string;
+        backgroundColor?: string;
+        padding?: string;
+        borderRadius?: string;
+        animate?: boolean;
+    };
+}
+
+export interface SurveyResultPage {
+    id: string;
+    name: string;
+    isDefault: boolean;
+    blocks: SurveyResultBlock[];
+}
+
+export interface SurveyResultRule {
+    id: string;
+    label: string;
+    minScore: number;
+    maxScore: number;
+    priority: number;
+    pageId: string;
+}
+
 export interface Survey {
   id: string;
   title: string;
@@ -161,12 +197,16 @@ export interface Survey {
   updatedAt: string; // ISO string
   thankYouTitle?: string;
   thankYouDescription?: string;
+  scoringEnabled?: boolean;
+  maxScore?: number;
+  resultRules?: SurveyResultRule[];
 }
 
 export interface SurveyResponse {
   id:string;
   surveyId: string;
   submittedAt: string; // ISO string
+  score?: number;
   answers: {
     questionId: string;
     value: any; // Can be string, string[], number, or object for checkboxes with 'other'

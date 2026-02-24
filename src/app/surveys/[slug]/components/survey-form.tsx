@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResponse, SurveyResultRule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -27,6 +28,7 @@ import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -467,7 +469,6 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
 
                     return (
                         <div key={index} className="flex-1 relative flex flex-col items-center">
-                            {/* Connecting Line */}
                             {!isLast && (
                                 <div className="absolute left-[50%] right-[-50%] top-5 h-0.5 bg-muted z-0">
                                     <motion.div 
@@ -478,7 +479,6 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 </div>
                             )}
 
-                            {/* Circle */}
                             <div className="relative z-10 flex items-center justify-center">
                                 <motion.div
                                     initial={false}
@@ -500,7 +500,6 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 </motion.div>
                             </div>
 
-                            {/* Labels */}
                             <div className="mt-3 text-center px-2 min-w-[80px]">
                                 <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground mb-0.5">Step {index + 1}</p>
                                 <p className={cn(
@@ -529,6 +528,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
 
 export default function SurveyForm({ survey, onSubmitted, isPreview = false }: SurveyFormProps) {
     const firestore = useFirestore();
+    const router = useRouter();
     const { toast } = useToast();
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
@@ -589,7 +589,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const isMultiPage = pages.length > 1;
 
     React.useEffect(() => {
-        // Reset states based on default properties before applying logic
         const initialStates: Record<string, ElementState> = getInitialElementStates(survey.elements);
     
         let newSubmitDisabled = false;
@@ -614,7 +613,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 case 'disableSubmit':
                   newSubmitDisabled = true;
                   break;
-                // The 'jump' action is handled in `handleNext`
               }
             }
           });
@@ -625,6 +623,42 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     
       }, [watchedValues, survey.elements]);
 
+
+    const calculateScore = (data: any) => {
+        if (!survey.scoringEnabled) return undefined;
+        let total = 0;
+        survey.elements.filter(isQuestion).forEach(q => {
+            if (!q.enableScoring) return;
+            const answer = data[q.id];
+            if (q.type === 'yes-no') {
+                if (answer === 'Yes') total += q.yesScore || 0;
+                if (answer === 'No') total += q.noScore || 0;
+            } else if (q.type === 'multiple-choice' || q.type === 'dropdown') {
+                const optIndex = q.options?.indexOf(answer);
+                if (optIndex !== undefined && optIndex !== -1) {
+                    total += (q.optionScores?.[optIndex] || 0);
+                }
+            } else if (q.type === 'checkboxes') {
+                const selected = q.allowOther ? answer.options : answer;
+                if (Array.isArray(selected)) {
+                    selected.forEach(val => {
+                        const optIndex = q.options?.indexOf(val);
+                        if (optIndex !== undefined && optIndex !== -1) {
+                            total += (q.optionScores?.[optIndex] || 0);
+                        }
+                    });
+                }
+            }
+        });
+        return total;
+    };
+
+    const resolveOutcome = (score: number | undefined): SurveyResultRule | undefined => {
+        if (score === undefined || !survey.resultRules) return undefined;
+        return [...survey.resultRules]
+            .sort((a, b) => a.priority - b.priority)
+            .find(rule => score >= rule.minScore && score <= rule.maxScore);
+    };
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (isPreview) {
@@ -653,6 +687,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             return;
         }
 
+        const score = calculateScore(data);
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => {
             if (serializedData[key] instanceof Date) {
@@ -667,36 +702,40 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             value,
         }));
 
-        if (answers.length === 0) {
-            toast({ variant: 'destructive', title: 'Empty Submission', description: 'Please answer at least one question.' });
-            return;
-        }
-
         const responseData = {
             surveyId: survey.id,
             submittedAt: new Date().toISOString(),
             answers,
+            score,
         };
 
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
         form.control.disabled = true;
 
-        addDoc(responsesCollection, responseData)
-            .then(() => {
-                toast({ title: 'Success', description: 'Your response has been submitted.' });
-                onSubmitted();
-            })
-            .catch((error) => {
-                 const permissionError = new FirestorePermissionError({
-                    path: responsesCollection.path,
-                    operation: 'create',
-                    requestResourceData: responseData,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-                toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
-            }).finally(() => {
-                form.control.disabled = false;
+        try {
+            const docRef = await addDoc(responsesCollection, responseData);
+            toast({ title: 'Success', description: 'Your response has been submitted.' });
+            
+            if (survey.scoringEnabled) {
+                const rule = resolveOutcome(score);
+                if (rule) {
+                    router.push(`/surveys/${survey.slug}/result/${docRef.id}`);
+                    return;
+                }
+            }
+            
+            onSubmitted();
+        } catch (error) {
+             const permissionError = new FirestorePermissionError({
+                path: responsesCollection.path,
+                operation: 'create',
+                requestResourceData: responseData,
             });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
+        } finally {
+            form.control.disabled = false;
+        }
     };
 
     const handleNext = async () => {
@@ -704,14 +743,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const isValid = await form.trigger(questionIdsOnPage);
 
         if (isValid) {
-            let nextPageIndex = currentPageIndex + 1; // Default to next page
+            let nextPageIndex = currentPageIndex + 1; 
 
-            // Check for jump logic
             const logicBlocks = survey.elements.filter(isLogic);
             let jumpAction = false;
             
             for (const block of logicBlocks) {
-                // Logic must be on the current page or a previous one to be evaluated
                 const blockPageIndex = pages.findIndex(p => p.some(el => el.id === block.id));
                 if (blockPageIndex > currentPageIndex) continue;
 
@@ -720,7 +757,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
                         if (rule.action.type === 'jump' && rule.action.targetElementId) {
                             const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
-                            // Only jump forward
                             if (targetPageIndex > -1 && targetPageIndex > currentPageIndex) {
                                 nextPageIndex = targetPageIndex;
                                 jumpAction = true;
