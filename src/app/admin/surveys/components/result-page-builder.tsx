@@ -133,7 +133,6 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
                 <Underline className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
             
-            <Separator orientation="vertical" className="mx-1 h-4" />
             <Button type="button" variant={block.style?.textAlign === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'left', { shouldDirty: true })}>
                 <AlignLeft className="h-3.5 w-3.5" />
             </Button>
@@ -280,33 +279,33 @@ function SortableResultBlock({
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <TooltipProvider>
-                            {/* Formatting and Level Controls */}
-                            {block.type === 'heading' && (
-                                <>
-                                    <Select 
-                                        value={block.variant || 'h2'} 
-                                        onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${index}.variant`, val, { shouldDirty: true })}
-                                    >
-                                        <SelectTrigger className="w-24 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="h1">H1</SelectItem>
-                                            <SelectItem value="h2">H2</SelectItem>
-                                            <SelectItem value="h3">H3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <Separator orientation="vertical" className="h-4 mx-1" />
-                                </>
-                            )}
-
+                            {/* Formatting and Level Controls Group */}
                             {['heading', 'text', 'quote', 'button'].includes(block.type) && (
-                                <>
+                                <div className="flex items-center">
                                     <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
+                                    {block.type === 'heading' && (
+                                        <>
+                                            <Separator orientation="vertical" className="h-4 mx-1" />
+                                            <Select 
+                                                value={block.variant || 'h2'} 
+                                                onValueChange={(val) => setValue(`resultPages.${pageIndex}.blocks.${index}.variant`, val, { shouldDirty: true })}
+                                            >
+                                                <SelectTrigger className="w-16 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="h1">H1</SelectItem>
+                                                    <SelectItem value="h2">H2</SelectItem>
+                                                    <SelectItem value="h3">H3</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </>
+                                    )}
                                     <Separator orientation="vertical" className="h-4 mx-1" />
-                                </>
+                                </div>
                             )}
 
+                            {/* System Actions Group */}
                             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index - 1)} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
                             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => swap(index, index + 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
                             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => duplicate(index)}><Copy className="h-3.5 w-3.5" /></Button>

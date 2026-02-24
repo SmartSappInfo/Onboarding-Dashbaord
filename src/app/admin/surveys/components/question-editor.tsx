@@ -123,7 +123,6 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
             
             {onAlignChange && (
                 <>
-                    <Separator orientation="vertical" className="mx-1 h-4" />
                     <Button type="button" variant={alignValue === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('left')}>
                         <AlignLeft className="h-3.5 w-3.5" />
                     </Button>
@@ -864,39 +863,38 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                     </div>
                     <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity ml-auto">
                         <TooltipProvider>
-                            {/* Formatting and Level Controls */}
-                            {element.type === 'heading' && (
-                                <>
-                                    <Select 
-                                        value={element.variant || 'h2'} 
-                                        onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
-                                    >
-                                        <SelectTrigger className="w-24 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="h1">H1</SelectItem>
-                                            <SelectItem value="h2">H2</SelectItem>
-                                            <SelectItem value="h3">H3</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    <Separator orientation="vertical" className="h-4 mx-1" />
-                                </>
-                            )}
-
+                            {/* Formatting and Level Controls Group */}
                             {(isElementQuestion || (isElementLayout && ['heading', 'description'].includes(element.type))) && (
-                                <>
+                                <div className="flex items-center">
                                     <FormattingToolbar 
                                         fieldName={isElementQuestion ? `elements.${index}.title` : element.type === 'heading' ? `elements.${index}.title` : `elements.${index}.text`}
                                         alignValue={element.style?.textAlign}
                                         onAlignChange={(val) => setValue(`elements.${index}.style.textAlign`, val, { shouldDirty: true })}
                                         minimal
                                     />
+                                    {element.type === 'heading' && (
+                                        <>
+                                            <Separator orientation="vertical" className="h-4 mx-1" />
+                                            <Select 
+                                                value={element.variant || 'h2'} 
+                                                onValueChange={(val) => setValue(`elements.${index}.variant`, val, { shouldDirty: true })}
+                                            >
+                                                <SelectTrigger className="w-16 h-8 text-[10px] uppercase font-black border-none bg-transparent hover:bg-muted focus:ring-0 shadow-none">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="h1">H1</SelectItem>
+                                                    <SelectItem value="h2">H2</SelectItem>
+                                                    <SelectItem value="h3">H3</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </>
+                                    )}
                                     <Separator orientation="vertical" className="h-4 mx-1" />
-                                </>
+                                </div>
                             )}
 
-                            {/* System Actions */}
+                            {/* System Actions Group */}
                             {isElementQuestion && (
                                 <Tooltip>
                                     <TooltipTrigger asChild>
