@@ -15,14 +15,14 @@ import {
     Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, 
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, Zap
+    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -31,11 +31,12 @@ import { format, isValid, parseISO } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
 import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
-import MediaSelectorDialog from '../../media/components/media-selector-dialog';
+import { MediaSelectorDialog } from '../../media/components/media-selector-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 function isQuestion(element: SurveyElement): element is SurveyQuestion {
     const questionTypes: SurveyQuestion['type'][] = ['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload'];
@@ -81,9 +82,6 @@ const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'a
       return undefined;
 }
 
-/**
- * A simple formatting toolbar for text fields.
- */
 function FormattingToolbar({ fieldName, alignValue, onAlignChange }: { 
     fieldName: string;
     alignValue?: 'left' | 'center' | 'right';
@@ -105,7 +103,6 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange }: {
         const newText = text.substring(0, start) + `<${tag}>${selectedText}</${tag}>` + text.substring(end);
         setValue(fieldName, newText, { shouldDirty: true });
         
-        // Restore focus and selection
         setTimeout(() => {
             input.focus();
             input.setSelectionRange(start, start + selectedText.length + (tag.length * 2) + 5);
@@ -141,7 +138,6 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange }: {
         </div>
     );
 }
-
 
 const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; field: any }) => {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
@@ -298,7 +294,6 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
   );
 }
 
-
 function OptionsEditor({ questionIndex }: { questionIndex: number }) {
   const { control, watch, setValue, getValues } = useFormContext();
   const { fields, append, remove } = useFieldArray({
@@ -327,7 +322,6 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
         setValue(`elements.${questionIndex}.optionScores`, newScores, { shouldDirty: true });
     }
   };
-
 
   const handleDefaultChange = (newValue: any) => {
     setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true, shouldValidate: true });
@@ -452,11 +446,9 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                 onCheckedChange={(isChecked) => {
                   field.onChange(isChecked);
                   if (isChecked) {
-                    // from string[] to { options: string[], other: '' }
                     const currentArray = Array.isArray(defaultValue) ? defaultValue : [];
                     handleDefaultChange({ options: currentArray, other: '' });
                   } else {
-                    // from { options: string[] } to string[]
                     const currentOptions = defaultValue?.options || [];
                     handleDefaultChange(currentOptions);
                   }
@@ -470,7 +462,6 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
     </div>
   );
 }
-
 
 function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
     const { control, watch } = useFormContext();
@@ -702,7 +693,6 @@ function QuestionSettingsPopover({ element, index, changeType }: {
     const isElemQuestion = isQuestion(element);
     const isTextQuestion = isElemQuestion && (element.type === 'text' || element.type === 'long-text');
     
-    // Local state to manage UI toggles
     const [useMin, setUseMin] = React.useState(false);
     const [useMax, setUseMax] = React.useState(false);
 
@@ -727,29 +717,20 @@ function QuestionSettingsPopover({ element, index, changeType }: {
 
     return (
         <div className="space-y-4">
-            {isElemQuestion && (
+            {isElemQuestion && isTextQuestion && (
                 <div className="space-y-4">
                     <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation</h4>
                     <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label htmlFor={`required-toggle-${index}`}>Required question</Label>
-                        <Controller name={`elements.${index}.isRequired`} control={control} render={({ field }) => <Switch id={`required-toggle-${index}`} checked={field.value} onCheckedChange={field.onChange} />} />
+                        <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
+                        <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                     </div>
+                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
-                    {isTextQuestion && (
-                        <>
-                            <div className="flex items-center justify-between rounded-lg border p-3">
-                                <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
-                                <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
-                            </div>
-                            {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
-
-                            <div className="flex items-center justify-between rounded-lg border p-3">
-                                <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
-                                <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
-                            </div>
-                            {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
-                        </>
-                    )}
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                        <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
+                        <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
+                    </div>
+                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                 </div>
             )}
             <div className="space-y-4">
@@ -799,7 +780,6 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const formErrors = errors.elements as any[] | undefined;
   const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
   
-  // Only show the red border if there's at least one actual error message.
   const hasErrors = elementErrors && Object.keys(elementErrors).length > 0;
 
   const enableScoring = watch(`elements.${index}.enableScoring`);
@@ -830,6 +810,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const toggleHidden = (index: number) => {
     const currentHiddenState = getValues(`elements.${index}.hidden`);
     setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
+  };
+
+  const toggleRequired = (index: number) => {
+    const current = getValues(`elements.${index}.isRequired`);
+    setValue(`elements.${index}.isRequired`, !current, { shouldDirty: true });
   };
   
   if (!element) return null;
@@ -877,35 +862,78 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         {element.hidden && <Badge variant="outline" className="ml-2">Hidden</Badge>}
                     </div>
                     <div className="flex items-center gap-1 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
-                            <ArrowUp className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
-                            <ArrowDown className="h-4 w-4" />
-                        </Button>
-                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
-                            {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
-                            <Copy className="h-4 w-4" />
-                        </Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
-                            <Trash2 className="h-4 w-4" />
-                        </Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-80 p-2">
-                                <QuestionSettingsPopover
-                                    element={element}
-                                    index={index}
-                                    changeType={changeElementType}
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <TooltipProvider>
+                            {isElementQuestion && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            className={cn("h-8 w-8", element.isRequired ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                                            onClick={() => toggleRequired(index)}
+                                        >
+                                            <Asterisk className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Required Field</TooltipContent>
+                                </Tooltip>
+                            )}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleHidden(index)}>
+                                        {element.hidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>{element.hidden ? 'Show Block' : 'Hide Block'}</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicateElement(index)}>
+                                        <Copy className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Duplicate</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={index === 0} onClick={() => swap(index, index - 1)} >
+                                        <ArrowUp className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Move Up</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8" disabled={getValues('elements').length - 1 === index} onClick={() => swap(index, index + 1)} >
+                                        <ArrowDown className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Move Down</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)} disabled={isElementSection && index === 0}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete</TooltipContent>
+                            </Tooltip>
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-80 p-2">
+                                    <QuestionSettingsPopover
+                                        element={element}
+                                        index={index}
+                                        changeType={changeElementType}
+                                    />
+                                </PopoverContent>
+                            </Popover>
+                        </TooltipProvider>
                     </div>
                 </div>
             </CardHeader>
@@ -1138,7 +1166,6 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
     }
   }
 
-
   return (
     <div>
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -1149,8 +1176,8 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
                             key={field.id} 
                             id={field.id} 
                             index={index} 
-                            remove={remove}
-                            swap={swap}
+                            remove={remove} 
+                            swap={swap} 
                             insert={insert}
                             requestAddElement={requestAddElement}
                         />
