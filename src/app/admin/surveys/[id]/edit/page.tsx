@@ -580,7 +580,7 @@ function EditSurveyContent() {
                                                                 <FormLabel>Background Color</FormLabel>
                                                                 <div className="flex items-center gap-2">
                                                                     <FormControl>
-                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                        <Input type="color" {...field} value={field.value || "#F1F5F9"} className="w-12 h-10 p-1 cursor-pointer" />
                                                                     </FormControl>
                                                                     <Input 
                                                                         value={field.value} 
@@ -600,7 +600,7 @@ function EditSurveyContent() {
                                                                 <FormLabel>Pattern Color</FormLabel>
                                                                 <div className="flex items-center gap-2">
                                                                     <FormControl>
-                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                        <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-12 h-10 p-1 cursor-pointer" />
                                                                     </FormControl>
                                                                     <Input 
                                                                         value={field.value} 
@@ -618,7 +618,7 @@ function EditSurveyContent() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Background Pattern</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                                                     <FormControl>
                                                                         <SelectTrigger>
                                                                             <SelectValue placeholder="Select a pattern" />
@@ -642,7 +642,7 @@ function EditSurveyContent() {
                                                     <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Design Preview</Label>
                                                     <div 
                                                         className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
-                                                        style={{ backgroundColor: watchedBgColor }}
+                                                        style={{ backgroundColor: watchedBgColor || "#F1F5F9" }}
                                                     >
                                                         <BackgroundPattern pattern={watchedPattern} color={watchedPatternColor} />
                                                         <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
