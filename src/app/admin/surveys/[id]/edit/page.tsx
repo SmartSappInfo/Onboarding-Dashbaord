@@ -1,37 +1,35 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useParams, useRouter } from 'next/navigation';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+    ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
+    RefreshCcw, Play, AlertCircle, Eye, ArrowRight, Trophy
+} from 'lucide-react';
+import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
+import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
+import { useToast } from '@/hooks/use-toast';
+import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useParams } from 'next/navigation';
-import { doc, updateDoc, collection, getDocs, setDoc, deleteDoc } from 'firebase/firestore';
-
-import type { Survey, SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyResultPage } from '@/lib/types';
-import { Button } from '@/components/ui/button';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { Skeleton } from '@/components/ui/skeleton';
-import { MediaSelect } from '../../../schools/components/media-select';
 import SurveyFormBuilder from '../../components/survey-form-builder';
-import { Check, Loader2, BrainCircuit, ArrowRight, Trophy } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import ResultsStep from '../../components/results-step';
 import SurveyPreviewButton from '../../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
-import ResultsStep from '../../components/results-step';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MediaSelect } from '../../../schools/components/media-select';
+import { useUndoRedo } from '@/hooks/use-undo-redo';
+import { useDebounce } from '@/hooks/use-debounce';
+import { cn } from '@/lib/utils';
+import { BrainCircuit } from 'lucide-react';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -426,42 +424,44 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             <Stepper currentStep={step} />
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 
-                <Card className={cn(step !== 1 && 'hidden')}>
-                    <CardHeader>
-                        <CardTitle>Survey Details</CardTitle>
-                        <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-8">
-                            <FormField
-                                control={form.control}
-                                name="title"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Survey Title</FormLabel>
-                                        <FormControl>
-                                            <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="description"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Description / Instructions</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className={cn(step !== 1 && 'hidden')}>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Survey Details</CardTitle>
+                            <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-8">
+                                <FormField
+                                    control={form.control}
+                                    name="title"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Survey Title</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="description"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Description / Instructions</FormLabel>
+                                            <FormControl>
+                                                <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
                 
                 <div className={cn(step !== 2 && 'hidden')}>
                     <SurveyFormBuilder />

@@ -60,7 +60,6 @@ export default function AiChatEditor() {
 
             if (result.updatedSurvey) {
                 // Apply changes to the form
-                // Using reset with the new data allows the undo/redo history to track it
                 reset(result.updatedSurvey, {
                     keepDirty: true,
                     keepTouched: true,
@@ -76,6 +75,13 @@ export default function AiChatEditor() {
             toast({ variant: 'destructive', title: 'AI Modification Failed', description: error.message });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            handleSend();
         }
     };
 
@@ -140,26 +146,25 @@ export default function AiChatEditor() {
                                 </ScrollArea>
                             </CardContent>
                             <CardFooter className="p-4 border-t bg-white shrink-0">
-                                <form 
-                                    className="flex w-full items-center gap-2"
-                                    onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                                >
+                                <div className="flex w-full items-center gap-2">
                                     <Input
                                         placeholder="e.g., Add a section for dietary requirements..."
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
+                                        onKeyDown={handleKeyDown}
                                         disabled={isLoading}
                                         className="h-11 rounded-xl bg-slate-50 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
                                     />
                                     <Button 
-                                        type="submit" 
+                                        type="button"
                                         size="icon" 
+                                        onClick={handleSend}
                                         disabled={!input.trim() || isLoading}
                                         className="h-11 w-11 rounded-xl shrink-0"
                                     >
                                         <Send className="h-4 w-4" />
                                     </Button>
-                                </form>
+                                </div>
                             </CardFooter>
                         </Card>
                     </motion.div>
@@ -168,6 +173,7 @@ export default function AiChatEditor() {
 
             <Button
                 size="lg"
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "h-14 px-6 rounded-2xl font-black gap-3 shadow-2xl transition-all hover:scale-105 active:scale-95",

@@ -378,42 +378,44 @@ export default function NewSurveyPage() {
                     <Stepper currentStep={step} />
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                         
-                        <Card className={cn(step !== 1 && 'hidden')}>
-                            <CardHeader>
-                                <CardTitle>Survey Details</CardTitle>
-                                <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-8">
-                                    <FormField
-                                        control={form.control}
-                                        name="title"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Survey Title</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Description / Instructions</FormLabel>
-                                                <FormControl>
-                                                    <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <div className={cn(step !== 1 && 'hidden')}>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Survey Details</CardTitle>
+                                    <CardDescription>Give your survey a title and a description to guide your users.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="space-y-8">
+                                        <FormField
+                                            control={form.control}
+                                            name="title"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Survey Title</FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="description"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Description / Instructions</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea placeholder="Please provide your honest feedback..." {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
                         
                         <div className={cn(step !== 2 && 'hidden')}>
                             <SurveyFormBuilder />
