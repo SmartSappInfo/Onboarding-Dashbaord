@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -91,7 +90,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-[280px] justify-start text-left font-normal", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full sm:w-[280px] justify-start text-left font-normal h-11", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -215,7 +214,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled}>
+      <Button asChild variant="outline" disabled={disabled} className="h-11">
         <div>
             <Upload className="mr-2 h-4 w-4" />
             <span>Upload a file</span>
@@ -261,173 +260,172 @@ const ElementRenderer = ({
         const handleRadioChange = (val: string, onChange: (v: string) => void) => {
             onChange(val);
             if (question.autoAdvance && onAutoAdvance) {
-                setTimeout(onAutoAdvance, 300); // Small delay for visual feedback of selection
+                setTimeout(onAutoAdvance, 300);
             }
         };
 
         return (
-            <Card id={question.id}>
-                <CardContent className={cn("pt-6", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
-                    <Label className="text-lg font-semibold block leading-tight">
-                        <span dangerouslySetInnerHTML={{ __html: question.title }} />
-                        {isRequired && <span className="text-destructive ml-1">*</span>}
-                    </Label>
-                    <div className="mt-4">
-                        {question.type === 'text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base" />} />
-                        )}
-                        {question.type === 'long-text' && (
-                            <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base" />} />
-                        )}
-                        {question.type === 'yes-no' && (
-                            <Controller
-                                control={control}
-                                name={question.id}
-                                render={({ field }) => (
-                                     <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                        <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-                                            <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
-                                            Yes
+            <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+                <Label className="text-lg font-black block leading-tight text-foreground/90">
+                    <span dangerouslySetInnerHTML={{ __html: question.title }} />
+                    {isRequired && <span className="text-destructive ml-1">*</span>}
+                </Label>
+                <div className="mt-2">
+                    {question.type === 'text' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base h-12 bg-muted/20 border-border/50" />} />
+                    )}
+                    {question.type === 'long-text' && (
+                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder={question.placeholder} className="text-base min-h-[120px] bg-muted/20 border-border/50" />} />
+                    )}
+                    {question.type === 'yes-no' && (
+                        <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                    <Label htmlFor={`${question.id}-yes`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                        <RadioGroupItem value="Yes" id={`${question.id}-yes`} />
+                                        Yes
+                                    </Label>
+                                    <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                        <RadioGroupItem value="No" id={`${question.id}-no`} />
+                                        No
+                                    </Label>
+                                </RadioGroup>
+                            )}
+                        />
+                    )}
+                    {question.type === 'multiple-choice' && (
+                        <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                    {question.options?.map(opt => (
+                                        <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                                            <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
+                                            {opt}
                                         </Label>
-                                        <Label htmlFor={`${question.id}-no`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-                                            <RadioGroupItem value="No" id={`${question.id}-no`} />
-                                            No
-                                        </Label>
-                                    </RadioGroup>
-                                )}
-                            />
-                        )}
-                        {question.type === 'multiple-choice' && (
-                            <Controller
-                                control={control}
-                                name={question.id}
-                                render={({ field }) => (
-                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                        {question.options?.map(opt => (
-                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className="flex cursor-pointer items-center gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent has-[:checked]:border-primary has-[:checked]:bg-primary/10">
-                                                <RadioGroupItem value={opt} id={`${question.id}-${opt}`} />
-                                                {opt}
-                                            </Label>
-                                        ))}
-                                    </RadioGroup>
-                                )}
-                            />
-                        )}
-                        {question.type === 'checkboxes' && (
-                            <Controller
-                                name={question.id}
-                                control={control}
-                                render={({ field }) => {
-                                    return (
-                                    <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
-                                        {question.options?.map(opt => {
-                                            const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
-                                            return (
-                                                <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-md border p-4 text-base font-medium transition-colors hover:bg-accent", isChecked && "border-primary bg-primary/10")}>
-                                                    <Checkbox
-                                                        id={`${question.id}-${opt}`}
-                                                        checked={isChecked}
-                                                        onCheckedChange={(checked) => {
-                                                            if (question.allowOther) {
-                                                                const currentOptions = field.value?.options || [];
-                                                                const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                                field.onChange({ ...(field.value || {}), other: newOptions });
-                                                            } else {
-                                                                const currentVal = field.value || [];
-                                                                const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
-                                                                field.onChange(newVal);
-                                                            }
-                                                        }}
-                                                    />
-                                                     <span className="flex-1 -mt-1">{opt}</span>
-                                                </Label>
-                                            )
-                                        })}
-                                        {question.allowOther && (
-                                            <div className={cn("flex items-center gap-3 rounded-md border p-4 transition-colors", (field.value?.other || '') && "border-primary bg-primary/10")}>
+                                    ))}
+                                </RadioGroup>
+                            )}
+                        />
+                    )}
+                    {question.type === 'checkboxes' && (
+                        <Controller
+                            name={question.id}
+                            control={control}
+                            render={({ field }) => {
+                                return (
+                                <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                    {question.options?.map(opt => {
+                                        const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
+                                        return (
+                                            <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn("flex cursor-pointer items-start gap-3 rounded-xl border-2 p-4 text-base font-bold transition-all hover:bg-accent", isChecked && "border-primary bg-primary/5")}>
                                                 <Checkbox
-                                                    id={`${question.id}-other-checkbox`}
-                                                    checked={!!(field.value?.other || '')}
+                                                    id={`${question.id}-${opt}`}
+                                                    checked={isChecked}
                                                     onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
+                                                        if (question.allowOther) {
+                                                            const currentOptions = field.value?.options || [];
+                                                            const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
+                                                            field.onChange({ ...(field.value || {}), options: newOptions });
                                                         } else {
-                                                            field.onChange({ ...(field.value || {}), other: '' });
+                                                            const currentVal = field.value || [];
+                                                            const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
+                                                            field.onChange(newVal);
                                                         }
                                                     }}
                                                 />
-                                                <Input
-                                                    id={`${question.id}-other-input`}
-                                                    placeholder="Other (please specify)"
-                                                    className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0"
-                                                    value={field.value?.other || ''}
-                                                    onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                )}}
-                            />
-                        )}
-                        {question.type === 'dropdown' && (
+                                                    <span className="flex-1 -mt-1">{opt}</span>
+                                            </Label>
+                                        )
+                                    })}
+                                    {question.allowOther && (
+                                        <div className={cn("flex items-center gap-3 rounded-xl border-2 p-4 transition-all", (field.value?.other || '') && "border-primary bg-primary/5")}>
+                                            <Checkbox
+                                                id={`${question.id}-other-checkbox`}
+                                                checked={!!(field.value?.other || '')}
+                                                onCheckedChange={(checked) => {
+                                                    if (checked) {
+                                                        setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
+                                                    } else {
+                                                        field.onChange({ ...(field.value || {}), other: '' });
+                                                    }
+                                                }}
+                                            />
+                                            <Input
+                                                id={`${question.id}-other-input`}
+                                                placeholder="Other (please specify)"
+                                                className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 font-medium"
+                                                value={field.value?.other || ''}
+                                                onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            )}}
+                        />
+                    )}
+                    {question.type === 'dropdown' && (
+                        <Controller
+                            control={control}
+                            name={question.id}
+                            render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-muted/20 border-border/50", textAlign === 'center' && 'mx-auto')}>
+                                        <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {question.options?.map(opt => (
+                                            <SelectItem key={opt} value={opt} className="text-base">{opt}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            )}
+                        />
+                    )}
+                    {question.type === 'rating' && (
+                        <Controller control={control} name={question.id} render={({ field }) => (
+                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                                <StarRating {...field} />
+                            </div>
+                        )} />
+                    )}
+                    {question.type === 'date' && (
+                        <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                            <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
+                        </div>
+                    )}
+                    {question.type === 'time' && (
+                        <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-border/50 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4" {...field} value={field.value || ''} />} />
+                        </div>
+                    )}
+                    {question.type === 'file-upload' && (
+                        <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
                             <Controller
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <Select onValueChange={field.onChange} value={field.value}>
-                                        <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-11", textAlign === 'center' && 'mx-auto')}>
-                                            <SelectValue placeholder="Select an option" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {question.options?.map(opt => (
-                                                <SelectItem key={opt} value={opt} className="text-base">{opt}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FileUpload
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        disabled={false}
+                                        surveyId={surveyId}
+                                    />
                                 )}
                             />
-                        )}
-                        {question.type === 'rating' && (
-                            <Controller control={control} name={question.id} render={({ field }) => (
-                                <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                                    <StarRating {...field} />
-                                </div>
-                            )} />
-                        )}
-                        {question.type === 'date' && (
-                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                                <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
-                            </div>
-                        )}
-                        {question.type === 'time' && (
-                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                                <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-11" {...field} value={field.value || ''} />} />
-                            </div>
-                        )}
-                        {question.type === 'file-upload' && (
-                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                                <Controller
-                                    control={control}
-                                    name={question.id}
-                                    render={({ field }) => (
-                                        <FileUpload
-                                            value={field.value}
-                                            onChange={field.onChange}
-                                            disabled={false}
-                                            surveyId={surveyId}
-                                        />
-                                    )}
-                                />
-                            </div>
-                        )}
-                        {errors[question.id] && (
-                            <p className="text-sm font-medium text-destructive mt-2">
-                                { (errors as any)[question.id]?.message }
-                            </p>
-                        )}
-                    </div>
-                </CardContent>
-            </Card>
+                        </div>
+                    )}
+                    {errors[question.id] && (
+                        <p className="text-sm font-bold text-destructive mt-2 flex items-center gap-1.5">
+                            <X className="h-3.5 w-3.5" />
+                            { (errors as any)[question.id]?.message }
+                        </p>
+                    )}
+                </div>
+            </div>
         )
     } else {
         const block = element as SurveyLayoutBlock;
@@ -436,43 +434,42 @@ const ElementRenderer = ({
 
         switch (block.type) {
             case 'section':
-                 if (block.renderAsPage) return null; 
-                return <h2 id={block.id} className="text-2xl font-bold mt-12 mb-6 border-b-2 border-primary pb-2 text-center">{block.title}</h2>;
+                return null; // Sections handled by the card wrapper
             case 'heading': {
                 const Tag = block.variant || 'h2';
                 const sizeClass = Tag === 'h1' ? "text-4xl font-black" : Tag === 'h3' ? "text-xl font-bold" : "text-3xl font-bold";
                 return (
-                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-8 mb-4 border-b pb-2")}>
+                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
                     </Tag>
                 );
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-lg leading-relaxed", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
             case 'divider':
-                return <hr className="my-8" />;
+                return <hr className="my-8 border-border/50" />;
             case 'image':
                 return block.url ? (
-                    <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
+                    <div className={cn("relative aspect-video my-6 rounded-2xl overflow-hidden shadow-md", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
                         <Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" />
                     </div>
                 ) : null;
             case 'video':
-                 return block.url ? <div className={cn("my-6", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
+                 return block.url ? <div className={cn("my-6 shadow-md rounded-2xl overflow-hidden", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
-                return block.url ? <audio controls src={block.url} className="w-full my-6">Your browser does not support the audio element.</audio> : null;
+                return block.url ? <div className="my-6 p-4 bg-muted/30 rounded-xl"><audio controls src={block.url} className="w-full">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                  return (
                     <div className={cn("my-6", alignmentClass)}>
-                        <Button asChild variant="outline"><a href={block.url} target="_blank" rel="noopener noreferrer">Download Document</a></Button>
+                        <Button asChild variant="outline" className="h-11 px-6 rounded-xl"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4"/> Download Document</a></Button>
                     </div>
                  );
             case 'embed':
-                return block.html ? <div className="my-6" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
+                return block.html ? <div className="my-6 rounded-xl overflow-hidden" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:
                 return null;
         }
@@ -514,15 +511,12 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
 };
 
 function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], currentIndex: number }) {
-    // If there is a cover page, we only show stepper if there's more than 1 *content* page
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
 
-    // Check if the current page is the cover page
     if (hasCover && currentIndex === 0) return null;
 
-    // Adjust indices for the stepper display (Step 1 should be the first content page)
     const displayIndex = hasCover ? currentIndex - 1 : currentIndex;
     const displayPages = hasCover ? pages.slice(1) : pages;
 
@@ -630,9 +624,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
 
-        // Identify if there is a cover page based on explicit setting
         if (survey.showCoverPage) {
-            p.push([]); // Placeholder for cover page
+            p.push([]); 
         }
 
         survey.elements.forEach(element => {
@@ -805,7 +798,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const handleNext = async () => {
         const currentElements = pages[currentPageIndex];
         if (currentElements.length === 0) {
-            // This is the cover page transition
             setCurrentPageIndex(1);
             window.scrollTo(0, 0);
             return;
@@ -856,7 +848,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const currentElements = pages[currentPageIndex];
     const isCoverPage = currentElements.length === 0;
-    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' && (currentElements[0] as any).renderAsPage ? currentElements[0] : null;
+    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? currentElements[0] : null;
 
     if (isCoverPage) {
         return (
@@ -890,43 +882,53 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
             
-            {pageSection && (
-                 <div className="mb-8 text-center">
-                    <h2 className="text-2xl font-bold">{(pageSection as any).title}</h2>
-                    {(pageSection as any).description && <p className="text-muted-foreground mt-1">{(pageSection as any).description}</p>}
-                </div>
-            )}
+            <Card className="border-none shadow-2xl rounded-3xl overflow-hidden bg-card/95 backdrop-blur-sm">
+                <CardContent className="p-6 sm:p-12 space-y-12">
+                    {pageSection && (
+                        <div className="text-center space-y-3 mb-12">
+                            <h2 className="text-3xl font-black tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                            {(pageSection as any).description && (
+                                <p className="text-muted-foreground text-lg font-medium leading-relaxed max-w-2xl mx-auto italic">
+                                    {(pageSection as any).description}
+                                </p>
+                            )}
+                        </div>
+                    )}
 
-            {currentElements.map((el) => {
-                 if (el.id === pageSection?.id) return null;
-                return (
-                    <ElementRenderer 
-                        key={el.id}
-                        element={el}
-                        control={form.control}
-                        errors={form.formState.errors}
-                        isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
-                        isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
-                        surveyId={survey.id}
-                        onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
-                    />
-                )
-            })}
+                    <div className="space-y-12">
+                        {currentElements.map((el) => {
+                            if (el.id === pageSection?.id) return null;
+                            return (
+                                <ElementRenderer 
+                                    key={el.id}
+                                    element={el}
+                                    control={form.control}
+                                    errors={form.formState.errors}
+                                    isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
+                                    isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
+                                    surveyId={survey.id}
+                                    onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
+                                />
+                            )
+                        })}
+                    </div>
+                </CardContent>
+            </Card>
 
-             <div className={cn("flex items-center", isMultiPage ? "justify-between" : "justify-end")}>
+             <div className={cn("flex items-center mt-8", isMultiPage ? "justify-between" : "justify-end")}>
                 {isMultiPage && currentPageIndex > 0 && (
-                    <Button type="button" variant="outline" onClick={handlePrev} disabled={form.formState.isSubmitting}>
+                    <Button type="button" variant="outline" size="lg" className="h-12 px-8 rounded-xl font-bold" onClick={handlePrev} disabled={form.formState.isSubmitting}>
                         Previous
                     </Button>
                 )}
                  {isMultiPage && currentPageIndex < pages.length - 1 && (
-                     <Button type="button" onClick={handleNext} disabled={form.formState.isSubmitting} className="ml-auto">
-                        Next
+                     <Button type="button" size="lg" className="h-12 px-8 rounded-xl font-bold ml-auto" onClick={handleNext} disabled={form.formState.isSubmitting}>
+                        Next <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                  )}
                 {currentPageIndex === pages.length - 1 && (
-                    <Button type="submit" size="lg" disabled={form.formState.isSubmitting || isSubmitDisabled} className={cn(isMultiPage && "ml-auto")}>
-                        {form.formState.isSubmitting ? 'Submitting...' : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                    <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-xl font-black shadow-lg transition-all hover:scale-105", isMultiPage && "ml-auto")} disabled={form.formState.isSubmitting || isSubmitDisabled}>
+                        {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
                     </Button>
                 )}
             </div>
