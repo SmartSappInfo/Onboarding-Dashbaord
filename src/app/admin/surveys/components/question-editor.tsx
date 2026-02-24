@@ -725,6 +725,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const element = watch(`elements.${index}`);
   const formErrors = errors.elements as any[] | undefined;
   const elementErrors = formErrors?.[index] as Record<string, { message: string }> | undefined;
+  
+  // Only show the red border if there's at least one actual error message.
+  // RHF sometimes populates empty objects for array items that are valid.
+  const hasErrors = elementErrors && Object.keys(elementErrors).length > 0;
+
   const enableScoring = watch(`elements.${index}.enableScoring`);
 
   const duplicateElement = (index: number) => {
@@ -778,7 +783,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             id={element.id}
             className={cn(
                 "border-2 transition-colors",
-                elementErrors ? "border-destructive" : "border-transparent has-[:focus-within]:border-primary",
+                hasErrors ? "border-destructive" : "border-transparent has-[:focus-within]:border-primary",
                 element.hidden ? "bg-disabled" : "bg-card"
             )}
         >

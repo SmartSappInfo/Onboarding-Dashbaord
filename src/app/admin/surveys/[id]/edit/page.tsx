@@ -78,21 +78,23 @@ const layoutBlockSchema = z.object({
     path: ['title']
 });
 
-const logicActionSchema = z.object({
-  type: z.enum(['jump', 'require', 'show', 'hide', 'disableSubmit']),
-  targetElementId: z.string().optional(),
-  targetElementIds: z.array(z.string()).optional(),
-});
+const logicActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('jump'), targetElementId: z.string().min(1, 'Target element is required.') }),
+  z.object({ type: z.literal('require'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
+  z.object({ type: z.literal('show'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
+  z.object({ type: z.literal('hide'), targetElementIds: z.array(z.string()).min(1, 'At least one target is required.') }),
+  z.object({ type: z.literal('disableSubmit') }),
+]);
 
 const logicBlockSchema = z.object({
   id: z.string(),
-  type: z.enum(['logic']),
+  type: z.literal('logic'),
   rules: z.array(z.object({
-    sourceQuestionId: z.string(),
+    sourceQuestionId: z.string().min(1, 'Source question is required.'),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
     targetValue: z.any().optional(),
     action: logicActionSchema,
-  })),
+  })).min(1, 'Logic block must have at least one rule.'),
 });
 
 const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
@@ -205,9 +207,11 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
           updatedAt: new Date().toISOString(),
         };
 
-        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => 
-            value === undefined ? null : value
-        ));
+        // Clean up data: Remove undefined values entirely instead of setting to null
+        const cleanedData = JSON.parse(JSON.stringify(surveyData, (key, value) => {
+            if (value === undefined) return undefined;
+            return value;
+        }));
 
         const docRef = doc(firestore, 'surveys', surveyId);
         form.control.disabled = true;
