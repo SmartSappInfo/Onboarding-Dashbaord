@@ -826,6 +826,12 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const SCOREABLE_TYPES: SurveyQuestion['type'][] = ['multiple-choice', 'dropdown', 'checkboxes', 'yes-no'];
   const isScoreable = isElementQuestion && SCOREABLE_TYPES.includes(element.type);
   const isAutoAdvanceable = isElementQuestion && (element.type === 'multiple-choice' || element.type === 'yes-no');
+
+  const sectionNumber = React.useMemo(() => {
+    const all = watch('elements') || [];
+    const sections = all.filter((el: any) => el.type === 'section');
+    return sections.findIndex((el: any) => el.id === id) + 1;
+  }, [watch('elements'), id]);
   
   return (
     <div className="relative group" ref={setNodeRef} style={style}>
@@ -855,7 +861,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         </div>
                         <span>
                             {isElementQuestion ? `Question #${watch('elements').filter(isQuestion).findIndex((q: SurveyQuestion) => q.id === element.id) + 1}`
-                            : isElementSection ? element.title || 'New Section'
+                            : isElementSection ? `Section #${sectionNumber}`
                             : isElementLayout ? `${element.type} Block`
                             : 'Logic Block'}
                         </span>
@@ -988,7 +994,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             case 'text':
                                                 return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="placeholder:italic placeholder:text-[#969696]" />;
                                             case 'long-text':
-                                                return <Textarea {...field} value={field.value || ''} placeholder="e.g., Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
+                                                return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="placeholder:italic placeholder:text-[#969696]" />;
                                             case 'yes-no':
                                                 return (
                                                     <div className="space-y-4">
@@ -1057,22 +1063,77 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                 ) : isElementLayout ? (
                      <div className={cn(isMediaLayout && "bg-card rounded-lg border p-4")}>
                         {element.type === 'section' && (
-                             <div className="w-full text-center space-y-4 p-4 border rounded-lg bg-muted/50">
-                                 <div className="flex items-center gap-2">
-                                     <div className="flex-grow h-px bg-border" />
-                                     <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Section Title" className="text-xl font-bold border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-auto text-center" />} />
-                                     <div className="flex-grow h-px bg-border" />
-                                 </div>
-                                 <Controller name={`elements.${index}.description`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="Section description (optional)..." className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[20px]" />} />
+                             <div className="w-full text-center space-y-6 p-8 border-2 border-primary/10 rounded-[2rem] bg-primary/5">
+                                 <div className="space-y-4">
+                                     <div className="flex items-center gap-4">
+                                         <div className="flex-grow h-px bg-primary/10" />
+                                         <Controller 
+                                            name={`elements.${index}.title`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Textarea 
+                                                    {...field} 
+                                                    value={field.value ?? ''} 
+                                                    placeholder="Enter Section Title..." 
+                                                    className="text-2xl font-black border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent w-full max-w-2xl text-center resize-none overflow-hidden min-h-[40px] leading-tight" 
+                                                    onInput={(e) => {
+                                                        const target = e.target as HTMLTextAreaElement;
+                                                        target.style.height = 'auto';
+                                                        target.style.height = `${target.scrollHeight}px`;
+                                                    }}
+                                                />
+                                            )} 
+                                        />
+                                         <div className="flex-grow h-px bg-primary/10" />
+                                     </div>
+                                     <Controller 
+                                        name={`elements.${index}.description`} 
+                                        control={control} 
+                                        render={({ field }) => (
+                                            <Textarea 
+                                                {...field} 
+                                                value={field.value ?? ''} 
+                                                placeholder="Section description (optional)..." 
+                                                className="border-none shadow-none focus-visible:ring-0 p-0 bg-transparent text-center text-muted-foreground min-h-[60px] resize-none overflow-hidden text-base sm:text-lg font-medium italic max-w-2xl mx-auto leading-relaxed" 
+                                                onInput={(e) => {
+                                                    const target = e.target as HTMLTextAreaElement;
+                                                    target.style.height = 'auto';
+                                                    target.style.height = `${target.scrollHeight}px`;
+                                                }}
+                                            />
+                                        )} 
+                                    />
+                                </div>
                                 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center pt-2">
-                                    <div className="flex justify-center items-center gap-2">
-                                        <Controller name={`elements.${index}.renderAsPage`} control={control} render={({ field }) => <Switch checked={!!field.value} onCheckedChange={field.onChange} id={`render-as-page-${index}`} />} />
-                                        <Label htmlFor={`render-as-page-${index}`}>Render as a new page</Label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-6 border-t border-primary/10">
+                                    <div className="flex justify-center items-center gap-3 pb-2">
+                                        <Controller 
+                                            name={`elements.${index}.renderAsPage`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Switch 
+                                                    checked={!!field.value} 
+                                                    onCheckedChange={field.onChange} 
+                                                    id={`render-as-page-${index}`} 
+                                                />
+                                            )} 
+                                        />
+                                        <Label htmlFor={`render-as-page-${index}`} className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Render as a new page</Label>
                                     </div>
-                                    <div className="space-y-1 text-left">
-                                        <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Stepper Title</Label>
-                                        <Controller name={`elements.${index}.stepperTitle`} control={control} render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="e.g., Company Details" className="h-8 text-sm" />} />
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Stepper Title</Label>
+                                        <Controller 
+                                            name={`elements.${index}.stepperTitle`} 
+                                            control={control} 
+                                            render={({ field }) => (
+                                                <Input 
+                                                    {...field} 
+                                                    value={field.value ?? ''} 
+                                                    placeholder="e.g., Company Details" 
+                                                    className="h-11 rounded-2xl bg-white border-2 border-primary/5 focus:border-primary transition-all font-bold px-4" 
+                                                />
+                                            )} 
+                                        />
                                     </div>
                                 </div>
                              </div>
