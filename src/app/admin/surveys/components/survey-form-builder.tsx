@@ -104,6 +104,7 @@ export default function SurveyFormBuilder() {
     } = useUndoRedo<any>(getValues());
 
     const isProgrammaticChange = React.useRef(false);
+    const lastSavedRef = React.useRef<string>(JSON.stringify(getValues()));
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
     // Restore from localStorage on mount
@@ -134,6 +135,7 @@ export default function SurveyFormBuilder() {
                             <Button variant="default" size="sm" onClick={() => {
                                 reset(parsedData);
                                 resetHistory(parsedData);
+                                lastSavedRef.current = JSON.stringify(parsedData);
                                 toast({ title: 'Restored', description: 'Your unsaved changes have been applied.' });
                                 localStorage.removeItem(storageKey);
                             }}>
@@ -172,19 +174,32 @@ export default function SurveyFormBuilder() {
         }
     }, [historyState, reset]);
 
-    // Background Auto-save
+    // Background Auto-save logic
     React.useEffect(() => {
-        if (isDirty) {
-            setAutosaveStatus('saving');
-            localStorage.setItem(storageKey, JSON.stringify(watchedForm));
+        if (!isDirty) return;
+
+        const currentString = JSON.stringify(debouncedForm);
+        // Only save if content is actually different from last save
+        if (currentString === lastSavedRef.current) return;
+
+        setAutosaveStatus('saving');
+        
+        try {
+            localStorage.setItem(storageKey, currentString);
+            lastSavedRef.current = currentString;
+            
             const timer = setTimeout(() => setAutosaveStatus('saved'), 1000);
             const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 3000);
+            
             return () => {
                 clearTimeout(timer);
                 clearTimeout(idleTimer);
             };
+        } catch (e) {
+            console.error("Auto-save failed:", e);
+            setAutosaveStatus('idle');
         }
-    }, [debouncedForm, storageKey, isDirty, watchedForm]);
+    }, [debouncedForm, storageKey, isDirty]);
 
     const handleUndo = () => {
         if (!canUndo) return;
@@ -208,10 +223,18 @@ export default function SurveyFormBuilder() {
                             <CardDescription>Build your survey using the editor below.</CardDescription>
                         </div>
                          <div className="flex items-center gap-2">
-                             <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground transition-opacity duration-500 w-32 text-right">
-                                {autosaveStatus === 'saving' && <span className="text-primary flex items-center justify-end gap-1"><Loader2 className="h-3 w-3 animate-spin"/> Saving...</span>}
-                                {autosaveStatus === 'saved' && <span className="text-green-600 flex items-center justify-end gap-1">Changes cached</span>}
-                            </span>
+                             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground w-32 text-right transition-all">
+                                {autosaveStatus === 'saving' && (
+                                    <span className="text-primary flex items-center justify-end gap-1 animate-pulse">
+                                        <Loader2 className="h-3 w-3 animate-spin"/> Saving...
+                                    </span>
+                                )}
+                                {autosaveStatus === 'saved' && (
+                                    <span className="text-green-600 flex items-center justify-end gap-1">
+                                        <Check className="h-3 w-3" /> Cached
+                                    </span>
+                                )}
+                            </div>
                             <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
                                 <Undo className="h-5 w-5" />
                             </Button>
