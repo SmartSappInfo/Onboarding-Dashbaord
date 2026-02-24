@@ -105,7 +105,7 @@ export default function AiChatEditor() {
                                         <CardDescription className="text-[10px] text-primary-foreground/70 uppercase font-bold tracking-tight">AI State Architect</CardDescription>
                                     </div>
                                 </div>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10 text-primary-foreground" onClick={() => setIsOpen(false)}>
+                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 hover:bg-white/10 text-primary-foreground" onClick={() => setIsOpen(false)}>
                                     <X className="h-4 w-4" />
                                 </Button>
                             </CardHeader>

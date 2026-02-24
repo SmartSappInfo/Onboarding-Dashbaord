@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -202,6 +201,7 @@ export interface Survey {
   bannerImageUrl?: string;
   backgroundColor?: string;
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes';
+  patternColor?: string;
   status: 'draft' | 'published' | 'archived';
   elements: SurveyElement[];
   createdAt: string; // ISO string

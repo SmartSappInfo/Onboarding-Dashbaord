@@ -113,6 +113,7 @@ const formSchema = z.object({
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   backgroundColor: z.string().optional(),
   backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes']).default('none'),
+  patternColor: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   scoringEnabled: z.boolean().default(false),
@@ -151,6 +152,71 @@ const Stepper = ({ currentStep }: { currentStep: number }) => {
     );
 };
 
+const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundPattern'], color?: string }) => {
+    if (!pattern || pattern === 'none') return null;
+
+    const patterns: Record<string, React.ReactNode> = {
+        dots: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="dots-preview" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <circle cx="2" cy="2" r="1" fill={color || "currentColor"} opacity="0.3" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#dots-preview)" />
+            </svg>
+        ),
+        grid: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="grid-preview" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid-preview)" />
+            </svg>
+        ),
+        circuit: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="circuit-preview" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <path d="M0 10h20v10H0zM30 30h40v10H30zM80 50h20v10H80zM10 70h30v10H10zM60 80h20v10H60z" fill="none" stroke={color || "currentColor"} strokeWidth="0.5" opacity="0.2" />
+                        <circle cx="20" cy="15" r="2" fill={color || "currentColor"} opacity="0.3" />
+                        <circle cx="70" cy="35" r="2" fill={color || "currentColor"} opacity="0.3" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit-preview)" />
+            </svg>
+        ),
+        topography: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="topo-preview" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <path d="M0 50c20-10 40-10 60 0s40 10 60 0M0 20c20-10 40-10 60 0s40 10 60 0M0 80c20-10 40-10 60 0s40 10 60 0" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#topo-preview)" />
+            </svg>
+        ),
+        cubes: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="cubes-preview" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                        <path d="M30 0l30 15v30L30 60 0 45V15z" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#cubes-preview)" />
+            </svg>
+        )
+    };
+
+    return (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {patterns[pattern]}
+        </div>
+    );
+};
+
 export default function NewSurveyPage() {
     const { toast } = useToast();
     const router = useRouter();
@@ -182,6 +248,7 @@ export default function NewSurveyPage() {
             bannerImageUrl: '',
             backgroundColor: '#F1F5F9',
             backgroundPattern: 'none',
+            patternColor: '#3B5FFF',
             slug: '',
             scoringEnabled: false,
             maxScore: 100,
@@ -192,7 +259,10 @@ export default function NewSurveyPage() {
         },
     });
 
-    const { getValues } = form;
+    const { getValues, watch } = form;
+    const watchedBgColor = watch('backgroundColor');
+    const watchedPattern = watch('backgroundPattern');
+    const watchedPatternColor = watch('patternColor');
 
     const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
         const parsed: ValidationError[] = [];
@@ -260,7 +330,7 @@ export default function NewSurveyPage() {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern'];
+        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -453,51 +523,85 @@ export default function NewSurveyPage() {
                                             <CardDescription>Colors and background patterns.</CardDescription>
                                         </CardHeader>
                                         <CardContent className="space-y-6">
-                                            <FormField
-                                                control={form.control}
-                                                name="backgroundColor"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Background Color</FormLabel>
-                                                        <div className="flex items-center gap-2">
-                                                            <FormControl>
-                                                                <Input type="color" {...field} className="w-12 h-10 p-1" />
-                                                            </FormControl>
-                                                            <Input 
-                                                                value={field.value} 
-                                                                onChange={e => field.onChange(e.target.value)} 
-                                                                className="flex-1 font-mono uppercase" 
-                                                            />
-                                                        </div>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="backgroundPattern"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Background Pattern</FormLabel>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl>
-                                                                <SelectTrigger>
-                                                                    <SelectValue placeholder="Select a pattern" />
-                                                                </SelectTrigger>
-                                                            </FormControl>
-                                                            <SelectContent>
-                                                                <SelectItem value="none">None (Solid)</SelectItem>
-                                                                <SelectItem value="dots">Dots</SelectItem>
-                                                                <SelectItem value="grid">Grid</SelectItem>
-                                                                <SelectItem value="circuit">Circuit</SelectItem>
-                                                                <SelectItem value="topography">Topography</SelectItem>
-                                                                <SelectItem value="cubes">Cubes</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                                                <div className="space-y-6">
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="backgroundColor"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Background Color</FormLabel>
+                                                                <div className="flex items-center gap-2">
+                                                                    <FormControl>
+                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                    </FormControl>
+                                                                    <Input 
+                                                                        value={field.value} 
+                                                                        onChange={e => field.onChange(e.target.value)} 
+                                                                        className="flex-1 font-mono uppercase" 
+                                                                    />
+                                                                </div>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="patternColor"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Pattern Color</FormLabel>
+                                                                <div className="flex items-center gap-2">
+                                                                    <FormControl>
+                                                                        <Input type="color" {...field} className="w-12 h-10 p-1" />
+                                                                    </FormControl>
+                                                                    <Input 
+                                                                        value={field.value} 
+                                                                        onChange={e => field.onChange(e.target.value)} 
+                                                                        className="flex-1 font-mono uppercase" 
+                                                                    />
+                                                                </div>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="backgroundPattern"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Background Pattern</FormLabel>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <FormControl>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue placeholder="Select a pattern" />
+                                                                        </SelectTrigger>
+                                                                    </FormControl>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="none">None (Solid)</SelectItem>
+                                                                        <SelectItem value="dots">Dots</SelectItem>
+                                                                        <SelectItem value="grid">Grid</SelectItem>
+                                                                        <SelectItem value="circuit">Circuit</SelectItem>
+                                                                        <SelectItem value="topography">Topography</SelectItem>
+                                                                        <SelectItem value="cubes">Cubes</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Design Preview</Label>
+                                                    <div 
+                                                        className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
+                                                        style={{ backgroundColor: watchedBgColor }}
+                                                    >
+                                                        <BackgroundPattern pattern={watchedPattern} color={watchedPatternColor} />
+                                                        <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 </div>
