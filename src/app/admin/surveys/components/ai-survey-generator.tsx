@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, UploadCloud, Sparkles } from 'lucide-react';
 
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { generateSurvey } from '@/ai/flows/generate-survey-flow';
 import type { Survey } from '@/lib/types';
@@ -60,7 +61,7 @@ export default function AiSurveyGenerator() {
     setIsGenerating(true);
     toast({
         title: 'Generating Survey...',
-        description: 'The AI is building your survey. This may take a moment.',
+        description: 'The AI is building your survey and outcome logic. This may take a moment.',
     });
 
     try {
@@ -91,10 +92,16 @@ export default function AiSurveyGenerator() {
             throw new Error('AI model did not return a valid survey structure.');
         }
         
-        const slug = generatedData.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+        const slug = (generatedData.title + '-' + Math.random().toString(36).substring(2, 5))
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '-')
+            .replace(/[^a-z0-9-]/g, '');
+
+        const { resultPages, ...mainSurveyData } = generatedData;
 
         const newSurvey: Omit<Survey, 'id'> = {
-            ...generatedData,
+            ...mainSurveyData,
             slug,
             status: 'draft',
             createdAt: new Date().toISOString(),
@@ -104,10 +111,16 @@ export default function AiSurveyGenerator() {
         const surveysCollection = collection(firestore, 'surveys');
         const docRef = await addDoc(surveysCollection, newSurvey);
 
-        if (docRef.id) {
+        if (docRef.id && resultPages) {
+            // Save result pages to subcollection
+            const pagesCol = collection(firestore, `surveys/${docRef.id}/resultPages`);
+            for (const page of resultPages) {
+                await setDoc(doc(pagesCol, page.id), page);
+            }
+
             toast({
                 title: 'Survey Generated!',
-                description: 'Redirecting you to the survey editor...',
+                description: 'The AI has configured questions, scoring, and outcome pages.',
             });
             router.push(`/admin/surveys/${docRef.id}/edit`);
         } else {
@@ -127,12 +140,15 @@ export default function AiSurveyGenerator() {
   };
 
   return (
-    <Card className="max-w-3xl mx-auto">
-        <CardHeader>
-            <CardTitle>AI Survey Builder</CardTitle>
-            <CardDescription>Provide content for your survey, and let AI do the heavy lifting.</CardDescription>
+    <Card className="max-w-3xl mx-auto shadow-2xl">
+        <CardHeader className="text-center pb-8 border-b bg-muted/30">
+            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                <Sparkles className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-black">AI Survey Architect</CardTitle>
+            <CardDescription className="text-base">Provide your source material and the AI will build a complete, scored assessment flow for you.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-8">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
                     <Tabs
@@ -140,72 +156,65 @@ export default function AiSurveyGenerator() {
                         className="w-full"
                         onValueChange={(value) => form.setValue('sourceType', value as 'text' | 'url' | 'file')}
                     >
-                        <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="text">Paste Text</TabsTrigger>
-                            <TabsTrigger value="url">From URL</TabsTrigger>
-                            <TabsTrigger value="file" disabled>Upload File (Soon)</TabsTrigger>
+                        <TabsList className="grid w-full grid-cols-3 h-12 bg-muted p-1">
+                            <TabsTrigger value="text" className="font-bold">Paste Text</TabsTrigger>
+                            <TabsTrigger value="url" className="font-bold">From URL</TabsTrigger>
+                            <TabsTrigger value="file" disabled className="font-bold">Upload File (Soon)</TabsTrigger>
                         </TabsList>
-                        <TabsContent value="text" className="pt-4">
+                        <TabsContent value="text" className="pt-6">
                             <FormField
                                 control={form.control}
                                 name="text"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Paste your survey content</FormLabel>
+                                        <FormLabel className="text-xs font-black uppercase tracking-widest text-muted-foreground">Source Material</FormLabel>
                                         <FormControl>
                                             <Textarea
-                                                placeholder="Paste a list of questions, a meeting transcript, or a document outline here..."
-                                                className="min-h-[200px]"
+                                                placeholder="Paste a document outline, a list of requirements, or a quiz draft here..."
+                                                className="min-h-[250px] text-base leading-relaxed p-4"
                                                 {...field}
                                             />
                                         </FormControl>
                                         <FormDescription>
-                                            The AI will analyze this text to create questions, suggest types, and structure your survey.
+                                            The AI will identify questions, sections, and logic rules based on your text.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </TabsContent>
-                        <TabsContent value="url" className="pt-4">
+                        <TabsContent value="url" className="pt-6">
                             <FormField
                                 control={form.control}
                                 name="url"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>URL to a public document or webpage</FormLabel>
+                                        <FormLabel className="text-xs font-black uppercase tracking-widest text-muted-foreground">Target URL</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="https://..." {...field} value={field.value ?? ''} />
+                                            <Input placeholder="https://..." {...field} value={field.value ?? ''} className="h-12 text-lg" />
                                         </FormControl>
                                         <FormDescription>
-                                            e.g., a link to a Google Doc (published to web), a blog post, or a webpage.
+                                            Link to a public article, Google Doc, or webpage to parse for content.
                                         </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </TabsContent>
-                        <TabsContent value="file" className="pt-4">
-                            <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg text-center bg-muted/50">
-                                <UploadCloud className="w-10 h-10 text-muted-foreground" />
-                                <p className="mt-4 font-semibold">File upload is coming soon!</p>
-                                <p className="text-sm text-muted-foreground">You'll be able to upload .pdf, .docx, and .txt files.</p>
-                            </div>
-                        </TabsContent>
                     </Tabs>
-                    <div className="flex justify-between items-center mt-8">
+                    <div className="flex justify-between items-center mt-12 border-t pt-8">
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="ghost"
                           onClick={() => router.push('/admin/surveys')}
                           disabled={isGenerating}
+                          className="font-bold"
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isGenerating} size="lg">
-                            {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                             <Sparkles className="mr-2 h-4 w-4" />
-                            {isGenerating ? 'Generating...' : 'Generate Survey'}
+                        <Button type="submit" disabled={isGenerating} size="lg" className="h-14 px-8 font-black text-lg gap-3">
+                            {isGenerating ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
+                            {isGenerating ? 'Building Engine...' : 'Generate Intelligent Survey'}
                         </Button>
                     </div>
                 </form>

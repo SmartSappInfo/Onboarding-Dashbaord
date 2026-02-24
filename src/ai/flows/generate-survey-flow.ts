@@ -1,15 +1,46 @@
 
 'use server';
 /**
- * @fileOverview An AI flow to generate a survey from various content sources.
- *
- * - generateSurvey - A function that takes text or a URL and generates a survey structure.
+ * @fileOverview An AI flow to generate an intelligent, scored survey from various content sources.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 
-// ------ Zod Schemas for the Survey Structure ------
+// ------ Zod Schemas for the Result Structure ------
+
+const resultBlockSchema = z.object({
+  id: z.string(),
+  type: z.enum(['heading', 'text', 'image', 'video', 'button', 'quote', 'divider', 'score-card']),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  url: z.string().optional(),
+  link: z.string().optional(),
+  openInNewTab: z.boolean().optional(),
+  style: z.object({
+    textAlign: z.enum(['left', 'center', 'right']).optional(),
+    variant: z.string().optional(),
+    animate: z.boolean().optional(),
+  }).optional(),
+});
+
+const resultPageSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  isDefault: z.boolean(),
+  blocks: z.array(resultBlockSchema),
+});
+
+const resultRuleSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  minScore: z.number(),
+  maxScore: z.number(),
+  priority: z.number(),
+  pageId: z.string(),
+});
+
+// ------ Zod Schemas for the Survey Elements ------
 
 const questionSchema = z.object({
   id: z.string(),
@@ -39,6 +70,7 @@ const layoutBlockSchema = z.object({
   hidden: z.boolean().optional(),
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
+  stepperTitle: z.string().optional(),
 });
 
 const logicActionSchema = z.object({
@@ -60,7 +92,6 @@ const logicBlockSchema = z.object({
 
 const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
 
-
 // ------ Input and Output Schemas for the Flow ------
 
 const GenerateSurveyInputSchema = z.object({
@@ -69,17 +100,19 @@ const GenerateSurveyInputSchema = z.object({
 });
 export type GenerateSurveyInput = z.infer<typeof GenerateSurveyInputSchema>;
 
-
 const GenerateSurveyOutputSchema = z.object({
-    title: z.string().describe('A concise and engaging title for the survey based on the provided content.'),
-    description: z.string().describe('A brief introduction or instruction for the survey respondents, derived from the content.'),
-    elements: z.array(elementSchema).describe("An array of questions, layout, and logic blocks structured from the content. Ensure IDs are unique for each element (e.g., 'el_timestamp_random')."),
-    thankYouTitle: z.string().describe('A friendly title for the "Thank You" page shown after submission.'),
-    thankYouDescription: z.string().describe('A polite message for the "Thank You" page.'),
-    bannerImageQuery: z.string().describe('A 1-2 word search query for finding a suitable banner image from a media library. E.g., "feedback survey" or "event registration".'),
+    title: z.string().describe('A concise and engaging title for the survey.'),
+    description: z.string().describe('A brief introduction for the survey respondents.'),
+    elements: z.array(elementSchema).describe("Questions and layout blocks. For 'multiple-choice', 'dropdown', 'checkboxes', or 'yes-no', YOU MUST include suggested point values in 'optionScores', 'yesScore', or 'noScore' to enable scoring."),
+    scoringEnabled: z.boolean().describe('True if the survey behaves like an assessment or quiz.'),
+    maxScore: z.number().describe('The total possible points if everything is answered perfectly.'),
+    resultRules: z.array(resultRuleSchema).describe('Logic to map score ranges to specific outcome pages.'),
+    resultPages: z.array(resultPageSchema).describe('Complete landing pages for the outcomes.'),
+    thankYouTitle: z.string(),
+    thankYouDescription: z.string(),
+    bannerImageQuery: z.string(),
 });
 export type GenerateSurveyOutput = z.infer<typeof GenerateSurveyOutputSchema>;
-
 
 // ------ The Genkit Flow ------
 
@@ -87,26 +120,32 @@ const generationPrompt = ai.definePrompt({
     name: 'surveyGenerationPrompt',
     input: { schema: z.object({ sourceText: z.string() }) },
     output: { schema: GenerateSurveyOutputSchema },
-    prompt: `You are an expert at creating well-structured surveys. Analyze the following text content and convert it into a complete survey object.
+    prompt: `You are an expert at creating high-conversion, intelligent surveys and assessments. 
+Analyze the provided text and convert it into a fully functional, scored survey engine.
 
-    Follow these instructions carefully:
-    1.  **Analyze Content**: Read the text and identify all potential survey questions, sections, and introductory/concluding text.
-    2.  **Generate Title and Description**: Create a concise 'title' and a helpful 'description' for the survey based on the overall context of the text.
-    3.  **Structure Elements**:
-        *   Convert the identified questions into a JSON array for the 'elements' field.
-        *   For each question, determine the most appropriate 'type' (e.g., 'text', 'multiple-choice', 'rating', 'yes-no').
-        *   If options are provided for a question, populate the 'options' array.
-        *   Use 'heading' or 'section' layout blocks to group related questions logically. A 'section' can have a title and a description.
-        *   Generate a unique 'id' for every single element in the 'elements' array. A good format is 'el_timestamp_random' (e.g., 'el_17123456_a9b8c7').
-        *   Set 'isRequired' to true for questions that seem mandatory. Be conservative.
-    4.  **Generate Thank You Message**: Create a suitable 'thankYouTitle' and 'thankYouDescription' for when the user completes the survey.
-    5.  **Suggest Banner Image**: Provide a simple, 2-3 word 'bannerImageQuery' that could be used to find a relevant background image for the survey banner.
-    
-    Source Text to be converted into a survey:
-    \`\`\`text
-    {{{sourceText}}}
-    \`\`\`
-    `,
+### MISSION:
+If the content suggests an assessment, quiz, or qualification flow, ENABLE SCORING and build high-fidelity OUTCOME PAGES.
+
+### GUIDELINES:
+1. **Scoring Logic**:
+   - Assign points to 'yes-no', 'multiple-choice', 'dropdown', and 'checkboxes'.
+   - Ensure the 'maxScore' is the sum of all highest-possible points.
+2. **Outcome Design**:
+   - Create 2-3 logical result buckets (e.g., Low, Medium, High).
+   - For each bucket, design a 'resultPage' using blocks.
+   - EVERY result page should include a 'score-card' block at the top.
+   - Use 'heading', 'text', and 'button' blocks to provide personalized advice or next steps based on that score level.
+3. **Structure Elements**:
+   - Use 'section' blocks with 'renderAsPage: true' to group questions.
+   - Provide a 'stepperTitle' for every section (e.g., "Your Profile", "Risk Assessment").
+4. **Logic Blocks**:
+   - Use 'logic' blocks to skip irrelevant questions based on previous answers if the content allows.
+
+Source Text:
+\`\`\`text
+{{{sourceText}}}
+\`\`\`
+`,
 });
 
 const generateSurveyFlow = ai.defineFlow(
@@ -121,12 +160,8 @@ const generateSurveyFlow = ai.defineFlow(
         if (input.sourceType === 'url') {
             try {
                 const response = await fetch(input.content);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch URL: ${response.statusText}`);
-                }
-                const htmlContent = await response.text();
-                // Send the full HTML to the LLM for parsing.
-                sourceText = htmlContent;
+                if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);
+                sourceText = await response.text();
             } catch (e: any) {
                 console.error("URL fetch failed:", e);
                 throw new Error("Could not retrieve content from the provided URL.");
@@ -134,17 +169,12 @@ const generateSurveyFlow = ai.defineFlow(
         }
         
         const { output } = await generationPrompt({ sourceText });
-
-        if (!output) {
-            throw new Error("The AI model failed to generate a survey structure.");
-        }
+        if (!output) throw new Error("The AI model failed to generate a survey structure.");
 
         return output;
     }
 );
 
-
-// The exported wrapper function that client components will call.
 export async function generateSurvey(input: GenerateSurveyInput): Promise<GenerateSurveyOutput> {
     return generateSurveyFlow(input);
 }
