@@ -23,7 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { MediaSelect } from '../components/media-select';
+import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
 import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
