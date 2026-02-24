@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import { doc, updateDoc } from 'firebase/firestore';
 
-import type { Survey } from '@/lib/types';
+import type { Survey, SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -69,6 +68,7 @@ const layoutBlockSchema = z.object({
   hidden: z.boolean().optional(),
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
+  stepperTitle: z.string().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
@@ -145,7 +145,7 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const [step, setStep] = React.useState(1);
 
     const surveyDocRef = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !surveyId) return null;
         return doc(firestore, 'surveys', surveyId);
     }, [firestore, surveyId]);
 
@@ -165,6 +165,8 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
         }
     });
 
+    const { getValues } = form;
+
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
             form.reset({
@@ -179,6 +181,21 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
             });
         }
     }, [survey, form]);
+
+    const scrollToFirstError = (errors: any) => {
+        if (errors.elements) {
+            const firstErrorIndex = errors.elements.findIndex((e: any) => !!e);
+            if (firstErrorIndex !== -1) {
+                const elementId = getValues(`elements.${firstErrorIndex}.id`);
+                setTimeout(() => {
+                    const el = document.getElementById(elementId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+    };
 
     const onSubmit = (data: FormData) => {
         if (!firestore || !surveyId) return;
@@ -223,17 +240,22 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
     const onInvalid = (errors: any) => {
         console.error("Survey Edit Validation Failed:", errors);
         
-        // Jump to the step with the first error
-        if (errors.title || errors.description) setStep(1);
-        else if (errors.elements) setStep(2);
-        else if (errors.thankYouTitle || errors.thankYouDescription) setStep(3);
-        else if (errors.slug || errors.status) setStep(4);
+        let targetStep = 4;
+        if (errors.title || errors.description) targetStep = 1;
+        else if (errors.elements) targetStep = 2;
+        else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
+        
+        setStep(targetStep);
 
         toast({
             variant: 'destructive',
             title: 'Form Incomplete',
             description: 'Please fix the errors before saving.',
         });
+
+        if (targetStep === 2) {
+            scrollToFirstError(errors);
+        }
     };
     
     const handleNext = async () => {
@@ -250,6 +272,9 @@ function EditSurveyForm({ surveyId }: { surveyId: string }) {
                 title: 'Validation Error',
                 description: 'Please fix the errors before proceeding.',
             });
+            if (step === 2) {
+                scrollToFirstError(form.formState.errors);
+            }
             return;
         }
         setStep(s => s + 1);

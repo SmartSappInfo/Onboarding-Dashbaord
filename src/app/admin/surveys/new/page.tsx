@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -66,6 +65,7 @@ const layoutBlockSchema = z.object({
   hidden: z.boolean().optional(),
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
+  stepperTitle: z.string().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
     if (data.type === 'description' && !data.text) return false;
@@ -76,7 +76,7 @@ const layoutBlockSchema = z.object({
 });
 
 const logicActionSchema = z.object({
-  type: z.enum(['jump', 'require', 'show', 'hide', 'disableSubmit']),
+  type: 'jump' as 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit',
   targetElementId: z.string().optional(),
   targetElementIds: z.array(z.string()).optional(),
 });
@@ -84,7 +84,7 @@ const logicActionSchema = z.object({
 
 const logicBlockSchema = z.object({
   id: z.string(),
-  type: z.enum(['logic']),
+  type: 'logic' as 'logic',
   rules: z.array(z.object({
     sourceQuestionId: z.string(),
     operator: z.enum(['isEqualTo', 'isNotEqualTo', 'contains', 'doesNotContain', 'startsWith', 'doesNotStartWith', 'endsWith', 'doesNotEndWith', 'isEmpty', 'isNotEmpty', 'isGreaterThan', 'isLessThan']),
@@ -165,6 +165,23 @@ export default function NewSurveyPage() {
         },
     });
 
+    const { getValues } = form;
+
+    const scrollToFirstError = (errors: any) => {
+        if (errors.elements) {
+            const firstErrorIndex = errors.elements.findIndex((e: any) => !!e);
+            if (firstErrorIndex !== -1) {
+                const elementId = getValues(`elements.${firstErrorIndex}.id`);
+                setTimeout(() => {
+                    const el = document.getElementById(elementId);
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }, 100);
+            }
+        }
+    };
+
     const onSubmit = (data: FormData) => {
         if (!firestore) {
             toast({
@@ -215,17 +232,22 @@ export default function NewSurveyPage() {
     const onInvalid = (errors: any) => {
         console.error("Survey Validation Failed:", errors);
         
-        // Jump to the step with the first error
-        if (errors.title || errors.description) setStep(1);
-        else if (errors.elements) setStep(2);
-        else if (errors.thankYouTitle || errors.thankYouDescription) setStep(3);
-        else if (errors.slug || errors.status) setStep(4);
+        let targetStep = 4;
+        if (errors.title || errors.description) targetStep = 1;
+        else if (errors.elements) targetStep = 2;
+        else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
+        
+        setStep(targetStep);
 
         toast({
             variant: 'destructive',
             title: 'Form Incomplete',
             description: 'Please check all steps for missing or incorrect information.',
         });
+
+        if (targetStep === 2) {
+            scrollToFirstError(errors);
+        }
     };
     
     const handleNext = async () => {
@@ -242,6 +264,9 @@ export default function NewSurveyPage() {
                 title: 'Validation Error',
                 description: 'Please fix the errors before proceeding.',
             });
+            if (step === 2) {
+                scrollToFirstError(form.formState.errors);
+            }
             return;
         }
 

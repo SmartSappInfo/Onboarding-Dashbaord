@@ -774,10 +774,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
         >
             <GripVertical className="h-5 w-5 text-muted-foreground" />
         </div>
-        <Card className={cn(
-            "border-2 border-transparent has-[:focus-within]:border-primary transition-colors",
-            element.hidden ? "bg-disabled" : "bg-card"
-        )}>
+        <Card 
+            id={element.id}
+            className={cn(
+                "border-2 transition-colors",
+                elementErrors ? "border-destructive" : "border-transparent has-[:focus-within]:border-primary",
+                element.hidden ? "bg-disabled" : "bg-card"
+            )}
+        >
              <CardHeader className={cn(isMediaLayout && 'p-0 mb-4')}>
                 <div className="flex justify-between items-start">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -832,7 +836,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                     <div className="grid grid-cols-1 gap-y-6">
                         <div className="space-y-2">
                             <Label>Question Text</Label>
-                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" />} />
+                            <Controller name={`elements.${index}.title`} control={control} render={({ field }) => <Textarea {...field} value={field.value ?? ''} placeholder="e.g., What is your favorite color?" className={cn(elementErrors?.title && "border-destructive")} />} />
                             {elementErrors?.title && <FormMessage>{elementErrors.title.message}</FormMessage>}
                         </div>
                         <div className="space-y-2">
@@ -890,7 +894,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              ): (
                                 <OptionsEditor questionIndex={index} />
                             )}
-                             {element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown' && elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
+                             {elementErrors?.options && <FormMessage className="mt-2">{elementErrors.options.message}</FormMessage>}
                         </div>
                          {isScoreable && (
                             <div className="flex items-center justify-between rounded-lg border p-4 bg-muted/50">
