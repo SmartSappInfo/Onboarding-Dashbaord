@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import SurveyPreviewButton from '../components/survey-preview-button';
@@ -42,6 +42,10 @@ const questionSchema = z.object({
   defaultValue: z.any().optional(),
   minLength: z.number().optional(),
   maxLength: z.number().optional(),
+  enableScoring: z.boolean().optional(),
+  optionScores: z.array(z.number()).optional(),
+  yesScore: z.number().optional(),
+  noScore: z.number().optional(),
 }).refine(data => {
     if ((data.type === 'multiple-choice' || data.type === 'checkboxes' || data.type === 'dropdown') && (!data.options || data.options.length < 2)) {
         return false;
@@ -207,13 +211,46 @@ export default function NewSurveyPage() {
                 form.control.disabled = false;
             });
     };
+
+    const onInvalid = (errors: any) => {
+        console.error("Survey Validation Failed:", errors);
+        
+        // Jump to the step with the first error
+        if (errors.title || errors.description) setStep(1);
+        else if (errors.elements) setStep(2);
+        else if (errors.thankYouTitle || errors.thankYouDescription) setStep(3);
+        else if (errors.slug || errors.status) setStep(4);
+
+        toast({
+            variant: 'destructive',
+            title: 'Form Incomplete',
+            description: 'Please check all steps for missing or incorrect information.',
+        });
+    };
     
     const handleNext = async () => {
+        let fieldsToValidate: any[] = [];
+        if (step === 1) fieldsToValidate = ['title', 'description'];
+        if (step === 2) fieldsToValidate = ['elements'];
+        if (step === 3) fieldsToValidate = ['thankYouTitle', 'thankYouDescription'];
+        
+        const isStepValid = await form.trigger(fieldsToValidate);
+        
+        if (!isStepValid) {
+            toast({
+                variant: 'destructive',
+                title: 'Validation Error',
+                description: 'Please fix the errors before proceeding.',
+            });
+            return;
+        }
+
         if (step === 1) {
             const title = form.getValues('title');
-            if (title) {
+            const currentSlug = form.getValues('slug');
+            if (title && !currentSlug) {
                 const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                form.setValue('slug', slug, { shouldValidate: false });
+                form.setValue('slug', slug, { shouldValidate: true });
             }
         }
         setStep(s => s + 1);
@@ -224,7 +261,7 @@ export default function NewSurveyPage() {
             <div className="w-full md:w-[70%] mx-auto">
                 <FormProvider {...form}>
                     <Stepper currentStep={step} />
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                         
                         {/* Step 1: Details */}
                         <Card className={cn(step !== 1 && 'hidden')}>
@@ -382,7 +419,9 @@ export default function NewSurveyPage() {
                                 ) : (
                                     <div className="flex items-center gap-4">
                                         <SurveyPreviewButton />
-                                        <Button type="submit" disabled={form.formState.isSubmitting}>{form.formState.isSubmitting ? 'Saving...' : 'Save Survey'}</Button>
+                                        <Button type="submit" disabled={form.formState.isSubmitting}>
+                                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Survey'}
+                                        </Button>
                                     </div>
                                 )}
                             </div>
