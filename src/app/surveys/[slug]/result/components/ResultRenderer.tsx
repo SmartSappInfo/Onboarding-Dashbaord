@@ -104,7 +104,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             const sizeClass = Tag === 'h1' ? "text-3xl sm:text-5xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-black";
             return (
                 <Tag 
-                    className={cn(sizeClass, "tracking-tight", containerClasses)} 
+                    className={cn(sizeClass, "tracking-tight whitespace-pre-wrap", containerClasses)} 
                     style={{ color: block.style?.color }}
                 >
                     {block.title}
@@ -112,7 +112,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         }
         case 'text':
-            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
         case 'image':
             return block.url ? (
                 <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
@@ -138,7 +138,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         case 'quote':
             return (
-                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-lg sm:text-xl", containerClasses)}>
+                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-lg sm:text-xl whitespace-pre-wrap", containerClasses)}>
                     <Quote className="h-6 w-6 sm:h-8 sm:w-8 text-primary/20 mb-4" />
                     {block.content}
                 </div>

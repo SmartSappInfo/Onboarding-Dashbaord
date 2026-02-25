@@ -276,7 +276,7 @@ const ElementRenderer = ({
                     </Label>
                     {/* Only show description for non-text fields. Text fields use it as a placeholder. */}
                     {question.placeholder && !isTextInput && (
-                        <p className="text-sm text-muted-foreground font-medium">
+                        <p className="text-sm text-muted-foreground font-medium whitespace-pre-wrap">
                             {question.placeholder}
                         </p>
                     )}
@@ -488,14 +488,14 @@ const ElementRenderer = ({
                 const Tag = block.variant || 'h2';
                 const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
                 return (
-                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight")}>
+                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
                     </Tag>
                 );
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed font-medium", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
@@ -978,13 +978,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         )}
                         <div className="space-y-6 max-w-3xl mx-auto px-4">
                             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
-                            <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     </>
                 )}
-                <Button size="lg" className="h-12 px-8 text-base sm:text-lg font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-8" onClick={handleNext}>
+                <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 text-base sm:text-lg font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-8" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-3 h-7 w-7" />
-                </Button>
+                </button>
             </div>
         )
     }
@@ -1000,9 +1000,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             <div className="text-center space-y-3 mb-8 sm:mb-10 border-b border-slate-100 pb-6 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
                                 <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
                                 {(pageSection as any).description && (
-                                    <p className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic">
-                                        {(pageSection as any).description}
-                                    </p>
+                                    <div className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: (pageSection as any).description }} />
                                 )}
                             </div>
                         )}

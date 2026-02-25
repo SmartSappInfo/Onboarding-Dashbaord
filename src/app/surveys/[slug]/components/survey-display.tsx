@@ -180,7 +180,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                         </div>
                                     )}
                                     <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>
-                                    <div className="text-lg sm:text-2xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <div className="text-lg sm:text-2xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>
