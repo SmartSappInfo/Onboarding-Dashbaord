@@ -70,6 +70,7 @@ const layoutBlockSchema = z.object({
   hidden: z.boolean().optional(),
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
+  validateBeforeNext: z.boolean().optional(),
   stepperTitle: z.string().optional(),
   variant: z.enum(['h1', 'h2', 'h3']).optional(),
 });
@@ -138,6 +139,7 @@ If the content suggests an assessment, quiz, or qualification flow, ENABLE SCORI
    - Use 'heading', 'text', and 'button' blocks to provide personalized advice or next steps based on that score level.
 3. **Structure Elements**:
    - Use 'section' blocks with 'renderAsPage: true' to group questions.
+   - Use 'validateBeforeNext: true' on sections that are critical for logic.
    - Provide a 'stepperTitle' for every section (e.g., "Your Profile", "Risk Assessment").
    - For 'heading' blocks, choose an appropriate 'variant' (h1, h2, or h3).
 4. **Logic Blocks**:

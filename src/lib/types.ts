@@ -132,6 +132,7 @@ export interface SurveyLayoutBlock {
   html?: string; // For embed
   hidden?: boolean;
   renderAsPage?: boolean;
+  validateBeforeNext?: boolean; // New: determines if page-level validation is active
   variant?: 'h1' | 'h2' | 'h3'; // For headings
   style?: {
     textAlign?: 'left' | 'center' | 'right';

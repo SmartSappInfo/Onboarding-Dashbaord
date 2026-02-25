@@ -142,46 +142,46 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (file) {
+        setError(null);
+        setUploadProgress(0);
+        setFileName(file.name);
+        onChange(undefined);
 
-    setError(null);
-    setUploadProgress(0);
-    setFileName(file.name);
-    onChange(undefined);
+        const storage = getStorage();
+        const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${file.name}`;
+        const storageRef = ref(storage, storagePath);
+        const uploadTask = uploadBytesResumable(storageRef, file);
 
-    const storage = getStorage();
-    const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${file.name}`;
-    const storageRef = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (uploadError) => {
-        console.error("Upload failed:", uploadError);
-        setError("Upload failed. Please try again.");
-        setUploadProgress(null);
-        setFileName(null);
-      },
-      async () => {
-        try {
-          const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-          onChange(downloadURL);
-          setUploadProgress(100);
-          setTimeout(() => {
+        uploadTask.on(
+          'state_changed',
+          (snapshot) => {
+            const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            setUploadProgress(progress);
+          },
+          (uploadError) => {
+            console.error("Upload failed:", uploadError);
+            setError("Upload failed. Please try again.");
             setUploadProgress(null);
-          }, 1500);
-        } catch (urlError) {
-          console.error("Failed to get download URL:", urlError);
-          setError("Could not retrieve file URL.");
-          setUploadProgress(null);
-          setFileName(null);
-        }
-      }
-    );
+            setFileName(null);
+          },
+          async () => {
+            try {
+              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+              onChange(downloadURL);
+              setUploadProgress(100);
+              setTimeout(() => {
+                setUploadProgress(null);
+              }, 1500);
+            } catch (urlError) {
+              console.error("Failed to get download URL:", urlError);
+              setError("Could not retrieve file URL.");
+              setUploadProgress(null);
+              setFileName(null);
+            }
+          }
+        );
+    }
   };
   
   const handleRemoveFile = () => {
@@ -287,7 +287,7 @@ const ElementRenderer = ({
                                 {...field} 
                                 value={field.value || ''} 
                                 placeholder={question.placeholder || "Type your answer here..."} 
-                                className="text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl px-4 shadow-none" 
+                                className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -297,7 +297,7 @@ const ElementRenderer = ({
                                 {...field} 
                                 value={field.value || ''} 
                                 placeholder={question.placeholder || "Share your thoughts..."} 
-                                className="text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl p-4 shadow-none" 
+                                className={cn("text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -309,14 +309,16 @@ const ElementRenderer = ({
                                     <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
                                         "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                        field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white"
+                                        field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                        errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
                                         "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                        field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white"
+                                        field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                        errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
                                         <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
                                         No
@@ -334,7 +336,8 @@ const ElementRenderer = ({
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
                                             "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                            field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white"
+                                            field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                            errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
                                             <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
                                             <span className="flex-1">{opt}</span>
@@ -356,7 +359,8 @@ const ElementRenderer = ({
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
                                                 "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
-                                                isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white"
+                                                isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                                errors[question.id] && "border-destructive bg-destructive/5"
                                             )}>
                                                 <Checkbox
                                                     id={`${question.id}-${opt}`}
@@ -381,7 +385,8 @@ const ElementRenderer = ({
                                     {question.allowOther && (
                                         <div className={cn(
                                             "flex items-center gap-4 rounded-2xl border-2 p-5 transition-all active:scale-[0.98]",
-                                            (field.value?.other || '') ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white"
+                                            (field.value?.other || '') ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
+                                            errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
                                             <Checkbox
                                                 id={`${question.id}-other-checkbox`}
@@ -414,7 +419,7 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                 <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-white border-2 border-slate-200 rounded-2xl px-4", textAlign === 'center' && 'mx-auto')}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-white border-2 border-slate-200 rounded-2xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
@@ -428,19 +433,25 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'rating' && (
                         <Controller control={control} name={question.id} render={({ field }) => (
-                            <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                                <StarRating {...field} />
+                            <div className={cn("flex flex-col", textAlign === 'center' ? 'items-center' : textAlign === 'right' ? 'items-end' : 'items-start')}>
+                                <div className={cn("p-2 rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
+                                    <StarRating {...field} />
+                                </div>
                             </div>
                         )} />
                     )}
                     {question.type === 'date' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <DatePicker {...field} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => (
+                                <div className={cn("rounded-xl", errors[question.id] && "ring-2 ring-destructive")}>
+                                    <DatePicker {...field} />
+                                </div>
+                            )} />
                         </div>
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl shadow-none focus:border-primary focus-visible:ring-0" {...field} value={field.value || ''} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -449,12 +460,14 @@ const ElementRenderer = ({
                                 control={control}
                                 name={question.id}
                                 render={({ field }) => (
-                                    <FileUpload
-                                        value={field.value}
-                                        onChange={field.onChange}
-                                        disabled={false}
-                                        surveyId={survey.id}
-                                    />
+                                    <div className={cn("rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
+                                        <FileUpload
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            disabled={false}
+                                            surveyId={survey.id}
+                                        />
+                                    </div>
                                 )}
                             />
                         </div>
@@ -892,12 +905,33 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
     };
 
-    const handleNext = () => {
+    const handleNext = async () => {
         const currentElements = pages[currentPageIndex];
         if (currentElements.length === 0) {
             setCurrentPageIndex(1);
             window.scrollTo(0, 0);
             return;
+        }
+
+        // Section-level validation if enabled
+        const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
+        if (pageSection?.validateBeforeNext) {
+            const questionIdsOnPage = currentElements
+                .filter(isQuestion)
+                .filter(q => elementStates[q.id]?.isVisible)
+                .map(q => q.id);
+            
+            if (questionIdsOnPage.length > 0) {
+                const isPageValid = await form.trigger(questionIdsOnPage as any);
+                if (!isPageValid) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Required Fields Missing',
+                        description: 'Please fill in all mandatory questions before moving forward.',
+                    });
+                    return;
+                }
+            }
         }
 
         let nextPageIndex = currentPageIndex + 1; 

@@ -83,7 +83,7 @@ const RichTextEditor = ({
             onInput={handleInput}
             onKeyDown={handleKeyDown}
             className={cn(
-                "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic",
+                "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
                 textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left',
                 className
             )}
@@ -1055,9 +1055,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Input {...field} value={field.value || ''} placeholder={question.placeholder || "Type your answer here..."} className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder={question.placeholder || "Share your thoughts..."} className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1160,7 +1160,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     onChange={field.onChange} 
                                                     placeholder="Section description (optional)..." 
                                                     textAlign="center"
-                                                    className="text-muted-foreground text-base sm:text-lg font-medium italic min-h-[1.5em] leading-relaxed"
+                                                    className="text-muted-foreground text-base sm:text-lg font-medium italic min-h-[1.5em] leading-relaxed whitespace-pre-wrap"
                                                 />
                                             )} 
                                         />
@@ -1168,19 +1168,35 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 </div>
                                 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
-                                    <div className="flex justify-center items-center gap-3 pb-2 bg-muted/20 rounded-xl p-3 shadow-xs border border-primary/10">
-                                        <Controller 
-                                            name={`elements.${index}.renderAsPage`} 
-                                            control={control} 
-                                            render={({ field }) => (
-                                                <Switch 
-                                                    checked={!!field.value} 
-                                                    onCheckedChange={field.onChange} 
-                                                    id={`render-as-page-${index}`} 
-                                                />
-                                            )} 
-                                        />
-                                        <Label htmlFor={`render-as-page-${index}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Page Break</Label>
+                                    <div className="space-y-4 bg-muted/20 rounded-xl p-4 shadow-xs border border-primary/10">
+                                        <div className="flex justify-between items-center gap-3">
+                                            <Controller 
+                                                name={`elements.${index}.renderAsPage`} 
+                                                control={control} 
+                                                render={({ field }) => (
+                                                    <Switch 
+                                                        checked={!!field.value} 
+                                                        onCheckedChange={field.onChange} 
+                                                        id={`render-as-page-${index}`} 
+                                                    />
+                                                )} 
+                                            />
+                                            <Label htmlFor={`render-as-page-${index}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">New Page Break</Label>
+                                        </div>
+                                        <div className="flex justify-between items-center gap-3 pt-2 border-t border-primary/10">
+                                            <Controller 
+                                                name={`elements.${index}.validateBeforeNext`} 
+                                                control={control} 
+                                                render={({ field }) => (
+                                                    <Switch 
+                                                        checked={!!field.value} 
+                                                        onCheckedChange={field.onChange} 
+                                                        id={`validate-before-next-${index}`} 
+                                                    />
+                                                )} 
+                                            />
+                                            <Label htmlFor={`validate-before-next-${index}`} className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Validate before next</Label>
+                                        </div>
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Stepper Navigation Label</Label>
@@ -1212,7 +1228,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             placeholder="Heading Text" 
                                             textAlign={element.style?.textAlign}
                                             className={cn(
-                                                "font-black leading-tight",
+                                                "font-black leading-tight whitespace-pre-wrap",
                                                 element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
@@ -1231,7 +1247,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             onChange={field.onChange} 
                                             placeholder="Description text..." 
                                             textAlign={element.style?.textAlign}
-                                            className="text-base sm:text-lg leading-relaxed text-muted-foreground min-h-[1.5em]" 
+                                            className="text-base sm:text-lg leading-relaxed text-muted-foreground min-h-[1.5em] whitespace-pre-wrap" 
                                         />
                                     )} 
                                 />

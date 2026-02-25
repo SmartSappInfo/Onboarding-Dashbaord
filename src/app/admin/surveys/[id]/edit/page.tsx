@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -74,6 +73,7 @@ const layoutBlockSchema = z.object({
   hidden: z.boolean().optional(),
   description: z.string().optional(),
   renderAsPage: z.boolean().optional(),
+  validateBeforeNext: z.boolean().optional(),
   stepperTitle: z.string().optional(),
 }).refine(data => {
     if (data.type === 'heading' && !data.title) return false;
