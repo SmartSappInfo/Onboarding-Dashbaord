@@ -19,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import { SmartSappLogo } from '@/components/icons';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -667,6 +669,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
 
+    const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
+    const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
+
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
@@ -765,6 +770,29 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             .find(rule => score >= rule.minScore && score <= rule.maxScore);
     };
 
+    const validateAllRequired = (data: any) => {
+        const missing: { id: string, label: string, pageIndex: number }[] = [];
+        
+        survey.elements.filter(isQuestion).forEach(q => {
+            const state = elementStates[q.id];
+            if (state?.isVisible && state?.isRequired) {
+                const value = data[q.id];
+                const isEmpty = value === undefined || value === null || value === '' || 
+                                (Array.isArray(value) && value.length === 0) || 
+                                (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
+                
+                if (isEmpty) {
+                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
+                    const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
+                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, ''); // Strip HTML for the modal list
+                    missing.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: pageIdx });
+                }
+            }
+        });
+        
+        return missing;
+    };
+
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (isPreview) {
             toast({ title: 'Preview Submission', description: 'This is a preview. No data was saved.' });
@@ -774,21 +802,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         if (!firestore) return;
         
-        let isValid = true;
-        survey.elements.filter(isQuestion).forEach(q => {
-            const state = elementStates[q.id];
-            if (state?.isVisible && state?.isRequired) {
-                const value = data[q.id];
-                const isEmpty = value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0) || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
-                if (isEmpty) {
-                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
-                    isValid = false;
-                }
-            }
-        });
+        const missing = validateAllRequired(data);
 
-        if (!isValid) {
-            toast({ variant: 'destructive', title: 'Missing Information', description: 'Please complete all required fields.' });
+        if (missing.length > 0) {
+            setMissingFields(missing);
+            setShowMissingFieldsModal(true);
             return;
         }
 
@@ -852,9 +870,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
 
         const questionIdsOnPage = currentElements.filter(isQuestion).map(q => q.id);
-        const isValid = await form.trigger(questionIdsOnPage);
+        const isPageValid = await form.trigger(questionIdsOnPage);
 
-        if (isValid) {
+        if (isPageValid) {
             let nextPageIndex = currentPageIndex + 1; 
 
             const logicBlocks = survey.elements.filter(isLogic);
@@ -885,13 +903,53 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 window.scrollTo(0, 0);
             }
         } else {
-            toast({ variant: 'destructive', title: 'Incomplete Section', description: 'Please complete all required fields on this page.' });
+            // Even during "Next", if there are errors, we collect them for the modal to show a consistent UX
+            const pageData = form.getValues();
+            const missingOnPage: { id: string, label: string, pageIndex: number }[] = [];
+            
+            currentElements.filter(isQuestion).forEach(q => {
+                const state = elementStates[q.id];
+                if (state?.isVisible && state?.isRequired) {
+                    const val = pageData[q.id];
+                    const isEmpty = val === undefined || val === null || val === '' || 
+                                    (Array.isArray(val) && val.length === 0) || 
+                                    (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0);
+                    if (isEmpty) {
+                        const cleanLabel = q.title.replace(/<[^>]*>?/gm, '');
+                        missingOnPage.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: currentPageIndex });
+                    }
+                }
+            });
+
+            if (missingOnPage.length > 0) {
+                setMissingFields(missingOnPage);
+                setShowMissingFieldsModal(true);
+            }
         }
     };
 
     const handlePrev = () => {
         setCurrentPageIndex(prev => prev - 1);
         window.scrollTo(0, 0);
+    };
+
+    const handleOkMissingFields = () => {
+        setShowMissingFieldsModal(false);
+        if (missingFields.length > 0) {
+            const first = missingFields[0];
+            setCurrentPageIndex(first.pageIndex);
+            setTimeout(() => {
+                const element = document.getElementById(first.id);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Try to focus the first input/radio/etc.
+                    const input = element.querySelector('input, select, textarea, button');
+                    if (input instanceof HTMLElement) {
+                        input.focus();
+                    }
+                }
+            }, 300);
+        }
     };
 
     const currentElements = pages[currentPageIndex];
@@ -987,6 +1045,33 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     )}
                 </div>
             </form>
+
+            <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-center text-xl">Required Fields Missing</DialogTitle>
+                        <DialogDescription className="text-center pt-2">
+                            Please complete the following fields before submitting your survey:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[30vh] border rounded-md my-4">
+                        <ul className="p-4 space-y-2">
+                            {missingFields.map((field, idx) => (
+                                <li key={idx} className="flex items-center gap-2 text-sm">
+                                    <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                                    <span className="font-medium">{field.label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl">OK, take me there</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
