@@ -552,7 +552,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
-        <div className="w-full mb-2 sm:mb-3 overflow-x-auto pt-6 pb-4 no-scrollbar">
+        <div className="w-full mb-1 overflow-x-auto pt-6 pb-1 no-scrollbar">
             <div className="min-w-[max-content] sm:min-w-full flex items-start justify-center gap-0 sm:gap-4 px-4">
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
