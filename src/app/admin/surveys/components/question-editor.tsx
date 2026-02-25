@@ -147,7 +147,7 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
     };
 
     return (
-        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted/50 p-1 rounded-md mb-2")}>
+        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted p-1 rounded-md mb-2")}>
             <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)">
                 <Bold className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
@@ -189,7 +189,7 @@ const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; fie
     return (
         <>
             {field.value ? (
-                <div className="relative group/media-preview rounded-lg border overflow-hidden">
+                <div className="relative group/media-preview rounded-lg border border-border/50 overflow-hidden">
                     {element.type === 'image' && <Image src={field.value} alt={element.title || 'image preview'} width={800} height={450} className="w-full h-auto object-cover" />}
                     {element.type === 'video' && <VideoEmbed url={field.value} />}
                     {element.type === 'audio' && <div className="p-4"><audio controls src={field.value} className="w-full" /></div>}
@@ -208,7 +208,7 @@ const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; fie
                 </div>
             ) : (
                 <div 
-                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
+                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
                     onClick={() => setIsDialogOpen(true)}
                 >
                     <Icon className="h-12 w-12 text-muted-foreground" />
@@ -243,7 +243,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between h-auto min-h-10"
+          className="w-full justify-between h-auto min-h-10 border-border"
         >
           <div className="flex gap-1 flex-wrap">
             {selectedValues.size > 0 ? (
@@ -281,7 +281,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                     </Badge>
                 ))
             ) : (
-              <span>{placeholder}</span>
+              <span className="text-muted-foreground">{placeholder}</span>
             )}
           </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -365,7 +365,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
 
   return (
     <div className="space-y-3">
-      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Options</Label>
+      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">Options</Label>
       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
         <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
           {fields.map((field, index) => {
@@ -377,7 +377,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-slate-50 h-11 rounded-xl" />}
+                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-background h-11 rounded-xl border-border/50" />}
                     />
                 </div>
                  {enableScoring && (
@@ -389,7 +389,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-slate-50 h-11 rounded-xl"
+                        className="w-24 bg-background h-11 rounded-xl border-border/50"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -438,7 +438,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-slate-50 h-11 rounded-xl" />}
+                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-background h-11 rounded-xl border-border/50" />}
                     />
                 </div>
                  {enableScoring && (
@@ -450,7 +450,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-slate-50 h-11 rounded-xl"
+                        className="w-24 bg-background h-11 rounded-xl border-border/50"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -467,7 +467,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
         </div>
       )}
 
-      <Button type="button" variant="outline" size="sm" onClick={handleAddOption} className="rounded-xl font-bold">
+      <Button type="button" variant="outline" size="sm" onClick={handleAddOption} className="rounded-xl font-bold border-border/50">
         <PlusCircle className="h-4 w-4 mr-2" /> Add Option
       </Button>
       {questionType === 'checkboxes' && (
@@ -492,7 +492,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
               />
             )}
           />
-          <Label htmlFor={`allowOther-${questionIndex}`} className="text-xs font-bold uppercase tracking-wider">Allow "Other" option</Label>
+          <Label htmlFor={`allowOther-${questionIndex}`} className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Allow "Other" option</Label>
         </div>
       )}
     </div>
@@ -539,14 +539,14 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
     }
   
     return (
-      <div className="space-y-4 p-4 border rounded-2xl bg-slate-50">
+      <div className="space-y-4 p-4 border border-border/50 rounded-2xl bg-muted/30">
         {fields.map((field, index) => {
           const operator = watch(`elements.${elementIndex}.rules.${index}.operator`);
           const actionType = watch(`elements.${elementIndex}.rules.${index}.action.type`);
           const showValueInput = operator !== 'isEmpty' && operator !== 'isNotEmpty';
   
           return (
-              <div key={field.id} className="p-4 border rounded-xl bg-white shadow-sm relative">
+              <div key={field.id} className="p-4 border border-border/50 rounded-xl bg-background shadow-xs relative">
               <div className="absolute top-2 right-2">
                   <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => remove(index)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
@@ -563,7 +563,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       control={control}
                       render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Select a question..." /></SelectTrigger>
+                          <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Select a question..." /></SelectTrigger>
                           <SelectContent>
                           {potentialSourceQuestions.map((q) => (
                               <SelectItem key={q.id} value={q.id}>
@@ -580,7 +580,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                       control={control}
                       render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="w-1/2 bg-slate-50"><SelectValue placeholder="Operator..." /></SelectTrigger>
+                          <SelectTrigger className="w-1/2 bg-muted/50 border-border/50"><SelectValue placeholder="Operator..." /></SelectTrigger>
                           <SelectContent>
                               <SelectItem value="isEqualTo">Is</SelectItem>
                               <SelectItem value="isNotEqualTo">Is not</SelectItem>
@@ -602,7 +602,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           <Controller
                           name={`elements.${elementIndex}.rules.${index}.targetValue`}
                           control={control}
-                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-slate-50" />}
+                          render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder="Value..." className="bg-muted/50 border-border/50" />}
                           />
                       )}
                   </div>
@@ -619,7 +619,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                           control={control}
                           render={({ field }) => (
                               <Select onValueChange={field.onChange} value={field.value}>
-                                  <SelectTrigger className="w-full bg-slate-50"><SelectValue placeholder="Action..." /></SelectTrigger>
+                                  <SelectTrigger className="w-full bg-muted/50 border-border/50"><SelectValue placeholder="Action..." /></SelectTrigger>
                                   <SelectContent>
                                       <SelectItem value="jump">Jump To...</SelectItem>
                                       <SelectItem value="show">Show Element(s)...</SelectItem>
@@ -636,7 +636,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
                               control={control}
                               render={({ field }) => (
                                   <Select onValueChange={field.onChange} value={field.value}>
-                                      <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Target element..." /></SelectTrigger>
+                                      <SelectTrigger className="bg-muted/50 border-border/50"><SelectValue placeholder="Target element..." /></SelectTrigger>
                                       <SelectContent>
                                       {getJumpTargets().map((el) => (
                                           <SelectItem key={el.value} value={el.value}>{el.label}</SelectItem>
@@ -671,7 +671,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
           variant="outline"
           size="sm"
           onClick={() => append({ sourceQuestionId: '', operator: 'isEqualTo', action: { type: 'jump' } })}
-          className="rounded-xl font-bold"
+          className="rounded-xl font-bold border-border/50"
         >
           <PlusCircle className="h-4 w-4 mr-2" /> Add Rule
         </Button>
@@ -681,7 +681,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
 
 const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
-        <div className="flex gap-1">
+        <div className="flex gap-1 bg-muted/30 p-4 rounded-2xl border-2 border-border/50 shadow-inner">
             {[1, 2, 3, 4, 5].map(star => (
                 <Star
                     key={star}
@@ -709,7 +709,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-11 bg-slate-50 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-11 bg-background border-border/50 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -756,31 +756,31 @@ function QuestionSettingsPopover({ element, index, changeType }: {
         <div className="space-y-4">
             {isElemQuestion && isTextQuestion && (
                 <div className="space-y-4">
-                    <h4 className="font-semibold text-muted-foreground text-sm px-1">Validation</h4>
-                    <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label htmlFor={`min-chars-toggle-${index}`}>Min characters</Label>
+                    <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Validation</h4>
+                    <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                        <Label htmlFor={`min-chars-toggle-${index}`} className="text-xs">Min characters</Label>
                         <Switch id={`min-chars-toggle-${index}`} checked={useMin} onCheckedChange={(val) => handleToggle(setUseMin, val, 'minLength')} />
                     </div>
-                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
+                    {useMin && <Controller name={`elements.${index}.minLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 10" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}/>} />}
 
-                    <div className="flex items-center justify-between rounded-lg border p-3">
-                        <Label htmlFor={`max-chars-toggle-${index}`}>Max characters</Label>
+                    <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                        <Label htmlFor={`max-chars-toggle-${index}`} className="text-xs">Max characters</Label>
                         <Switch id={`max-chars-toggle-${index}`} checked={useMax} onCheckedChange={(val) => handleToggle(setUseMax, val, 'maxLength')} />
                     </div>
-                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
+                    {useMax && <Controller name={`elements.${index}.maxLength`} control={control} render={({ field }) => <Input type="number" {...field} value={field.value ?? ''} placeholder="e.g., 200" className="h-9" onChange={e => field.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} />} />}
                 </div>
             )}
             <div className="space-y-4">
-                <h4 className="font-semibold text-muted-foreground text-sm px-1">Content</h4>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                   <Label htmlFor={`hidden-toggle-${index}`}>Hidden by default</Label>
+                <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Content</h4>
+                <div className="flex items-center justify-between rounded-lg border border-border/50 p-3">
+                   <Label htmlFor={`hidden-toggle-${index}`} className="text-xs">Hidden by default</Label>
                    <Controller name={`elements.${index}.hidden`} control={control} render={({ field }) => <Switch id={`hidden-toggle-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />} />
                 </div>
             </div>
             <div className="space-y-4">
-                <h4 className="font-semibold text-muted-foreground text-sm px-1">Change To</h4>
+                <h4 className="font-semibold text-muted-foreground text-sm px-1 text-[10px] uppercase tracking-widest">Change To</h4>
                 <Select value={element.type} onValueChange={(type: SurveyElement['type']) => changeType(index, type)}>
-                    <SelectTrigger><SelectValue placeholder="Turn into..." /></SelectTrigger>
+                    <SelectTrigger className="h-10"><SelectValue placeholder="Turn into..." /></SelectTrigger>
                     <SelectContent>
                         {questionTypes.map(qType => <SelectItem key={qType.type} value={qType.type}>{qType.label}</SelectItem>)}
                     </SelectContent>
@@ -891,15 +891,15 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             id={element.id}
             className={cn(
                 "border transition-all duration-200",
-                hasErrors ? "border-destructive shadow-lg" : "border-border shadow-sm group-hover:shadow-md",
+                hasErrors ? "border-destructive shadow-lg" : "border-border shadow-xs group-hover:shadow-md",
                 element.hidden ? "opacity-60 bg-muted/20" : "bg-card"
             )}
         >
-             <CardHeader className="py-3 px-4 border-b bg-muted/5">
+             <CardHeader className="py-3 px-4 border-b bg-muted/10">
                 <div className="flex justify-between items-center w-full">
                     <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                         <div className={cn(
-                            "flex items-center justify-center rounded border p-1.5 bg-primary/5 shadow-sm",
+                            "flex items-center justify-center rounded border p-1.5 bg-primary/10 shadow-xs",
                             element.hidden && "opacity-50"
                         )}>
                             <ElementIcon className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -1048,16 +1048,16 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              </Label>
                              
                              {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
-                                 <div className="bg-slate-50 p-4 rounded-2xl border-2 border-slate-100/50 shadow-inner">
+                                 <div className="bg-muted/30 p-4 rounded-2xl border-2 border-border/50 shadow-inner">
                                     <Controller
                                         name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
                                         control={control}
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="bg-white border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4" />;
+                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="bg-background border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4" />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="bg-white border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none" />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="bg-background border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none" />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1066,14 +1066,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                 <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label className="font-bold">No</Label></div>
                                                             </RadioGroup>
                                                             {enableScoring && (
-                                                                <div className="flex gap-4 items-center rounded-xl border bg-white p-4 shadow-sm mt-4">
+                                                                <div className="flex gap-4 items-center rounded-xl border border-border/50 bg-background p-4 shadow-xs mt-4">
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "Yes"</FormLabel>
-                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-slate-50" />} />
+                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/50" />} />
                                                                     </FormItem>
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "No"</FormLabel>
-                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-slate-50" />} />
+                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/50" />} />
                                                                     </FormItem>
                                                                 </div>
                                                             )}
@@ -1084,10 +1084,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-white border-none shadow-none text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} />;
+                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-background border-border/50 shadow-none text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} />;
                                                 case 'file-upload':
                                                     return (
-                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed rounded-xl h-12 w-full bg-white">
+                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-border rounded-xl h-12 w-full bg-background">
                                                             <Upload className="w-4 h-4 text-primary" />
                                                             <span className="font-bold">File Upload Field</span>
                                                         </div>
@@ -1099,13 +1099,13 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     />
                                  </div>
                              ): (
-                                <div className="bg-slate-50 p-6 rounded-2xl border-2 border-slate-100/50 shadow-inner">
+                                <div className="bg-muted/30 p-6 rounded-2xl border-2 border-border/50 shadow-inner">
                                     <OptionsEditor questionIndex={index} />
                                 </div>
                             )}
                              {elementErrors?.options && <FormMessage className="mt-2 ml-1">{elementErrors.options.message}</FormMessage>}
                         </div>
-                        <div className="flex items-center gap-6 pt-6 border-t border-slate-100">
+                        <div className="flex items-center gap-6 pt-6 border-t border-border/50">
                             {isAutoAdvanceable && (
                                 <div className="flex items-center gap-2.5">
                                     <Controller 
@@ -1127,12 +1127,12 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         </div>
                     </div>
                 ) : isElementLayout ? (
-                     <div className={cn(isMediaLayout && "bg-slate-50 rounded-2xl border-2 border-slate-100/50 p-6")}>
+                     <div className={cn(isMediaLayout && "bg-muted/30 rounded-2xl border-2 border-border/50 p-6")}>
                         {element.type === 'section' && (
-                             <div className="w-full text-center space-y-6 p-8 border-2 border-primary/10 rounded-[2.5rem] bg-primary/5 shadow-inner">
+                             <div className="w-full text-center space-y-6 p-8 border-2 border-primary/20 rounded-[2.5rem] bg-primary/10 shadow-inner">
                                  <div className="space-y-4">
                                      <div className="flex items-center gap-4">
-                                         <div className="flex-grow h-px bg-primary/10" />
+                                         <div className="flex-grow h-px bg-primary/20" />
                                          <div className="w-full max-w-2xl mx-auto">
                                             <Controller 
                                                 name={`elements.${index}.title`} 
@@ -1148,7 +1148,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 )} 
                                             />
                                          </div>
-                                         <div className="flex-grow h-px bg-primary/10" />
+                                         <div className="flex-grow h-px bg-primary/20" />
                                      </div>
                                      <div className="w-full max-w-2xl mx-auto">
                                         <Controller 
@@ -1167,8 +1167,8 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                      </div>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/10">
-                                    <div className="flex justify-center items-center gap-3 pb-2 bg-white rounded-xl p-3 shadow-sm border border-primary/5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
+                                    <div className="flex justify-center items-center gap-3 pb-2 bg-background rounded-xl p-3 shadow-xs border border-border">
                                         <Controller 
                                             name={`elements.${index}.renderAsPage`} 
                                             control={control} 
@@ -1192,7 +1192,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     {...field} 
                                                     value={field.value ?? ''} 
                                                     placeholder="e.g., Company Details" 
-                                                    className="h-11 rounded-xl bg-white border-2 border-primary/10 focus:border-primary transition-all font-bold px-4 shadow-sm" 
+                                                    className="h-11 rounded-xl bg-background border-2 border-border focus:border-primary transition-all font-bold px-4 shadow-xs" 
                                                 />
                                             )} 
                                         />
@@ -1237,7 +1237,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 />
                             </div>
                         )}
-                        {element.type === 'divider' && <hr className="my-4 border-slate-200" />}
+                        {element.type === 'divider' && <hr className="my-4 border-border/50" />}
                         
                         {(element.type === 'image' || element.type === 'video' || element.type === 'audio' || element.type === 'document') && (
                             <Controller
@@ -1250,7 +1250,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Embed HTML Code</FormLabel>
-                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-white rounded-xl border-2 border-slate-100 min-h-[120px] resize-none" />
+                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-background rounded-xl border-2 border-border/50 min-h-[120px] resize-none" />
                                 </FormItem>
                             )} />
                         )}
