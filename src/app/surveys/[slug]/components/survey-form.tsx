@@ -552,8 +552,8 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
-        <div className="w-full mb-1 overflow-x-auto pt-6 pb-1 no-scrollbar">
-            <div className="min-w-[max-content] sm:min-w-full flex items-start justify-center gap-0 sm:gap-4 px-4">
+        <div className="w-full mb-1 pt-6 pb-1 no-scrollbar">
+            <div className="w-full flex items-start justify-center gap-1 sm:gap-4 px-2">
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
                     const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
@@ -562,7 +562,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                     const isLast = index === displayPages.length - 1;
 
                     return (
-                        <div key={index} className="flex-1 relative flex flex-col items-center min-w-[100px] sm:min-w-0">
+                        <div key={index} className="flex-1 relative flex flex-col items-center">
                             {!isLast && (
                                 <div className="absolute left-[50%] right-[-50%] top-4 h-[2px] bg-slate-200 z-0">
                                     <motion.div 
@@ -594,7 +594,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 </motion.div>
                             </div>
 
-                            <div className="mt-3 text-center px-2 w-full">
+                            <div className="mt-3 text-center px-1 w-full">
                                 <p className={cn(
                                     "text-[10px] sm:text-[11px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8",
                                     isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block"
@@ -917,7 +917,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     return (
         <div className="pb-24">
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 sm:space-y-12">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-12">
                 <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
                 
                 <Card className="border-t-8 border-t-primary shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
