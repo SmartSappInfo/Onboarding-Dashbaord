@@ -274,7 +274,6 @@ const ElementRenderer = ({
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
-                    {/* Only show description for non-text fields. Text fields use it as a placeholder. */}
                     {question.placeholder && !isTextInput && (
                         <p className="text-sm text-muted-foreground font-medium whitespace-pre-wrap">
                             {question.placeholder}
@@ -483,7 +482,7 @@ const ElementRenderer = ({
 
         switch (block.type) {
             case 'section':
-                return null; // Sections handled by the card wrapper
+                return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
                 const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
@@ -676,7 +675,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
 
-        // Bypass cover page if titles are hidden
         if (survey.showCoverPage && survey.showSurveyTitles !== false) {
             p.push([]); 
         }
@@ -777,20 +775,51 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             const state = elementStates[q.id];
             if (state?.isVisible && state?.isRequired) {
                 const value = data[q.id];
-                const isEmpty = value === undefined || value === null || value === '' || 
-                                (Array.isArray(value) && value.length === 0) || 
-                                (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0);
+                
+                let isEmpty = (value === undefined || value === null || value === '');
+                if (Array.isArray(value)) {
+                    isEmpty = value.length === 0;
+                } else if (typeof value === 'object' && value !== null) {
+                    if (q.type === 'checkboxes' && q.allowOther) {
+                        isEmpty = (!value.options || value.options.length === 0) && !value.other;
+                    } else {
+                        isEmpty = Object.keys(value).length === 0;
+                    }
+                }
+                
+                if (q.type === 'rating' && value === 0) {
+                    isEmpty = true;
+                }
                 
                 if (isEmpty) {
                     form.setError(q.id, { type: 'manual', message: 'This field is required.' });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
-                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, ''); // Strip HTML for the modal list
+                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
                     missing.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: pageIdx });
                 }
             }
         });
         
         return missing;
+    };
+
+    const onInvalid = (errors: any) => {
+        const data = form.getValues();
+        const missing = validateAllRequired(data);
+        
+        if (missing.length > 0) {
+            setMissingFields(missing);
+            setShowMissingFieldsModal(true);
+        } else {
+            const firstErrorId = Object.keys(errors)[0];
+            const pageIdx = pages.findIndex(p => p.some(el => el.id === firstErrorId));
+            if (pageIdx !== -1 && pageIdx !== currentPageIndex) {
+                setCurrentPageIndex(pageIdx);
+            }
+            setTimeout(() => {
+                document.getElementById(firstErrorId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 1500);
+        }
     };
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
@@ -800,15 +829,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             return;
         }
 
-        if (!firestore) return;
-        
         const missing = validateAllRequired(data);
-
         if (missing.length > 0) {
             setMissingFields(missing);
             setShowMissingFieldsModal(true);
             return;
         }
+
+        if (!firestore) return;
 
         const score = calculateScore(data);
         const serializedData = { ...data };
@@ -869,10 +897,38 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             return;
         }
 
+        const data = form.getValues();
         const questionIdsOnPage = currentElements.filter(isQuestion).map(q => q.id);
         const isPageValid = await form.trigger(questionIdsOnPage);
 
-        if (isPageValid) {
+        const missingOnPage: { id: string, label: string, pageIndex: number }[] = [];
+        currentElements.filter(isQuestion).forEach(q => {
+            const state = elementStates[q.id];
+            if (state?.isVisible && state?.isRequired) {
+                const value = data[q.id];
+                
+                let isEmpty = (value === undefined || value === null || value === '');
+                if (Array.isArray(value)) {
+                    isEmpty = value.length === 0;
+                } else if (typeof value === 'object' && value !== null) {
+                    if (q.type === 'checkboxes' && q.allowOther) {
+                        isEmpty = (!value.options || value.options.length === 0) && !value.other;
+                    } else {
+                        isEmpty = Object.keys(value).length === 0;
+                    }
+                }
+                
+                if (q.type === 'rating' && value === 0) isEmpty = true;
+                
+                if (isEmpty) {
+                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
+                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
+                    missingOnPage.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: currentPageIndex });
+                }
+            }
+        });
+
+        if (isPageValid && missingOnPage.length === 0) {
             let nextPageIndex = currentPageIndex + 1; 
 
             const logicBlocks = survey.elements.filter(isLogic);
@@ -903,24 +959,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 window.scrollTo(0, 0);
             }
         } else {
-            // Even during "Next", if there are errors, we collect them for the modal to show a consistent UX
-            const pageData = form.getValues();
-            const missingOnPage: { id: string, label: string, pageIndex: number }[] = [];
-            
-            currentElements.filter(isQuestion).forEach(q => {
-                const state = elementStates[q.id];
-                if (state?.isVisible && state?.isRequired) {
-                    const val = pageData[q.id];
-                    const isEmpty = val === undefined || val === null || val === '' || 
-                                    (Array.isArray(val) && val.length === 0) || 
-                                    (typeof val === 'object' && !Array.isArray(val) && Object.keys(val).length === 0);
-                    if (isEmpty) {
-                        const cleanLabel = q.title.replace(/<[^>]*>?/gm, '');
-                        missingOnPage.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: currentPageIndex });
-                    }
-                }
-            });
-
             if (missingOnPage.length > 0) {
                 setMissingFields(missingOnPage);
                 setShowMissingFieldsModal(true);
@@ -942,13 +980,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 const element = document.getElementById(first.id);
                 if (element) {
                     element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // Try to focus the first input/radio/etc.
                     const input = element.querySelector('input, select, textarea, button');
                     if (input instanceof HTMLElement) {
                         input.focus();
                     }
                 }
-            }, 300);
+            }, 1000);
         }
     };
 
@@ -991,7 +1028,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     return (
         <div className="pb-24">
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3 sm:space-y-12">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3 sm:space-y-12">
                 <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
                 
                 <Card className="border-t-8 border-t-primary shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
