@@ -256,6 +256,7 @@ const ElementRenderer = ({
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
+        const isTextInput = ['text', 'long-text'].includes(question.type);
         
         const handleRadioChange = (val: string, onChange: (v: string) => void) => {
             onChange(val);
@@ -271,7 +272,8 @@ const ElementRenderer = ({
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
-                    {question.placeholder && (
+                    {/* Only show description for non-text fields. Text fields use it as a placeholder. */}
+                    {question.placeholder && !isTextInput && (
                         <p className="text-sm text-muted-foreground font-medium">
                             {question.placeholder}
                         </p>
@@ -279,10 +281,24 @@ const ElementRenderer = ({
                 </div>
                 <div className="mt-1">
                     {question.type === 'text' && (
-                        <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder="Type your answer here..." className="text-base h-12 bg-white border-2 border-slate-200 focus:border-primary transition-all rounded-2xl px-4" />} />
+                        <Controller control={control} name={question.id} render={({ field }) => (
+                            <Input 
+                                {...field} 
+                                value={field.value || ''} 
+                                placeholder={question.placeholder || "Type your answer here..."} 
+                                className="text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl px-4 shadow-none" 
+                            />
+                        )} />
                     )}
                     {question.type === 'long-text' && (
-                        <Controller control={control} name={question.id} render={({ field }) => <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary transition-all rounded-2xl p-4" />} />
+                        <Controller control={control} name={question.id} render={({ field }) => (
+                            <Textarea 
+                                {...field} 
+                                value={field.value || ''} 
+                                placeholder={question.placeholder || "Share your thoughts..."} 
+                                className="text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl p-4 shadow-none" 
+                            />
+                        )} />
                     )}
                     {question.type === 'yes-no' && (
                         <Controller
@@ -423,7 +439,7 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl" {...field} value={field.value || ''} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className="w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl shadow-none focus:border-primary focus-visible:ring-0" {...field} value={field.value || ''} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -966,7 +982,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                      )}
                     {currentPageIndex === pages.length - 1 && (
                         <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-black shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground", isMultiPage && "sm:ml-auto")} disabled={form.formState.isSubmitting || isSubmitDisabled}>
-                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
                         </Button>
                     )}
                 </div>
