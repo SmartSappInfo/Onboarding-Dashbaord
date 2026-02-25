@@ -919,12 +919,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                         )}
                         <div className="space-y-6 max-w-3xl mx-auto px-4">
-                            <h1 className="text-4xl sm:text-5xl md:text-7xl font-black tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
-                            <div className="text-lg sm:text-2xl text-muted-foreground leading-relaxed prose prose-slate font-medium" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
+                            <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     </>
                 )}
-                <Button size="lg" className="h-16 px-12 text-xl sm:text-2xl font-black rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-8" onClick={handleNext}>
+                <Button size="lg" className="h-12 px-8 text-base sm:text-lg font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-8" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-3 h-7 w-7" />
                 </Button>
             </div>
