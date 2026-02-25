@@ -265,7 +265,7 @@ const ElementRenderer = ({
         };
 
         return (
-            <div id={question.id} className={cn("space-y-4", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+            <div id={question.id} className={cn("space-y-2", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
                 <div className="space-y-1">
                     <Label className="text-xl font-bold block leading-tight text-foreground">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
@@ -277,7 +277,7 @@ const ElementRenderer = ({
                         </p>
                     )}
                 </div>
-                <div className="mt-2">
+                <div className="mt-1">
                     {question.type === 'text' && (
                         <Controller control={control} name={question.id} render={({ field }) => <Input {...field} value={field.value || ''} placeholder="Type your answer here..." className="text-base h-12 bg-white border-2 border-slate-200 focus:border-primary transition-all rounded-2xl px-4" />} />
                     )}
@@ -313,7 +313,7 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
                                             "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
@@ -333,7 +333,7 @@ const ElementRenderer = ({
                             control={control}
                             render={({ field }) => {
                                 return (
-                                <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <div className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
@@ -482,7 +482,7 @@ const ElementRenderer = ({
                     </div>
                 );
             case 'divider':
-                return <hr className="my-8 sm:my-12 border-slate-100" />;
+                return <hr className="my-5 sm:my-7 border-slate-100" />;
             case 'image':
                 return block.url ? (
                     <div className={cn("relative aspect-video my-6 rounded-2xl overflow-hidden shadow-2xl border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
@@ -921,10 +921,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
                 
                 <Card className="border border-primary/20 shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
-                    <CardContent className="p-6 sm:p-16 space-y-12 sm:space-y-16">
+                    <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">
                         {pageSection && (
-                            <div className="text-center space-y-3 mb-12 sm:mb-16 border-b border-slate-100 pb-10 sm:pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                            <div className="text-center space-y-3 mb-8 sm:mb-10 border-b border-slate-100 pb-6 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">{(pageSection as any).title}</h2>
                                 {(pageSection as any).description && (
                                     <p className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic">
                                         {(pageSection as any).description}
@@ -933,7 +933,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                         )}
 
-                        <div className="space-y-12 sm:space-y-16">
+                        <div className="space-y-8 sm:space-y-10">
                             {currentElements.map((el) => {
                                 if (el.id === pageSection?.id) return null;
                                 return (

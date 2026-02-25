@@ -52,7 +52,7 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
     }, [score, style?.animate]);
 
     return (
-        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 my-8 sm:my-12">
+        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-8 my-5 sm:my-7">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -144,7 +144,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                 </div>
             );
         case 'divider':
-            return <Separator className="my-8 sm:my-12" />;
+            return <Separator className="my-5 sm:my-7" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} />;
         default:

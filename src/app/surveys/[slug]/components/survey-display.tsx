@@ -160,9 +160,9 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
             <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />
             <main className="flex-grow relative z-10">
-                <div className="max-w-4xl mx-auto py-8 sm:py-16 px-4">
+                <div className="max-w-4xl mx-auto py-5 sm:py-10 px-4">
                     {!hasCoverPage && (
-                        <div className="text-center mb-8 sm:mb-12">
+                        <div className="text-center mb-5 sm:mb-7">
                             <div className="flex justify-center mb-6 sm:mb-10">
                                 {survey.logoUrl ? (
                                     <div className="relative h-10 w-40 sm:h-12 sm:w-48">
