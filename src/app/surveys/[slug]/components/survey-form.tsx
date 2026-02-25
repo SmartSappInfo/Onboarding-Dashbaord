@@ -1035,7 +1035,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">
                         {pageSection && (
                             <div className="text-center space-y-3 mb-8 sm:mb-10 border-b border-slate-100 pb-6 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                                <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: (pageSection as any).title || '' }} />
                                 {(pageSection as any).description && (
                                     <div className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: (pageSection as any).description }} />
                                 )}
