@@ -103,6 +103,7 @@ export default function AiSurveyGenerator() {
             ...mainSurveyData,
             slug,
             status: 'published',
+            backgroundPattern: 'none', // Set strictly to 'none' by default
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };

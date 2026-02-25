@@ -110,6 +110,7 @@ const formSchema = z.object({
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
   thankYouTitle: z.string().optional(),
+  thankYouTitle: z.string().optional(),
   thankYouDescription: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
