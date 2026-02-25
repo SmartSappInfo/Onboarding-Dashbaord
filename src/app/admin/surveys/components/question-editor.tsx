@@ -377,7 +377,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-background h-11 rounded-xl border-border/50" />}
+                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />}
                     />
                 </div>
                  {enableScoring && (
@@ -389,7 +389,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-background h-11 rounded-xl border-border/50"
+                        className="w-24 bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -438,7 +438,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
                     control={control}
-                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-background h-11 rounded-xl border-border/50" />}
+                    render={({ field }) => <Input {...field} value={field.value ?? ''} placeholder={`Option ${index + 1}`} className="bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />}
                     />
                 </div>
                  {enableScoring && (
@@ -450,7 +450,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
                         <Input
                         type="number"
                         placeholder="Score"
-                        className="w-24 bg-background h-11 rounded-xl border-border/50"
+                        className="w-24 bg-muted/20 h-11 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20"
                         {...scoreField}
                         value={scoreField.value ?? ''}
                         onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))}
@@ -539,7 +539,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
     }
   
     return (
-      <div className="space-y-4 p-4 border border-border/50 rounded-2xl bg-muted/30">
+      <div className="space-y-4 p-4 border border-primary/20 rounded-2xl bg-primary/10">
         {fields.map((field, index) => {
           const operator = watch(`elements.${elementIndex}.rules.${index}.operator`);
           const actionType = watch(`elements.${elementIndex}.rules.${index}.action.type`);
@@ -681,7 +681,7 @@ function LogicBlockEditor({ elementIndex }: { elementIndex: number }) {
 
 const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
-        <div className="flex gap-1 bg-muted/30 p-4 rounded-2xl border-2 border-border/50 shadow-inner">
+        <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map(star => (
                 <Star
                     key={star}
@@ -709,7 +709,7 @@ const DatePicker = ({ value, onChange, disabled }: { value?: string | Date, onCh
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-11 bg-background border-border/50 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
                     <CalendarIcon className="mr-2 h-4" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
@@ -1048,16 +1048,16 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              </Label>
                              
                              {(element.type !== 'multiple-choice' && element.type !== 'checkboxes' && element.type !== 'dropdown') ? (
-                                 <div className="bg-muted/30 p-4 rounded-2xl border-2 border-border/50 shadow-inner">
+                                 <div className="bg-primary/10 p-4 rounded-2xl border-2 border-primary/20 shadow-inner">
                                     <Controller
                                         name={`elements.${index}.${(element.type === 'text' || element.type === 'long-text') ? 'placeholder' : 'defaultValue'}`}
                                         control={control}
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="bg-background border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4" />;
+                                                    return <Input {...field} value={field.value || ''} placeholder="e.g., Type your answer here..." className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="bg-background border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none" />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder="Share your thoughts..." className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1066,14 +1066,14 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                 <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label className="font-bold">No</Label></div>
                                                             </RadioGroup>
                                                             {enableScoring && (
-                                                                <div className="flex gap-4 items-center rounded-xl border border-border/50 bg-background p-4 shadow-xs mt-4">
+                                                                <div className="flex gap-4 items-center rounded-xl border border-primary/20 bg-muted/20 p-4 shadow-xs mt-4">
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "Yes"</FormLabel>
-                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/50" />} />
+                                                                        <Controller name={`elements.${index}.yesScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
                                                                     <FormItem className="flex-1">
                                                                         <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Score for "No"</FormLabel>
-                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/50" />} />
+                                                                        <Controller name={`elements.${index}.noScore`} control={control} defaultValue={0} render={({field: scoreField}) => <Input type="number" {...scoreField} value={scoreField.value ?? ''} onChange={e => scoreField.onChange(e.target.value === '' ? undefined : parseInt(e.target.value, 10))} className="h-9 font-bold bg-muted/30 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20" />} />
                                                                     </FormItem>
                                                                 </div>
                                                             )}
@@ -1084,10 +1084,10 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-background border-border/50 shadow-none text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} />;
+                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} />;
                                                 case 'file-upload':
                                                     return (
-                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-border rounded-xl h-12 w-full bg-background">
+                                                        <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-muted/20">
                                                             <Upload className="w-4 h-4 text-primary" />
                                                             <span className="font-bold">File Upload Field</span>
                                                         </div>
@@ -1099,7 +1099,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     />
                                  </div>
                              ): (
-                                <div className="bg-muted/30 p-6 rounded-2xl border-2 border-border/50 shadow-inner">
+                                <div className="bg-primary/10 p-6 rounded-2xl border-2 border-primary/20 shadow-inner">
                                     <OptionsEditor questionIndex={index} />
                                 </div>
                             )}
@@ -1127,7 +1127,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                         </div>
                     </div>
                 ) : isElementLayout ? (
-                     <div className={cn(isMediaLayout && "bg-muted/30 rounded-2xl border-2 border-border/50 p-6")}>
+                     <div className={cn(isMediaLayout && "bg-primary/10 rounded-2xl border-2 border-primary/20 p-6")}>
                         {element.type === 'section' && (
                              <div className="w-full text-center space-y-6 p-8 border-2 border-primary/20 rounded-[2.5rem] bg-primary/10 shadow-inner">
                                  <div className="space-y-4">
@@ -1168,7 +1168,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                 </div>
                                 
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 items-end pt-8 border-t border-primary/20">
-                                    <div className="flex justify-center items-center gap-3 pb-2 bg-background rounded-xl p-3 shadow-xs border border-border">
+                                    <div className="flex justify-center items-center gap-3 pb-2 bg-muted/20 rounded-xl p-3 shadow-xs border border-primary/10">
                                         <Controller 
                                             name={`elements.${index}.renderAsPage`} 
                                             control={control} 
@@ -1192,7 +1192,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     {...field} 
                                                     value={field.value ?? ''} 
                                                     placeholder="e.g., Company Details" 
-                                                    className="h-11 rounded-xl bg-background border-2 border-border focus:border-primary transition-all font-bold px-4 shadow-xs" 
+                                                    className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4 transition-all" 
                                                 />
                                             )} 
                                         />
@@ -1250,7 +1250,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             <Controller name={`elements.${index}.html`} control={control} render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] font-black uppercase text-muted-foreground">Embed HTML Code</FormLabel>
-                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-background rounded-xl border-2 border-border/50 min-h-[120px] resize-none" />
+                                    <Textarea {...field} value={field.value ?? ''} placeholder="<p>Paste your HTML code here</p>" className="font-mono bg-muted/20 rounded-xl border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 min-h-[120px] resize-none" />
                                 </FormItem>
                             )} />
                         )}
