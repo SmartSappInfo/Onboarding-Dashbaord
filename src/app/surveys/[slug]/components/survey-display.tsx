@@ -162,8 +162,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
             <main className="flex-grow relative z-10">
                 <div className="max-w-4xl mx-auto py-5 sm:py-10 px-4">
                     {!hasCoverPage && (
-                        <div className="text-center mb-5 sm:mb-7">
-                            <div className="flex justify-center mb-6 sm:mb-10">
+                        <div className="text-center mb-3 sm:mb-4">
+                            <div className="flex justify-center mb-4 sm:mb-6">
                                 {survey.logoUrl ? (
                                     <div className="relative h-10 w-40 sm:h-12 sm:w-48">
                                         <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />

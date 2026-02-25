@@ -552,7 +552,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
-        <div className="w-full mb-10 sm:mb-16 overflow-x-auto pt-6 pb-4 no-scrollbar">
+        <div className="w-full mb-2 sm:mb-3 overflow-x-auto pt-6 pb-4 no-scrollbar">
             <div className="min-w-[max-content] sm:min-w-full flex items-start justify-center gap-0 sm:gap-4 px-4">
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
@@ -886,7 +886,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     if (isCoverPage) {
         return (
             <div className="flex flex-col items-center text-center space-y-8 sm:space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                <div className="flex justify-center mb-4 sm:mb-8">
+                <div className="flex justify-center mb-2 sm:mb-5">
                     {survey.logoUrl ? (
                         <div className="relative h-12 w-48 sm:h-16 sm:w-64">
                             <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
@@ -920,11 +920,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 sm:space-y-12">
                 <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
                 
-                <Card className="border border-primary/20 shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
+                <Card className="border-t-8 border-t-primary shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
                     <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">
                         {pageSection && (
                             <div className="text-center space-y-3 mb-8 sm:mb-10 border-b border-slate-100 pb-6 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground">{(pageSection as any).title}</h2>
+                                <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground">{(pageSection as any).title}</h2>
                                 {(pageSection as any).description && (
                                     <p className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic">
                                         {(pageSection as any).description}
