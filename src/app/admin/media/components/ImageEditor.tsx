@@ -1,4 +1,3 @@
-
 'use client';
 import * as React from 'react';
 import Cropper, { type Area } from 'react-easy-crop';
@@ -14,12 +13,12 @@ import { formatBytes } from '@/lib/utils';
 export interface ImageEditingState {
   filename: string;
   croppedAreaPixels: Area;
-  resize?: { width: number; };
+  resize?: { width: number; height: number };
   quality: number;
   format: 'jpeg' | 'png' | 'webp';
   zoom: number;
   crop: {x: number, y: number};
-  aspect: number;
+  aspect?: number;
 }
 
 interface ImageEditorProps {
@@ -32,33 +31,73 @@ interface ImageEditorProps {
 }
 
 const aspectRatios = [
-    { label: "Original", value: 0 },
-    { label: "1:1", value: 1/1 },
-    { label: "4:3", value: 4/3 },
-    { label: "3:2", value: 3/2 },
-    { label: "16:9", value: 16/9 },
+    { label: "None", value: "none" },
+    { label: "Original", value: "original" },
+    { label: "1:1", value: "1" },
+    { label: "4:3", value: "1.3333" },
+    { label: "3:2", value: "1.5" },
+    { label: "16:9", value: "1.7777" },
 ];
 
 export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imageDimensions, initialState, onStateChange }: ImageEditorProps) {
   const [crop, setCrop] = React.useState(initialState?.crop || { x: 0, y: 0 });
   const [zoom, setZoom] = React.useState(initialState?.zoom || 1);
-  const [aspect, setAspect] = React.useState(initialState?.aspect || 16/9);
+  
+  // Determine initial ratio based on incoming state or default to original
+  const getInitialRatio = () => {
+      if (initialState?.aspect === undefined) return "none";
+      const originalAspect = imageDimensions.width / imageDimensions.height;
+      if (Math.abs(initialState.aspect - originalAspect) < 0.01) return "original";
+      
+      const found = aspectRatios.find(r => r.value !== "none" && r.value !== "original" && Math.abs(parseFloat(r.value) - initialState.aspect!) < 0.01);
+      return found ? found.value : "none";
+  };
+
+  const [selectedRatio, setSelectedRatio] = React.useState<string>(getInitialRatio());
   const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<Area | null>(null);
   
   const [filename, setFilename] = React.useState(initialState?.filename || originalFileName.split('.').slice(0, -1).join('.'));
   const [targetWidth, setTargetWidth] = React.useState(initialState?.resize?.width || imageDimensions.width);
+  const [targetHeight, setTargetHeight] = React.useState(initialState?.resize?.height || imageDimensions.height);
   const [quality, setQuality] = React.useState(initialState?.quality || 80);
   const [format, setFormat] = React.useState<'jpeg' | 'png' | 'webp'>(initialState?.format || 'webp');
   
+  const aspectValue = React.useMemo(() => {
+    if (selectedRatio === "none") return undefined;
+    if (selectedRatio === "original") return imageDimensions.width / imageDimensions.height;
+    return parseFloat(selectedRatio);
+  }, [selectedRatio, imageDimensions]);
+
+  // Handle ratio changes
+  React.useEffect(() => {
+    if (selectedRatio === "original") {
+      setTargetWidth(imageDimensions.width);
+      setTargetHeight(imageDimensions.height);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
+    } else if (selectedRatio !== "none") {
+        const ratio = parseFloat(selectedRatio);
+        setTargetHeight(Math.round(targetWidth / ratio));
+    }
+  }, [selectedRatio, imageDimensions, targetWidth]);
+
+  // Synchronize height if aspect is fixed during width manual entry
+  const handleWidthChange = (val: number) => {
+      setTargetWidth(val);
+      if (aspectValue) {
+          setTargetHeight(Math.round(val / aspectValue));
+      }
+  };
+
   const debouncedState = useDebounce({
     filename,
     croppedAreaPixels,
-    resize: { width: targetWidth },
+    resize: { width: targetWidth, height: targetHeight },
     quality,
     format,
     zoom,
     crop,
-    aspect
+    aspect: aspectValue
   }, 500);
 
   React.useEffect(() => {
@@ -72,8 +111,6 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
   
-  const targetHeight = aspect > 0 && targetWidth > 0 ? Math.round(targetWidth / aspect) : 0;
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 relative bg-muted rounded-md min-h-[300px] md:min-h-[450px]">
@@ -82,7 +119,7 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
               image={imageUrl}
               crop={crop}
               zoom={zoom}
-              aspect={aspect || undefined}
+              aspect={aspectValue}
               onCropChange={setCrop}
               onZoomChange={setZoom}
               onCropComplete={onCropComplete}
@@ -109,20 +146,31 @@ export function ImageEditor({ imageUrl, originalFileName, originalFileSize, imag
              <div className="space-y-2">
               <Label className="flex items-center gap-2"><ImageIcon /> Dimensions</Label>
               <div className="flex items-center gap-2">
-                  <Input id="width" type="number" value={targetWidth} onChange={(e) => setTargetWidth(parseInt(e.target.value, 10) || 0)} />
+                  <Input 
+                    id="width" 
+                    type="number" 
+                    value={targetWidth} 
+                    onChange={(e) => handleWidthChange(parseInt(e.target.value, 10) || 0)} 
+                  />
                   <span className="text-muted-foreground">x</span>
-                  <Input id="height" type="number" value={targetHeight} disabled />
+                  <Input 
+                    id="height" 
+                    type="number" 
+                    value={targetHeight} 
+                    onChange={(e) => setTargetHeight(parseInt(e.target.value, 10) || 0)}
+                    disabled={selectedRatio !== "none"} 
+                  />
               </div>
             </div>
             <div className="space-y-2">
                 <Label>Aspect Ratio</Label>
-                <Select value={String(aspect)} onValueChange={(v) => setAspect(Number(v))}>
+                <Select value={selectedRatio} onValueChange={setSelectedRatio}>
                   <SelectTrigger>
                       <SelectValue placeholder="Select aspect ratio" />
                   </SelectTrigger>
                   <SelectContent>
                       {aspectRatios.map(ratio => (
-                          <SelectItem key={ratio.label} value={String(ratio.value)}>{ratio.label}</SelectItem>
+                          <SelectItem key={ratio.label} value={ratio.value}>{ratio.label}</SelectItem>
                       ))}
                   </SelectContent>
                 </Select>

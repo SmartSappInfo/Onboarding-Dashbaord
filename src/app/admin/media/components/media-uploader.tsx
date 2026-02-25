@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
@@ -185,7 +184,8 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
             editingState.croppedAreaPixels, 
             editingState.resize?.width || fileState.dimensions!.width,
             editingState.quality,
-            editingState.filename
+            editingState.filename,
+            editingState.resize?.height
           );
           blobToUpload = file;
           finalFile = file;
@@ -273,7 +273,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   const isImageActive = activeFileState && getMediaType(activeFileState.file) === 'image';
   
   const handleStateChange = useCallback((newState: ImageEditingState) => {
-    setStagedFiles(prev => prev.map((fs) => fs.id === activeFileId ? { ...fs, editingState: newState } : fs));
+    setStagedFiles(prev => prev.map(fs => fs.id === activeFileId ? { ...fs, editingState: newState } : fs));
   }, [activeFileId]);
 
   return (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import imageCompression from 'browser-image-compression';
@@ -27,7 +26,8 @@ export async function processImage(
   pixelCrop: Area,
   outputWidth: number,
   quality: number = 80,
-  fileName: string
+  fileName: string,
+  outputHeight?: number
 ): Promise<ProcessedImage & { file: File }> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
@@ -37,6 +37,7 @@ export async function processImage(
     throw new Error('Could not get canvas context');
   }
 
+  // Set canvas to the cropped size first
   canvas.width = pixelCrop.width;
   canvas.height = pixelCrop.height;
 
@@ -59,9 +60,13 @@ export async function processImage(
     throw new Error('Could not create cropped image blob.');
   }
 
+  // Determine scaling
+  let finalWidth = outputWidth;
+  let finalHeight = outputHeight || Math.round((outputWidth / pixelCrop.width) * pixelCrop.height);
+
   const options = {
     maxSizeMB: 2,
-    maxWidthOrHeight: outputWidth,
+    maxWidthOrHeight: Math.max(finalWidth, finalHeight),
     useWebWorker: true,
     initialQuality: quality / 100,
     fileType: 'image/webp',
