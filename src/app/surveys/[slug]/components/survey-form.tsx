@@ -817,8 +817,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 setCurrentPageIndex(pageIdx);
             }
             setTimeout(() => {
-                document.getElementById(firstErrorId)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }, 1500);
+                const element = document.getElementById(firstErrorId);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 500);
         }
     };
 
@@ -889,7 +892,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
     };
 
-    const handleNext = async () => {
+    const handleNext = () => {
         const currentElements = pages[currentPageIndex];
         if (currentElements.length === 0) {
             setCurrentPageIndex(1);
@@ -897,72 +900,35 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             return;
         }
 
-        const data = form.getValues();
-        const questionIdsOnPage = currentElements.filter(isQuestion).map(q => q.id);
-        const isPageValid = await form.trigger(questionIdsOnPage);
+        let nextPageIndex = currentPageIndex + 1; 
 
-        const missingOnPage: { id: string, label: string, pageIndex: number }[] = [];
-        currentElements.filter(isQuestion).forEach(q => {
-            const state = elementStates[q.id];
-            if (state?.isVisible && state?.isRequired) {
-                const value = data[q.id];
-                
-                let isEmpty = (value === undefined || value === null || value === '');
-                if (Array.isArray(value)) {
-                    isEmpty = value.length === 0;
-                } else if (typeof value === 'object' && value !== null) {
-                    if (q.type === 'checkboxes' && q.allowOther) {
-                        isEmpty = (!value.options || value.options.length === 0) && !value.other;
-                    } else {
-                        isEmpty = Object.keys(value).length === 0;
-                    }
-                }
-                
-                if (q.type === 'rating' && value === 0) isEmpty = true;
-                
-                if (isEmpty) {
-                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
-                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
-                    missingOnPage.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: currentPageIndex });
-                }
-            }
-        });
+        // Check for logic jumps
+        const logicBlocks = survey.elements.filter(isLogic);
+        let jumpAction = false;
+        
+        for (const block of logicBlocks) {
+            const blockPageIndex = pages.findIndex(p => p.some(el => el.id === block.id));
+            if (blockPageIndex > currentPageIndex) continue;
 
-        if (isPageValid && missingOnPage.length === 0) {
-            let nextPageIndex = currentPageIndex + 1; 
-
-            const logicBlocks = survey.elements.filter(isLogic);
-            let jumpAction = false;
-            
-            for (const block of logicBlocks) {
-                const blockPageIndex = pages.findIndex(p => p.some(el => el.id === block.id));
-                if (blockPageIndex > currentPageIndex) continue;
-
-                for (const rule of block.rules) {
-                    const answer = form.getValues(rule.sourceQuestionId);
-                    if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
-                        if (rule.action.type === 'jump' && rule.action.targetElementId) {
-                            const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
-                            if (targetPageIndex > -1 && targetPageIndex > currentPageIndex) {
-                                nextPageIndex = targetPageIndex;
-                                jumpAction = true;
-                                break;
-                            }
+            for (const rule of block.rules) {
+                const answer = form.getValues(rule.sourceQuestionId);
+                if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
+                    if (rule.action.type === 'jump' && rule.action.targetElementId) {
+                        const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
+                        if (targetPageIndex > -1 && targetPageIndex > currentPageIndex) {
+                            nextPageIndex = targetPageIndex;
+                            jumpAction = true;
+                            break;
                         }
                     }
                 }
-                if (jumpAction) break;
             }
+            if (jumpAction) break;
+        }
 
-            if (nextPageIndex < pages.length) {
-                setCurrentPageIndex(nextPageIndex);
-                window.scrollTo(0, 0);
-            }
-        } else {
-            if (missingOnPage.length > 0) {
-                setMissingFields(missingOnPage);
-                setShowMissingFieldsModal(true);
-            }
+        if (nextPageIndex < pages.length) {
+            setCurrentPageIndex(nextPageIndex);
+            window.scrollTo(0, 0);
         }
     };
 
