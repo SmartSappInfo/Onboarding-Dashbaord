@@ -593,8 +593,8 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 <motion.div
                                     initial={false}
                                     animate={{
-                                        backgroundColor: isCompleted ? '#22c55e' : isActive ? 'hsl(var(--primary))' : '#fff',
-                                        borderColor: isCompleted ? '#22c55e' : isActive ? 'hsl(var(--primary))' : '#e2e8f0',
+                                        backgroundColor: isCompleted ? '#22c55e' : isActive ? '#3B5FFF' : '#fff',
+                                        borderColor: isCompleted ? '#22c55e' : isActive ? '#3B5FFF' : '#e2e8f0',
                                         scale: isActive ? 1.2 : 1,
                                     }}
                                     className={cn(
