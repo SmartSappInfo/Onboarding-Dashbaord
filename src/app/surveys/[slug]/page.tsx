@@ -4,6 +4,8 @@ import type { Survey } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import { notFound } from 'next/navigation';
 
+const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
+
 async function getSurveyBySlug(slug: string): Promise<Survey | null> {
     try {
         const querySnapshot = await adminDb.collection('surveys')
@@ -34,16 +36,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     };
   }
   
+  const cleanDescription = stripHtml(survey.description);
   const previousImages = (await parent).openGraph?.images || [];
 
   return {
     title: survey.title,
-    description: survey.description,
+    description: cleanDescription,
     openGraph: {
       title: survey.title,
-      description: survey.description,
+      description: cleanDescription,
       images: survey.bannerImageUrl ? [survey.bannerImageUrl, ...previousImages] : previousImages,
+      type: 'website',
     },
+    twitter: {
+        card: 'summary_large_image',
+        title: survey.title,
+        description: cleanDescription,
+        images: survey.bannerImageUrl ? [survey.bannerImageUrl] : [],
+    }
   };
 }
 

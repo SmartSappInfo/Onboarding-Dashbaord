@@ -1,10 +1,11 @@
-
 import { adminDb } from '@/lib/firebase-admin';
-import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultRule } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyResultPage } from '@/lib/types';
 import { notFound } from 'next/navigation';
 import ResultRenderer from '../components/ResultRenderer';
 import { SmartSappLogo } from '@/components/icons';
-import Image from 'next/image';
+import type { Metadata, ResolvingMetadata } from 'next';
+
+const stripHtml = (html: string) => html?.replace(/<[^>]*>?/gm, '') || '';
 
 async function getResultData(slug: string, submissionId: string) {
     try {
@@ -48,6 +49,36 @@ async function getResultData(slug: string, submissionId: string) {
         console.error("Error fetching result data:", error);
         return null;
     }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string; submissionId: string }> }, parent: ResolvingMetadata): Promise<Metadata> {
+    const { slug, submissionId } = await params;
+    const data = await getResultData(slug, submissionId);
+
+    if (!data) {
+        return { title: 'Result Not Found' };
+    }
+
+    const { survey } = data;
+    const cleanDescription = stripHtml(survey.description);
+    const previousImages = (await parent).openGraph?.images || [];
+
+    return {
+        title: `Results: ${survey.title}`,
+        description: cleanDescription,
+        openGraph: {
+            title: `Results: ${survey.title}`,
+            description: cleanDescription,
+            images: survey.bannerImageUrl ? [survey.bannerImageUrl, ...previousImages] : previousImages,
+            type: 'article',
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `Results: ${survey.title}`,
+            description: cleanDescription,
+            images: survey.bannerImageUrl ? [survey.bannerImageUrl] : [],
+        }
+    };
 }
 
 export default async function SurveyResultPage({ params }: { params: Promise<{ slug: string; submissionId: string }> }) {
