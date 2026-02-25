@@ -108,8 +108,9 @@ export default function AiChatEditor() {
                                 right: 16,
                                 bottom: 16,
                                 left: 16,
-                                width: 'auto',
-                                height: 'auto',
+                                width: 'calc(100% - 32px)',
+                                height: 'calc(100% - 32px)',
+                                position: 'fixed'
                             } : {
                                 bottom: 24,
                                 right: 24,
@@ -117,16 +118,17 @@ export default function AiChatEditor() {
                                 left: 'auto',
                                 width: 400,
                                 height: 500,
+                                position: 'fixed'
                             })
                         }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                         className={cn(
-                            "fixed z-[100] max-w-full",
+                            "z-[100] max-w-full",
                             !isFullScreen && "max-w-[90vw]"
                         )}
                     >
-                        <Card className="shadow-2xl border-primary/20 flex flex-col h-full w-full overflow-hidden">
+                        <Card className="shadow-2xl border-primary/20 flex flex-col h-full w-full overflow-hidden bg-card">
                             <CardHeader className="bg-primary text-primary-foreground py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0">
                                 <div className="flex items-center gap-2">
                                     <BrainCircuit className="h-5 w-5" />

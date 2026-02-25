@@ -49,6 +49,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         // Attempt to sign in
         await signInWithEmailAndPassword(auth, email, password);
       } catch (error: any) {
+        if (error.code === 'auth/network-request-failed') {
+            console.warn("Dev Seeder: Network request failed. Skipping admin user seed.");
+            return;
+        }
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
           // If user doesn't exist, create them
           try {

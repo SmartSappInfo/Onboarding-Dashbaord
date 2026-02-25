@@ -17,7 +17,7 @@ import {
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users, LogOut, User as UserIcon, Workflow, History, FileText } from 'lucide-react';
+import { LayoutDashboard, School, Settings, Calendar, ExternalLink, Film, ClipboardList, Users, LogOut, User as UserIcon, Workflow, History, FileText, RefreshCw } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import * as React from 'react';
@@ -56,13 +56,14 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading, userError } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
   
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
+  const [retryCount, setRetryCount] = React.useState(0);
 
   const pageTitle = React.useMemo(() => {
     if (pathname.startsWith('/admin/settings')) return 'Settings';
@@ -94,6 +95,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               setIsReady(true);
             }, 1000);
           } else {
+            // User exists but is not authorized
             setLoaderStatus('failed');
             toast({
               variant: "destructive",
@@ -108,27 +110,69 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         })
         .catch(error => {
           console.error("Authorization check failed:", error);
-          setLoaderStatus('failed');
-          toast({
-            variant: "destructive",
-            title: 'Error',
-            description: 'Failed to check your authorization status.',
-          });
-          setTimeout(() => {
-            auth.signOut();
-            router.push('/login');
-          }, 1200);
+          
+          const isNetworkError = error.message?.includes('network-request-failed') || error.code === 'unavailable';
+          
+          if (isNetworkError) {
+            // Don't sign out on network errors. Let the user retry or wait.
+            setLoaderStatus('failed');
+            toast({
+              variant: "destructive",
+              title: 'Connection Error',
+              description: 'Failed to connect to the server. Please check your connection.',
+            });
+          } else {
+            // For other critical errors, proceed with logout
+            setLoaderStatus('failed');
+            toast({
+              variant: "destructive",
+              title: 'Error',
+              description: 'Failed to check your authorization status.',
+            });
+            setTimeout(() => {
+              auth.signOut();
+              router.push('/login');
+            }, 1200);
+          }
         });
+    } else if (userError) {
+        // Auth service level error
+        console.error("Auth listener error:", userError);
+        if (userError.message?.includes('network-request-failed')) {
+            setLoaderStatus('failed');
+            toast({
+                variant: "destructive",
+                title: 'Auth Connection Failure',
+                description: 'The authentication service is temporarily unavailable.',
+            });
+        } else {
+            router.push('/login');
+        }
     } else {
+      // User is logged out
       setLoaderStatus('failed');
       setTimeout(() => {
         router.push('/login');
       }, 1000);
     }
-  }, [isUserLoading, user, router, firestore, auth, toast]);
+  }, [isUserLoading, user, userError, router, firestore, auth, toast, retryCount]);
 
   if (!isReady) {
-    return <AuthorizationLoader status={loaderStatus} />;
+    return (
+        <div className="relative h-screen w-full">
+            <AuthorizationLoader status={loaderStatus} />
+            {loaderStatus === 'failed' && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-4">
+                    <Button onClick={() => setRetryCount(prev => prev + 1)} className="gap-2 shadow-2xl">
+                        <RefreshCw className="h-4 w-4" /> Retry Connection
+                    </Button>
+                    <Button variant="ghost" onClick={() => auth.signOut()} className="text-muted-foreground text-xs underline">
+                        Back to Login
+                    </Button>
+                </div>
+            )}
+        </div>
+    );
   }
 
   return (
@@ -140,7 +184,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     >
       <GlobalFilterProvider>
         <SidebarProvider defaultOpen={false}>
-          <div className="flex h-screen w-full bg-background">
+          <div className="flex h-screen w-full bg-background text-foreground">
             <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
               <SidebarHeader className="p-2">
                  <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
@@ -234,7 +278,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
               </header>
       
-              <main className="flex-1 flex flex-col overflow-auto">
+              <main className="flex-1 flex flex-col overflow-auto bg-background">
                 {children}
               </main>
             </SidebarInset>
