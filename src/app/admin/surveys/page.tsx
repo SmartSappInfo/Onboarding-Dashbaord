@@ -4,13 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
+import { cloneSurvey } from '@/lib/survey-actions';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,7 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { cn } from '@/lib/utils';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -59,7 +61,9 @@ export default function SurveysPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
   const [surveyToDelete, setSurveyToDelete] = useState<Survey | null>(null);
+  const [cloningId, setCloningId] = useState<string | null>(null);
 
   const surveysCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -98,6 +102,31 @@ export default function SurveysPage() {
         });
         setSurveyToDelete(null);
       });
+  };
+
+  const handleClone = async (survey: Survey) => {
+    if (!user) return;
+    setCloningId(survey.id);
+    toast({ 
+      title: 'Cloning Survey...', 
+      description: `Creating a replica of "${survey.title}".` 
+    });
+    
+    try {
+      const result = await cloneSurvey(survey.id, user.uid);
+      if (result.success) {
+        toast({ 
+          title: 'Survey Cloned', 
+          description: `"${survey.title}" has been successfully duplicated. Check your list for the copy.` 
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+      }
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete cloning operation.' });
+    } finally {
+      setCloningId(null);
+    }
   };
 
   const handleStatusChange = (survey: Survey, newStatus: 'published' | 'draft' | 'archived') => {
@@ -214,6 +243,17 @@ export default function SurveysPage() {
           <DropdownMenuItem onClick={() => router.push(`/admin/surveys/${survey.id}/results`)}>
             <BarChart2 className="mr-2 h-4 w-4" />
             <span>View Results</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem 
+            onClick={() => handleClone(survey)}
+            disabled={cloningId !== null}
+          >
+            {cloningId === survey.id ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <CopyPlus className="mr-2 h-4 w-4" />
+            )}
+            <span>Clone Survey</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handleStatusChange(survey, survey.status === 'published' ? 'draft' : 'published')}>
