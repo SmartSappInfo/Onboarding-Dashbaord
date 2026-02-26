@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -216,7 +217,9 @@ export interface Survey {
   startButtonText?: string;
   showCoverPage?: boolean;
   showSurveyTitles?: boolean;
-  webhookUrl?: string;
+  webhookUrl?: string; // Legacy
+  webhookId?: string; // Reference to a reusable webhook
+  webhookEnabled?: boolean;
 }
 
 export interface SurveyResponse {
@@ -237,6 +240,15 @@ export interface SurveySummary {
   prompt?: string;
 }
     
+export interface Webhook {
+  id: string;
+  name: string;
+  url: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
 export interface Module {
   id: string;
   name: string;

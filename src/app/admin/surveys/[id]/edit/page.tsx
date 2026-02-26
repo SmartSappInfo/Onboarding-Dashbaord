@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -35,6 +36,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { MediaSelect } from '../../../schools/components/media-select';
+import WebhookManager from '../../components/webhook-manager';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -120,6 +122,8 @@ const formSchema = z.object({
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  webhookId: z.string().optional(),
+  webhookEnabled: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -264,6 +268,8 @@ function EditSurveyContent() {
             status: "published",
             slug: "",
             webhookUrl: "",
+            webhookId: "",
+            webhookEnabled: false,
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -279,8 +285,6 @@ function EditSurveyContent() {
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
 
-    // CRITICAL FIX: Ensure background pattern is NEVER an empty string
-    // This effect runs whenever the pattern value changes and forces a valid enum value if empty.
     React.useEffect(() => {
         const pattern = getValues('backgroundPattern');
         const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
@@ -320,6 +324,8 @@ function EditSurveyContent() {
                 status: survey.status || 'published',
                 slug: survey.slug,
                 webhookUrl: survey.webhookUrl || '',
+                webhookId: survey.webhookId || '',
+                webhookEnabled: survey.webhookEnabled || false,
                 scoringEnabled: survey.scoringEnabled || false,
                 maxScore: survey.maxScore || 100,
                 resultRules: survey.resultRules || [],
@@ -797,24 +803,7 @@ function EditSurveyContent() {
 
                                         <Separator />
 
-                                        <FormField
-                                            control={form.control}
-                                            name="webhookUrl"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2">
-                                                        <LinkIcon className="h-4 w-4 text-primary" /> External Webhook URL
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="https://connect.pabbly.com/workflow/sendwebhookdata/..." {...field} />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        Enter an endpoint URL (e.g. Zapier or Pabbly). Data will be pushed as a flattened JSON object on every submission.
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <WebhookManager />
                                     </CardContent>
                                 </Card>
                             </div>

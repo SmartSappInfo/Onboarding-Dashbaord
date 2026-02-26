@@ -1,12 +1,13 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, getDoc, doc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -839,31 +840,39 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         form.control.disabled = true;
         try {
             const docRef = await addDoc(responsesCollection, responseData);
-            if (survey.webhookUrl) {
-                const outcome = resolveOutcome(score);
-                const webhookPayload: Record<string, any> = {
-                    survey_title: survey.title,
-                    survey_id: survey.id,
-                    submission_id: docRef.id,
-                    submitted_at: responseData.submittedAt,
-                    score: score,
-                    outcome_label: outcome?.label || 'Default',
-                };
-                if (typeof window !== 'undefined') webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
-                survey.elements.filter(isQuestion).forEach(q => {
-                    const answerValue = cleanedData[q.id];
-                    if (answerValue !== undefined) {
-                        const key = q.title.replace(/<[^>]*>?/gm, '').trim() || q.id;
-                        let val = answerValue;
-                        if (q.type === 'checkboxes' && typeof answerValue === 'object') {
-                            val = answerValue.options?.join(', ');
-                            if (answerValue.other) val += `, Other: ${answerValue.other}`;
-                        } else if (Array.isArray(answerValue)) val = answerValue.join(', ');
-                        webhookPayload[key] = val;
-                    }
-                });
-                fetch(survey.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(webhookPayload) }).catch(err => console.error("Webhook push failed:", err));
+            
+            // Webhook Execution
+            if (survey.webhookEnabled && survey.webhookId) {
+                const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId));
+                if (webhookDoc.exists()) {
+                    const webhookData = webhookDoc.data() as Webhook;
+                    const outcome = resolveOutcome(score);
+                    const webhookPayload: Record<string, any> = {
+                        survey_title: survey.title,
+                        survey_id: survey.id,
+                        submission_id: docRef.id,
+                        submitted_at: responseData.submittedAt,
+                        score: score,
+                        outcome_label: outcome?.label || 'Default',
+                    };
+                    if (typeof window !== 'undefined') webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
+                    
+                    survey.elements.filter(isQuestion).forEach(q => {
+                        const answerValue = cleanedData[q.id];
+                        if (answerValue !== undefined) {
+                            const key = q.title.replace(/<[^>]*>?/gm, '').trim() || q.id;
+                            let val = answerValue;
+                            if (q.type === 'checkboxes' && typeof answerValue === 'object') {
+                                val = answerValue.options?.join(', ');
+                                if (answerValue.other) val += `, Other: ${answerValue.other}`;
+                            } else if (Array.isArray(answerValue)) val = answerValue.join(', ');
+                            webhookPayload[key] = val;
+                        }
+                    });
+                    fetch(webhookData.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(webhookPayload) }).catch(err => console.error("Webhook push failed:", err));
+                }
             }
+            
             await new Promise(resolve => setTimeout(resolve, 800));
             if (survey.scoringEnabled && resolveOutcome(score)) { router.push(`/surveys/${survey.slug}/result/${docRef.id}`); return; }
             onSubmitted();
@@ -928,7 +937,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const showTitles = survey.showSurveyTitles !== false;
 
     const currentTotalScale = 1.3 * 1.0; // BaseScale * Zoom
-    const dynamicFontSize = `${Math.round(15 * currentTotalScale)}px`;
 
     if (isCoverPage) {
         return (
@@ -1001,7 +1009,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
                  <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
                     {isMultiPage && currentPageIndex > 0 && (
-                        <Button type="button" variant="ghost" size="lg" className="h-14 px-10 rounded-2xl font-black text-muted-foreground hover:text-foreground hover:bg-slate-100 w-full sm:w-auto text-[16.8px] uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
+                        <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-black text-muted-foreground hover:text-foreground w-full sm:w-auto text-[16.8px] uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
                             Previous
                         </Button>
                     )}

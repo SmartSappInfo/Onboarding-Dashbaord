@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,11 +11,11 @@ import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,6 +34,7 @@ import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import ResultsStep from '../components/results-step';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import WebhookManager from '../components/webhook-manager';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -118,6 +120,8 @@ const formSchema = z.object({
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  webhookId: z.string().optional(),
+  webhookEnabled: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -261,6 +265,8 @@ export default function NewSurveyPage() {
             patternColor: '#3B5FFF',
             slug: '',
             webhookUrl: '',
+            webhookId: '',
+            webhookEnabled: false,
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -276,7 +282,6 @@ export default function NewSurveyPage() {
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
 
-    // CRITICAL FIX: Ensure background pattern is NEVER an empty string
     React.useEffect(() => {
         const pattern = getValues('backgroundPattern');
         const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
@@ -720,24 +725,7 @@ export default function NewSurveyPage() {
 
                                         <Separator />
 
-                                        <FormField
-                                            control={form.control}
-                                            name="webhookUrl"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="flex items-center gap-2">
-                                                        <LinkIcon className="h-4 w-4 text-primary" /> External Webhook URL
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="https://connect.pabbly.com/workflow/sendwebhookdata/..." {...field} />
-                                                    </FormControl>
-                                                    <FormDescription>
-                                                        Enter an endpoint URL (e.g. Zapier or Pabbly). Data will be pushed as a flattened JSON object on every submission.
-                                                    </FormDescription>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <WebhookManager />
                                     </CardContent>
                                 </Card>
                             </div>
