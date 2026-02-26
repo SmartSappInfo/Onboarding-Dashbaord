@@ -131,7 +131,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                           )}
                         </div>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white bg-white">
+                            <div className="relative w-full rounded-2xl overflow-hidden mb-8 shadow-2xl border-4 border-white bg-white">
                                 <Image 
                                     src={survey.bannerImageUrl} 
                                     alt={survey.title || 'Survey thank you banner'} 
@@ -141,8 +141,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 />
                             </div>
                         )}
-                        <h1 className="text-[28.8px] sm:text-[36px] font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-[19.2px] sm:text-[21.6px] px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <p className="text-muted-foreground text-lg sm:text-xl px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
                  <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
@@ -175,7 +175,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                             {showHeader && (
                                 <>
                                     {survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-3xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white bg-white">
+                                        <div className="relative w-full rounded-2xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white bg-white">
                                             <Image 
                                                 src={survey.bannerImageUrl} 
                                                 alt={survey.title || ''} 
@@ -186,8 +186,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                             />
                                         </div>
                                     )}
-                                    <h1 className="text-[36px] sm:text-[43.2px] md:text-[57.6px] font-black tracking-tighter mb-6 text-foreground px-2 leading-tight">{survey.title}</h1>
-                                    <div className="text-[19.2px] sm:text-[24px] text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-6 text-foreground px-2 leading-tight">{survey.title}</h1>
+                                    <div className="text-lg sm:text-xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>

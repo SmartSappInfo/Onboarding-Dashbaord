@@ -52,35 +52,35 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
     }, [score, style?.animate]);
 
     return (
-        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-10 my-6 sm:my-10">
+        <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-10 my-6 sm:my-8">
             <motion.div 
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 className="absolute -right-8 sm:-right-12 -top-8 sm:-top-12 opacity-10"
             >
-                <Trophy size={200} className="sm:w-[240px] sm:h-[240px]" />
+                <Trophy size={200} className="sm:w-[220px] sm:h-[220px]" />
             </motion.div>
             
             <CardContent className="relative z-10 flex flex-col items-center text-center p-0">
-                <Badge variant="outline" className="mb-6 sm:mb-8 bg-white/10 text-white border-white/20 px-5 py-1.5 text-xs sm:text-sm font-black tracking-widest uppercase">Your Result</Badge>
+                <Badge variant="outline" className="mb-6 sm:mb-8 bg-white/10 text-white border-white/20 px-4 py-1.5 text-xs font-bold tracking-widest uppercase">Your Result</Badge>
                 
-                <div className="flex flex-col gap-2">
-                    <span className="text-[72px] sm:text-[96px] md:text-[115px] font-black tabular-nums tracking-tighter">
+                <div className="flex flex-col gap-1">
+                    <span className="text-6xl sm:text-7xl md:text-8xl font-bold tabular-nums tracking-tighter">
                         {displayScore}
                     </span>
-                    <span className="text-[19.2px] sm:text-[24px] md:text-[28.8px] font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
+                    <span className="text-base sm:text-lg font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
                 </div>
 
                 <div className="w-full max-w-lg mx-auto">
-                    <div className="mt-8 sm:mt-10 w-full h-3 bg-white/20 rounded-full overflow-hidden">
+                    <div className="mt-6 sm:mt-8 w-full h-2.5 bg-white/20 rounded-full overflow-hidden">
                         <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: `${(score / maxScore) * 100}%` }}
                             transition={{ duration: 2, ease: "easeOut" }}
-                            className="h-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.6)]"
+                            className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.6)]"
                         />
                     </div>
-                    <p className="mt-6 text-[16.8px] sm:text-[19.2px] font-medium text-white/80">
+                    <p className="mt-5 text-base sm:text-lg font-medium text-white/80">
                         That&apos;s better than {Math.round((score / maxScore) * 100 * 0.8)}% of other respondents!
                     </p>
                 </div>
@@ -93,7 +93,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     const alignment = block.style?.textAlign || 'left';
     
     const containerClasses = cn(
-        "w-full my-6 sm:my-8 px-2 sm:px-0",
+        "w-full my-5 sm:my-6 px-2 sm:px-0",
         alignment === 'center' && "text-center flex flex-col items-center",
         alignment === 'right' && "text-right flex flex-col items-end"
     );
@@ -101,7 +101,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     switch (block.type) {
         case 'heading': {
             const Tag = block.variant || 'h2';
-            const sizeClass = Tag === 'h1' ? "text-[28.8px] sm:text-[43.2px] font-black" : Tag === 'h3' ? "text-[19.2px] sm:text-[21.6px] font-bold" : "text-[24px] sm:text-[28.8px] font-black";
+            const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
             return (
                 <Tag 
                     className={cn(sizeClass, "tracking-tight whitespace-pre-wrap", containerClasses)} 
@@ -112,7 +112,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         }
         case 'text':
-            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-[16.8px] sm:text-[19.2px] text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
         case 'image':
             return block.url ? (
                 <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
@@ -128,23 +128,23 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                         asChild 
                         size="lg" 
                         variant={block.style?.variant as any} 
-                        className="h-16 px-10 text-[19.2px] font-black rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
+                        className="h-12 px-8 text-base font-bold rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto uppercase tracking-wide"
                     >
                         <a href={block.link || '#'} target={block.openInNewTab ? "_blank" : "_self"} rel="noopener noreferrer">
-                            {block.title} <ArrowRight className="ml-2 h-6 w-6" />
+                            {block.title} <ArrowRight className="ml-2 h-5 w-5" />
                         </a>
                     </Button>
                 </div>
             );
         case 'quote':
             return (
-                <div className={cn("p-8 sm:p-10 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-[19.2px] sm:text-[21.6px] whitespace-pre-wrap", containerClasses)}>
-                    <Quote className="h-8 w-8 sm:h-10 sm:w-10 text-primary/20 mb-6" />
+                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-lg sm:text-xl whitespace-pre-wrap", containerClasses)}>
+                    <Quote className="h-6 w-6 sm:h-8 sm:w-8 text-primary/20 mb-4" />
                     {block.content}
                 </div>
             );
         case 'divider':
-            return <Separator className="my-8 sm:my-10" />;
+            return <Separator className="my-6 sm:my-8" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} />;
         default:
@@ -155,22 +155,22 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
 export default function ResultRenderer({ survey, response, page }: ResultRendererProps) {
     if (!page) {
         return (
-            <div className="text-center py-20 sm:py-24 bg-white rounded-2xl shadow-xl border p-8 sm:p-12">
+            <div className="text-center py-16 sm:py-20 bg-white rounded-2xl shadow-xl border p-6 sm:p-10">
                 <div className="flex justify-center">
-                    <SmartSappLogo className="h-12 sm:h-14 mb-8 sm:mb-10" />
+                    <SmartSappLogo className="h-10 sm:h-12 mb-8" />
                 </div>
-                <h1 className="text-[28.8px] sm:text-[36px] font-black mb-6">{survey.thankYouTitle || 'Thank You!'}</h1>
-                <p className="text-[19.2px] sm:text-[21.6px] text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                <h1 className="text-3xl sm:text-4xl font-bold mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                <p className="text-lg sm:text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
             </div>
         );
     }
 
     return (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="flex justify-center mb-10 sm:mb-16">
-                <SmartSappLogo className="h-10 sm:h-12 opacity-50 grayscale hover:opacity-100 transition-all cursor-pointer" />
+            <div className="flex justify-center mb-8 sm:mb-12">
+                <SmartSappLogo className="h-8 sm:h-10 opacity-50 grayscale hover:opacity-100 transition-all cursor-pointer" />
             </div>
-            <div className="space-y-4 sm:space-y-6">
+            <div className="space-y-4 sm:space-y-5">
                 {page.blocks.map(block => (
                     <BlockRenderer 
                         key={block.id} 
