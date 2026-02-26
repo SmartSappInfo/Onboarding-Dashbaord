@@ -1055,9 +1055,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder={question.placeholder || "Type your answer here..."} className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder={question.placeholder || "Share your thoughts..."} className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
