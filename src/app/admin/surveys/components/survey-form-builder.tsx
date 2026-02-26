@@ -44,7 +44,9 @@ export default function SurveyFormBuilder() {
     const allPagesEnabled = sections.length > 0 && sections.every((s: any) => s.renderAsPage);
     const allValidationEnabled = sections.length > 0 && sections.every((s: any) => s.validateBeforeNext);
 
-    const toggleAllPageBreaks = () => {
+    const toggleAllPageBreaks = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         const newState = !allPagesEnabled;
         const currentElements = getValues('elements');
         const updatedElements = currentElements.map((el: any) => 
@@ -57,7 +59,9 @@ export default function SurveyFormBuilder() {
         });
     };
 
-    const toggleAllValidation = () => {
+    const toggleAllValidation = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
         const newState = !allValidationEnabled;
         const currentElements = getValues('elements');
         const updatedElements = currentElements.map((el: any) => 
@@ -65,8 +69,8 @@ export default function SurveyFormBuilder() {
         );
         setValue('elements', updatedElements, { shouldDirty: true });
         toast({ 
-            title: newState ? 'Validation enabled' : 'Validation disabled',
-            description: newState ? 'Users must now complete each section before proceeding.' : 'Users can now navigate freely between sections.'
+            title: newState ? 'All sections updated' : 'Validation disabled',
+            description: newState ? 'Strict validation enabled for all sections.' : 'Users can now skip between sections.'
         });
     };
 
@@ -110,15 +114,15 @@ export default function SurveyFormBuilder() {
                 action: { type: 'jump' },
             }];
         } else if (type === 'section') {
-            const sections = getValues('elements').filter((el: SurveyElement) => el.type === 'section');
-            (newElement as SurveyLayoutBlock).title = `Section ${sections.length + 1}`;
-            (newElement as SurveyLayoutBlock).stepperTitle = `Step ${sections.length + 1}`;
+            const sectionsCount = getValues('elements').filter((el: SurveyElement) => el.type === 'section').length;
+            (newElement as SurveyLayoutBlock).title = `Section ${sectionsCount + 1}`;
+            (newElement as SurveyLayoutBlock).stepperTitle = `Step ${sectionsCount + 1}`;
             (newElement as SurveyLayoutBlock).description = '';
             (newElement as SurveyLayoutBlock).renderAsPage = false;
         } else if (isLayoutBlock(newElement as SurveyElement)) {
             if(type === 'heading') {
                 (newElement as SurveyLayoutBlock).title = 'New Heading';
-                (newElement as SurveyLayoutBlock).variant = 'h2'; // Default to Heading 2
+                (newElement as SurveyLayoutBlock).variant = 'h2';
             }
             if(type === 'description') (newElement as SurveyLayoutBlock).text = 'Descriptive text goes here.';
             if(type === 'embed') (newElement as SurveyLayoutBlock).html = '<!-- Paste your HTML code here -->';
@@ -145,7 +149,6 @@ export default function SurveyFormBuilder() {
     const lastSavedRef = React.useRef<string>(JSON.stringify(getValues()));
     const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
 
-    // Restore from localStorage on mount
     React.useEffect(() => {
         resetHistory(getValues());
 
@@ -153,8 +156,6 @@ export default function SurveyFormBuilder() {
         if (savedData) {
             try {
                 const parsedData = JSON.parse(savedData);
-                
-                // Convert date strings back to Date objects
                 if (parsedData.elements) {
                     parsedData.elements.forEach((el: any) => {
                         if (el.type === 'date' && el.defaultValue && typeof el.defaultValue === 'string') {
@@ -163,7 +164,6 @@ export default function SurveyFormBuilder() {
                     });
                 }
 
-                // Check if restored data is actually different from current initial data
                 const currentData = getValues();
                 if (JSON.stringify(parsedData.elements) !== JSON.stringify(currentData.elements)) {
                     toast({
@@ -188,16 +188,13 @@ export default function SurveyFormBuilder() {
                 localStorage.removeItem(storageKey);
             }
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [reset, getValues, resetHistory, storageKey, toast]);
 
-    // Push to history when changes happen
     React.useEffect(() => {
         if (isProgrammaticChange.current) return;
         setHistory(watchedForm);
     }, [watchedForm, setHistory]);
 
-    // Handle Undo/Redo apply
     React.useEffect(() => {
         if (isProgrammaticChange.current) {
             reset(historyState, {
@@ -212,12 +209,10 @@ export default function SurveyFormBuilder() {
         }
     }, [historyState, reset]);
 
-    // Background Auto-save logic
     React.useEffect(() => {
         if (!isDirty) return;
 
         const currentString = JSON.stringify(debouncedForm);
-        // Only save if content is actually different from last save
         if (currentString === lastSavedRef.current) return;
 
         setAutosaveStatus('saving');
@@ -279,6 +274,7 @@ export default function SurveyFormBuilder() {
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button 
+                                                type="button"
                                                 variant="ghost" 
                                                 size="sm" 
                                                 className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allPagesEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
@@ -294,6 +290,7 @@ export default function SurveyFormBuilder() {
                                     <Tooltip>
                                         <TooltipTrigger asChild>
                                             <Button 
+                                                type="button"
                                                 variant="ghost" 
                                                 size="sm" 
                                                 className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allValidationEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
@@ -313,10 +310,10 @@ export default function SurveyFormBuilder() {
                             <AiChatEditor />
                             <Separator orientation="vertical" className="h-6 mx-1" />
                             <div className="flex items-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleUndo} disabled={!canUndo}>
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleUndo} disabled={!canUndo}>
                                     <Undo className="h-5 w-5" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleRedo} disabled={!canRedo}>
+                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleRedo} disabled={!canRedo}>
                                     <Redo className="h-5 w-5" />
                                 </Button>
                             </div>
