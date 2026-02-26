@@ -325,9 +325,9 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
@@ -335,7 +335,7 @@ const ElementRenderer = ({
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
@@ -351,10 +351,10 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                             field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
@@ -372,12 +372,12 @@ const ElementRenderer = ({
                             control={control}
                             render={({ field }) => {
                                 return (
-                                <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <div className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 py-2.5 px-4 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                                 isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                                 errors[question.id] && "border-destructive bg-destructive/5"
                                             )}>
@@ -403,7 +403,7 @@ const ElementRenderer = ({
                                     })}
                                     {question.allowOther && (
                                         <div className={cn(
-                                            "flex items-center gap-4 rounded-xl border-2 p-4 transition-all active:scale-[0.98]",
+                                            "flex items-center gap-4 rounded-xl border-2 py-2.5 px-4 transition-all active:scale-[0.98]",
                                             (field.value?.other || '') ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
