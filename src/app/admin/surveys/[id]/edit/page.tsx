@@ -135,99 +135,35 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-const Stepper = ({ currentStep }: { currentStep: number }) => {
+const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
     const steps = ['Details', 'Builder', 'Results', 'Publish'];
 
     return (
         <div className="flex justify-center items-center mb-12">
-            {steps.map((step, index) => (
-                <React.Fragment key={step}>
-                    <div className="flex flex-col items-center">
-                        <div
-                            className={cn(
-                                'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-colors',
-                                currentStep > index + 1 ? 'bg-primary border-primary text-primary-foreground' : '',
-                                currentStep === index + 1 ? 'border-primary' : 'border-border',
-                            )}
+            {steps.map((step, index) => {
+                const stepNum = index + 1;
+                return (
+                    <React.Fragment key={step}>
+                        <button 
+                            type="button"
+                            onClick={() => onStepClick(stepNum)}
+                            className="flex flex-col items-center group outline-none"
                         >
-                            {currentStep > index + 1 ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === index + 1 ? 'text-primary' : 'text-muted-foreground')}>{index + 1}</span>}
-                        </div>
-                        <p className={cn('mt-2 text-[10px] uppercase tracking-wider', currentStep >= index + 1 ? 'font-bold text-primary' : 'text-muted-foreground font-medium')}>{step}</p>
-                    </div>
-                    {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
-                </React.Fragment>
-            ))}
-        </div>
-    );
-};
-
-const BackgroundPattern = ({ pattern, color }: { pattern?: FormData['backgroundPattern'], color?: string }) => {
-    if (!pattern || pattern === 'none') return null;
-
-    if (pattern === 'gradient') {
-        return (
-            <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-80" />
-        );
-    }
-
-    const patterns: Record<string, React.ReactNode> = {
-        dots: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="dots-preview-edit" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <circle cx="2" cy="2" r="1" fill={color || "currentColor"} opacity="0.3" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#dots-preview-edit)" />
-            </svg>
-        ),
-        grid: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="grid-preview-edit" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid-preview-edit)" />
-            </svg>
-        ),
-        circuit: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="circuit-preview-edit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <path d="M0 10h20v10H0zM30 30h40v10H30zM80 50h20v10H80zM10 70h30v10H10zM60 80h20v10H60z" fill="none" stroke={color || "currentColor"} strokeWidth="0.5" opacity="0.2" />
-                        <circle cx="20" cy="15" r="2" fill={color || "currentColor"} opacity="0.3" />
-                        <circle cx="70" cy="35" r="2" fill={color || "currentColor"} opacity="0.3" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#circuit-preview-edit)" />
-            </svg>
-        ),
-        topography: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="topo-preview-edit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <path d="M0 50c20-10 40-10 60 0s40 10 60 0M0 20c20-10 40-10 60 0s40 10 60 0M0 80c20-10 40-10 60 0s40 10 60 0" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#topo-preview-edit)" />
-            </svg>
-        ),
-        cubes: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="cubes-preview-edit" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-                        <path d="M30 0l30 15v30L30 60 0 45V15z" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.2" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#cubes-preview-edit)" />
-            </svg>
-        )
-    };
-
-    return (
-        <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {patterns[pattern]}
+                            <div
+                                className={cn(
+                                    'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-all group-hover:scale-110',
+                                    currentStep > stepNum ? 'bg-primary border-primary text-primary-foreground' : '',
+                                    currentStep === stepNum ? 'border-primary' : 'border-border',
+                                )}
+                            >
+                                {currentStep > stepNum ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === stepNum ? 'text-primary' : 'text-muted-foreground')}>{stepNum}</span>}
+                            </div>
+                            <p className={cn('mt-2 text-[10px] uppercase tracking-wider transition-colors', currentStep >= stepNum ? 'font-bold text-primary' : 'text-muted-foreground font-medium group-hover:text-primary/70')}>{step}</p>
+                        </button>
+                        {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
+                    </React.Fragment>
+                );
+            })}
         </div>
     );
 };
@@ -498,6 +434,27 @@ function EditSurveyContent() {
         router.push(`${pathname}?step=${prevStep}`, { scroll: false });
     };
 
+    const handleStepChange = async (targetStep: number) => {
+        if (targetStep === step) return;
+        
+        // If moving forward, validate current step fields first
+        if (targetStep > step) {
+            let fieldsToValidate: any[] = [];
+            if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+            if (step === 2) fieldsToValidate = ['elements'];
+            if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
+            
+            const isStepValid = await form.trigger(fieldsToValidate);
+            if (!isStepValid) {
+                toast({ variant: 'destructive', title: 'Validation Required', description: 'Please resolve errors in the current section before moving ahead.' });
+                return;
+            }
+        }
+
+        setStep(targetStep);
+        router.push(`${pathname}?step=${targetStep}`, { scroll: false });
+    }
+
     if (isLoading) {
         return (
             <div className="flex h-full w-full items-center justify-center">
@@ -516,7 +473,7 @@ function EditSurveyContent() {
                             Back to Surveys
                         </Link>
                     </Button>
-                    <Stepper currentStep={step} />
+                    <Stepper currentStep={step} onStepClick={handleStepChange} />
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                         
                         <div className={cn(step !== 1 && 'hidden')}>
