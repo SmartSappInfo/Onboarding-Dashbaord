@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -935,8 +934,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const isCoverPage = currentElements.length === 0;
     const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
     const showTitles = survey.showSurveyTitles !== false;
-
-    const currentTotalScale = 1.3 * 1.0; // BaseScale * Zoom
 
     if (isCoverPage) {
         return (

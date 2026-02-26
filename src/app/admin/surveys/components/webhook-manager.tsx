@@ -1,9 +1,8 @@
-
 'use client';
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { collection, query, orderBy, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Webhook } from '@/lib/types';
 import { 
@@ -17,10 +16,10 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
 import { 
-    Plus, Link as LinkIcon, Settings2, Trash2, Save, Loader2, Zap, ZapOff 
+    Plus, Loader2, Zap, ZapOff, Save 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function WebhookManager() {
     const { control, setValue, watch } = useFormContext();
@@ -78,9 +77,9 @@ export default function WebhookManager() {
                 <div className="space-y-0.5">
                     <Label className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                         {webhookEnabled ? <Zap className="h-4 w-4 text-primary fill-primary" /> : <ZapOff className="h-4 w-4 text-muted-foreground" />}
-                        External Webhook
+                        External Webhook Integration
                     </Label>
-                    <p className="text-xs text-muted-foreground font-medium">Trigger an external automation on every submission.</p>
+                    <p className="text-xs text-muted-foreground font-medium">Push data to an external automation on every submission.</p>
                 </div>
                 <Controller
                     name="webhookEnabled"
@@ -188,5 +187,3 @@ export default function WebhookManager() {
         </div>
     );
 }
-
-import { AnimatePresence, motion } from 'framer-motion';
