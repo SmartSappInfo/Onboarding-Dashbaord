@@ -269,10 +269,19 @@ export default function NewSurveyPage() {
         },
     });
 
-    const { getValues, watch } = form;
+    const { getValues, watch, setValue } = form;
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
+
+    // CRITICAL FIX: Ensure background pattern is NEVER an empty string
+    React.useEffect(() => {
+        const pattern = getValues('backgroundPattern');
+        const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
+        if (!pattern || !VALID_PATTERNS.includes(pattern)) {
+            setValue('backgroundPattern', 'none', { shouldDirty: false, shouldValidate: true });
+        }
+    }, [watchedPattern, getValues, setValue]);
 
     const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
         const parsed: ValidationError[] = [];
@@ -328,6 +337,7 @@ export default function NewSurveyPage() {
         let targetStep = 4;
         if (errors.title || errors.description) targetStep = 1;
         else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
+        else if (errors.backgroundPattern) targetStep = 1;
         
         setStep(targetStep);
 
@@ -600,7 +610,7 @@ export default function NewSurveyPage() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Background Style</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
                                                                     <FormControl>
                                                                         <SelectTrigger>
                                                                             <SelectValue placeholder="Select a style" />
