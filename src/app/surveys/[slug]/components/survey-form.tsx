@@ -571,7 +571,7 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
     return initialStates;
 };
 
-function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], currentIndex: number }) {
+function SurveyStepper({ pages, pageStatuses, currentIndex }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number }) {
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
@@ -587,8 +587,10 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                 {displayPages.map((page, index) => {
                     const section = page[0] as SurveyLayoutBlock;
                     const title = section?.stepperTitle || section?.title || `Step ${index + 1}`;
-                    const isCompleted = index < displayIndex;
-                    const isActive = index === displayIndex;
+                    const actualIdx = index + (hasCover ? 1 : 0);
+                    const isCompleted = actualIdx < currentIndex;
+                    const isActive = actualIdx === currentIndex;
+                    const isInvalid = !pageStatuses[actualIdx].isValid;
                     const isLast = index === displayPages.length - 1;
 
                     return (
@@ -598,7 +600,7 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                     <motion.div 
                                         initial={false}
                                         animate={{ width: isCompleted ? '100%' : '0%' }}
-                                        className="h-full bg-primary"
+                                        className={cn("h-full", isInvalid ? "bg-destructive" : "bg-primary")}
                                     />
                                 </div>
                             )}
@@ -607,16 +609,16 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                                 <motion.div
                                     initial={false}
                                     animate={{
-                                        backgroundColor: isCompleted ? '#22c55e' : isActive ? '#3B5FFF' : '#fff',
-                                        borderColor: isCompleted ? '#22c55e' : isActive ? '#3B5FFF' : '#e2e8f0',
+                                        backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#fff',
+                                        borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : '#e2e8f0',
                                         scale: isActive ? 1.2 : 1,
                                     }}
                                     className={cn(
                                         "w-8 h-8 rounded-full border-2 flex items-center justify-center shadow-md transition-colors",
-                                        isCompleted ? "text-white" : isActive ? "text-white" : "text-muted-foreground"
+                                        (isCompleted || isActive) ? "text-white" : "text-muted-foreground"
                                     )}
                                 >
-                                    {isCompleted ? (
+                                    {isCompleted && !isInvalid ? (
                                         <Check className="w-4 h-4" />
                                     ) : (
                                         <span className="text-xs font-black">{index + 1}</span>
@@ -627,7 +629,8 @@ function SurveyStepper({ pages, currentIndex }: { pages: SurveyElement[][], curr
                             <div className="mt-3 text-center px-1 w-full">
                                 <p className={cn(
                                     "text-[10px] sm:text-[11px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8",
-                                    isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block"
+                                    isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block",
+                                    isCompleted && isInvalid && "text-destructive opacity-100"
                                 )}>
                                     {title}
                                 </p>
@@ -706,6 +709,37 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
         return p.length > 0 ? p : [[]];
     }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles]);
+
+    const pageStatuses = React.useMemo(() => {
+        return pages.map((pageElements) => {
+            if (pageElements.length === 0) return { isValid: true };
+
+            const hasIncompleteRequired = pageElements
+                .filter(isQuestion)
+                .some(q => {
+                    const state = elementStates[q.id];
+                    if (!state?.isVisible || !state?.isRequired) return false;
+                    
+                    const value = watchedValues[q.id];
+                    let isEmptyValue = (value === undefined || value === null || value === '');
+                    if (Array.isArray(value)) {
+                        isEmptyValue = value.length === 0;
+                    } else if (typeof value === 'object' && value !== null) {
+                        if (q.type === 'checkboxes' && q.allowOther) {
+                            isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
+                        } else {
+                            isEmptyValue = Object.keys(value).length === 0;
+                        }
+                    }
+                    if (q.type === 'rating' && value === 0) {
+                        isEmptyValue = true;
+                    }
+                    return isEmptyValue;
+                });
+            
+            return { isValid: !hasIncompleteRequired };
+        });
+    }, [pages, watchedValues, elementStates]);
 
     const isMultiPage = pages.length > 1;
 
@@ -789,22 +823,22 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (state?.isVisible && state?.isRequired) {
                 const value = data[q.id];
                 
-                let isEmpty = (value === undefined || value === null || value === '');
+                let isEmptyValue = (value === undefined || value === null || value === '');
                 if (Array.isArray(value)) {
-                    isEmpty = value.length === 0;
+                    isEmptyValue = value.length === 0;
                 } else if (typeof value === 'object' && value !== null) {
                     if (q.type === 'checkboxes' && q.allowOther) {
-                        isEmpty = (!value.options || value.options.length === 0) && !value.other;
+                        isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
                     } else {
-                        isEmpty = Object.keys(value).length === 0;
+                        isEmptyValue = Object.keys(value).length === 0;
                     }
                 }
                 
                 if (q.type === 'rating' && value === 0) {
-                    isEmpty = true;
+                    isEmptyValue = true;
                 }
                 
-                if (isEmpty) {
+                if (isEmptyValue) {
                     form.setError(q.id, { type: 'manual', message: 'This field is required.' });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
@@ -916,17 +950,34 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         // Section-level validation if enabled
         const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
         if (pageSection?.validateBeforeNext) {
-            const questionIdsOnPage = currentElements
+            const invalidQuestionsOnPage = currentElements
                 .filter(isQuestion)
-                .filter(q => elementStates[q.id]?.isVisible)
-                .map(q => q.id);
+                .filter(q => {
+                    const state = elementStates[q.id];
+                    if (!state?.isVisible || !state?.isRequired) return false;
+                    
+                    const value = watchedValues[q.id];
+                    let isEmptyValue = (value === undefined || value === null || value === '');
+                    if (Array.isArray(value)) {
+                        isEmptyValue = value.length === 0;
+                    } else if (typeof value === 'object' && value !== null) {
+                        if (q.type === 'checkboxes' && q.allowOther) {
+                            isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
+                        } else {
+                            isEmptyValue = Object.keys(value).length === 0;
+                        }
+                    }
+                    if (q.type === 'rating' && value === 0) {
+                        isEmptyValue = true;
+                    }
+                    return isEmptyValue;
+                });
             
-            if (questionIdsOnPage.length > 0) {
-                const isPageValid = await form.trigger(questionIdsOnPage as any);
-                if (!isPageValid) {
-                    // No modal here as per instruction, inline validation already shown via form state
-                    return;
-                }
+            if (invalidQuestionsOnPage.length > 0) {
+                invalidQuestionsOnPage.forEach(q => {
+                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
+                });
+                return; 
             }
         }
 
@@ -1041,7 +1092,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     </div>
                 )}
 
-                <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
+                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} />
                 
                 <Card className="border-t-8 border-t-primary shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
                     <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">

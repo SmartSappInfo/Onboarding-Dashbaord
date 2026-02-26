@@ -1218,7 +1218,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             textAlign={element.style?.textAlign}
                                             className={cn(
                                                 "font-black leading-tight whitespace-pre-wrap",
-                                                element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl"
+                                                element.variant === 'h1' ? "text-3xl sm:text-4xl" : element.variant === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl"
                                             )} 
                                         />
                                     )} 
