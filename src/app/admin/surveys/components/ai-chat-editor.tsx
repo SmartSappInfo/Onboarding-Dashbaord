@@ -72,10 +72,17 @@ export default function AiChatEditor() {
             });
 
             if (result.updatedSurvey) {
+                // Ensure background pattern is valid
+                const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
+                const pattern = result.updatedSurvey.backgroundPattern && VALID_PATTERNS.includes(result.updatedSurvey.backgroundPattern) 
+                    ? result.updatedSurvey.backgroundPattern 
+                    : (currentData.backgroundPattern || 'none');
+
                 // Merge AI architectural changes with current local state to ensure no accidental metadata loss
                 const mergedSurvey = {
                     ...currentData,
                     ...result.updatedSurvey,
+                    backgroundPattern: pattern,
                 };
 
                 reset(mergedSurvey, {
@@ -250,6 +257,7 @@ export default function AiChatEditor() {
                                         disabled={!input.trim() || isLoading}
                                         className="h-11 w-11 rounded-xl shrink-0 mb-[1px]"
                                     >
+                                        <span className="sr-only">Send message</span>
                                         <Send className="h-4 w-4" />
                                     </Button>
                                 </div>

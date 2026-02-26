@@ -289,6 +289,11 @@ function EditSurveyContent() {
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
+            const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
+            const pattern = survey.backgroundPattern && VALID_PATTERNS.includes(survey.backgroundPattern) 
+                ? survey.backgroundPattern 
+                : 'none';
+
             reset({
                 title: survey.title,
                 description: survey.description,
@@ -298,7 +303,7 @@ function EditSurveyContent() {
                 logoUrl: survey.logoUrl || '',
                 bannerImageUrl: survey.bannerImageUrl || '',
                 backgroundColor: survey.backgroundColor || '#F1F5F9',
-                backgroundPattern: survey.backgroundPattern || 'none',
+                backgroundPattern: pattern as any,
                 patternColor: survey.patternColor || '#3B5FFF',
                 status: survey.status || 'published',
                 slug: survey.slug,
@@ -670,7 +675,7 @@ function EditSurveyContent() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Background Style</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                <Select onValueChange={field.onChange} value={field.value}>
                                                                     <FormControl>
                                                                         <SelectTrigger>
                                                                             <SelectValue placeholder="Select a style" />
