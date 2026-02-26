@@ -131,12 +131,13 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                           )}
                         </div>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white">
+                            <div className="relative w-full rounded-3xl overflow-hidden mb-8 shadow-2xl border-4 border-white bg-white">
                                 <Image 
                                     src={survey.bannerImageUrl} 
                                     alt={survey.title || 'Survey thank you banner'} 
-                                    fill
-                                    className="object-cover"
+                                    width={1200}
+                                    height={400}
+                                    className="w-full h-auto block"
                                 />
                             </div>
                         )}
@@ -175,8 +176,15 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                             {showHeader && (
                                 <>
                                     {survey.bannerImageUrl && (
-                                        <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-3xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white">
-                                            <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
+                                        <div className="relative w-full rounded-3xl overflow-hidden mb-8 sm:mb-12 shadow-2xl border-4 border-white bg-white">
+                                            <Image 
+                                                src={survey.bannerImageUrl} 
+                                                alt={survey.title || ''} 
+                                                width={1200}
+                                                height={400}
+                                                className="w-full h-auto block" 
+                                                priority 
+                                            />
                                         </div>
                                     )}
                                     <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>

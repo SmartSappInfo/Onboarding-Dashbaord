@@ -1009,8 +1009,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 {showTitles && (
                     <>
                         {survey.bannerImageUrl && (
-                            <div className="relative w-full aspect-video sm:aspect-[3/1] rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white">
-                                <Image src={survey.bannerImageUrl} alt={survey.title || ''} fill className="object-cover" priority />
+                            <div className="relative w-full rounded-[2.5rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
+                                <Image 
+                                    src={survey.bannerImageUrl} 
+                                    alt={survey.title || ''} 
+                                    width={1200}
+                                    height={400}
+                                    className="w-full h-auto block" 
+                                    priority 
+                                />
                             </div>
                         )}
                         <div className="space-y-6 max-w-3xl mx-auto px-4">

@@ -76,8 +76,14 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                 {previewData && !isSubmitted && (
                                     <div className="max-w-4xl mx-auto py-12 px-4">
                                         {previewData.bannerImageUrl && (
-                                            <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
-                                                <Image src={previewData.bannerImageUrl} alt={previewData.title || ''} fill className="object-cover" />
+                                            <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-white">
+                                                <Image 
+                                                    src={previewData.bannerImageUrl} 
+                                                    alt={previewData.title || ''} 
+                                                    width={1200}
+                                                    height={400}
+                                                    className="w-full h-auto block"
+                                                />
                                             </div>
                                         )}
                                         <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center">{previewData.title || '[Untitled Survey]'}</h1>
@@ -91,12 +97,13 @@ export default function SurveyPreviewButton({ variant, size, className, children
                                         <div className="max-w-4xl w-full mx-auto text-center">
                                             <SmartSappLogo className="h-12 mx-auto mb-8" />
                                             {previewData.bannerImageUrl && (
-                                                <div className="relative w-full aspect-[3/1] rounded-lg overflow-hidden mb-8">
+                                                <div className="relative w-full rounded-lg overflow-hidden mb-8 bg-white">
                                                     <Image 
                                                         src={previewData.bannerImageUrl} 
                                                         alt={previewData.title || 'Survey thank you banner'} 
-                                                        fill
-                                                        className="object-cover"
+                                                        width={1200}
+                                                        height={400}
+                                                        className="w-full h-auto block"
                                                     />
                                                 </div>
                                             )}
