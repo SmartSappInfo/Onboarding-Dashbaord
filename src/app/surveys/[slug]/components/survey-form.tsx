@@ -19,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -957,6 +957,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     score: score,
                     outcome_label: outcome?.label || 'Default',
                 };
+
+                // Add the absolute result URL to the payload
+                if (typeof window !== 'undefined') {
+                    webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
+                }
 
                 // Construct flattened question answers
                 survey.elements.filter(isQuestion).forEach(q => {
