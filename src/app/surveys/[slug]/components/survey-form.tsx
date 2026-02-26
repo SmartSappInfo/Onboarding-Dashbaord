@@ -69,6 +69,34 @@ const generateSchema = (elements: SurveyElement[]) => {
     return z.object(baseSchemaObject);
 };
 
+/**
+ * Unified helper to check if a survey field value is effectively empty.
+ */
+const isValueEmpty = (value: any, questionType: string): boolean => {
+    if (value === undefined || value === null || value === '') return true;
+    
+    if (Array.isArray(value)) return value.length === 0;
+    
+    if (questionType === 'rating' && (value === 0 || value === '0')) return true;
+    
+    if (questionType === 'checkboxes' && typeof value === 'object') {
+        const options = (value as any).options;
+        const other = (value as any).other;
+        // Checkboxes with 'allowOther' enabled are stored as an object
+        if (options !== undefined || other !== undefined) {
+            return (!options || options.length === 0) && !other;
+        }
+    }
+    
+    if (value instanceof Date) return !isValid(value);
+    
+    if (typeof value === 'object' && value !== null) {
+        return Object.keys(value).length === 0;
+    }
+    
+    return false;
+}
+
 const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
         <div className="flex gap-1">
@@ -240,7 +268,8 @@ const ElementRenderer = ({
     isVisible, 
     isRequired, 
     surveyId,
-    onAutoAdvance
+    onAutoAdvance,
+    clearError
 }: { 
     element: SurveyElement; 
     control: any, 
@@ -249,6 +278,7 @@ const ElementRenderer = ({
     isRequired: boolean; 
     surveyId: string; 
     onAutoAdvance?: () => void;
+    clearError: (id: string) => void;
 }) => {
 
     if (isLogic(element) || !isVisible) {
@@ -260,9 +290,10 @@ const ElementRenderer = ({
         const textAlign = question.style?.textAlign || 'left';
         const isTextInput = ['text', 'long-text'].includes(question.type);
         
-        const handleRadioChange = (val: string, onChange: (v: string) => void) => {
+        const handleValueChange = (val: any, onChange: (v: any) => void) => {
             onChange(val);
-            if (question.autoAdvance && onAutoAdvance) {
+            clearError(question.id);
+            if (question.autoAdvance && onAutoAdvance && (question.type === 'multiple-choice' || question.type === 'yes-no')) {
                 setTimeout(onAutoAdvance, 300);
             }
         };
@@ -286,6 +317,7 @@ const ElementRenderer = ({
                             <Input 
                                 {...field} 
                                 value={field.value || ''} 
+                                onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Type your answer here..."} 
                                 className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
@@ -296,6 +328,7 @@ const ElementRenderer = ({
                             <Textarea 
                                 {...field} 
                                 value={field.value || ''} 
+                                onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Share your thoughts..."} 
                                 className={cn("text-base min-h-[140px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-2xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
@@ -306,7 +339,7 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                    <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
                                         "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
@@ -332,7 +365,7 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleRadioChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
                                             "flex cursor-pointer items-center gap-4 rounded-2xl border-2 p-5 text-base font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
@@ -369,11 +402,11 @@ const ElementRenderer = ({
                                                         if (question.allowOther) {
                                                             const currentOptions = field.value?.options || [];
                                                             const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                            field.onChange({ ...(field.value || {}), options: newOptions });
+                                                            handleValueChange({ ...(field.value || {}), options: newOptions }, field.onChange);
                                                         } else {
                                                             const currentVal = field.value || [];
                                                             const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);
-                                                            field.onChange(newVal);
+                                                            handleValueChange(newVal, field.onChange);
                                                         }
                                                     }}
                                                     className="size-5 border-2"
@@ -395,7 +428,7 @@ const ElementRenderer = ({
                                                     if (checked) {
                                                         setTimeout(() => document.getElementById(`${question.id}-other-input`)?.focus(), 0);
                                                     } else {
-                                                        field.onChange({ ...(field.value || {}), other: '' });
+                                                        handleValueChange({ ...(field.value || {}), other: '' }, field.onChange);
                                                     }
                                                 }}
                                                 className="size-5 border-2"
@@ -405,7 +438,7 @@ const ElementRenderer = ({
                                                 placeholder="Other (please specify)"
                                                 className="h-8 flex-1 border-0 bg-transparent p-0 text-base shadow-none focus-visible:ring-0 font-medium"
                                                 value={field.value?.other || ''}
-                                                onChange={(e) => field.onChange({ ...(field.value || {}), other: e.target.value })}
+                                                onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
                                             />
                                         </div>
                                     )}
@@ -418,7 +451,7 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <Select onValueChange={field.onChange} value={field.value}>
+                                <Select onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value}>
                                     <SelectTrigger className={cn("w-full sm:w-1/2 text-base h-12 bg-white border-2 border-slate-200 rounded-2xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
@@ -435,7 +468,7 @@ const ElementRenderer = ({
                         <Controller control={control} name={question.id} render={({ field }) => (
                             <div className={cn("flex flex-col", textAlign === 'center' ? 'items-center' : textAlign === 'right' ? 'items-end' : 'items-start')}>
                                 <div className={cn("p-2 rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
-                                    <StarRating {...field} />
+                                    <StarRating value={field.value || 0} onChange={(v) => handleValueChange(v, field.onChange)} />
                                 </div>
                             </div>
                         )} />
@@ -444,14 +477,14 @@ const ElementRenderer = ({
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
                             <Controller control={control} name={question.id} render={({ field }) => (
                                 <div className={cn("rounded-xl", errors[question.id] && "ring-2 ring-destructive")}>
-                                    <DatePicker {...field} />
+                                    <DatePicker value={field.value} onChange={(v) => handleValueChange(v, field.onChange)} />
                                 </div>
                             )} />
                         </div>
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-base h-12 px-4 font-bold rounded-2xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -463,7 +496,7 @@ const ElementRenderer = ({
                                     <div className={cn("rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
                                         <FileUpload
                                             value={field.value}
-                                            onChange={field.onChange}
+                                            onChange={(v) => handleValueChange(v, field.onChange)}
                                             disabled={false}
                                             surveyId={survey.id}
                                         />
@@ -721,20 +754,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     if (!state?.isVisible || !state?.isRequired) return false;
                     
                     const value = watchedValues[q.id];
-                    let isEmptyValue = (value === undefined || value === null || value === '');
-                    if (Array.isArray(value)) {
-                        isEmptyValue = value.length === 0;
-                    } else if (typeof value === 'object' && value !== null) {
-                        if (q.type === 'checkboxes' && q.allowOther) {
-                            isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
-                        } else {
-                            isEmptyValue = Object.keys(value).length === 0;
-                        }
-                    }
-                    if (q.type === 'rating' && value === 0) {
-                        isEmptyValue = true;
-                    }
-                    return isEmptyValue;
+                    return isValueEmpty(value, q.type);
                 });
             
             return { isValid: !hasIncompleteRequired };
@@ -823,22 +843,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (state?.isVisible && state?.isRequired) {
                 const value = data[q.id];
                 
-                let isEmptyValue = (value === undefined || value === null || value === '');
-                if (Array.isArray(value)) {
-                    isEmptyValue = value.length === 0;
-                } else if (typeof value === 'object' && value !== null) {
-                    if (q.type === 'checkboxes' && q.allowOther) {
-                        isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
-                    } else {
-                        isEmptyValue = Object.keys(value).length === 0;
-                    }
-                }
-                
-                if (q.type === 'rating' && value === 0) {
-                    isEmptyValue = true;
-                }
-                
-                if (isEmptyValue) {
+                if (isValueEmpty(value, q.type)) {
                     form.setError(q.id, { type: 'manual', message: 'This field is required.' });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
@@ -878,6 +883,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             onSubmitted();
             return;
         }
+
+        // Clear manual errors before checking
+        survey.elements.filter(isQuestion).forEach(q => form.clearErrors(q.id));
 
         const missing = validateAllRequired(data);
         if (missing.length > 0) {
@@ -947,30 +955,23 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             return;
         }
 
+        const formData = form.getValues();
+
         // Section-level validation if enabled
         const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
         if (pageSection?.validateBeforeNext) {
-            const invalidQuestionsOnPage = currentElements
-                .filter(isQuestion)
+            const questionsOnPage = currentElements.filter(isQuestion);
+            
+            // Clear errors for current page before checking again
+            questionsOnPage.forEach(q => form.clearErrors(q.id));
+
+            const invalidQuestionsOnPage = questionsOnPage
                 .filter(q => {
                     const state = elementStates[q.id];
                     if (!state?.isVisible || !state?.isRequired) return false;
                     
-                    const value = watchedValues[q.id];
-                    let isEmptyValue = (value === undefined || value === null || value === '');
-                    if (Array.isArray(value)) {
-                        isEmptyValue = value.length === 0;
-                    } else if (typeof value === 'object' && value !== null) {
-                        if (q.type === 'checkboxes' && q.allowOther) {
-                            isEmptyValue = (!value.options || value.options.length === 0) && !value.other;
-                        } else {
-                            isEmptyValue = Object.keys(value).length === 0;
-                        }
-                    }
-                    if (q.type === 'rating' && value === 0) {
-                        isEmptyValue = true;
-                    }
-                    return isEmptyValue;
+                    const value = formData[q.id];
+                    return isValueEmpty(value, q.type);
                 });
             
             if (invalidQuestionsOnPage.length > 0) {
@@ -992,7 +993,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (blockPageIndex > currentPageIndex) continue;
 
             for (const rule of block.rules) {
-                const answer = form.getValues(rule.sourceQuestionId);
+                const answer = formData[rule.sourceQuestionId];
                 if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
                     if (rule.action.type === 'jump' && rule.action.targetElementId) {
                         const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
@@ -1108,7 +1109,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                         isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
                                         isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
                                         surveyId={survey.id}
+                                        form={form}
                                         onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
+                                        clearError={(id) => form.clearErrors(id)}
                                     />
                                 )
                             })}
