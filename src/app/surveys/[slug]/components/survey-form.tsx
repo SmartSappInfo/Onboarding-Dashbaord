@@ -991,7 +991,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const currentElements = pages[currentPageIndex];
     const isCoverPage = currentElements.length === 0;
-    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? currentElements[0] : null;
+    const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
     const showTitles = survey.showSurveyTitles !== false;
 
     if (isCoverPage) {
@@ -1029,19 +1029,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     return (
         <div className="pb-24">
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3 sm:space-y-12">
+                {pageSection && (
+                    <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                        {pageSection.description && (
+                            <div className="text-muted-foreground text-lg sm:text-2xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                        )}
+                    </div>
+                )}
+
                 <SurveyStepper pages={pages} currentIndex={currentPageIndex} />
                 
                 <Card className="border-t-8 border-t-primary shadow-2xl rounded-[2rem] sm:rounded-[2.5rem] overflow-hidden bg-white">
                     <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">
-                        {pageSection && (
-                            <div className="text-center space-y-3 mb-8 sm:mb-10 border-b border-slate-100 pb-6 sm:pb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: (pageSection as any).title || '' }} />
-                                {(pageSection as any).description && (
-                                    <div className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-2xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: (pageSection as any).description }} />
-                                )}
-                            </div>
-                        )}
-
                         <div className="space-y-8 sm:space-y-10">
                             {currentElements.map((el) => {
                                 if (el.id === pageSection?.id) return null;
