@@ -197,6 +197,7 @@ export interface SurveyResultRule {
 
 export interface Survey {
   id: string;
+  internalName: string;
   title: string;
   description: string;
   slug: string;

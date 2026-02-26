@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -109,6 +110,7 @@ const logicBlockSchema = z.object({
 const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
 
 const formSchema = z.object({
+  internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
   title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
@@ -191,6 +193,7 @@ function EditSurveyContent() {
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
+            internalName: "",
             title: "",
             description: "",
             elements: [],
@@ -247,6 +250,7 @@ function EditSurveyContent() {
                 : 'none';
 
             reset({
+                internalName: survey.internalName || survey.title,
                 title: survey.title,
                 description: survey.description,
                 elements: survey.elements || [],
@@ -383,7 +387,7 @@ function EditSurveyContent() {
         }
 
         let targetStep = 4;
-        if (errors.title || errors.description) targetStep = 1;
+        if (errors.internalName || errors.title || errors.description) targetStep = 1;
         else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
         else if (errors.backgroundPattern) targetStep = 1;
         
@@ -398,7 +402,7 @@ function EditSurveyContent() {
     
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -440,7 +444,7 @@ function EditSurveyContent() {
         // If moving forward, validate current step fields first
         if (targetStep > step) {
             let fieldsToValidate: any[] = [];
-            if (step === 1) fieldsToValidate = ['title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+            if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
             if (step === 2) fieldsToValidate = ['elements'];
             if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
             
@@ -487,13 +491,28 @@ function EditSurveyContent() {
                                         <div className="space-y-8">
                                             <FormField
                                                 control={form.control}
+                                                name="internalName"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Internal Name (Administrative)</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="e.g., Parent Feedback 2024 - Draft" {...field} />
+                                                        </FormControl>
+                                                        <FormDescription>Used only within the admin dashboard to identify this survey.</FormDescription>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
                                                 name="title"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Survey Title</FormLabel>
+                                                        <FormLabel>Public Survey Title</FormLabel>
                                                         <FormControl>
                                                             <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
                                                         </FormControl>
+                                                        <FormDescription>The title displayed to respondents on the public survey page.</FormDescription>
                                                         <FormMessage />
                                                     </FormItem>
                                                 )}
@@ -685,7 +704,6 @@ function EditSurveyContent() {
                                                         className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
                                                         style={{ backgroundColor: watchedBgColor || "#F1F5F9" }}
                                                     >
-                                                        <BackgroundPattern pattern={watchedPattern} color={watchedPatternColor} />
                                                         <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
                                                     </div>
                                                 </div>

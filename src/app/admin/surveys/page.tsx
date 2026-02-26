@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -85,7 +86,7 @@ export default function SurveysPage() {
       .then(() => {
         toast({
           title: 'Survey Deleted',
-          description: `The survey "${surveyToDelete.title}" has been deleted.`,
+          description: `The survey "${surveyToDelete.internalName || surveyToDelete.title}" has been deleted.`,
         });
         setSurveyToDelete(null);
       })
@@ -109,7 +110,7 @@ export default function SurveysPage() {
     setCloningId(survey.id);
     toast({ 
       title: 'Cloning Survey...', 
-      description: `Creating a replica of "${survey.title}".` 
+      description: `Creating a replica of "${survey.internalName || survey.title}".` 
     });
     
     try {
@@ -117,7 +118,7 @@ export default function SurveysPage() {
       if (result.success) {
         toast({ 
           title: 'Survey Cloned', 
-          description: `"${survey.title}" has been successfully duplicated. Check your list for the copy.` 
+          description: `"${survey.internalName || survey.title}" has been successfully duplicated. Check your list for the copy.` 
         });
       } else {
         toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
@@ -144,7 +145,7 @@ export default function SurveysPage() {
       .then(() => {
         toast({
           title: 'Survey Updated',
-          description: `"${survey.title}" has been set to ${newStatus}.`,
+          description: `"${survey.internalName || survey.title}" has been set to ${newStatus}.`,
         });
       })
       .catch((error) => {
@@ -332,7 +333,7 @@ export default function SurveysPage() {
                     <TableCell className="font-medium pl-6">
                       <div className="flex items-center gap-2">
                         <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors">
-                          {survey.title}
+                          {survey.internalName || survey.title}
                         </Link>
                         {survey.scoringEnabled && (
                             <Tooltip>
@@ -381,7 +382,7 @@ export default function SurveysPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the survey <span className="font-bold">"{surveyToDelete?.title}"</span> and all its responses.
+              This action cannot be undone. This will permanently delete the survey <span className="font-bold">"{surveyToDelete?.internalName || surveyToDelete?.title}"</span> and all its responses.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

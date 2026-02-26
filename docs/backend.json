@@ -55,7 +55,8 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "title": { "type": "string" },
+        "internalName": { "type": "string", "description": "Internal name used for administration." },
+        "title": { "type": "string", "description": "Public title displayed to respondents." },
         "slug": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "published", "archived"] },
         "webhookId": { "type": "string", "description": "Reference to a Webhook entity." },
