@@ -924,11 +924,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (questionIdsOnPage.length > 0) {
                 const isPageValid = await form.trigger(questionIdsOnPage as any);
                 if (!isPageValid) {
-                    toast({
-                        variant: 'destructive',
-                        title: 'Required Fields Missing',
-                        description: 'Please fill in all mandatory questions before moving forward.',
-                    });
+                    // No modal here as per instruction, inline validation already shown via form state
                     return;
                 }
             }

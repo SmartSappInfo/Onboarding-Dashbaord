@@ -849,11 +849,6 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     setValue(`elements.${index}.hidden`, !currentHiddenState, { shouldDirty: true });
   };
 
-  const toggleRequired = (index: number) => {
-    const current = getValues(`elements.${index}.isRequired`);
-    setValue(`elements.${index}.isRequired`, !current, { shouldDirty: true });
-  };
-  
   if (!element) return null;
 
   const isElementQuestion = isQuestion(element);
@@ -946,22 +941,6 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                             )}
 
                             {/* System Actions Group */}
-                            {isElementQuestion && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className={cn("h-8 w-8 rounded-lg transition-all", element.isRequired ? "text-primary bg-primary/10 shadow-inner" : "text-muted-foreground")}
-                                            onClick={() => toggleRequired(index)}
-                                        >
-                                            <Asterisk className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Required Field</TooltipContent>
-                                </Tooltip>
-                            )}
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => toggleHidden(index)}>
@@ -1106,6 +1085,16 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                              {elementErrors?.options && <FormMessage className="mt-2 ml-1">{elementErrors.options.message}</FormMessage>}
                         </div>
                         <div className="flex items-center gap-6 pt-6 border-t border-border/50">
+                            <div className="flex items-center gap-2.5">
+                                <Controller 
+                                    name={`elements.${index}.isRequired`} 
+                                    control={control} 
+                                    render={({ field }) => (
+                                        <Switch id={`required-${index}`} checked={!!field.value} onCheckedChange={field.onChange} />
+                                    )} 
+                                />
+                                <Label htmlFor={`required-${index}`} className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5"><Asterisk className="h-3.5 w-3.5 text-destructive" /> Answer Required</Label>
+                            </div>
                             {isAutoAdvanceable && (
                                 <div className="flex items-center gap-2.5">
                                     <Controller 
