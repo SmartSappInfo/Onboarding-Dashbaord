@@ -9,12 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, Loader2, Check } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, Loader2, Check, Layout, ShieldCheck, Zap } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
 import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -35,6 +37,38 @@ export default function SurveyFormBuilder() {
     
     const [isAddElementModalOpen, setIsAddElementModalOpen] = React.useState(false);
     const [insertionIndex, setInsertionIndex] = React.useState<number>(0);
+
+    const elements = watch('elements') || [];
+    const sections = elements.filter((el: any) => el.type === 'section');
+    
+    const allPagesEnabled = sections.length > 0 && sections.every((s: any) => s.renderAsPage);
+    const allValidationEnabled = sections.length > 0 && sections.every((s: any) => s.validateBeforeNext);
+
+    const toggleAllPageBreaks = () => {
+        const newState = !allPagesEnabled;
+        const currentElements = getValues('elements');
+        const updatedElements = currentElements.map((el: any) => 
+            el.type === 'section' ? { ...el, renderAsPage: newState } : el
+        );
+        setValue('elements', updatedElements, { shouldDirty: true });
+        toast({ 
+            title: newState ? 'All sections updated' : 'Page breaks removed',
+            description: newState ? 'Every section is now a separate page.' : 'Sections will now scroll continuously.'
+        });
+    };
+
+    const toggleAllValidation = () => {
+        const newState = !allValidationEnabled;
+        const currentElements = getValues('elements');
+        const updatedElements = currentElements.map((el: any) => 
+            el.type === 'section' ? { ...el, validateBeforeNext: newState } : el
+        );
+        setValue('elements', updatedElements, { shouldDirty: true });
+        toast({ 
+            title: newState ? 'Validation enabled' : 'Validation disabled',
+            description: newState ? 'Users must now complete each section before proceeding.' : 'Users can now navigate freely between sections.'
+        });
+    };
 
     const requestAddElement = (index: number) => {
         setInsertionIndex(index + 1);
@@ -221,13 +255,13 @@ export default function SurveyFormBuilder() {
         <div className="relative pb-24">
             <Card className="bg-muted/30">
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
                             <CardTitle>Form Builder</CardTitle>
                             <CardDescription>Build your survey using the editor below.</CardDescription>
                         </div>
-                         <div className="flex items-center gap-2">
-                             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground w-32 text-right transition-all">
+                         <div className="flex items-center flex-wrap gap-2">
+                             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground min-w-24 text-right transition-all">
                                 {autosaveStatus === 'saving' && (
                                     <span className="text-primary flex items-center justify-end gap-1 animate-pulse">
                                         <Loader2 className="h-3 w-3 animate-spin"/> Saving...
@@ -239,16 +273,55 @@ export default function SurveyFormBuilder() {
                                     </span>
                                 )}
                             </div>
+                            
+                            <TooltipProvider>
+                                <div className="flex items-center bg-background/50 rounded-xl p-1 border shadow-sm gap-1">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allPagesEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                                                onClick={toggleAllPageBreaks}
+                                                disabled={sections.length === 0}
+                                            >
+                                                <Layout className="h-3 w-3" />
+                                                Pages
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Toggle Page Breaks for all Sections</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allValidationEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                                                onClick={toggleAllValidation}
+                                                disabled={sections.length === 0}
+                                            >
+                                                <ShieldCheck className="h-3 w-3" />
+                                                Strict
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Toggle Validation for all Sections</TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TooltipProvider>
+
+                            <Separator orientation="vertical" className="h-6 mx-1" />
                             <AiChatEditor />
                             <Separator orientation="vertical" className="h-6 mx-1" />
-                            <Button variant="ghost" size="icon" onClick={handleUndo} disabled={!canUndo}>
-                                <Undo className="h-5 w-5" />
-                            </Button>
-                            <Button variant="ghost" size="icon" onClick={handleRedo} disabled={!canRedo}>
-                                <Redo className="h-5 w-5" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleUndo} disabled={!canUndo}>
+                                    <Undo className="h-5 w-5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleRedo} disabled={!canRedo}>
+                                    <Redo className="h-5 w-5" />
+                                </Button>
+                            </div>
                             <Separator orientation="vertical" className="h-6 mx-1" />
-                            <SurveyPreviewButton variant="ghost" size="icon" className="h-9 w-9">
+                            <SurveyPreviewButton variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
                                 <Eye className="h-5 w-5" />
                             </SurveyPreviewButton>
                         </div>
