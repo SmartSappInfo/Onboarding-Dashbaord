@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
@@ -37,6 +36,7 @@ import {
 } from '@/components/ui/form';
 import { MediaSelect } from '../../../schools/components/media-select';
 import WebhookManager from '../../components/webhook-manager';
+import Link from 'next/link';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -510,6 +510,12 @@ function EditSurveyContent() {
         <FormProvider {...form}>
             <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
                 <div className="w-full md:w-[90%] mx-auto">
+                    <Button asChild variant="ghost" className="mb-4 -ml-4">
+                        <Link href="/admin/surveys">
+                            <ArrowLeft className="mr-2 h-4 w-4" />
+                            Back to Surveys
+                        </Link>
+                    </Button>
                     <Stepper currentStep={step} />
                     <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                         
