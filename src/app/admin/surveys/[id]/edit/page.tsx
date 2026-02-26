@@ -675,7 +675,7 @@ function EditSurveyContent() {
                                                         render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Background Style</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                                                     <FormControl>
                                                                         <SelectTrigger>
                                                                             <SelectValue placeholder="Select a style" />
