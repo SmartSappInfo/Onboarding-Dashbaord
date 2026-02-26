@@ -1154,7 +1154,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         </Button>
                     )}
                 </div>
-            </Card>
+            </form>
 
             <AnimatePresence>
                 {isSubmitting && (
