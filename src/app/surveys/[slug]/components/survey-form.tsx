@@ -29,7 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappIcon } from '@/components/icons';
+import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
