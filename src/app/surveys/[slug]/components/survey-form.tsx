@@ -29,7 +29,7 @@ import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappLogo } from '@/components/icons';
+import { SmartSappIcon } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
@@ -243,7 +243,7 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-11 px-5 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-xs font-bold">
+      <Button asChild variant="outline" disabled={disabled} className="h-11 px-5 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-[10.4px] font-bold uppercase tracking-tight">
         <div className="cursor-pointer">
             <Upload className="mr-2 h-3.5 w-3.5 text-primary" />
             <span>Upload a file</span>
@@ -300,12 +300,12 @@ const ElementRenderer = ({
         return (
             <div id={question.id} className={cn("space-y-2", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
                 <div className="space-y-1">
-                    <Label className="text-base font-bold block leading-tight text-foreground">
+                    <Label className="text-[12.8px] font-bold block leading-tight text-foreground">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {question.placeholder && !isTextInput && (
-                        <p className="text-xs text-muted-foreground font-medium whitespace-pre-wrap">
+                        <p className="text-[10px] text-muted-foreground font-medium whitespace-pre-wrap leading-tight">
                             {question.placeholder}
                         </p>
                     )}
@@ -318,7 +318,7 @@ const ElementRenderer = ({
                                 value={field.value || ''} 
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Type your answer here..."} 
-                                className={cn("text-sm h-11 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-[11.2px] h-11 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -329,7 +329,7 @@ const ElementRenderer = ({
                                 value={field.value || ''} 
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Share your thoughts..."} 
-                                className={cn("text-sm min-h-[120px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-[11.2px] min-h-[120px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -340,7 +340,7 @@ const ElementRenderer = ({
                             render={({ field }) => (
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-sm font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
@@ -348,7 +348,7 @@ const ElementRenderer = ({
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-sm font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
@@ -367,7 +367,7 @@ const ElementRenderer = ({
                                 <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-sm font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                            "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                             field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
@@ -390,7 +390,7 @@ const ElementRenderer = ({
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-sm font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                                "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                                 isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                                 errors[question.id] && "border-destructive bg-destructive/5"
                                             )}>
@@ -435,7 +435,7 @@ const ElementRenderer = ({
                                             <Input
                                                 id={`${question.id}-other-input`}
                                                 placeholder="Other (please specify)"
-                                                className="h-7 flex-1 border-0 bg-transparent p-0 text-sm shadow-none focus-visible:ring-0 font-medium"
+                                                className="h-7 flex-1 border-0 bg-transparent p-0 text-[11.2px] shadow-none focus-visible:ring-0 font-medium"
                                                 value={field.value?.other || ''}
                                                 onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
                                             />
@@ -451,12 +451,12 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                 <Select onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value}>
-                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-sm h-11 bg-white border-2 border-slate-200 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-[11.2px] h-11 bg-white border-2 border-slate-200 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         {question.options?.map(opt => (
-                                            <SelectItem key={opt} value={opt} className="text-sm font-normal">{opt}</SelectItem>
+                                            <SelectItem key={opt} value={opt} className="text-[11.2px] font-normal">{opt}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -483,7 +483,7 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-sm h-11 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-[11.2px] h-11 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -510,9 +510,9 @@ const ElementRenderer = ({
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="text-xs font-black text-destructive mt-2.5 flex items-center gap-1 px-1"
+                                className="text-[10px] font-black text-destructive mt-2.5 flex items-center gap-1 px-1 uppercase tracking-tighter"
                             >
-                                <X className="h-3.5 w-3.5" />
+                                <X className="h-3 w-3" />
                                 { (errors as any)[question.id]?.message }
                             </motion.p>
                         )}
@@ -530,7 +530,7 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-xl sm:text-2xl font-black" : Tag === 'h3' ? "text-sm sm:text-base font-bold" : "text-lg sm:text-xl font-bold";
+                const sizeClass = Tag === 'h1' ? "text-[19.2px] sm:text-[25.6px] font-black" : Tag === 'h3' ? "text-[11.2px] sm:text-[12.8px] font-bold" : "text-[14.4px] sm:text-[16px] font-bold";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-1 mb-3 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
@@ -539,7 +539,7 @@ const ElementRenderer = ({
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-3 text-xs sm:text-sm leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-3 text-[9.6px] sm:text-[11.2px] leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
@@ -554,11 +554,11 @@ const ElementRenderer = ({
             case 'video':
                  return block.url ? <div className={cn("my-5 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
-                return block.url ? <div className="my-5 p-5 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full">Your browser does not support the audio element.</audio></div> : null;
+                return block.url ? <div className="my-5 p-5 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full text-xs">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                  return (
                     <div className={cn("my-5", alignmentClass)}>
-                        <Button asChild variant="outline" className="h-11 px-7 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-xs"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4 text-primary"/> Download Document</a></Button>
+                        <Button asChild variant="outline" className="h-11 px-7 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-[10.4px] uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4 text-primary"/> Download Document</a></Button>
                     </div>
                  );
             case 'embed':
@@ -715,6 +715,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     );
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
     const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
@@ -916,6 +917,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         if (!firestore) return;
 
+        setIsSubmitting(true);
         const score = calculateScore(data);
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => {
@@ -943,8 +945,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         try {
             const docRef = await addDoc(responsesCollection, responseData);
-            toast({ title: 'Success', description: 'Your response has been submitted.' });
             
+            // Artificial delay for UX visibility of the preloader
+            await new Promise(resolve => setTimeout(resolve, 800));
+
             if (survey.scoringEnabled) {
                 const rule = resolveOutcome(score);
                 if (rule) {
@@ -962,6 +966,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             });
             errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
+            setIsSubmitting(false);
         } finally {
             form.control.disabled = false;
         }
@@ -1083,12 +1088,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                         )}
                         <div className="space-y-5 max-w-3xl mx-auto px-4">
-                            <h1 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
-                            <div className="text-xs sm:text-md text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <h1 className="text-[14.4px] sm:text-[16px] md:text-[19.2px] font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
+                            <div className="text-[9.6px] sm:text-[11.2px] text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     </>
                 )}
-                <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-7 text-sm sm:text-base font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6" onClick={handleNext}>
+                <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-[11.2px] ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-7 sm:text-base font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                 </button>
             </div>
@@ -1100,9 +1105,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3 sm:space-y-10">
                 {pageSection && (
                     <div className="text-center space-y-3 mb-6 sm:mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <h2 className="text-xl sm:text-3xl font-semibold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                        <h2 className="text-[16.8px] sm:text-[24px] font-semibold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                         {pageSection.description && (
-                            <div className="text-muted-foreground text-sm sm:text-lg leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                            <div className="text-muted-foreground text-[11.2px] sm:text-[14.4px] leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
                         )}
                     </div>
                 )}
@@ -1134,22 +1139,53 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
                  <div className={cn("flex flex-col sm:flex-row items-center mt-10 gap-3 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
                     {isMultiPage && currentPageIndex > 0 && (
-                        <Button type="button" variant="ghost" size="lg" className="h-12 px-8 rounded-2xl font-black text-muted-foreground hover:text-foreground hover:bg-slate-100 w-full sm:w-auto text-sm" onClick={handlePrev} disabled={form.formState.isSubmitting}>
+                        <Button type="button" variant="ghost" size="lg" className="h-12 px-8 rounded-2xl font-black text-muted-foreground hover:text-foreground hover:bg-slate-100 w-full sm:w-auto text-[11.2px] uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
                             Previous
                         </Button>
                     )}
                      {isMultiPage && currentPageIndex < pages.length - 1 && (
-                         <Button type="button" size="lg" className="h-12 px-8 rounded-2xl font-black shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-sm" onClick={handleNext} disabled={form.formState.isSubmitting}>
+                         <Button type="button" size="lg" className="h-12 px-8 rounded-2xl font-black shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-[11.2px] uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
                             Next <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                      )}
                     {currentPageIndex === pages.length - 1 && (
-                        <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-2xl font-black shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-sm", isMultiPage && "sm:ml-auto")} disabled={form.formState.isSubmitting || isSubmitDisabled}>
-                            {form.formState.isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                        <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-2xl font-black shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-[11.2px] uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
+                            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
                         </Button>
                     )}
                 </div>
-            </form>
+            </Card>
+
+            <AnimatePresence>
+                {isSubmitting && (
+                    <motion.div 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-md"
+                    >
+                        <motion.div 
+                            animate={{ 
+                                scale: [1, 1.1, 1],
+                                opacity: [0.8, 1, 0.8]
+                            }}
+                            transition={{ 
+                                duration: 2, 
+                                repeat: Infinity, 
+                                ease: "easeInOut" 
+                            }}
+                            className="flex flex-col items-center gap-6"
+                        >
+                            <SmartSappIcon className="h-20 w-20 text-primary drop-shadow-2xl" />
+                            <div className="text-center space-y-2">
+                                <h3 className="text-2xl font-black tracking-tighter text-foreground">Submitting your response</h3>
+                                <p className="text-muted-foreground font-medium text-sm">Please wait while we secure your data...</p>
+                            </div>
+                            <Loader2 className="h-6 w-6 animate-spin text-primary mt-4" />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
                 <DialogContent className="sm:max-w-md">
