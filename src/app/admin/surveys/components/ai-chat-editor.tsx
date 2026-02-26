@@ -58,12 +58,27 @@ export default function AiChatEditor() {
                     maxScore: currentData.maxScore,
                     resultRules: currentData.resultRules,
                     resultPages: currentData.resultPages,
+                    backgroundColor: currentData.backgroundColor,
+                    backgroundPattern: currentData.backgroundPattern,
+                    patternColor: currentData.patternColor,
+                    logoUrl: currentData.logoUrl,
+                    bannerImageUrl: currentData.bannerImageUrl,
+                    thankYouTitle: currentData.thankYouTitle,
+                    thankYouDescription: currentData.thankYouDescription,
+                    startButtonText: currentData.startButtonText,
+                    showCoverPage: currentData.showCoverPage,
+                    showSurveyTitles: currentData.showSurveyTitles,
                 }
             });
 
             if (result.updatedSurvey) {
-                // Apply changes to the form
-                reset(result.updatedSurvey, {
+                // Merge AI architectural changes with current local state to ensure no accidental metadata loss
+                const mergedSurvey = {
+                    ...currentData,
+                    ...result.updatedSurvey,
+                };
+
+                reset(mergedSurvey, {
                     keepDirty: true,
                     keepTouched: true,
                 });

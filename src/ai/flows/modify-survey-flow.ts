@@ -103,6 +103,17 @@ const ModifySurveyInputSchema = z.object({
     maxScore: z.number().optional(),
     resultRules: z.array(z.any()).optional(),
     resultPages: z.array(z.any()).optional(),
+    // Metadata and Styling
+    backgroundColor: z.string().optional(),
+    backgroundPattern: z.string().optional(),
+    patternColor: z.string().optional(),
+    logoUrl: z.string().optional(),
+    bannerImageUrl: z.string().optional(),
+    thankYouTitle: z.string().optional(),
+    thankYouDescription: z.string().optional(),
+    startButtonText: z.string().optional(),
+    showCoverPage: z.boolean().optional(),
+    showSurveyTitles: z.boolean().optional(),
   }),
 });
 export type ModifySurveyInput = z.infer<typeof ModifySurveyInputSchema>;
@@ -116,6 +127,17 @@ const ModifySurveyOutputSchema = z.object({
         maxScore: z.number(),
         resultRules: z.array(resultRuleSchema),
         resultPages: z.array(resultPageSchema),
+        // Preserved Metadata and Styling
+        backgroundColor: z.string().optional(),
+        backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).optional(),
+        patternColor: z.string().optional(),
+        logoUrl: z.string().optional(),
+        bannerImageUrl: z.string().optional(),
+        thankYouTitle: z.string().optional(),
+        thankYouDescription: z.string().optional(),
+        startButtonText: z.string().optional(),
+        showCoverPage: z.boolean().optional(),
+        showSurveyTitles: z.boolean().optional(),
     }),
     aiSummary: z.string().describe('A brief explanation of what changes were made.'),
 });
@@ -136,13 +158,15 @@ Review the current survey structure and the user's request. Modify the survey to
 3. **Scoring**: If 'scoringEnabled' is true, ensure new questions have appropriate scores and 'maxScore' is updated to the new possible maximum.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
 5. **Layouts**: When adding 'heading' blocks, use an appropriate 'variant' (h1, h2, h3).
-6. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+6. **Styling & Metadata**: Preserve existing background colors, patterns, and logo URLs unless specifically asked to change them.
+7. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- CURRENT SURVEY ---
 Title: {{{currentSurvey.title}}}
 Description: {{{currentSurvey.description}}}
 Elements: {{{json currentSurvey.elements}}}
 Scoring: {{{currentSurvey.scoringEnabled}}} (Max: {{{currentSurvey.maxScore}}})
+Styling: Pattern: {{{currentSurvey.backgroundPattern}}}, Color: {{{currentSurvey.backgroundColor}}}
 Result Rules: {{{json currentSurvey.resultRules}}}
 Result Pages: {{{json currentSurvey.resultPages}}}
 
