@@ -69,16 +69,10 @@ const generateSchema = (elements: SurveyElement[]) => {
     return z.object(baseSchemaObject);
 };
 
-/**
- * Unified helper to check if a survey field value is effectively empty.
- */
 const isValueEmpty = (value: any, questionType: string): boolean => {
     if (value === undefined || value === null || value === '') return true;
-    
     if (Array.isArray(value)) return value.length === 0;
-    
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
-    
     if (questionType === 'checkboxes' && typeof value === 'object') {
         const options = (value as any).options;
         const other = (value as any).other;
@@ -86,13 +80,8 @@ const isValueEmpty = (value: any, questionType: string): boolean => {
             return (!options || options.length === 0) && !other;
         }
     }
-    
     if (value instanceof Date) return !isValid(value);
-    
-    if (typeof value === 'object' && value !== null) {
-        return Object.keys(value).length === 0;
-    }
-    
+    if (typeof value === 'object' && value !== null) return Object.keys(value).length === 0;
     return false;
 }
 
@@ -103,7 +92,7 @@ const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (v
                 <Star
                     key={star}
                     className={cn(
-                        'w-7 h-7 cursor-pointer',
+                        'w-9 h-9 cursor-pointer',
                         star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
                         disabled ? 'cursor-not-allowed' : ''
                     )}
@@ -119,8 +108,8 @@ const DatePicker = ({ value, onChange, disabled }: { value?: Date, onChange: (da
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className={cn("w-full sm:w-[240px] justify-start text-left font-normal h-11 bg-white rounded-xl", !dateValue && "text-muted-foreground")} disabled={disabled}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                <Button variant="outline" className={cn("w-full sm:w-[280px] justify-start text-left font-normal h-12 bg-white rounded-xl text-[16.8px]", !dateValue && "text-muted-foreground")} disabled={disabled}>
+                    <CalendarIcon className="mr-2 h-5 w-5" />
                     {dateValue ? format(dateValue, "PPP") : <span>Pick a date</span>}
                 </Button>
             </PopoverTrigger>
@@ -165,7 +154,6 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
       setError(null);
     }
   }, [value, fileName]);
-
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -218,24 +206,24 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
   if (uploadProgress !== null && fileName) {
     return (
         <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs">
-                <FileIcon className="h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2 text-sm">
+                <FileIcon className="h-5 w-5 text-muted-foreground" />
                 <span className="truncate flex-1 font-medium">{fileName}</span>
                 {uploadProgress === 100 ? <span className="text-green-600 font-bold">Done!</span> : <span className="font-bold">{Math.round(uploadProgress)}%</span>}
             </div>
-            <Progress value={uploadProgress} className="h-1.5" />
-            {error && <p className="text-xs text-destructive font-medium">{error}</p>}
+            <Progress value={uploadProgress} className="h-2" />
+            {error && <p className="text-sm text-destructive font-medium">{error}</p>}
         </div>
     );
   }
 
   if (value && fileName) {
     return (
-      <div className="flex items-center gap-2 p-2 border border-primary/20 rounded-xl bg-primary/5">
-        <FileIcon className="h-4 w-4 text-primary" />
-        <a href={value} target="_blank" rel="noopener noreferrer" className="text-xs font-bold truncate flex-1 hover:underline">{fileName}</a>
-        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={handleRemoveFile} disabled={disabled}>
-            <X className="h-3.5 w-3.5" />
+      <div className="flex items-center gap-3 p-3 border border-primary/20 rounded-xl bg-primary/5">
+        <FileIcon className="h-5 w-5 text-primary" />
+        <a href={value} target="_blank" rel="noopener noreferrer" className="text-sm font-bold truncate flex-1 hover:underline">{fileName}</a>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-destructive/10 hover:text-destructive" onClick={handleRemoveFile} disabled={disabled}>
+            <X className="h-4 w-4" />
         </Button>
       </div>
     );
@@ -243,9 +231,9 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
 
   return (
     <div className="relative">
-      <Button asChild variant="outline" disabled={disabled} className="h-11 px-5 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-[10.4px] font-bold uppercase tracking-tight">
+      <Button asChild variant="outline" disabled={disabled} className="h-12 px-6 rounded-xl border-2 border-dashed bg-white hover:bg-slate-50 transition-all text-[16.8px] font-bold uppercase tracking-tight">
         <div className="cursor-pointer">
-            <Upload className="mr-2 h-3.5 w-3.5 text-primary" />
+            <Upload className="mr-2 h-4 w-4 text-primary" />
             <span>Upload a file</span>
         </div>
       </Button>
@@ -258,7 +246,6 @@ const FileUpload = ({ value, onChange, disabled, surveyId }: { value?: string; o
     </div>
   );
 };
-
 
 const ElementRenderer = ({ 
     element, 
@@ -298,14 +285,14 @@ const ElementRenderer = ({
         };
 
         return (
-            <div id={question.id} className={cn("space-y-2", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
-                <div className="space-y-1">
-                    <Label className="text-[12.8px] font-bold block leading-tight text-foreground">
+            <div id={question.id} className={cn("space-y-3", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+                <div className="space-y-1.5">
+                    <Label className="text-[19.2px] font-bold block leading-tight text-foreground">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {question.placeholder && !isTextInput && (
-                        <p className="text-[10px] text-muted-foreground font-medium whitespace-pre-wrap leading-tight">
+                        <p className="text-[16.8px] text-muted-foreground font-medium whitespace-pre-wrap leading-tight">
                             {question.placeholder}
                         </p>
                     )}
@@ -318,7 +305,7 @@ const ElementRenderer = ({
                                 value={field.value || ''} 
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Type your answer here..."} 
-                                className={cn("text-[11.2px] h-11 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-[16.8px] h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -329,7 +316,7 @@ const ElementRenderer = ({
                                 value={field.value || ''} 
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
                                 placeholder={question.placeholder || "Share your thoughts..."} 
-                                className={cn("text-[11.2px] min-h-[120px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
+                                className={cn("text-[16.8px] min-h-[150px] bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl p-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
                     )}
@@ -338,21 +325,21 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-3", textAlign === 'center' && 'mx-auto max-w-lg')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4", textAlign === 'center' && 'mx-auto max-w-lg')}>
                                     <Label htmlFor={`${question.id}-yes`} className={cn(
-                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-5 text-[16.8px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'Yes' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
-                                        <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-4 border-2" />
+                                        <RadioGroupItem value="Yes" id={`${question.id}-yes`} className="size-5 border-2" />
                                         Yes
                                     </Label>
                                     <Label htmlFor={`${question.id}-no`} className={cn(
-                                        "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                        "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-5 text-[16.8px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                         field.value === 'No' ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                         errors[question.id] && "border-destructive bg-destructive/5"
                                     )}>
-                                        <RadioGroupItem value="No" id={`${question.id}-no`} className="size-4 border-2" />
+                                        <RadioGroupItem value="No" id={`${question.id}-no`} className="size-5 border-2" />
                                         No
                                     </Label>
                                 </RadioGroup>
@@ -364,14 +351,14 @@ const ElementRenderer = ({
                             control={control}
                             name={question.id}
                             render={({ field }) => (
-                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <RadioGroup onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value} className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => (
                                         <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                            "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                            "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-5 text-[16.8px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                             field.value === opt ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
-                                            <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-4 border-2" />
+                                            <RadioGroupItem value={opt} id={`${question.id}-${opt}`} className="size-5 border-2" />
                                             <span className="flex-1">{opt}</span>
                                         </Label>
                                     ))}
@@ -385,12 +372,12 @@ const ElementRenderer = ({
                             control={control}
                             render={({ field }) => {
                                 return (
-                                <div className={cn("space-y-2", textAlign === 'center' && 'mx-auto max-w-xl')}>
+                                <div className={cn("space-y-3", textAlign === 'center' && 'mx-auto max-w-xl')}>
                                     {question.options?.map(opt => {
                                         const isChecked = question.allowOther ? field.value?.options?.includes(opt) : field.value?.includes(opt);
                                         return (
                                             <Label key={opt} htmlFor={`${question.id}-${opt}`} className={cn(
-                                                "flex cursor-pointer items-center gap-3 rounded-xl border-2 p-4 text-[11.2px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
+                                                "flex cursor-pointer items-center gap-4 rounded-xl border-2 p-5 text-[16.8px] font-medium transition-all hover:bg-slate-50 active:scale-[0.98]",
                                                 isChecked ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                                 errors[question.id] && "border-destructive bg-destructive/5"
                                             )}>
@@ -408,7 +395,7 @@ const ElementRenderer = ({
                                                             handleValueChange(newVal, field.onChange);
                                                         }
                                                     }}
-                                                    className="size-4 border-2"
+                                                    className="size-5 border-2"
                                                 />
                                                 <span className="flex-1">{opt}</span>
                                             </Label>
@@ -416,7 +403,7 @@ const ElementRenderer = ({
                                     })}
                                     {question.allowOther && (
                                         <div className={cn(
-                                            "flex items-center gap-3 rounded-xl border-2 p-4 transition-all active:scale-[0.98]",
+                                            "flex items-center gap-4 rounded-xl border-2 p-5 transition-all active:scale-[0.98]",
                                             (field.value?.other || '') ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-100 bg-white",
                                             errors[question.id] && "border-destructive bg-destructive/5"
                                         )}>
@@ -430,12 +417,12 @@ const ElementRenderer = ({
                                                         handleValueChange({ ...(field.value || {}), other: '' }, field.onChange);
                                                     }
                                                 }}
-                                                className="size-4 border-2"
+                                                className="size-5 border-2"
                                             />
                                             <Input
                                                 id={`${question.id}-other-input`}
                                                 placeholder="Other (please specify)"
-                                                className="h-7 flex-1 border-0 bg-transparent p-0 text-[11.2px] shadow-none focus-visible:ring-0 font-medium"
+                                                className="h-8 flex-1 border-0 bg-transparent p-0 text-[16.8px] shadow-none focus-visible:ring-0 font-medium"
                                                 value={field.value?.other || ''}
                                                 onChange={(e) => handleValueChange({ ...(field.value || {}), other: e.target.value }, field.onChange)}
                                             />
@@ -451,12 +438,12 @@ const ElementRenderer = ({
                             name={question.id}
                             render={({ field }) => (
                                 <Select onValueChange={(v) => handleValueChange(v, field.onChange)} value={field.value}>
-                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-[11.2px] h-11 bg-white border-2 border-slate-200 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
+                                    <SelectTrigger className={cn("w-full sm:w-1/2 text-[16.8px] h-12 bg-white border-2 border-slate-200 rounded-xl px-4", textAlign === 'center' && 'mx-auto', errors[question.id] && "border-destructive")}>
                                         <SelectValue placeholder="Select an option" />
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         {question.options?.map(opt => (
-                                            <SelectItem key={opt} value={opt} className="text-[11.2px] font-normal">{opt}</SelectItem>
+                                            <SelectItem key={opt} value={opt} className="text-[16.8px] font-normal">{opt}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -466,7 +453,7 @@ const ElementRenderer = ({
                     {question.type === 'rating' && (
                         <Controller control={control} name={question.id} render={({ field }) => (
                             <div className={cn("flex flex-col", textAlign === 'center' ? 'items-center' : textAlign === 'right' ? 'items-end' : 'items-start')}>
-                                <div className={cn("p-1.5 rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
+                                <div className={cn("p-2 rounded-xl", errors[question.id] && "ring-2 ring-destructive bg-destructive/5")}>
                                     <StarRating value={field.value || 0} onChange={(v) => handleValueChange(v, field.onChange)} />
                                 </div>
                             </div>
@@ -483,7 +470,7 @@ const ElementRenderer = ({
                     )}
                     {question.type === 'time' && (
                         <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}>
-                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-[11.2px] h-11 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
+                            <Controller control={control} name={question.id} render={({ field }) => <Input type="time" step="1" className={cn("w-full sm:w-fit bg-white border-2 border-slate-200 appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none text-[16.8px] h-12 px-4 font-bold rounded-xl shadow-none focus:border-primary focus-visible:ring-0", errors[question.id] && "border-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />} />
                         </div>
                     )}
                     {question.type === 'file-upload' && (
@@ -510,9 +497,9 @@ const ElementRenderer = ({
                                 initial={{ opacity: 0, y: -10 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -10 }}
-                                className="text-[10px] font-black text-destructive mt-2.5 flex items-center gap-1 px-1 uppercase tracking-tighter"
+                                className="text-[14.4px] font-black text-destructive mt-3 flex items-center gap-1 px-1 uppercase tracking-tighter"
                             >
-                                <X className="h-3 w-3" />
+                                <X className="h-4 w-4" />
                                 { (errors as any)[question.id]?.message }
                             </motion.p>
                         )}
@@ -530,39 +517,39 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-[19.2px] sm:text-[25.6px] font-black" : Tag === 'h3' ? "text-[11.2px] sm:text-[12.8px] font-bold" : "text-[14.4px] sm:text-[16px] font-bold";
+                const sizeClass = Tag === 'h1' ? "text-[28.8px] sm:text-[38.4px] font-black" : Tag === 'h3' ? "text-[16.8px] sm:text-[19.2px] font-bold" : "text-[21.6px] sm:text-[24px] font-bold";
                 return (
-                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-1 mb-3 leading-tight whitespace-pre-wrap")}>
+                    <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
                     </Tag>
                 );
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-3 text-[9.6px] sm:text-[11.2px] leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-[14.4px] sm:text-[16.8px] leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
             case 'divider':
-                return <hr className="my-4 sm:my-6 border-slate-100" />;
+                return <hr className="my-6 sm:my-8 border-slate-100" />;
             case 'image':
                 return block.url ? (
-                    <div className={cn("relative my-5 rounded-xl overflow-hidden shadow-xl border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
+                    <div className={cn("relative my-6 rounded-xl overflow-hidden shadow-xl border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}>
                         <img src={block.url} alt={block.title || 'Survey Image'} className="w-full h-auto" />
                     </div>
                 ) : null;
             case 'video':
-                 return block.url ? <div className={cn("my-5 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
+                 return block.url ? <div className={cn("my-6 shadow-xl rounded-xl overflow-hidden border-4 border-white", textAlign === 'center' ? 'mx-auto max-w-2xl' : '')}><VideoEmbed url={block.url} /></div> : null;
             case 'audio':
-                return block.url ? <div className="my-5 p-5 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full text-xs">Your browser does not support the audio element.</audio></div> : null;
+                return block.url ? <div className="my-6 p-6 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full text-xs">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
                 return (
-                    <div className={cn("my-5", alignmentClass)}>
-                        <Button asChild variant="outline" className="h-11 px-7 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-[10.4px] uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4 text-primary"/> Download Document</a></Button>
+                    <div className={cn("my-6", alignmentClass)}>
+                        <Button asChild variant="outline" className="h-12 px-8 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-[16.8px] uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-5 w-5 text-primary"/> Download Document</a></Button>
                     </div>
                 );
             case 'embed':
-                return block.html ? <div className="my-5 rounded-xl overflow-hidden border shadow-sm" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
+                return block.html ? <div className="my-6 rounded-xl overflow-hidden border shadow-sm" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:
                 return null;
         }
@@ -571,7 +558,6 @@ const ElementRenderer = ({
 
 const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['operator'], targetValue: any): boolean => {
     const strAnswer = String(answer ?? '');
-
     switch (operator) {
         case 'isEqualTo': return strAnswer === String(targetValue);
         case 'isNotEqualTo': return strAnswer !== String(targetValue);
@@ -607,10 +593,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex }: { pages: SurveyEle
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
     if (actualPagesCount <= 1) return null;
-
     if (hasCover && currentIndex === 0) return null;
-
-    const displayIndex = hasCover ? currentIndex - 1 : currentIndex;
     const displayPages = hasCover ? pages.slice(1) : pages;
 
     return (
@@ -636,7 +619,6 @@ function SurveyStepper({ pages, pageStatuses, currentIndex }: { pages: SurveyEle
                                     />
                                 </div>
                             )}
-
                             <div className="relative z-10 flex items-center justify-center">
                                 <motion.div
                                     initial={false}
@@ -657,7 +639,6 @@ function SurveyStepper({ pages, pageStatuses, currentIndex }: { pages: SurveyEle
                                     )}
                                 </motion.div>
                             </div>
-
                             <div className="mt-3 text-center px-1 w-full">
                                 <p className={cn(
                                     "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8",
@@ -687,16 +668,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (q.defaultValue !== undefined) {
                 if (q.type === 'date' && typeof q.defaultValue === 'string') {
                     const parsedDate = parseISO(q.defaultValue);
-                    if(isValid(parsedDate)) {
-                        acc[q.id] = parsedDate;
-                    }
-                } else {
-                    acc[q.id] = q.defaultValue;
-                }
+                    if(isValid(parsedDate)) acc[q.id] = parsedDate;
+                } else acc[q.id] = q.defaultValue;
             } else {
-                if (q.type === 'checkboxes') {
-                    acc[q.id] = q.allowOther ? { options: [], other: '' } : [];
-                }
+                if (q.type === 'checkboxes') acc[q.id] = q.allowOther ? { options: [], other: '' } : [];
                 if (q.type === 'rating') acc[q.id] = 0;
             }
             return acc;
@@ -729,40 +704,28 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
-
-        if (survey.showCoverPage && survey.showSurveyTitles !== false) {
-            p.push([]); 
-        }
-
+        if (survey.showCoverPage && survey.showSurveyTitles !== false) p.push([]); 
         survey.elements.forEach(element => {
             if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
                 p.push(currentPage);
                 currentPage = [element];
-            } else {
-                currentPage.push(element);
-            }
+            } else currentPage.push(element);
         });
-
-        if (currentPage.length > 0) {
-            p.push(currentPage);
-        }
+        if (currentPage.length > 0) p.push(currentPage);
         return p.length > 0 ? p : [[]];
     }, [survey.elements, survey.showCoverPage, survey.showSurveyTitles]);
 
     const pageStatuses = React.useMemo(() => {
         return pages.map((pageElements) => {
             if (pageElements.length === 0) return { isValid: true };
-
             const hasIncompleteRequired = pageElements
                 .filter(isQuestion)
                 .some(q => {
                     const state = elementStates[q.id];
                     if (!state?.isVisible || !state?.isRequired) return false;
-                    
                     const value = watchedValues[q.id];
                     return isValueEmpty(value, q.type);
                 });
-            
             return { isValid: !hasIncompleteRequired };
         });
     }, [pages, watchedValues, elementStates]);
@@ -771,39 +734,25 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     React.useEffect(() => {
         const initialStates: Record<string, ElementState> = getInitialElementStates(survey.elements);
-    
         let newSubmitDisabled = false;
         const logicBlocks = survey.elements.filter(isLogic);
-        
         logicBlocks.forEach(block => {
           block.rules.forEach(rule => {
             const answer = watchedValues[rule.sourceQuestionId];
-            
             if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
               const { type, targetElementIds } = rule.action;
               switch (type) {
-                case 'show':
-                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = true; });
-                  break;
-                case 'hide':
-                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = false; });
-                  break;
-                case 'require':
-                  targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isRequired = true; });
-                  break;
-                case 'disableSubmit':
-                  newSubmitDisabled = true;
-                  break;
+                case 'show': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = true; }); break;
+                case 'hide': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = false; }); break;
+                case 'require': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isRequired = true; }); break;
+                case 'disableSubmit': newSubmitDisabled = true; break;
               }
             }
           });
         });
-    
         setElementStates(initialStates);
         setIsSubmitDisabled(newSubmitDisabled);
-    
       }, [watchedValues, survey.elements]);
-
 
     const calculateScore = (data: any) => {
         if (!survey.scoringEnabled) return undefined;
@@ -816,17 +765,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 if (answer === 'No') total += q.noScore || 0;
             } else if (q.type === 'multiple-choice' || q.type === 'dropdown') {
                 const optIndex = q.options?.indexOf(answer);
-                if (optIndex !== undefined && optIndex !== -1) {
-                    total += (q.optionScores?.[optIndex] || 0);
-                }
+                if (optIndex !== undefined && optIndex !== -1) total += (q.optionScores?.[optIndex] || 0);
             } else if (q.type === 'checkboxes') {
                 const selected = q.allowOther ? answer.options : answer;
                 if (Array.isArray(selected)) {
                     selected.forEach(val => {
                         const optIndex = q.options?.indexOf(val);
-                        if (optIndex !== undefined && optIndex !== -1) {
-                            total += (q.optionScores?.[optIndex] || 0);
-                        }
+                        if (optIndex !== undefined && optIndex !== -1) total += (q.optionScores?.[optIndex] || 0);
                     });
                 }
             }
@@ -836,20 +781,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const resolveOutcome = (score: number | undefined): SurveyResultRule | undefined => {
         if (score === undefined || !survey.resultRules) return undefined;
-        return [...survey.resultRules]
-            .sort((a, b) => a.priority - b.priority)
-            .find(rule => score >= rule.minScore && score <= rule.maxScore);
+        return [...survey.resultRules].sort((a, b) => a.priority - b.priority).find(rule => score >= rule.minScore && score <= rule.maxScore);
     };
 
     const validateAllRequired = (data: any) => {
         const missing: { id: string, label: string, pageIndex: number }[] = [];
-        
         survey.elements.filter(isQuestion).forEach(q => {
             const state = elementStates[q.id];
             if (state?.isVisible && state?.isRequired) {
-                const value = data[q.id];
-                
-                if (isValueEmpty(value, q.type)) {
+                if (isValueEmpty(data[q.id], q.type)) {
                     form.setError(q.id, { type: 'manual', message: 'This field is required.' });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
@@ -857,96 +797,48 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 }
             }
         });
-        
         return missing;
     };
 
     const onInvalid = (errors: any) => {
         const data = form.getValues();
         const missing = validateAllRequired(data);
-        
         if (missing.length > 0) {
-            if (!isAllSectionsStrict) {
-                setMissingFields(missing);
-                setShowMissingFieldsModal(true);
-            } else {
-                const firstErrorId = missing[0].id;
-                const pageIdx = missing[0].pageIndex;
-                if (pageIdx !== -1 && pageIdx !== currentPageIndex) {
-                    setCurrentPageIndex(pageIdx);
-                }
-                setTimeout(() => {
-                    const element = document.getElementById(firstErrorId);
-                    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }, 500);
+            if (!isAllSectionsStrict) { setMissingFields(missing); setShowMissingFieldsModal(true); }
+            else {
+                const first = missing[0];
+                if (first.pageIndex !== -1 && first.pageIndex !== currentPageIndex) setCurrentPageIndex(first.pageIndex);
+                setTimeout(() => document.getElementById(first.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
             }
         } else {
             const firstErrorId = Object.keys(errors)[0];
             const pageIdx = pages.findIndex(p => p.some(el => el.id === firstErrorId));
-            if (pageIdx !== -1 && pageIdx !== currentPageIndex) {
-                setCurrentPageIndex(pageIdx);
-            }
-            setTimeout(() => {
-                const element = document.getElementById(firstErrorId);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 500);
+            if (pageIdx !== -1 && pageIdx !== currentPageIndex) setCurrentPageIndex(pageIdx);
+            setTimeout(() => document.getElementById(firstErrorId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
         }
     };
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
-        if (isPreview) {
-            toast({ title: 'Preview Submission', description: 'This is a preview. No data was saved.' });
-            onSubmitted();
-            return;
-        }
-
+        if (isPreview) { onSubmitted(); return; }
         survey.elements.filter(isQuestion).forEach(q => form.clearErrors(q.id));
-
         const missing = validateAllRequired(data);
         if (missing.length > 0) {
-            if (!isAllSectionsStrict) {
-                setMissingFields(missing);
-                setShowMissingFieldsModal(true);
-            } else {
-                onInvalid({});
-            }
+            if (!isAllSectionsStrict) { setMissingFields(missing); setShowMissingFieldsModal(true); }
+            else onInvalid({});
             return;
         }
-
         if (!firestore) return;
-
         setIsSubmitting(true);
         const score = calculateScore(data);
         const serializedData = { ...data };
-        Object.keys(serializedData).forEach(key => {
-            if (serializedData[key] instanceof Date) {
-                serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd');
-            }
-        });
-
+        Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null && (typeof v !== 'number' || v > 0) ));
-
-        const answers = Object.entries(cleanedData).map(([questionId, value]) => ({
-            questionId,
-            value,
-        }));
-
-        const responseData = {
-            surveyId: survey.id,
-            submittedAt: new Date().toISOString(),
-            answers,
-            score,
-        };
-
+        const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
+        const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
         form.control.disabled = true;
-
         try {
             const docRef = await addDoc(responsesCollection, responseData);
-            
-            // Webhook Data Push
             if (survey.webhookUrl) {
                 const outcome = resolveOutcome(score);
                 const webhookPayload: Record<string, any> = {
@@ -957,13 +849,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     score: score,
                     outcome_label: outcome?.label || 'Default',
                 };
-
-                // Add the absolute result URL to the payload
-                if (typeof window !== 'undefined') {
-                    webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
-                }
-
-                // Construct flattened question answers
+                if (typeof window !== 'undefined') webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
                 survey.elements.filter(isQuestion).forEach(q => {
                     const answerValue = cleanedData[q.id];
                     if (answerValue !== undefined) {
@@ -972,115 +858,57 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         if (q.type === 'checkboxes' && typeof answerValue === 'object') {
                             val = answerValue.options?.join(', ');
                             if (answerValue.other) val += `, Other: ${answerValue.other}`;
-                        } else if (Array.isArray(answerValue)) {
-                            val = answerValue.join(', ');
-                        }
+                        } else if (Array.isArray(answerValue)) val = answerValue.join(', ');
                         webhookPayload[key] = val;
                     }
                 });
-
-                // Non-blocking fire and forget push
-                fetch(survey.webhookUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(webhookPayload),
-                }).catch(err => console.error("Webhook push failed:", err));
+                fetch(survey.webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(webhookPayload) }).catch(err => console.error("Webhook push failed:", err));
             }
-
-            // Artificial delay for UX visibility of the preloader
             await new Promise(resolve => setTimeout(resolve, 800));
-
-            if (survey.scoringEnabled) {
-                const rule = resolveOutcome(score);
-                if (rule) {
-                    router.push(`/surveys/${survey.slug}/result/${docRef.id}`);
-                    return;
-                }
-            }
-            
+            if (survey.scoringEnabled && resolveOutcome(score)) { router.push(`/surveys/${survey.slug}/result/${docRef.id}`); return; }
             onSubmitted();
         } catch (error) {
-             const permissionError = new FirestorePermissionError({
-                path: responsesCollection.path,
-                operation: 'create',
-                requestResourceData: responseData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: responsesCollection.path, operation: 'create', requestResourceData: responseData }));
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
             setIsSubmitting(false);
-        } finally {
-            form.control.disabled = false;
-        }
+        } finally { form.control.disabled = false; }
     };
 
     const handleNext = async () => {
         const currentElements = pages[currentPageIndex];
-        if (currentElements.length === 0) {
-            setCurrentPageIndex(1);
-            window.scrollTo(0, 0);
-            return;
-        }
-
+        if (currentElements.length === 0) { setCurrentPageIndex(1); window.scrollTo(0, 0); return; }
         const formData = form.getValues();
-
         const pageSection = currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
         if (pageSection?.validateBeforeNext) {
             const questionsOnPage = currentElements.filter(isQuestion);
-            
             questionsOnPage.forEach(q => form.clearErrors(q.id));
-
-            const invalidQuestionsOnPage = questionsOnPage
-                .filter(q => {
-                    const state = elementStates[q.id];
-                    if (!state?.isVisible || !state?.isRequired) return false;
-                    
-                    const value = formData[q.id];
-                    return isValueEmpty(value, q.type);
-                });
-            
+            const invalidQuestionsOnPage = questionsOnPage.filter(q => {
+                const state = elementStates[q.id];
+                if (!state?.isVisible || !state?.isRequired) return false;
+                return isValueEmpty(formData[q.id], q.type);
+            });
             if (invalidQuestionsOnPage.length > 0) {
-                invalidQuestionsOnPage.forEach(q => {
-                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
-                });
+                invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: 'This field is required.' }));
                 return; 
             }
         }
-
         let nextPageIndex = currentPageIndex + 1; 
-
         const logicBlocks = survey.elements.filter(isLogic);
         let jumpAction = false;
-        
         for (const block of logicBlocks) {
-            const blockPageIndex = pages.findIndex(p => p.some(el => el.id === block.id));
-            if (blockPageIndex > currentPageIndex) continue;
-
+            if (pages.findIndex(p => p.some(el => el.id === block.id)) > currentPageIndex) continue;
             for (const rule of block.rules) {
-                const answer = formData[rule.sourceQuestionId];
-                if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
-                    if (rule.action.type === 'jump' && rule.action.targetElementId) {
-                        const targetPageIndex = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
-                        if (targetPageIndex > -1 && targetPageIndex > currentPageIndex) {
-                            nextPageIndex = targetPageIndex;
-                            jumpAction = true;
-                            break;
-                        }
-                    }
+                if (evaluateCondition(formData[rule.sourceQuestionId], rule.operator, rule.targetValue) && rule.action.type === 'jump' && rule.action.targetElementId) {
+                    const targetIdx = pages.findIndex(p => p.some(el => el.id === rule.action.targetElementId));
+                    if (targetIdx > currentPageIndex) { nextPageIndex = targetIdx; jumpAction = true; break; }
                 }
             }
             if (jumpAction) break;
         }
-
-        if (nextPageIndex < pages.length) {
-            setCurrentPageIndex(nextPageIndex);
-            window.scrollTo(0, 0);
-        }
+        if (nextPageIndex < pages.length) { setCurrentPageIndex(nextPageIndex); window.scrollTo(0, 0); }
     };
 
-    const handlePrev = () => {
-        setCurrentPageIndex(prev => prev - 1);
-        window.scrollTo(0, 0);
-    };
+    const handlePrev = () => { setCurrentPageIndex(prev => prev - 1); window.scrollTo(0, 0); };
 
     const handleOkMissingFields = () => {
         setShowMissingFieldsModal(false);
@@ -1088,14 +916,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             const first = missingFields[0];
             setCurrentPageIndex(first.pageIndex);
             setTimeout(() => {
-                const element = document.getElementById(first.id);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    const input = element.querySelector('input, select, textarea, button');
-                    if (input instanceof HTMLElement) {
-                        input.focus();
-                    }
-                }
+                const el = document.getElementById(first.id);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('input, select, textarea, button')?.focus(); }
             }, 1000);
         }
     };
@@ -1104,6 +926,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const isCoverPage = currentElements.length === 0;
     const pageSection = !isCoverPage && currentElements[0]?.type === 'section' ? (currentElements[0] as SurveyLayoutBlock) : null;
     const showTitles = survey.showSurveyTitles !== false;
+
+    const currentTotalScale = 1.3 * 1.0; // BaseScale * Zoom
+    const dynamicFontSize = `${Math.round(15 * currentTotalScale)}px`;
 
     if (isCoverPage) {
         return (
@@ -1121,20 +946,16 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     <>
                         {survey.bannerImageUrl && (
                             <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
-                                <img 
-                                    src={survey.bannerImageUrl} 
-                                    alt={survey.title || ''} 
-                                    className="w-full h-auto block" 
-                                />
+                                <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
                             </div>
                         )}
                         <div className="space-y-5 max-w-3xl mx-auto px-4">
-                            <h1 className="text-[14.4px] sm:text-[16px] md:text-[19.2px] font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
-                            <div className="text-[9.6px] sm:text-[11.2px] text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <h1 className="text-[21.6px] sm:text-[24px] md:text-[28.8px] font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
+                            <div className="text-[14.4px] sm:text-[16.8px] text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     </>
                 )}
-                <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-[11.2px] ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-7 sm:text-base font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6" onClick={handleNext}>
+                <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-[16.8px] ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-8 sm:text-lg font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6" onClick={handleNext}>
                     {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                 </button>
             </div>
@@ -1143,12 +964,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     return (
         <div className="pb-24">
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3 sm:space-y-10">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
                 {pageSection && (
-                    <div className="text-center space-y-3 mb-6 sm:mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <h2 className="text-[16.8px] sm:text-[24px] font-semibold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                    <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                        <h2 className="text-[25.2px] sm:text-[36px] font-semibold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                         {pageSection.description && (
-                            <div className="text-muted-foreground text-[11.2px] sm:text-[14.4px] leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                            <div className="text-muted-foreground text-[16.8px] sm:text-[21.6px] leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
                         )}
                     </div>
                 )}
@@ -1156,8 +977,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} />
                 
                 <Card className="border-t-8 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
-                    <CardContent className="p-5 sm:p-8 space-y-6 sm:space-y-8">
-                        <div className="space-y-6 sm:space-y-8">
+                    <CardContent className="p-6 sm:p-10 space-y-8 sm:space-y-10">
+                        <div className="space-y-8 sm:space-y-10">
                             {currentElements.map((el) => {
                                 if (el.id === pageSection?.id) return null;
                                 return (
@@ -1178,20 +999,20 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     </CardContent>
                 </Card>
 
-                 <div className={cn("flex flex-col sm:flex-row items-center mt-10 gap-3 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
+                 <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
                     {isMultiPage && currentPageIndex > 0 && (
-                        <Button type="button" variant="ghost" size="lg" className="h-12 px-8 rounded-2xl font-black text-muted-foreground hover:text-foreground hover:bg-slate-100 w-full sm:w-auto text-[11.2px] uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
+                        <Button type="button" variant="ghost" size="lg" className="h-14 px-10 rounded-2xl font-black text-muted-foreground hover:text-foreground hover:bg-slate-100 w-full sm:w-auto text-[16.8px] uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
                             Previous
                         </Button>
                     )}
                      {isMultiPage && currentPageIndex < pages.length - 1 && (
-                         <Button type="button" size="lg" className="h-12 px-8 rounded-2xl font-black shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-[11.2px] uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
-                            Next <ArrowRight className="ml-2 h-4 w-4" />
+                         <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-black shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-[16.8px] uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
+                            Next <ArrowRight className="ml-2 h-5 w-5" />
                         </Button>
                      )}
                     {currentPageIndex === pages.length - 1 && (
-                        <Button type="submit" size="lg" className={cn("h-12 px-10 rounded-2xl font-black shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-[11.2px] uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
-                            {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                        <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-black shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-[16.8px] uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
+                            {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
                         </Button>
                     )}
                 </div>
@@ -1199,30 +1020,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
             <AnimatePresence>
                 {isSubmitting && (
-                    <motion.div 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-md"
-                    >
-                        <motion.div 
-                            animate={{ 
-                                scale: [1, 1.1, 1],
-                                opacity: [0.8, 1, 0.8]
-                            }}
-                            transition={{ 
-                                duration: 2, 
-                                repeat: Infinity, 
-                                ease: "easeInOut" 
-                            }}
-                            className="flex flex-col items-center gap-6"
-                        >
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/80 backdrop-blur-md">
+                        <motion.div animate={{ scale: [1, 1.1, 1], opacity: [0.8, 1, 0.8] }} transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }} className="flex flex-col items-center gap-6">
                             <SmartSappIcon className="h-20 w-20 text-primary drop-shadow-2xl" />
                             <div className="text-center space-y-2">
-                                <h3 className="text-2xl font-black tracking-tighter text-foreground">Submitting your response</h3>
-                                <p className="text-muted-foreground font-medium text-sm">Please wait while we secure your data...</p>
+                                <h3 className="text-3xl font-black tracking-tighter text-foreground">Submitting your response</h3>
+                                <p className="text-muted-foreground font-medium text-lg">Please wait while we secure your data...</p>
                             </div>
-                            <Loader2 className="h-6 w-6 animate-spin text-primary mt-4" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mt-4" />
                         </motion.div>
                     </motion.div>
                 )}
@@ -1234,23 +1039,23 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                             <AlertCircle className="h-6 w-6 text-destructive" />
                         </div>
-                        <DialogTitle className="text-center text-lg">Required Fields Missing</DialogTitle>
-                        <DialogDescription className="text-center pt-1.5 text-xs font-medium">
+                        <DialogTitle className="text-center text-xl font-bold">Required Fields Missing</DialogTitle>
+                        <DialogDescription className="text-center pt-2 text-sm font-medium">
                             Please complete the following fields before submitting your survey:
                         </DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="max-h-[30vh] border rounded-md my-4">
-                        <ul className="p-4 space-y-2">
+                        <ul className="p-4 space-y-3">
                             {missingFields.map((field, idx) => (
-                                <li key={idx} className="flex items-center gap-2 text-xs font-medium">
-                                    <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
+                                <li key={idx} className="flex items-center gap-3 text-sm font-medium">
+                                    <div className="h-2 w-2 rounded-full bg-destructive" />
                                     <span className="font-bold">{field.label}</span>
                                 </li>
                             ))}
                         </ul>
                     </ScrollArea>
                     <DialogFooter>
-                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-11 rounded-xl text-sm">OK, take me there</Button>
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">OK, take me there</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

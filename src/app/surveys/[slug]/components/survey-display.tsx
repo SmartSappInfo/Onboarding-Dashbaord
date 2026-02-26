@@ -141,8 +141,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 />
                             </div>
                         )}
-                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-base sm:text-lg px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        <h1 className="text-[28.8px] sm:text-[36px] font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <p className="text-muted-foreground text-[19.2px] sm:text-[21.6px] px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
                  <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
@@ -153,7 +153,6 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
         )
     }
 
-    // Skip cover page if titles are hidden
     const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
     const showHeader = !!survey.showSurveyTitles;
 
@@ -187,8 +186,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                             />
                                         </div>
                                     )}
-                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>
-                                    <div className="text-base sm:text-xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <h1 className="text-[36px] sm:text-[43.2px] md:text-[57.6px] font-black tracking-tighter mb-6 text-foreground px-2 leading-tight">{survey.title}</h1>
+                                    <div className="text-[19.2px] sm:text-[24px] text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>
