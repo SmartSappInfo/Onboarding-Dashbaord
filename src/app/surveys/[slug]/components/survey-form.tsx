@@ -301,7 +301,7 @@ const ElementRenderer = ({
         return (
             <div id={question.id} className={cn("space-y-2", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
                 <div className="space-y-1">
-                    <Label className="text-xl font-bold block leading-tight text-foreground">
+                    <Label className="text-lg font-bold block leading-tight text-foreground">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {isRequired && <span className="text-destructive ml-1">*</span>}
                     </Label>
@@ -531,7 +531,7 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
+                const sizeClass = Tag === 'h1' ? "text-2xl sm:text-3xl font-black" : Tag === 'h3' ? "text-base sm:text-lg font-bold" : "text-xl sm:text-2xl font-bold";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
@@ -540,7 +540,7 @@ const ElementRenderer = ({
             }
             case 'description':
                 return (
-                    <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
+                    <div id={block.id} className={cn("text-muted-foreground my-4 text-sm sm:text-base leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
                         <div dangerouslySetInnerHTML={{ __html: block.text || '' }} />
                     </div>
                 );
@@ -1069,8 +1069,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                         )}
                         <div className="space-y-6 max-w-3xl mx-auto px-4">
-                            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
-                            <div className="text-base sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tighter text-foreground leading-[1.1]">{survey.title}</h1>
+                            <div className="text-sm sm:text-lg text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                         </div>
                     </>
                 )}
@@ -1086,9 +1086,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-3 sm:space-y-12">
                 {pageSection && (
                     <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <h2 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                        <h2 className="text-2xl sm:text-4xl font-semibold tracking-tight text-foreground" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
                         {pageSection.description && (
-                            <div className="text-muted-foreground text-lg sm:text-2xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                            <div className="text-muted-foreground text-base sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
                         )}
                     </div>
                 )}
@@ -1109,7 +1109,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                         isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
                                         isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
                                         surveyId={survey.id}
-                                        form={form}
                                         onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
                                         clearError={(id) => form.clearErrors(id)}
                                     />

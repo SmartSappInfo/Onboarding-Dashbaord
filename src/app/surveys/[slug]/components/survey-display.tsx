@@ -141,8 +141,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                 />
                             </div>
                         )}
-                        <h1 className="text-3xl sm:text-4xl font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                        <p className="text-muted-foreground text-lg sm:text-xl px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-4 px-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                        <p className="text-muted-foreground text-base sm:text-lg px-4">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
                     </div>
                 </main>
                  <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
@@ -187,8 +187,8 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                                             />
                                         </div>
                                     )}
-                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>
-                                    <div className="text-lg sm:text-2xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                    <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tighter mb-6 text-foreground px-2">{survey.title}</h1>
+                                    <div className="text-base sm:text-xl text-muted-foreground prose prose-slate max-w-none px-4 font-medium leading-relaxed whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                 </>
                             )}
                         </div>

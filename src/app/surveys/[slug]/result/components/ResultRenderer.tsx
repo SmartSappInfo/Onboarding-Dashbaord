@@ -68,7 +68,7 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
                     <span className="text-6xl sm:text-8xl md:text-9xl font-black tabular-nums tracking-tighter">
                         {displayScore}
                     </span>
-                    <span className="text-lg sm:text-xl md:text-2xl font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
+                    <span className="text-base sm:text-xl md:text-2xl font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
                 </div>
 
                 <div className="w-full max-w-md mx-auto">
@@ -101,7 +101,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     switch (block.type) {
         case 'heading': {
             const Tag = block.variant || 'h2';
-            const sizeClass = Tag === 'h1' ? "text-3xl sm:text-5xl font-black" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-black";
+            const sizeClass = Tag === 'h1' ? "text-2xl sm:text-4xl font-black" : Tag === 'h3' ? "text-base sm:text-lg font-bold" : "text-xl sm:text-2xl font-black";
             return (
                 <Tag 
                     className={cn(sizeClass, "tracking-tight whitespace-pre-wrap", containerClasses)} 
@@ -112,7 +112,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         }
         case 'text':
-            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+            return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
         case 'image':
             return block.url ? (
                 <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>
@@ -128,7 +128,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                         asChild 
                         size="lg" 
                         variant={block.style?.variant as any} 
-                        className="h-14 px-8 text-lg font-black rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
+                        className="h-14 px-8 text-base font-black rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 w-full sm:w-auto"
                     >
                         <a href={block.link || '#'} target={block.openInNewTab ? "_blank" : "_self"} rel="noopener noreferrer">
                             {block.title} <ArrowRight className="ml-2 h-5 w-5" />
@@ -138,7 +138,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
             );
         case 'quote':
             return (
-                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-lg sm:text-xl whitespace-pre-wrap", containerClasses)}>
+                <div className={cn("p-6 sm:p-8 bg-muted/50 border-l-4 border-primary rounded-r-2xl italic text-base sm:text-lg whitespace-pre-wrap", containerClasses)}>
                     <Quote className="h-6 w-6 sm:h-8 sm:w-8 text-primary/20 mb-4" />
                     {block.content}
                 </div>
@@ -159,8 +159,8 @@ export default function ResultRenderer({ survey, response, page }: ResultRendere
                 <div className="flex justify-center">
                     <SmartSappLogo className="h-10 sm:h-12 mb-6 sm:mb-8" />
                 </div>
-                <h1 className="text-3xl sm:text-4xl font-black mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
-                <p className="text-lg sm:text-xl text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
+                <h1 className="text-2xl sm:text-3xl font-black mb-4">{survey.thankYouTitle || 'Thank You!'}</h1>
+                <p className="text-base sm:text-lg text-muted-foreground">{survey.thankYouDescription || 'Your response has been recorded.'}</p>
             </div>
         );
     }
