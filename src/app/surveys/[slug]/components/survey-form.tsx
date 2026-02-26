@@ -556,11 +556,11 @@ const ElementRenderer = ({
             case 'audio':
                 return block.url ? <div className="my-5 p-5 bg-slate-50 border border-slate-100 rounded-xl"><audio controls src={block.url} className="w-full text-xs">Your browser does not support the audio element.</audio></div> : null;
             case 'document':
-                 return (
+                return (
                     <div className={cn("my-5", alignmentClass)}>
                         <Button asChild variant="outline" className="h-11 px-7 rounded-xl border-2 font-bold shadow-sm transition-all hover:bg-slate-50 text-[10.4px] uppercase tracking-tight"><a href={block.url} target="_blank" rel="noopener noreferrer"><FileIcon className="mr-2 h-4 w-4 text-primary"/> Download Document</a></Button>
                     </div>
-                 );
+                );
             case 'embed':
                 return block.html ? <div className="my-5 rounded-xl overflow-hidden border shadow-sm" dangerouslySetInnerHTML={{ __html: block.html }} /> : null;
             default:
@@ -946,6 +946,42 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         try {
             const docRef = await addDoc(responsesCollection, responseData);
             
+            // Webhook Data Push
+            if (survey.webhookUrl) {
+                const outcome = resolveOutcome(score);
+                const webhookPayload: Record<string, any> = {
+                    survey_title: survey.title,
+                    survey_id: survey.id,
+                    submission_id: docRef.id,
+                    submitted_at: responseData.submittedAt,
+                    score: score,
+                    outcome_label: outcome?.label || 'Default',
+                };
+
+                // Construct flattened question answers
+                survey.elements.filter(isQuestion).forEach(q => {
+                    const answerValue = cleanedData[q.id];
+                    if (answerValue !== undefined) {
+                        const key = q.title.replace(/<[^>]*>?/gm, '').trim() || q.id;
+                        let val = answerValue;
+                        if (q.type === 'checkboxes' && typeof answerValue === 'object') {
+                            val = answerValue.options?.join(', ');
+                            if (answerValue.other) val += `, Other: ${answerValue.other}`;
+                        } else if (Array.isArray(answerValue)) {
+                            val = answerValue.join(', ');
+                        }
+                        webhookPayload[key] = val;
+                    }
+                });
+
+                // Non-blocking fire and forget push
+                fetch(survey.webhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(webhookPayload),
+                }).catch(err => console.error("Webhook push failed:", err));
+            }
+
             // Artificial delay for UX visibility of the preloader
             await new Promise(resolve => setTimeout(resolve, 800));
 

@@ -216,6 +216,7 @@ export interface Survey {
   startButtonText?: string;
   showCoverPage?: boolean;
   showSurveyTitles?: boolean;
+  webhookUrl?: string;
 }
 
 export interface SurveyResponse {

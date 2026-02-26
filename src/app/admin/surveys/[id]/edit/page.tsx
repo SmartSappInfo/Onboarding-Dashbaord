@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
@@ -119,6 +119,7 @@ const formSchema = z.object({
   patternColor: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
+  webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -262,6 +263,7 @@ function EditSurveyContent() {
             patternColor: "#3B5FFF",
             status: "published",
             slug: "",
+            webhookUrl: "",
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -317,6 +319,7 @@ function EditSurveyContent() {
                 patternColor: survey.patternColor || '#3B5FFF',
                 status: survey.status || 'published',
                 slug: survey.slug,
+                webhookUrl: survey.webhookUrl || '',
                 scoringEnabled: survey.scoringEnabled || false,
                 maxScore: survey.maxScore || 100,
                 resultRules: survey.resultRules || [],
@@ -739,8 +742,8 @@ function EditSurveyContent() {
                                         <CardTitle>Publish</CardTitle>
                                         <CardDescription>Configure the final settings and publish your survey.</CardDescription>
                                     </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-8">
+                                    <CardContent className="space-y-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <FormField
                                                 control={form.control}
                                                 name="status"
@@ -791,6 +794,27 @@ function EditSurveyContent() {
                                                 )}
                                             />
                                         </div>
+
+                                        <Separator />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="webhookUrl"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="flex items-center gap-2">
+                                                        <LinkIcon className="h-4 w-4 text-primary" /> External Webhook URL
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="https://connect.pabbly.com/workflow/sendwebhookdata/..." {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Enter an endpoint URL (e.g. Zapier or Pabbly). Data will be pushed as a flattened JSON object on every submission.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </CardContent>
                                 </Card>
                             </div>

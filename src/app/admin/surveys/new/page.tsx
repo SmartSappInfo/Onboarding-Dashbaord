@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy, Palette, Layout, Eye } from 'lucide-react';
+import { Check, Loader2, Sparkles, BrainCircuit, ArrowRight, Trophy, Palette, Layout, Eye, Link as LinkIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
@@ -117,6 +117,7 @@ const formSchema = z.object({
   patternColor: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
+  webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -259,6 +260,7 @@ export default function NewSurveyPage() {
             backgroundPattern: 'none',
             patternColor: '#3B5FFF',
             slug: '',
+            webhookUrl: '',
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -663,8 +665,8 @@ export default function NewSurveyPage() {
                                         <CardTitle>Final Settings</CardTitle>
                                         <CardDescription>Configure the final settings and publish your survey.</CardDescription>
                                     </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-8">
+                                    <CardContent className="space-y-8">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <FormField
                                                 control={form.control}
                                                 name="status"
@@ -715,6 +717,27 @@ export default function NewSurveyPage() {
                                                 )}
                                             />
                                         </div>
+
+                                        <Separator />
+
+                                        <FormField
+                                            control={form.control}
+                                            name="webhookUrl"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel className="flex items-center gap-2">
+                                                        <LinkIcon className="h-4 w-4 text-primary" /> External Webhook URL
+                                                    </FormLabel>
+                                                    <FormControl>
+                                                        <Input placeholder="https://connect.pabbly.com/workflow/sendwebhookdata/..." {...field} />
+                                                    </FormControl>
+                                                    <FormDescription>
+                                                        Enter an endpoint URL (e.g. Zapier or Pabbly). Data will be pushed as a flattened JSON object on every submission.
+                                                    </FormDescription>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </CardContent>
                                 </Card>
                             </div>
