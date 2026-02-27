@@ -40,6 +40,7 @@ const FieldSuggestionSchema = z.object({
     required: z.boolean().describe("Whether the field is likely required based on visual markers like '*' or explicit text."),
     options: z.array(z.string()).optional().describe("Suggested list of items if the field type is 'dropdown'."),
     isNamingField: z.boolean().optional().describe("Flag this as true if this field is the primary 'Naming' field for the form (the person who the document belongs to)."),
+    fontSize: z.number().min(6).max(36).optional().describe("The suggested font size in points, based on the text around the field."),
 });
 
 
@@ -81,7 +82,9 @@ const detectionPrompt = ai.definePrompt({
 
 5.  **Key Naming Field**: Identify exactly one 'isNamingField'. This should be the primary name of the person filling the form (usually at the very top).
 
-6.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page. Align fields perfectly with the lines/boxes on the document.
+6.  **Typography Estimation**: Estimate the 'fontSize' (6-36) based on the height of the lines or the surrounding labels. Standard is usually 10-12.
+
+7.  **Coordinates**: Ensure position and dimensions are accurate percentages (0-100) of the page. Align fields perfectly with the lines/boxes on the document.
 
 {{#if existingFields}}
 ### Context: Continuing Work

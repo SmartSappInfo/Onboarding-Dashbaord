@@ -60,6 +60,13 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
+  // Scaling Factor: 1.5 is the base scale from PageRenderer. 
+  // We multiply by zoom to ensure text scales with the canvas.
+  const baseScale = 1.5;
+  const currentTotalScale = baseScale * zoom;
+  const baseFontSize = field.fontSize || 11;
+  const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
+
   const handleResizeStart = (e: React.MouseEvent, handle: ResizeHandle) => {
     e.stopPropagation();
     e.preventDefault();
@@ -126,7 +133,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     flexDirection: 'column',
     justifyContent: field.verticalAlignment === 'center' ? 'center' : field.verticalAlignment === 'bottom' ? 'flex-end' : 'flex-start',
     textAlign: field.alignment || 'left',
-    fontSize: `${(field.fontSize || 11) * zoom * 1.5}px`,
+    fontSize: dynamicFontSize,
     fontWeight: field.bold ? 'bold' : 'normal',
     fontStyle: field.italic ? 'italic' : 'normal',
     textDecoration: field.underline ? 'underline' : 'none',

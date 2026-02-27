@@ -518,7 +518,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    const currentTotalScale = baseScale * zoom;
+    // Sync scaling logic with editor: 1.5 is the fixed point base scale from PageRenderer
+    const currentTotalScale = 1.5 * zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
