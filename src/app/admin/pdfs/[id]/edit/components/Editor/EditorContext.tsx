@@ -20,6 +20,7 @@ interface EditorContextType {
   password?: string;
   passwordProtected?: boolean;
   isStatusChanging?: boolean;
+  isSaving?: boolean;
   
   // Actions
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
@@ -72,6 +73,7 @@ export function EditorProvider({
   onSave,
   onPreview,
   isStatusChanging,
+  isSaving,
   password,
   setPassword,
   passwordProtected,
@@ -93,6 +95,7 @@ export function EditorProvider({
   onSave: () => void;
   onPreview: () => void;
   isStatusChanging: boolean;
+  isSaving?: boolean;
   password?: string;
   setPassword: (val: string) => void;
   passwordProtected?: boolean;
@@ -159,16 +162,66 @@ export function EditorProvider({
     setFields(prev => prev.map(f => updates[f.id] ? { ...f, position: updates[f.id] } : f));
   }, [fields, selectedFieldIds, setFields]);
 
+  // Keyboard Nudge Logic
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only process arrow keys if fields are selected
+      if (selectedFieldIds.length === 0) return;
+
+      // Don't nudge if user is typing in an input, textarea or contenteditable
+      const activeEl = document.activeElement;
+      const isTyping = 
+        activeEl instanceof HTMLInputElement || 
+        activeEl instanceof HTMLTextAreaElement || 
+        (activeEl as HTMLElement)?.isContentEditable;
+
+      if (isTyping) return;
+
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        // Prevent default browser behavior (scrolling)
+        e.preventDefault();
+
+        // Calculate nudge increments
+        // Standard: 0.5%
+        // Shift: 2.0% (large)
+        // Ctrl/Cmd: 0.1% (precision)
+        let nudgeAmount = 0.5;
+        if (e.shiftKey) nudgeAmount = 2.0;
+        if (e.ctrlKey || e.metaKey) nudgeAmount = 0.1;
+
+        const dx = e.key === 'ArrowLeft' ? -nudgeAmount : e.key === 'ArrowRight' ? nudgeAmount : 0;
+        const dy = e.key === 'ArrowUp' ? -nudgeAmount : e.key === 'ArrowDown' ? nudgeAmount : 0;
+
+        setFields(prev => prev.map(f => {
+          if (selectedFieldIds.includes(f.id)) {
+            return {
+              ...f,
+              position: {
+                x: Math.max(0, Math.min(100 - f.dimensions.width, f.position.x + dx)),
+                y: Math.max(0, Math.min(100 - f.dimensions.height, f.position.y + dy)),
+              },
+              isSuggestion: false
+            };
+          }
+          return f;
+        }));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFieldIds, setFields]);
+
   const value = React.useMemo(() => ({
     pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
-    password, passwordProtected, isStatusChanging,
+    password, passwordProtected, isStatusChanging, isSaving,
     setFields, setSelectedFieldIds, setZoom, setIsSidebarCollapsed, setNamingFieldId, setMarquee,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
     pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
-    password, passwordProtected, isStatusChanging, setFields, setNamingFieldId,
+    password, passwordProtected, isStatusChanging, isSaving, setFields, setNamingFieldId,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
