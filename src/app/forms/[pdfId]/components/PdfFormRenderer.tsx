@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useForm, Controller, useWatch, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle } from 'lucide-react';
+import DataEntryModal from './DataEntryModal';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -142,6 +143,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [showDownloadBubble, setShowDownloadBubble] = React.useState(false);
   
   const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
+  const [isDataEntryOpen, setIsDataEntryOpen] = React.useState(false);
+  const [activeDataFieldId, setActiveDataFieldId] = React.useState<string | null>(null);
   
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
@@ -162,10 +165,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = useForm({
+  const methods = useForm({
     resolver: zodResolver(validationSchema),
     mode: 'onChange',
   });
+
+  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = methods;
 
   const watchedValues = watch();
 
@@ -306,13 +311,13 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     setShowMissingFieldsModal(false);
     if (missingFields.length > 0) {
         const firstId = missingFields[0].id;
-        const element = document.getElementById(firstId);
-        if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const input = element.querySelector('input, select, textarea, button');
-            if (input instanceof HTMLElement) {
-                input.focus();
-            }
+        const field = pdfForm.fields.find(f => f.id === firstId);
+        if (field?.type === 'signature' || field?.type === 'photo') {
+            const element = document.getElementById(firstId);
+            if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            setActiveDataFieldId(firstId);
+            setIsDataEntryOpen(true);
         }
     }
   };
@@ -410,6 +415,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     }
   };
 
+  const handleFieldClick = (field: PDFFormField) => {
+    if (isSubmitting || isSubmitted) return;
+    
+    if (field.type === 'signature' || field.type === 'photo') {
+        setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
+    } else {
+        setActiveDataFieldId(field.id);
+        setIsDataEntryOpen(true);
+    }
+  }
+
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
@@ -432,84 +448,49 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         );
     }
 
-    let fieldElement;
-    const inputClasses = "w-full h-full p-1 border rounded bg-white/90 focus:bg-white transition-colors disabled:opacity-80 placeholder:italic placeholder:text-muted-foreground/60 text-left align-top";
-    
-    switch(field.type) {
-        case 'text':
-        case 'phone':
-        case 'email':
-            fieldElement = (
-                <input 
-                    {...register(field.id)}
-                    type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : 'text'}
-                    placeholder={field.placeholder}
-                    disabled={isSubmitting}
-                    style={{ fontSize: dynamicFontSize }}
-                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")}
-                />
-            );
-            break;
-        case 'date':
-        case 'time':
-             fieldElement = (
-                <input 
-                    type={field.type === 'time' ? 'time' : 'date'}
-                    {...register(field.id)}
-                    disabled={isSubmitting}
-                    style={{ fontSize: dynamicFontSize }}
-                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")} 
-                />
-             );
-             break;
-        case 'dropdown':
-            fieldElement = (
-                <select
-                    {...register(field.id)}
-                    disabled={isSubmitting}
-                    style={{ fontSize: dynamicFontSize }}
-                    className={cn(inputClasses, errors[field.id] && "border-destructive ring-1 ring-destructive/20")}
-                >
-                    <option value="">{field.placeholder || 'Select...'}</option>
-                    {(field.options || []).map((opt, i) => (
-                        <option key={i} value={opt}>{opt}</option>
-                    ))}
-                </select>
-            );
-            break;
-        case 'signature':
-        case 'photo':
-            fieldElement = (
-                 <button
-                    type="button"
-                    disabled={isSubmitting}
-                    onClick={() => setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' })}
-                    className={cn(
-                        "w-full h-full border border-dashed rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40 transition-colors overflow-hidden",
-                        errors[field.id] ? "border-destructive bg-destructive/5" : "border-muted-foreground"
-                    )}
-                >
-                    {value ? (
-                        <img src={value} alt="Captured" className="w-full h-full object-contain" />
-                    ) : (
-                        <span 
-                            className="text-muted-foreground font-medium uppercase text-center px-1"
-                            style={{ fontSize: `${Math.max(6, Math.round(8 * currentTotalScale))}px` }}
-                        >
-                            {field.placeholder || (field.type === 'photo' ? 'Tap to Capture' : 'Sign Here')}
-                        </span>
-                    )}
-                </button>
-            );
-            break;
-        default:
-            return null;
-    }
+    const isInteractiveMedia = field.type === 'signature' || field.type === 'photo';
 
-     return (
-        <div className="relative h-full w-full">
-            {fieldElement}
-        </div>
+    return (
+        <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={() => handleFieldClick(field)}
+            className={cn(
+                "w-full h-full text-left transition-all relative group/field",
+                isInteractiveMedia 
+                    ? "border border-dashed border-muted-foreground rounded flex items-center justify-center bg-muted/20 hover:bg-muted/40" 
+                    : "border border-transparent hover:border-primary/40 hover:bg-primary/5 rounded-sm p-1",
+                errors[field.id] && "border-destructive bg-destructive/5"
+            )}
+        >
+            {/* Hover Indicator */}
+            <div className="absolute -top-6 left-0 opacity-0 group-hover/field:opacity-100 transition-opacity whitespace-nowrap bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-50 shadow-lg">
+                Click to {isInteractiveMedia ? (field.type === 'photo' ? 'Capture' : 'Sign') : 'Edit'}
+            </div>
+
+            {value ? (
+                isInteractiveMedia ? (
+                    <img src={value} alt="Captured" className="w-full h-full object-contain" />
+                ) : (
+                    <span 
+                        className="font-medium text-primary block truncate w-full"
+                        style={{ fontSize: dynamicFontSize }}
+                    >
+                        {field.type === 'date' ? format(new Date(value), 'PPP') : value}
+                    </span>
+                )
+            ) : (
+                <div className="flex items-center gap-1 opacity-40">
+                    {!isInteractiveMedia && <Edit3 className="h-3 w-3 text-muted-foreground shrink-0" />}
+                    <span 
+                        className="text-muted-foreground font-medium uppercase truncate"
+                        style={{ fontSize: `${Math.max(6, Math.round(8 * currentTotalScale))}px` }}
+                    >
+                        {field.placeholder || (field.type === 'photo' ? 'Capture' : field.type === 'signature' ? 'Sign' : field.label)}
+                    </span>
+                </div>
+            )}
+        </button>
     );
   }
 
@@ -517,262 +498,285 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const bgColor = pdfForm.backgroundColor || '#F1F5F9';
 
   return (
-    <div className="light flex flex-col h-[100dvh] overflow-hidden text-foreground selection:bg-primary/20 relative" style={{ backgroundColor: bgColor }}>
-       <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
-       
-       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
-            {pdfForm.logoUrl ? (
-                <div className="relative h-9 w-12 shrink-0">
-                    <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
-                </div>
-            ) : (
-                <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
-            )}
-            <div className="flex flex-col min-w-0 -ml-1">
-                <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
-                <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
-            </div>
-            <div className="flex-1" />
-            <div className="flex items-center gap-2 relative">
-                {!isSubmitted ? (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <div className="inline-block">
-                                    <Button 
-                                        type="button" 
-                                        size="sm" 
-                                        disabled={isSubmitting || isPreview} 
-                                        onClick={handleSubmit(handlePreSubmit, onInvalid)}
-                                    >
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                                        Done
-                                    </Button>
-                                </div>
-                            </TooltipTrigger>
-                            {!isValid && (
-                                <TooltipContent>
-                                    <p>Please complete all required fields before submitting.</p>
-                                </TooltipContent>
-                            )}
-                        </Tooltip>
-                    </TooltipProvider>
-                ) : (
-                    <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 hidden sm:block" />
-                        <Button 
-                            type="button" 
-                            size="sm" 
-                            disabled={isDownloading} 
-                            onClick={handleDownload}
-                        >
-                            {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                            Download Signed PDF
-                        </Button>
+    <FormProvider {...methods}>
+        <div className="light flex flex-col h-[100dvh] overflow-hidden text-foreground selection:bg-primary/20 relative" style={{ backgroundColor: bgColor }}>
+        <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
+        
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
+                {pdfForm.logoUrl ? (
+                    <div className="relative h-9 w-12 shrink-0">
+                        <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
                     </div>
+                ) : (
+                    <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
                 )}
-
-                {/* Animated Chat Bubble Callout */}
-                <AnimatePresence>
-                    {showDownloadBubble && (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: [0, -10, 0] }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ 
-                                opacity: { duration: 0.3 },
-                                y: { repeat: Infinity, duration: 2, ease: "easeInOut" }
-                            }}
-                            className="absolute top-12 right-0 z-50 pointer-events-none"
-                        >
-                            <div className="bg-primary text-white px-4 py-3 rounded-2xl shadow-2xl relative min-w-[220px] border border-white/20">
-                                <div className="absolute -top-1.5 right-8 w-3 h-3 bg-primary rotate-45 rounded-sm" />
-                                <p className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">
-                                    Your Form Has been Submitted.<br/>
-                                    <span className="text-white/80">Download Your Copy Here</span>
-                                </p>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </header>
-
-        <main className="flex-grow relative overflow-hidden overscroll-behavior-none z-10">
-            <ScrollArea 
-                className="h-full w-full"
-                viewportRef={viewportRef}
-            >
-                <div 
-                    ref={pageContainerRef}
-                    className="p-2 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" 
-                    style={{ minWidth: 'fit-content' }}
-                >
-                    {!pdfDoc ? (
-                         <div className="space-y-4">
-                            <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
+                <div className="flex flex-col min-w-0 -ml-1">
+                    <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
+                    <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
+                </div>
+                <div className="flex-1" />
+                <div className="flex items-center gap-2 relative">
+                    {!isSubmitted ? (
+                        <div className="flex items-center gap-2">
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="hidden sm:flex rounded-xl font-bold gap-2"
+                                onClick={() => setIsDataEntryOpen(true)}
+                                disabled={isSubmitting || isPreview}
+                            >
+                                <LayoutList className="h-4 w-4" />
+                                Form View
+                            </Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <div className="inline-block">
+                                            <Button 
+                                                type="button" 
+                                                size="sm" 
+                                                disabled={isSubmitting || isPreview} 
+                                                onClick={handleSubmit(handlePreSubmit, onInvalid)}
+                                                className="rounded-xl font-bold px-6"
+                                            >
+                                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                                Done
+                                            </Button>
+                                        </div>
+                                    </TooltipTrigger>
+                                    {!isValid && (
+                                        <TooltipContent>
+                                            <p>Please complete all required fields before submitting.</p>
+                                        </TooltipContent>
+                                    )}
+                                </Tooltip>
+                            </TooltipProvider>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4 sm:gap-8 pb-8">
-                            {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                                <div key={index} className="page-capture-wrapper">
-                                    <PageRenderer
-                                        pdf={pdfDoc}
-                                        pageNumber={index + 1}
-                                        fields={pdfForm.fields}
-                                        renderField={renderField}
-                                        scale={baseScale * zoom}
-                                    />
-                                </div>
-                            ))}
-                            
-                            {/* Branding Footer inside ScrollArea */}
-                            <footer className="py-12 text-center text-xs sm:text-sm text-muted-foreground w-full">
-                                <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                                <p>&copy; 2026 SmartSapp</p>
-                            </footer>
+                        <div className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600 hidden sm:block" />
+                            <Button 
+                                type="button" 
+                                size="sm" 
+                                disabled={isDownloading} 
+                                onClick={handleDownload}
+                                className="rounded-xl font-bold"
+                            >
+                                {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                Download Signed PDF
+                            </Button>
                         </div>
                     )}
+
+                    {/* Animated Chat Bubble Callout */}
+                    <AnimatePresence>
+                        {showDownloadBubble && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: [0, -10, 0] }}
+                                exit={{ opacity: 0, scale: 0.9 }}
+                                transition={{ 
+                                    opacity: { duration: 0.3 },
+                                    y: { repeat: Infinity, duration: 2, ease: "easeInOut" }
+                                }}
+                                className="absolute top-12 right-0 z-50 pointer-events-none"
+                            >
+                                <div className="bg-primary text-white px-4 py-3 rounded-2xl shadow-2xl relative min-w-[220px] border border-white/20">
+                                    <div className="absolute -top-1.5 right-8 w-3 h-3 bg-primary rotate-45 rounded-sm" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">
+                                        Your Form Has been Submitted.<br/>
+                                        <span className="text-white/80">Download Your Copy Here</span>
+                                    </p>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-                <ScrollBar orientation="horizontal" />
-            </ScrollArea>
+            </header>
 
-            <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
-                <div className="flex flex-col items-center bg-background/60 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full mb-2 shrink-0" 
-                                    onClick={() => setZoom(prev => Math.min(3, prev + 0.1))}
-                                >
-                                    <ZoomIn className="h-4 w-4 text-primary" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">Zoom In</TooltipContent>
-                        </Tooltip>
-                        
-                        <Slider
-                            orientation="vertical"
-                            min={0.5}
-                            max={3.0}
-                            step={0.05}
-                            value={[zoom]}
-                            onValueChange={([val]) => setZoom(val)}
-                            className="flex-grow py-2"
-                        />
-
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-full mt-2 shrink-0" 
-                                    onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
-                                >
-                                    <ZoomOut className="h-4 w-4 text-primary" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="left">Zoom Out</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                </div>
-                <div className="bg-primary/80 text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20 backdrop-blur-sm">
-                    {Math.round(zoom * 100)}%
-                </div>
-            </div>
-        </main>
-
-         <SignaturePadModal
-            open={!!mediaCaptureState}
-            onClose={() => setMediaCaptureState(null)}
-            onSave={(dataUrl) => {
-                if (mediaCaptureState) {
-                    setValue(mediaCaptureState.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true });
-                }
-                setMediaCaptureState(null);
-            }}
-            mode={mediaCaptureState?.mode || 'signature'}
-        />
-
-        <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                        <AlertCircle className="h-6 w-6 text-destructive" />
-                    </div>
-                    <DialogTitle className="text-center text-xl font-bold">Required Fields Missing</DialogTitle>
-                    <DialogDescription className="text-center pt-2 text-sm font-medium">
-                        Please complete the following fields before submitting the document:
-                    </DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="max-h-[30vh] border rounded-md my-4">
-                    <ul className="p-4 space-y-3">
-                        {missingFields.map((field, idx) => (
-                            <li key={idx} className="flex items-center gap-3 text-sm font-medium">
-                                <div className="h-2 w-2 rounded-full bg-destructive" />
-                                <span className="font-bold">{field.label}</span>
-                            </li>
-                        ))}
-                    </ul>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">OK, take me there</Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-
-        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-            <AlertDialogContent className="sm:max-w-md">
-                <AlertDialogHeader>
-                    <div className="flex items-center gap-3 mb-2">
-                        {hasSignature ? (
-                            <div className="bg-primary/10 p-2 rounded-full">
-                                <ShieldAlert className="h-6 w-6 text-primary" />
+            <main className="flex-grow relative overflow-hidden overscroll-behavior-none z-10">
+                <ScrollArea 
+                    className="h-full w-full"
+                    viewportRef={viewportRef}
+                >
+                    <div 
+                        ref={pageContainerRef}
+                        className="p-2 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" 
+                        style={{ minWidth: 'fit-content' }}
+                    >
+                        {!pdfDoc ? (
+                            <div className="space-y-4">
+                                <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
                             </div>
                         ) : (
-                            <div className="bg-yellow-100 p-2 rounded-full">
-                                <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                            <div className="flex flex-col gap-4 sm:gap-8 pb-8">
+                                {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                                    <div key={index} className="page-capture-wrapper">
+                                        <PageRenderer
+                                            pdf={pdfDoc}
+                                            pageNumber={index + 1}
+                                            fields={pdfForm.fields}
+                                            renderField={renderField}
+                                            scale={baseScale * zoom}
+                                        />
+                                    </div>
+                                ))}
+                                
+                                {/* Branding Footer inside ScrollArea */}
+                                <footer className="py-12 text-center text-xs sm:text-sm text-muted-foreground w-full">
+                                    <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+                                    <p>&copy; 2026 SmartSapp</p>
+                                </footer>
                             </div>
                         )}
-                        <AlertDialogTitle>Confirm Final Submission</AlertDialogTitle>
                     </div>
-                    <AlertDialogDescription asChild>
-                        <div className="space-y-4 pt-2 text-sm text-muted-foreground">
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+
+                <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
+                    <div className="flex flex-col items-center bg-background/60 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 rounded-full mb-2 shrink-0" 
+                                        onClick={() => setZoom(prev => Math.min(3, prev + 0.1))}
+                                    >
+                                        <ZoomIn className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom In</TooltipContent>
+                            </Tooltip>
+                            
+                            <Slider
+                                orientation="vertical"
+                                min={0.5}
+                                max={3.0}
+                                step={0.05}
+                                value={[zoom]}
+                                onValueChange={([val]) => setZoom(val)}
+                                className="flex-grow py-2"
+                            />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 rounded-full mt-2 shrink-0" 
+                                        onClick={() => setZoom(prev => Math.max(0.5, prev - 0.1))}
+                                    >
+                                        <ZoomOut className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom Out</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div className="bg-primary/80 text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20 backdrop-blur-sm">
+                        {Math.round(zoom * 100)}%
+                    </div>
+                </div>
+            </main>
+
+            <SignaturePadModal
+                open={!!mediaCaptureState}
+                onClose={() => setMediaCaptureState(null)}
+                onSave={(dataUrl) => {
+                    if (mediaCaptureState) {
+                        setValue(mediaCaptureState.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true });
+                    }
+                    setMediaCaptureState(null);
+                }}
+                mode={mediaCaptureState?.mode || 'signature'}
+            />
+
+            <DataEntryModal 
+                open={isDataEntryOpen}
+                onOpenChange={setIsDataEntryOpen}
+                pdfForm={pdfForm}
+                activeFieldId={activeDataFieldId}
+            />
+
+            <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-center text-xl font-bold">Required Fields Missing</DialogTitle>
+                        <DialogDescription className="text-center pt-2 text-sm font-medium">
+                            Please complete the following fields before submitting the document:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[30vh] border rounded-md my-4">
+                        <ul className="p-4 space-y-3">
+                            {missingFields.map((field, idx) => (
+                                <li key={idx} className="flex items-center gap-3 text-sm font-medium">
+                                    <div className="h-2 w-2 rounded-full bg-destructive" />
+                                    <span className="font-bold">{field.label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">OK, take me there</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                <AlertDialogContent className="sm:max-w-md">
+                    <AlertDialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
                             {hasSignature ? (
-                                <div className="space-y-4">
-                                    <div className="font-semibold text-foreground">Important Legal Notice:</div>
-                                    <div>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</div>
-                                    <div className="bg-muted p-3 rounded-md text-xs italic">
-                                        "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
-                                    </div>
+                                <div className="bg-primary/10 p-2 rounded-full">
+                                    <ShieldAlert className="h-6 w-6 text-primary" />
                                 </div>
                             ) : (
-                                <div>Are you ready to submit your responses? Please review your entries one last time.</div>
+                                <div className="bg-yellow-100 p-2 rounded-full">
+                                    <AlertTriangle className="h-6 w-6 text-yellow-600" />
+                                </div>
                             )}
-                            <div className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
-                                <AlertTriangle className="h-4 w-4" />
-                                This submission is final and irreversible.
-                            </div>
+                            <AlertDialogTitle>Confirm Final Submission</AlertDialogTitle>
                         </div>
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel disabled={isSubmitting}>Cancel and Review</AlertDialogCancel>
-                    <AlertDialogAction 
-                        onClick={onConfirmSubmission} 
-                        disabled={isSubmitting}
-                        className="bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                        Confirm and Submit
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    </div>
+                        <AlertDialogDescription asChild>
+                            <div className="space-y-4 pt-2 text-sm text-muted-foreground">
+                                {hasSignature ? (
+                                    <div className="space-y-4">
+                                        <div className="font-semibold text-foreground">Important Legal Notice:</div>
+                                        <div>By confirming, you acknowledge that the electronic signatures provided in this document are the legally binding equivalent of your handwritten signature.</div>
+                                        <div className="bg-muted p-3 rounded-md text-xs italic">
+                                            "I understand that this electronic record has the same legal effect, validity, and enforceability as a manually signed paper document."
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>Are you ready to submit your responses? Please review your entries one last time.</div>
+                                )}
+                                <div className="text-destructive font-medium border-t pt-4 flex items-center gap-2">
+                                    <AlertTriangle className="h-4 w-4" />
+                                    This submission is final and irreversible.
+                                </div>
+                            </div>
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isSubmitting}>Cancel and Review</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={onConfirmSubmission} 
+                            disabled={isSubmitting}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Confirm and Submit
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div>
+    </FormProvider>
   );
 }
 
