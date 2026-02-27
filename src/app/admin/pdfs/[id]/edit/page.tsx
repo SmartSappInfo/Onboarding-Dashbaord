@@ -529,7 +529,7 @@ export default function EditPdfPage() {
                                                                         </div>
                                                                     </div>
                                                                 )}
-                                                            )}
+                                                            />
                                                             <Controller
                                                                 name="patternColor"
                                                                 control={form.control}
@@ -542,7 +542,7 @@ export default function EditPdfPage() {
                                                                         </div>
                                                                     </div>
                                                                 )}
-                                                            )}
+                                                            />
                                                         </div>
                                                         <Controller
                                                             name="backgroundPattern"
