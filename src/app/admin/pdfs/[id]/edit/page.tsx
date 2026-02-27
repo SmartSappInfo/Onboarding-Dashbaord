@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -233,7 +233,7 @@ export default function EditPdfPage() {
     }
   }, [historyState]);
 
-  const handleSave = async (data: FormData) => {
+  const performSave = async (data: FormData, redirect: boolean = false) => {
     setIsSaving(true);
     
     let finalNamingFieldId = namingFieldId;
@@ -270,11 +270,17 @@ export default function EditPdfPage() {
 
     if (result.success) {
       toast({ title: 'Document Saved' });
-      router.push('/admin/pdfs');
+      if (redirect) {
+        router.push('/admin/pdfs');
+      }
     } else {
       toast({ variant: 'destructive', title: 'Save Failed' });
     }
     setIsSaving(false);
+  };
+
+  const onFinalSubmit = async (data: FormData) => {
+    await performSave(data, true);
   };
 
   const handleNext = async () => {
@@ -359,7 +365,19 @@ export default function EditPdfPage() {
                 
                 <Stepper currentStep={step} onStepClick={handleStepChange} />
 
-                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
+                <form 
+                    onSubmit={form.handleSubmit(onFinalSubmit)} 
+                    className="space-y-8"
+                    onKeyDown={(e) => {
+                        // Prevent accidental form submission on Enter if not on final step
+                        if (e.key === 'Enter' && step < 3) {
+                            const target = e.target as HTMLElement;
+                            if (target.tagName !== 'TEXTAREA') {
+                                e.preventDefault();
+                            }
+                        }
+                    }}
+                >
                     
                     {/* Step 1: Details */}
                     <div className={cn(step !== 1 && 'hidden')}>
@@ -503,7 +521,7 @@ export default function EditPdfPage() {
                             setFields={setFields}
                             namingFieldId={namingFieldId}
                             setNamingFieldId={setNamingFieldId}
-                            onSave={() => handleSave(getValues())}
+                            onSave={() => performSave(getValues(), false)}
                             isSaving={isSaving}
                             onPreview={() => setIsPreviewOpen(true)}
                             isStatusChanging={isStatusChanging}
@@ -734,10 +752,3 @@ export default function EditPdfPage() {
     </FormProvider>
   );
 }
-
-const ShieldAlert = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
-    <path d="M12 8v4"/><path d="M12 16h.01"/>
-  </svg>
-);
