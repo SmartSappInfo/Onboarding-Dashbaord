@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Save 
+    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye 
 } from 'lucide-react';
 
 import { 
@@ -50,7 +50,7 @@ interface FieldMapperProps {
 function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
-        onDetect, isDetecting, onPreview, onSave, isSaving 
+        onDetect, isDetecting, onPreview 
     } = useEditor();
 
     return (
@@ -93,8 +93,8 @@ function EditorLayout() {
                     </div>
                 </div>
 
-                {/* Floating Global Tool Docker - Bottom Center */}
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[70] w-fit">
+                {/* Floating Global Tool Docker - Top Center */}
+                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] w-fit">
                     <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
                         <TooltipProvider>
                             {/* 1. Field Creation Group */}
@@ -162,20 +162,6 @@ function EditorLayout() {
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent side="top">Preview as user</TooltipContent>
-                                </Tooltip>
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            onClick={onSave} 
-                                            disabled={isSaving}
-                                            className="h-9 px-6 rounded-xl font-black shadow-lg shadow-primary/20 gap-2"
-                                        >
-                                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                                            <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Draft'}</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Persist changes</TooltipContent>
                                 </Tooltip>
                             </div>
                         </TooltipProvider>

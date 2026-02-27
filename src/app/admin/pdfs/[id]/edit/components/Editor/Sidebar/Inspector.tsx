@@ -16,7 +16,7 @@ import {
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Eye, EyeOff, Bold, Type, FileText, ShieldAlert, Settings
+  Copy, Bold, Type, FileText, Settings
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -49,13 +49,11 @@ export function Inspector() {
   const { 
     fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, removeField, duplicateFields, alignFields, distributeFields,
-    isSidebarCollapsed, pdf, onStatusChange, isStatusChanging,
-    password, setPassword, passwordProtected, setPasswordProtected
+    isSidebarCollapsed
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const isMulti = selectedFieldIds.length > 1;
-  const [showPassword, setShowPassword] = React.useState(false);
 
   if (isSidebarCollapsed) {
     return (
@@ -69,15 +67,6 @@ export function Inspector() {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="left">Document Fields</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground cursor-help">
-                  <ShieldAlert className="h-5 w-5" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="left">Access Control</TooltipContent>
             </Tooltip>
 
             {selectedField && (
@@ -223,37 +212,6 @@ export function Inspector() {
               </CardHeader>
               <CardContent className="p-2">
                 <SortableFieldList />
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader className="py-4 border-b bg-muted/5">
-                <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Access Control</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-4">
-                <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
-                  <Label className="text-xs font-bold">Password Protected</Label>
-                  <Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} />
-                </div>
-                {passwordProtected && (
-                  <div className="relative animate-in slide-in-from-top-2 duration-300">
-                    <Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="h-9 text-sm pr-10 rounded-xl" placeholder="Set global password..." />
-                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </Button>
-                  </div>
-                )}
-                <div className="space-y-2 pt-2 border-t border-dashed">
-                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Document Status</Label>
-                  <Select value={pdf.status} onValueChange={(v: any) => onStatusChange(v)} disabled={isStatusChanging}>
-                    <SelectTrigger className="h-9 text-sm font-bold rounded-xl"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </CardContent>
             </Card>
           </>
