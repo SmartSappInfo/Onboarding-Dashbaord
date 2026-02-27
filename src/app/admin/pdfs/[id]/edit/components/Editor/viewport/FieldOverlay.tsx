@@ -61,8 +61,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
-  // Scaling Factor: 1.5 is the base scale from PageRenderer. 
-  // We multiply by zoom to ensure text scales with the canvas.
+  // Pixel-based font size calculation relative to zoom and base A4 scale (1.5)
   const baseScale = 1.5;
   const currentTotalScale = baseScale * zoom;
   const baseFontSize = field.fontSize || 11;
@@ -155,7 +154,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         (field.type === 'signature' || field.type === 'photo') ? "flex items-center justify-center" : "p-1"
       )}
       onPointerDown={(e) => { 
-        // Snappier feedback: Select the field immediately on mouse down
         e.stopPropagation(); 
         selectField(field.id, e.shiftKey, e.metaKey || e.ctrlKey); 
       }}
@@ -205,7 +203,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         <>
           <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
             <TooltipProvider>
-              {/* Type & Visibility Group */}
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -240,7 +237,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
               <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-              {/* Typography Group (If Text Type) */}
               {isTextType && (
                 <>
                   <div className="flex items-center gap-0.5 px-1">
@@ -289,7 +285,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
                   <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-                  {/* Font Size Adjust Group */}
                   <div className="flex items-center gap-0.5 px-1">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -324,7 +319,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
                   <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
 
-                  {/* Alignment Group */}
                   <div className="flex items-center gap-0.5 px-1">
                     <DropdownMenu>
                       <Tooltip>
@@ -367,7 +361,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                 </>
               )}
 
-              {/* Actions Group */}
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>

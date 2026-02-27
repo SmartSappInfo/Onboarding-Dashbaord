@@ -250,7 +250,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const watchedValues = watch();
 
-  // Auto-populate date and time on mount
   React.useEffect(() => {
     const now = new Date();
     const currentDate = format(now, 'yyyy-MM-dd');
@@ -268,7 +267,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     });
   }, [pdfForm.fields, setValue, getValues]);
 
-  // Show bubble on submission
   React.useEffect(() => {
     if (isSubmitted) {
         setShowDownloadBubble(true);
@@ -448,13 +446,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
         toast({ title: 'Preparing Download', description: 'Processing document pages...' });
 
-        // Detection for iOS Safari to handle blob download triggers and memory limits
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
-            
-            // Lower scale for mobile to prevent iOS tab crashes due to high memory usage
             const captureScale = isIOS || isMobile ? 1.5 : 2;
 
             const canvas = await html2canvas(el, {
@@ -518,7 +513,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    // Sync scaling logic with editor: 1.5 is the fixed point base scale from PageRenderer
+    // Scale pixel font size relative to A4 base scale (1.5) and current zoom
     const currentTotalScale = 1.5 * zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;

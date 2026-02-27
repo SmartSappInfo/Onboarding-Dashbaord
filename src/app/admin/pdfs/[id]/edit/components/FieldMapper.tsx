@@ -44,9 +44,6 @@ interface FieldMapperProps {
   canRedo: boolean;
 }
 
-/**
- * Inner component that uses the EditorContext
- */
 function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
@@ -61,11 +58,9 @@ function EditorLayout() {
             "flex h-full w-full overflow-hidden bg-muted/30 relative transition-all duration-300",
             isFullScreen && "fixed inset-0 z-[90] bg-background"
         )}>
-            {/* Main Canvas Area */}
             <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
                 <DocumentCanvas />
 
-                {/* Vertical Zoom Controls - Center Right */}
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3">
                     <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                         <TooltipProvider>
@@ -113,12 +108,10 @@ function EditorLayout() {
                     </div>
                 </div>
 
-                {/* Floating Global Tool Docker - Top Center */}
                 {!isPreviewing && (
                     <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] w-fit">
                         <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
                             <TooltipProvider>
-                                {/* 1. Field Creation Group */}
                                 <div className="flex items-center gap-1 px-2 shrink-0">
                                     <ToolButton icon={Text} label="Add Text" onClick={() => addField('text')} />
                                     <ToolButton icon={Signature} label="Add Signature" onClick={() => addField('signature')} />
@@ -132,7 +125,6 @@ function EditorLayout() {
 
                                 <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                                {/* 2. History Group */}
                                 <div className="flex items-center gap-1.5 px-2 shrink-0">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -154,7 +146,6 @@ function EditorLayout() {
 
                                 <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                                {/* 3. Operational Action Group */}
                                 <div className="flex items-center gap-2 px-2 shrink-0">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
@@ -206,7 +197,6 @@ function EditorLayout() {
                     </div>
                 )}
 
-                {/* Preview Mode Exit Button */}
                 {isPreviewing && (
                     <div className="absolute top-6 right-6 z-[100] animate-in fade-in slide-in-from-top-4">
                         <Button 
@@ -220,7 +210,6 @@ function EditorLayout() {
                 )}
             </div>
 
-            {/* Properties Sidebar - Purely for field settings now */}
             {!isPreviewing && <EditorSidebar />}
         </div>
     );
@@ -244,9 +233,6 @@ function ToolButton({ icon: Icon, label, onClick }: { icon: any, label: string, 
     );
 }
 
-/**
- * Root FieldMapper component wrapping everything in the Provider
- */
 export default function FieldMapper(props: FieldMapperProps) {
   return (
     <EditorProvider {...props}>

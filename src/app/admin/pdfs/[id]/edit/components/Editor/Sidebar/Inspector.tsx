@@ -184,7 +184,7 @@ export function Inspector() {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Horizontal Alignment</Label>
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Horizontal Text Align</Label>
                     <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
                       <TooltipProvider>
                         {(['left', 'center', 'right'] as const).map(a => (
@@ -209,7 +209,7 @@ export function Inspector() {
                   </div>
 
                   <div className="space-y-3">
-                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Vertical Alignment</Label>
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Vertical Text Align</Label>
                     <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
                       <TooltipProvider>
                         {(['top', 'center', 'bottom'] as const).map(a => (
@@ -252,7 +252,7 @@ export function Inspector() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-3">
-                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Alignment</Label>
+                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Object Alignment</Label>
                 <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
                   <TooltipProvider>
                     {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
@@ -268,12 +268,12 @@ export function Inspector() {
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          {a === 'left' ? 'Align Left' : 
-                           a === 'center-h' ? 'Align Center Horizontally' : 
-                           a === 'right' ? 'Align Right' : 
-                           a === 'top' ? 'Align Top' : 
-                           a === 'center-v' ? 'Align Center Vertically' : 
-                           'Align Bottom'}
+                          {a === 'left' ? 'Align Left edges' : 
+                           a === 'center-h' ? 'Align Horizontal centers' : 
+                           a === 'right' ? 'Align Right edges' : 
+                           a === 'top' ? 'Align Top edges' : 
+                           a === 'center-v' ? 'Align Vertical centers' : 
+                           'Align Bottom edges'}
                         </TooltipContent>
                       </Tooltip>
                     ))}
@@ -290,7 +290,7 @@ export function Inspector() {
                           <DistributeHorizontal className="h-4 w-4 mr-2 text-primary"/>Horiz.
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Distribute Horizontally</TooltipContent>
+                      <TooltipContent>Distribute Horizontally (Vertical Bars)</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -298,7 +298,7 @@ export function Inspector() {
                           <DistributeVertical className="h-4 w-4 mr-2 text-primary"/>Vert.
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Distribute Vertically</TooltipContent>
+                      <TooltipContent>Distribute Vertically (Horizontal Bars)</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>

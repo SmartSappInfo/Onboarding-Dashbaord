@@ -161,7 +161,6 @@ export default function EditPdfPage() {
   }, [firestore]);
   const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
-  // Undo/Redo Logic for Fields
   const {
     state: historyState,
     set: setHistory,
@@ -219,13 +218,11 @@ export default function EditPdfPage() {
     }
   }, [searchParams]);
 
-  // Sync fields to history
   React.useEffect(() => {
     if (isProgrammaticChange.current) return;
     setHistory(debouncedFields);
   }, [debouncedFields, setHistory]);
 
-  // Apply history changes back to fields
   React.useEffect(() => {
     if (isProgrammaticChange.current) {
         setFields(historyState);
@@ -252,7 +249,6 @@ export default function EditPdfPage() {
         }
     }
 
-    // Determine display fields: Key field (first) + next 2 non-signature fields
     const displayFieldIds: string[] = [];
     if (finalNamingFieldId) displayFieldIds.push(finalNamingFieldId);
     const otherFields = fields
@@ -279,6 +275,20 @@ export default function EditPdfPage() {
     setIsSaving(false);
   };
 
+  const handleUndo = () => {
+    if (canUndo) {
+        isProgrammaticChange.current = true;
+        undoHistory();
+    }
+  };
+
+  const handleRedo = () => {
+    if (canRedo) {
+        isProgrammaticChange.current = true;
+        redoHistory();
+    }
+  };
+
   const onFinalSubmit = async (data: FormData) => {
     await performSave(data, true);
   };
@@ -286,7 +296,7 @@ export default function EditPdfPage() {
   const handleNext = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
-    if (step === 2) fieldsToValidate = []; // Builder has internal validation if needed
+    if (step === 2) fieldsToValidate = [];
     
     const isStepValid = await trigger(fieldsToValidate);
     if (!isStepValid) {
@@ -369,7 +379,6 @@ export default function EditPdfPage() {
                     onSubmit={form.handleSubmit(onFinalSubmit)} 
                     className="space-y-8"
                     onKeyDown={(e) => {
-                        // Prevent accidental form submission on Enter if not on final step
                         if (e.key === 'Enter' && step < 3) {
                             const target = e.target as HTMLElement;
                             if (target.tagName !== 'TEXTAREA') {
@@ -378,8 +387,6 @@ export default function EditPdfPage() {
                         }
                     }}
                 >
-                    
-                    {/* Step 1: Details */}
                     <div className={cn(step !== 1 && 'hidden')}>
                         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                             <Card className="xl:col-span-2">
@@ -513,7 +520,6 @@ export default function EditPdfPage() {
                         </div>
                     </div>
 
-                    {/* Step 2: Builder */}
                     <div className={cn("h-[80vh] border rounded-2xl overflow-hidden", step !== 2 && 'hidden')}>
                         <FieldMapper
                             pdf={pdf}
@@ -528,8 +534,8 @@ export default function EditPdfPage() {
                             onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
                             onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
                             isDetecting={isDetecting}
-                            undo={undoHistory}
-                            redo={redoHistory}
+                            undo={handleUndo}
+                            redo={handleRedo}
                             canUndo={canUndo}
                             canRedo={canRedo}
                             password={watch('password')}
@@ -539,7 +545,6 @@ export default function EditPdfPage() {
                         />
                     </div>
 
-                    {/* Step 3: Publish */}
                     <div className={cn("space-y-8", step !== 3 && 'hidden')}>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             <Card>
