@@ -16,7 +16,8 @@ import {
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight
+  Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
+  DistributeHorizontal, DistributeVertical
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -32,18 +33,6 @@ const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
   time: Clock,
   photo: Camera,
 };
-
-const DistributeHorizontal = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect width="6" height="14" x="2" y="5" rx="1"/><rect width="6" height="14" x="16" y="5" rx="1"/><path d="M12 2v20"/>
-  </svg>
-);
-
-const DistributeVertical = (props: React.SVGProps<SVGSVGElement>) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-    <rect width="14" height="6" x="5" y="2" rx="1"/><rect width="14" height="6" x="5" y="16" rx="1"/><path d="M2 12h20"/>
-  </svg>
-);
 
 export function Inspector() {
   const { 
@@ -232,9 +221,9 @@ export function Inspector() {
                                 onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
                                 className={cn("h-9 rounded-lg", selectedField.verticalAlignment === a && "bg-primary/10 text-primary")}
                               >
-                                {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
-                                {a === 'center' && <AlignCenterVertical className="h-4 w-4" />}
-                                {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
+                                {a === 'top' && <AlignStartHorizontal className="h-4 w-4" />}
+                                {a === 'center' && <AlignCenterHorizontal className="h-4 w-4" />}
+                                {a === 'bottom' && <AlignEndHorizontal className="h-4 w-4" />}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Align {a.charAt(0).toUpperCase() + a.slice(1)}</TooltipContent>
@@ -270,12 +259,12 @@ export function Inspector() {
                       <Tooltip key={a}>
                         <TooltipTrigger asChild>
                           <Button variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
-                            {a === 'left' && <AlignStartHorizontal className="h-4 w-4" />}
-                            {a === 'center-h' && <AlignCenterHorizontal className="h-4 w-4" />}
-                            {a === 'right' && <AlignEndHorizontal className="h-4 w-4" />}
-                            {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
-                            {a === 'center-v' && <AlignCenterVertical className="h-4 w-4" />}
-                            {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
+                            {a === 'left' && <AlignStartVertical className="h-4 w-4" />}
+                            {a === 'center-h' && <AlignCenterVertical className="h-4 w-4" />}
+                            {a === 'right' && <AlignEndVertical className="h-4 w-4" />}
+                            {a === 'top' && <AlignStartHorizontal className="h-4 w-4" />}
+                            {a === 'center-v' && <AlignCenterHorizontal className="h-4 w-4" />}
+                            {a === 'bottom' && <AlignEndHorizontal className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>

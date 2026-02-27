@@ -7,6 +7,7 @@ import {
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+    AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
     ChevronUp, ChevronDown as ChevronDownIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -348,16 +349,16 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {field.verticalAlignment === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : field.verticalAlignment === 'bottom' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
+                              {field.verticalAlignment === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : field.verticalAlignment === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
                         <TooltipContent>Vertical Alignment</TooltipContent>
                       </Tooltip>
                       <DropdownMenuContent className="w-12 p-1" side="top">
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'top' })}><AlignStartVertical className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'center' })}><AlignCenterVertical className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'bottom' })}><AlignEndVertical className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'top' })}><AlignStartHorizontal className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'center' })}><AlignCenterHorizontal className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'bottom' })}><AlignEndHorizontal className="h-4 w-4" /></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
