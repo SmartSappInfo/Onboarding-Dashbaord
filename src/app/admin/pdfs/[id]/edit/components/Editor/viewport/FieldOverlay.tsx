@@ -15,7 +15,7 @@ import { useEditor } from '../EditorContext';
 import { PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, ResizeHandle } from '../types';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -325,16 +325,16 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {field.alignment === 'center' ? <AlignCenter className="h-4 w-4" /> : field.alignment === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignLeft className="h-4 w-4" />}
+                              {field.alignment === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : field.alignment === 'right' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
                         <TooltipContent>Horizontal Alignment</TooltipContent>
                       </Tooltip>
                       <DropdownMenuContent className="w-12 p-1" side="top">
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'left' })}><AlignLeft className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'center' })}><AlignCenter className="h-4 w-4" /></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'right' })}><AlignRight className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'left' })}><AlignStartVertical className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'center' })}><AlignCenterVertical className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'right' })}><AlignEndVertical className="h-4 w-4" /></DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
 

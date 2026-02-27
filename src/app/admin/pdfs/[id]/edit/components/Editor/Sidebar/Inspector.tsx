@@ -17,7 +17,7 @@ import {
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
-  DistributeHorizontal, DistributeVertical
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -287,18 +287,18 @@ export function Inspector() {
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}>
-                          <DistributeHorizontal className="h-4 w-4 mr-2 text-primary"/>Horiz.
+                          <AlignHorizontalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Horiz.
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Distribute Horizontally (Vertical Bars)</TooltipContent>
+                      <TooltipContent>Distribute Horizontally</TooltipContent>
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}>
-                          <DistributeVertical className="h-4 w-4 mr-2 text-primary"/>Vert.
+                          <AlignVerticalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Vert.
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>Distribute Vertically (Horizontal Bars)</TooltipContent>
+                      <TooltipContent>Distribute Vertically</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
