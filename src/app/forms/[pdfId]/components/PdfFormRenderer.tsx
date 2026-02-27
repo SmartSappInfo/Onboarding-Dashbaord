@@ -511,9 +511,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     <div className="light flex flex-col h-[100dvh] overflow-hidden text-foreground selection:bg-primary/20 relative" style={{ backgroundColor: bgColor }}>
        <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
        
-       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-3 shadow-sm shrink-0">
+       <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
             {pdfForm.logoUrl ? (
-                <div className="relative h-8 w-32 shrink-0">
+                <div className="relative h-9 w-9 shrink-0">
                     <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
                 </div>
             ) : (
