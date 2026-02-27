@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -130,7 +131,9 @@ export default function EditPdfPage() {
         backgroundPattern: 'none',
         patternColor: '#3B5FFF',
         webhookEnabled: false,
+        webhookId: '',
         passwordProtected: false,
+        password: '',
     }
   });
 

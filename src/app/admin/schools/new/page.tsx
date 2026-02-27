@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -16,12 +15,14 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -31,7 +32,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { MediaSelect } from '../components/media-select';
 import { ModuleSelect } from '../components/ModuleSelect';
-import { Textarea } from '@/components/ui/textarea';
 import { logActivity } from '@/lib/activity-logger';
 
 const formSchema = z.object({
@@ -78,6 +78,7 @@ export default function NewSchoolPage() {
       email: '',
       phone: '',
       location: '',
+      nominalRoll: 0,
       modules: [],
       referee: '',
       includeDroneFootage: false,
@@ -107,19 +108,26 @@ export default function NewSchoolPage() {
       return;
     }
     
-    const slug = data.name
-      .trim()
-      .toLowerCase()
-      .replace(/\s+/g, '-')
-      .replace(/[^a-z0-9-]/g, '');
+    const slug = data.organization
+      ? data.organization.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+      : data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 
     const schoolData = {
-      ...data,
+      name: data.name,
       slug,
-      implementationDate: data.implementationDate?.toISOString(),
-      stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#8E44AD' },
+      contactPerson: data.contactPerson,
+      email: data.email,
+      phone: data.phone,
+      location: data.location,
+      nominalRoll: data.nominalRoll,
+      moduleRequestNotes: '', // Placeholder for modules field if needed
+      implementationDate: data.implementationDate?.toISOString() || null,
+      referee: data.referee,
+      includeDroneFootage: data.includeDroneFootage,
+      stage: { id: 'welcome', name: 'Welcome', order: 1 },
       assignedTo: { userId: null, name: null, email: null },
       createdAt: new Date().toISOString(),
+      modules: data.modules || [],
     };
 
     const schoolsCollection = collection(firestore, 'schools');

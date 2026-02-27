@@ -84,6 +84,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
             email: '',
             phone: '',
             location: '',
+            nominalRoll: 0,
             modules: [],
             referee: '',
             includeDroneFootage: false,
@@ -102,7 +103,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
             email: school.email || '',
             phone: school.phone || '',
             location: school.location || '',
-            nominalRoll: school.nominalRoll || undefined,
+            nominalRoll: school.nominalRoll || 0,
             modules: school.modules || [],
             implementationDate: school.implementationDate ? new Date(school.implementationDate) : undefined,
             referee: school.referee || '',
@@ -130,7 +131,7 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
         const schoolData = {
           ...data,
           slug,
-          implementationDate: data.implementationDate?.toISOString(),
+          implementationDate: data.implementationDate?.toISOString() || null,
         }
 
         const docRef = doc(firestore, 'schools', schoolId);

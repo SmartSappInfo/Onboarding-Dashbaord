@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -64,11 +63,13 @@ export default function NewMeetingPage() {
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      school: undefined,
+      schoolSlug: '',
+      meetingTime: undefined,
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
       type: MEETING_TYPES[0], // Default to Parent Engagement
-      schoolSlug: '',
     },
   });
 
