@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -449,7 +449,7 @@ export default function EditPdfPage() {
                                                         <div className="space-y-1.5">
                                                             <Label className="text-[10px]">Base Color</Label>
                                                             <div className="flex gap-2">
-                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
+                                                                <Input type="color" {...field} value={field.value || "#F1F5F9"} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
                                                                 <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
                                                             </div>
                                                         </div>
@@ -462,7 +462,7 @@ export default function EditPdfPage() {
                                                         <div className="space-y-1.5">
                                                             <Label className="text-[10px]">Pattern Color</Label>
                                                             <div className="flex gap-2">
-                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
+                                                                <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
                                                                 <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
                                                             </div>
                                                         </div>
