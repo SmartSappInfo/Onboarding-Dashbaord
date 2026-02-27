@@ -309,6 +309,8 @@ export interface PDFForm {
     resultsShared?: boolean;
     resultsPassword?: string;
     // Branding & Appearance
+    schoolId?: string | null;
+    schoolName?: string | null;
     logoUrl?: string;
     backgroundColor?: string;
     backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';

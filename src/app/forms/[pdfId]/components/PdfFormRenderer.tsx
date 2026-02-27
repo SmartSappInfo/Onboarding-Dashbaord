@@ -521,7 +521,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             )}
             <div className="flex flex-col min-w-0">
                 <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
-                <p className="text-[10px] text-muted-foreground leading-none">Powered by SmartSapp</p>
+                <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
             </div>
             <div className="flex-1" />
             <div className="flex items-center gap-2">

@@ -2,15 +2,15 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
     Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save
 } from 'lucide-react';
-import { type PDFForm, type PDFFormField } from '@/lib/types';
+import { type PDFForm, type PDFFormField, type School } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
@@ -45,6 +45,8 @@ import Link from 'next/link';
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
   publicTitle: z.string().min(2, { message: 'Public title must be at least 2 characters.' }),
+  schoolId: z.string().optional().nullable(),
+  schoolName: z.string().optional().nullable(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   backgroundColor: z.string().optional(),
   backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
@@ -119,6 +121,8 @@ export default function EditPdfPage() {
     defaultValues: {
         name: '',
         publicTitle: '',
+        schoolId: null,
+        schoolName: null,
         status: 'draft',
         slug: '',
         logoUrl: '',
@@ -131,6 +135,12 @@ export default function EditPdfPage() {
   });
 
   const { reset, watch, setValue, getValues, trigger } = form;
+
+  const schoolsQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: schools } = useCollection<School>(schoolsQuery);
 
   // Undo/Redo Logic for Fields
   const {
@@ -163,6 +173,8 @@ export default function EditPdfPage() {
       reset({
         name: pdf.name || '',
         publicTitle: pdf.publicTitle || pdf.name || '',
+        schoolId: pdf.schoolId || null,
+        schoolName: pdf.schoolName || null,
         status: pdf.status || 'draft',
         slug: pdf.slug || pdf.id,
         logoUrl: pdf.logoUrl || '',
@@ -355,6 +367,34 @@ export default function EditPdfPage() {
                                                 <Label>Public Title</Label>
                                                 <Input {...field} placeholder="e.g. School Admission Application" />
                                                 <p className="text-xs text-muted-foreground">This title is visible to users on the signing page.</p>
+                                            </div>
+                                        )}
+                                    />
+                                    <Controller
+                                        name="schoolId"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label>Associated School / Organization</Label>
+                                                <Select 
+                                                    onValueChange={(val) => {
+                                                        const school = schools?.find(s => s.id === val);
+                                                        field.onChange(val);
+                                                        setValue('schoolName', school ? school.name : 'SmartSapp');
+                                                    }} 
+                                                    value={field.value || 'none'}
+                                                >
+                                                    <SelectTrigger className="h-11">
+                                                        <SelectValue placeholder="Select a school..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="none">No School (Default: SmartSapp)</SelectItem>
+                                                        {schools?.map(school => (
+                                                            <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <p className="text-xs text-muted-foreground">The school name will appear beneath the title on public pages.</p>
                                             </div>
                                         )}
                                     />

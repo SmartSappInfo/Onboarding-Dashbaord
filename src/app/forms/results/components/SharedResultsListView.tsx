@@ -308,7 +308,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                 </div>
                 <div className="min-w-0">
                     <h1 className="font-black text-xs sm:text-lg leading-tight truncate pr-2" title={pdfForm.name}>{pdfForm.name}</h1>
-                    <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5 sm:mt-1 truncate">Shared Portal</p>
+                    <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5 sm:mt-1 truncate">{pdfForm.schoolName || 'SmartSapp'}</p>
                 </div>
             </div>
         </header>

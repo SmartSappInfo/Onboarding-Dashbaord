@@ -62,9 +62,9 @@ export default function PasswordGatedForm({ pdfForm }: PasswordGatedFormProps) {
                     <SmartSappIcon className="h-12 w-12 text-primary" />
                 )}
               </div>
-              <DialogTitle className="text-center">Password Required</DialogTitle>
+              <DialogTitle className="text-center">{pdfForm.publicTitle || pdfForm.name}</DialogTitle>
               <DialogDescription className="text-center">
-                This document is password protected. Please enter the password to continue.
+                This document from <strong>{pdfForm.schoolName || 'SmartSapp'}</strong> is password protected. Please enter the password to continue.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>

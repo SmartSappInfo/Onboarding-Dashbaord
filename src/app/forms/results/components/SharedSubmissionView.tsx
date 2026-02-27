@@ -227,7 +227,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                       Record: {submission.id.substring(0,8)}
                     </h1>
                     <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 hidden sm:block">
-                      Submitted on {format(new Date(submission.submittedAt), "MMM d, yyyy")}
+                      {pdfForm.schoolName || 'SmartSapp'} · Submitted on {format(new Date(submission.submittedAt), "MMM d, yyyy")}
                     </p>
                 </div>
             </div>
