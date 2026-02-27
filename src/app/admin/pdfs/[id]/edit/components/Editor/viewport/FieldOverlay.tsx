@@ -6,7 +6,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+    AlignStartVertical, AlignCenterVertical, AlignEndVertical,
     AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
     ChevronUp, ChevronDown as ChevronDownIcon
 } from 'lucide-react';
@@ -61,7 +61,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
-  // Pixel-based font size calculation relative to zoom and base A4 scale (1.5)
+  // Pixel-based font size calculation relative to zoom and base scale
   const baseScale = 1.5;
   const currentTotalScale = baseScale * zoom;
   const baseFontSize = field.fontSize || 11;

@@ -25,8 +25,7 @@ import {
     X, 
     ChevronDown, 
     Clock, 
-    Calendar as CalendarIcon,
-    Star
+    Calendar as CalendarIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';

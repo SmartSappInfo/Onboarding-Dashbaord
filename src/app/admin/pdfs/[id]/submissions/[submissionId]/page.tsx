@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -74,7 +75,6 @@ export default function SubmissionDetailPage() {
         const url = window.URL.createObjectURL(blob);
         const fileName = `${pdfForm?.name || 'signed'}-submission.pdf`;
 
-        // Detection for iOS Safari to handle blob download triggers
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         if (isIOS) {
@@ -109,17 +109,15 @@ export default function SubmissionDetailPage() {
         const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
         
         if (!pageElements || !pageElements.length) {
-            throw new Error("No pages found to capture. Please ensure the document is fully loaded.");
+            throw new Error("No pages found to capture.");
         }
 
         toast({ title: 'Preparing Front-end Download', description: 'Capturing pages as images...' });
 
-        // iOS Detection
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
-            // Reduce scale on iOS to prevent memory exhaustion crashes
             const captureScale = isIOS ? 1.5 : 2;
             
             const canvas = await html2canvas(el, {
@@ -251,7 +249,6 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
         const render = async () => {
             setIsRendering(true);
             try {
-                // Cancel any existing task on this canvas
                 if (renderTaskRef.current) {
                     renderTaskRef.current.cancel();
                 }
