@@ -291,6 +291,10 @@ export interface PDFFormField {
   dimensions: { width: number; height: number };
   fontSize?: number;
   bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  alignment?: 'left' | 'center' | 'right';
+  verticalAlignment?: 'top' | 'center' | 'bottom';
   required?: boolean;
   options?: string[];
 }

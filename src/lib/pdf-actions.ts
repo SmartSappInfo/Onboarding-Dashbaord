@@ -38,6 +38,8 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
     // Embed fonts
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontItalic = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
+    const fontBoldItalic = await pdfDoc.embedFont(StandardFonts.HelveticaBoldOblique);
     
     const pages = pdfDoc.getPages();
     const fields = pdfForm.fields || [];
@@ -70,16 +72,41 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 if (!displayValue || displayValue === 'undefined' || displayValue === 'null') continue;
 
                 const fontSize = field.fontSize || 11;
-                const font = field.bold ? fontBold : fontRegular;
+                let font = fontRegular;
+                if (field.bold && field.italic) font = fontBoldItalic;
+                else if (field.bold) font = fontBold;
+                else if (field.italic) font = fontItalic;
+
+                const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
+                
+                // Alignment logic
+                let textX = x + 2;
+                if (field.alignment === 'center') textX = x + (fieldWidth - textWidth) / 2;
+                else if (field.alignment === 'right') textX = x + fieldWidth - textWidth - 2;
+
+                // Vertical Alignment
+                let textY = y_top - fontSize - 2;
+                if (field.verticalAlignment === 'center') textY = y_top - (fieldHeight + fontSize) / 2;
+                else if (field.verticalAlignment === 'bottom') textY = y_top - fieldHeight + 2;
 
                 page.drawText(displayValue, {
-                    x: x + 2,
-                    y: y_top - fontSize - 2,
+                    x: textX,
+                    y: textY,
                     font,
                     size: fontSize,
                     color: rgb(0, 0, 0),
                     maxWidth: fieldWidth - 4,
                 });
+
+                // Manual Underline support
+                if (field.underline) {
+                    page.drawLine({
+                        start: { x: textX, y: textY - 1 },
+                        end: { x: textX + textWidth, y: textY - 1 },
+                        thickness: 0.5,
+                        color: rgb(0, 0, 0),
+                    });
+                }
             } else {
                 if (typeof rawValue === 'string' && rawValue.includes('base64,')) {
                     const base64Data = rawValue.split('base64,')[1];

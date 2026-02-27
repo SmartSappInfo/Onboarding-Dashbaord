@@ -16,7 +16,7 @@ import {
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Bold, Type, FileText, Settings
+  Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -150,9 +150,86 @@ export function Inspector() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
-                    <Label className="text-xs flex items-center gap-1.5 font-bold"><Bold className="h-3.5 w-3.5" /> Bold Text</Label>
-                    <Switch checked={!!selectedField.bold} onCheckedChange={v => updateField(selectedField.id, { bold: v })} />
+                  <div className="grid grid-cols-3 gap-2">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={selectedField.bold ? "secondary" : "outline"} 
+                            size="icon" 
+                            className={cn("h-9 w-full rounded-xl", selectedField.bold && "bg-primary/10 text-primary border-primary/20")}
+                            onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
+                          >
+                            <Bold className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Bold</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={selectedField.italic ? "secondary" : "outline"} 
+                            size="icon" 
+                            className={cn("h-9 w-full rounded-xl", selectedField.italic && "bg-primary/10 text-primary border-primary/20")}
+                            onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
+                          >
+                            <Italic className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Italic</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button 
+                            variant={selectedField.underline ? "secondary" : "outline"} 
+                            size="icon" 
+                            className={cn("h-9 w-full rounded-xl", selectedField.underline && "bg-primary/10 text-primary border-primary/20")}
+                            onClick={() => updateField(selectedField.id, { underline: !selectedField.underline })}
+                          >
+                            <Underline className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Underline</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Horizontal Alignment</Label>
+                    <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
+                      {(['left', 'center', 'right'] as const).map(a => (
+                        <Button 
+                          key={a} 
+                          variant={selectedField.alignment === a ? "secondary" : "ghost"} 
+                          size="sm" 
+                          onClick={() => updateField(selectedField.id, { alignment: a })} 
+                          className={cn("h-9 rounded-lg", selectedField.alignment === a && "bg-primary/10 text-primary")}
+                        >
+                          {a === 'left' && <AlignLeft className="h-4 w-4" />}
+                          {a === 'center' && <AlignCenter className="h-4 w-4" />}
+                          {a === 'right' && <AlignRight className="h-4 w-4" />}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Vertical Alignment</Label>
+                    <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
+                      {(['top', 'center', 'bottom'] as const).map(a => (
+                        <Button 
+                          key={a} 
+                          variant={selectedField.verticalAlignment === a ? "secondary" : "ghost"} 
+                          size="sm" 
+                          onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
+                          className={cn("h-9 rounded-lg", selectedField.verticalAlignment === a && "bg-primary/10 text-primary")}
+                        >
+                          {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
+                          {a === 'center' && <AlignCenterVertical className="h-4 w-4" />}
+                          {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
+                        </Button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

@@ -519,20 +519,27 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
-    // Base font size from document properties, fallback to 11 if not set
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
+    const fieldStyle: React.CSSProperties = {
+        fontSize: dynamicFontSize,
+        fontWeight: field.bold ? 'bold' : 'normal',
+        fontStyle: field.italic ? 'italic' : 'normal',
+        textDecoration: field.underline ? 'underline' : 'none',
+        textAlign: field.alignment || 'left',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: field.verticalAlignment === 'center' ? 'center' : field.verticalAlignment === 'bottom' ? 'flex-end' : 'flex-start',
+    };
+
     if (isSubmitted) {
         return (
-            <div className="w-full h-full flex items-start justify-start overflow-visible">
+            <div className="w-full h-full flex items-start justify-start overflow-visible" style={fieldStyle}>
                 {(field.type === 'signature' || field.type === 'photo') ? (
                     value && <img src={value} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                 ) : (
-                    <span 
-                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
-                        style={{ fontSize: dynamicFontSize }}
-                    >
+                    <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "text-black" : "text-black/80")}>
                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                     </span>
                 )}
@@ -542,17 +549,16 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
     const isInteractiveMedia = field.type === 'signature' || field.type === 'photo';
 
-    // Direct Inline Editing for Desktop non-media fields
     if (!isMobile && !isInteractiveMedia) {
         return (
-            <div className="w-full h-full group/desktop-field relative">
+            <div className="w-full h-full group/desktop-field relative" style={fieldStyle}>
                 {field.type === 'dropdown' ? (
                     <Controller
                         name={field.id}
                         control={control}
                         render={({ field: selectField }) => (
                             <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium", field.bold && "font-bold")} style={{ fontSize: dynamicFontSize }}>
+                                <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary", field.bold && "font-bold")} style={{ fontSize: 'inherit' }}>
                                     <SelectValue placeholder={field.placeholder || field.label} />
                                     <ChevronDown className="h-3 w-3 opacity-20 group-hover/desktop-field:opacity-60" />
                                 </SelectTrigger>
@@ -573,8 +579,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                 value={dateField.value} 
                                 onChange={(d) => dateField.onChange(d?.toISOString())}
                                 placeholder={field.placeholder || field.label}
-                                style={{ fontSize: dynamicFontSize }}
-                                className={cn(errors[field.id] && "bg-destructive/5", field.bold && "font-bold")}
+                                style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit' }}
+                                className={cn(errors[field.id] && "bg-destructive/5")}
                             />
                         )}
                     />
@@ -584,11 +590,10 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         type={field.type === 'time' ? 'time' : 'text'}
                         placeholder={field.placeholder || field.label}
                         className={cn(
-                            "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium transition-all",
-                            errors[field.id] && "border-destructive/40 bg-destructive/5",
-                            field.bold && "font-bold"
+                            "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary transition-all",
+                            errors[field.id] && "border-destructive/40 bg-destructive/5"
                         )}
-                        style={{ fontSize: dynamicFontSize }}
+                        style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit' }}
                     />
                 )}
                 {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover/desktop-field:opacity-60" />}
@@ -596,7 +601,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         );
     }
 
-    // Modal Trigger for Mobile or Media
     return (
         <button
             type="button"
@@ -609,6 +613,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     : "border border-transparent hover:border-primary/40 hover:bg-primary/5 rounded-sm p-1",
                 errors[field.id] && "border-destructive bg-destructive/5"
             )}
+            style={fieldStyle}
         >
             <div className="absolute -top-6 left-0 opacity-0 group-hover/field:opacity-100 transition-opacity whitespace-nowrap bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-50 shadow-lg">
                 Click to {isInteractiveMedia ? (field.type === 'photo' ? 'Capture' : 'Sign') : 'Edit'}
@@ -618,18 +623,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 isInteractiveMedia ? (
                     <img src={value} alt="Captured" className="w-full h-full object-contain" />
                 ) : (
-                    <span 
-                        className={cn("text-primary block truncate w-full", field.bold ? "font-bold" : "font-medium")}
-                        style={{ fontSize: dynamicFontSize }}
-                    >
+                    <span className="text-primary block truncate w-full" style={{ fontSize: 'inherit' }}>
                         {field.type === 'date' ? format(new Date(value), 'PPP') : value}
                     </span>
                 )
             ) : (
-                <div className="flex items-center gap-1 opacity-40">
+                <div className={cn("flex items-center gap-1 opacity-40", field.alignment === 'center' ? 'justify-center' : field.alignment === 'right' ? 'justify-end' : 'justify-start')}>
                     {!isInteractiveMedia && <Edit3 className="h-3 w-3 text-muted-foreground shrink-0" />}
                     <span 
-                        className={cn("text-muted-foreground uppercase truncate", field.bold ? "font-bold" : "font-medium")}
+                        className="text-muted-foreground uppercase truncate"
                         style={{ fontSize: `${Math.max(6, Math.round(baseFontSize * currentTotalScale * 0.8))}px` }}
                     >
                         {field.placeholder || (field.type === 'photo' ? 'Capture' : field.type === 'signature' ? 'Sign' : field.label)}

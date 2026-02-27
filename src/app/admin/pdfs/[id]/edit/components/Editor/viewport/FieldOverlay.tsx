@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,9 @@ import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-    ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown
+    ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
+    AlignLeft, AlignCenter, AlignRight, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+    ChevronUp, ChevronDown as ChevronDownIcon
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
@@ -20,6 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from '@/components/ui/separator';
 
 const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   text: Text,
@@ -55,6 +57,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const isSelected = selectedFieldIds.includes(field.id);
   const isMulti = selectedFieldIds.length > 1;
   const isNaming = field.id === namingFieldId;
+
+  const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
   const handleResizeStart = (e: React.MouseEvent, handle: ResizeHandle) => {
     e.stopPropagation();
@@ -118,6 +122,14 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     transform: CSS.Translate.toString(transform),
     zIndex: isSelected ? 50 : (field.isSuggestion ? 10 : 1),
     opacity: isDragging ? 0.4 : 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: field.verticalAlignment === 'center' ? 'center' : field.verticalAlignment === 'bottom' ? 'flex-end' : 'flex-start',
+    textAlign: field.alignment || 'left',
+    fontSize: `${(field.fontSize || 11) * zoom * 1.5}px`,
+    fontWeight: field.bold ? 'bold' : 'normal',
+    fontStyle: field.italic ? 'italic' : 'normal',
+    textDecoration: field.underline ? 'underline' : 'none',
   };
 
   const Icon = fieldIcons[field.type];
@@ -143,7 +155,13 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         <textarea
           autoFocus
           className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 italic text-muted-foreground z-20 overflow-hidden"
-          style={{ fontSize: `${10 * zoom}px` }}
+          style={{ 
+            fontSize: 'inherit',
+            textAlign: 'inherit',
+            fontWeight: 'inherit',
+            fontStyle: 'inherit',
+            textDecoration: 'inherit'
+          }}
           value={field.placeholder || ''}
           onChange={(e) => updateField(field.id, { placeholder: e.target.value, isSuggestion: false })}
           onBlur={() => setIsEditingPlaceholder(false)}
@@ -152,7 +170,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         field.placeholder && (
           <span 
             className="text-muted-foreground italic z-10 pointer-events-none truncate block w-full"
-            style={{ fontSize: `${Math.max(8, 10 * zoom)}px` }}
+            style={{ fontSize: 'inherit' }}
           >
             {field.placeholder}
           </span>
@@ -173,34 +191,132 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
       {isSelected && !isMulti && (
         <>
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 flex gap-1 rounded-xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl">
+          <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
             <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingPlaceholder(true)}><ALargeSmall className="h-4 w-4" /></Button></TooltipTrigger>
-                <TooltipContent>Edit Placeholder</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}><Copy className="h-4 w-4" /></Button></TooltipTrigger>
-                <TooltipContent>Duplicate</TooltipContent>
-              </Tooltip>
-              <DropdownMenu>
+              {/* Type & Visibility Group */}
+              <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
-                  <TooltipTrigger asChild><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Replace className="h-4 w-4" /></Button></DropdownMenuTrigger></TooltipTrigger>
-                  <TooltipContent>Change Type</TooltipContent>
+                  <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingPlaceholder(true)}><ALargeSmall className="h-4 w-4" /></Button></TooltipTrigger>
+                  <TooltipContent>Edit Placeholder</TooltipContent>
                 </Tooltip>
-                <DropdownMenuContent className="w-40 p-1" side="top">
-                  {(Object.keys(fieldIcons) as Array<keyof typeof fieldIcons>).map(type => (
-                    <DropdownMenuItem key={type} className="text-xs capitalize gap-2" onClick={() => updateField(field.id, { type })}>
-                      {React.createElement(fieldIcons[type], { className: "h-3.5 w-3.5" })}
-                      {type}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Tooltip>
-                <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
+                
+                <DropdownMenu>
+                  <Tooltip>
+                    <TooltipTrigger asChild><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Replace className="h-4 w-4" /></Button></DropdownMenuTrigger></TooltipTrigger>
+                    <TooltipContent>Change Type</TooltipContent>
+                  </Tooltip>
+                  <DropdownMenuContent className="w-40 p-1" side="top">
+                    {(Object.keys(fieldIcons) as Array<keyof typeof fieldIcons>).map(type => (
+                      <DropdownMenuItem key={type} className="text-xs capitalize gap-2" onClick={() => updateField(field.id, { type })}>
+                        {React.createElement(fieldIcons[type], { className: "h-3.5 w-3.5" })}
+                        {type}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+
+              {/* Typography Group (If Text Type) */}
+              {isTextType && (
+                <>
+                  <div className="flex items-center gap-0.5 px-1">
+                    <Button 
+                      variant={field.bold ? "secondary" : "ghost"} 
+                      size="icon" 
+                      className={cn("h-8 w-8 rounded-lg", field.bold && "text-primary bg-primary/10")} 
+                      onClick={() => updateField(field.id, { bold: !field.bold })}
+                    >
+                      <Bold className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant={field.italic ? "secondary" : "ghost"} 
+                      size="icon" 
+                      className={cn("h-8 w-8 rounded-lg", field.italic && "text-primary bg-primary/10")} 
+                      onClick={() => updateField(field.id, { italic: !field.italic })}
+                    >
+                      <Italic className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant={field.underline ? "secondary" : "ghost"} 
+                      size="icon" 
+                      className={cn("h-8 w-8 rounded-lg", field.underline && "text-primary bg-primary/10")} 
+                      onClick={() => updateField(field.id, { underline: !field.underline })}
+                    >
+                      <Underline className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+
+                  {/* Font Size Adjust Group */}
+                  <div className="flex items-center gap-0.5 px-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg" 
+                      onClick={() => updateField(field.id, { fontSize: Math.max(8, (field.fontSize || 11) - 1) })}
+                    >
+                      <ChevronDownIcon className="h-4 w-4" />
+                    </Button>
+                    <span className="text-[10px] font-black w-6 text-center tabular-nums">{field.fontSize || 11}</span>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-lg" 
+                      onClick={() => updateField(field.id, { fontSize: Math.min(36, (field.fontSize || 11) + 1) })}
+                    >
+                      <ChevronUp className="h-4 w-4" />
+                    </Button>
+                  </div>
+
+                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+
+                  {/* Alignment Group */}
+                  <div className="flex items-center gap-0.5 px-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                          {field.alignment === 'center' ? <AlignCenter className="h-4 w-4" /> : field.alignment === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignLeft className="h-4 w-4" />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-12 p-1" side="top">
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'left' })}><AlignLeft className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'center' })}><AlignCenter className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { alignment: 'right' })}><AlignRight className="h-4 w-4" /></DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                          {field.verticalAlignment === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : field.verticalAlignment === 'bottom' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-12 p-1" side="top">
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'top' })}><AlignStartVertical className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'center' })}><AlignCenterVertical className="h-4 w-4" /></DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => updateField(field.id, { verticalAlignment: 'bottom' })}><AlignEndVertical className="h-4 w-4" /></DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+                </>
+              )}
+
+              {/* Actions Group */}
+              <div className="flex items-center gap-0.5 px-1">
+                <Tooltip>
+                  <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}><Copy className="h-4 w-4" /></Button></TooltipTrigger>
+                  <TooltipContent>Duplicate</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}><Trash2 className="h-4 w-4" /></Button></TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+              </div>
             </TooltipProvider>
           </div>
           {resizeHandles.map(h => (
