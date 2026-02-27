@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -56,6 +57,10 @@ const generateSchema = (elements: SurveyElement[]) => {
                 textSchema = textSchema.max(q.maxLength, { message: `Cannot exceed ${q.maxLength} characters.` });
             }
             schema = textSchema;
+        } else if (q.type === 'email') {
+            schema = z.string().email("Please enter a valid email address.").or(z.literal(''));
+        } else if (q.type === 'phone') {
+            schema = z.string().regex(/^\+?[\d\s\-()]{10,}$/, "Please enter a valid phone number (at least 10 digits).").or(z.literal(''));
         }
 
         if (q.type === 'file-upload') {
@@ -274,7 +279,7 @@ const ElementRenderer = ({
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
-        const isTextInput = ['text', 'long-text'].includes(question.type);
+        const isTextInput = ['text', 'long-text', 'email', 'phone'].includes(question.type);
         
         const handleValueChange = (val: any, onChange: (v: any) => void) => {
             onChange(val);
@@ -298,13 +303,14 @@ const ElementRenderer = ({
                     )}
                 </div>
                 <div className="mt-1">
-                    {question.type === 'text' && (
+                    {(question.type === 'text' || question.type === 'email' || question.type === 'phone') && (
                         <Controller control={control} name={question.id} render={({ field }) => (
                             <Input 
                                 {...field} 
                                 value={field.value || ''} 
+                                type={question.type === 'email' ? 'email' : question.type === 'phone' ? 'tel' : 'text'}
                                 onChange={(e) => handleValueChange(e.target.value, field.onChange)}
-                                placeholder={question.placeholder || "Type your answer here..."} 
+                                placeholder={question.placeholder || (question.type === 'email' ? 'email@example.com' : question.type === 'phone' ? 'e.g. +233 20 000 0000' : "Type your answer here...")} 
                                 className={cn("text-base h-12 bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 transition-all rounded-xl px-4 shadow-none", errors[question.id] && "border-destructive")} 
                             />
                         )} />
@@ -388,7 +394,8 @@ const ElementRenderer = ({
                                                         if (question.allowOther) {
                                                             const currentOptions = field.value?.options || [];
                                                             const newOptions = checked ? [...currentOptions, opt] : currentOptions.filter((v:string) => v !== opt);
-                                                            handleValueChange({ ...(field.value || {}), options: newOptions }, field.onChange);
+                                                            handleValueChange({ ...(field.value || {}), other: field.value?.other || '' }, field.onChange);
+                                                            field.onChange({ ...(field.value || {}), options: newOptions });
                                                         } else {
                                                             const currentVal = field.value || [];
                                                             const newVal = checked ? [...currentVal, opt] : currentVal.filter((v:string) => v !== opt);

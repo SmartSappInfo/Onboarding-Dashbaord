@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -42,7 +43,7 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
             const emailSchema = z.string().email({ message: "Invalid email address." });
             fieldSchema = field.required ? emailSchema : emailSchema.optional().or(z.literal(''));
         } else if (field.type === 'phone') {
-            const phoneSchema = z.string().min(10, { message: "Invalid phone number." });
+            const phoneSchema = z.string().regex(/^\+?[\d\s\-()]{10,}$/, "Phone number must be at least 10 digits.");
             fieldSchema = field.required ? phoneSchema : phoneSchema.optional().or(z.literal(''));
         } else if (field.required) {
             fieldSchema = z.string({
