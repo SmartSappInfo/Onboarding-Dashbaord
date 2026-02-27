@@ -604,7 +604,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            <div className="fixed left-4 bottom-24 z-50 flex flex-col items-center gap-3">
+            <div className="fixed right-4 bottom-24 z-50 flex flex-col items-center gap-3">
                 <div className="flex flex-col items-center bg-background/60 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
                     <TooltipProvider>
                         <Tooltip>
@@ -618,7 +618,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     <ZoomIn className="h-4 w-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="right">Zoom In</TooltipContent>
+                            <TooltipContent side="left">Zoom In</TooltipContent>
                         </Tooltip>
                         
                         <Slider
@@ -642,7 +642,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     <ZoomOut className="h-4 w-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="right">Zoom Out</TooltipContent>
+                            <TooltipContent side="left">Zoom Out</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
