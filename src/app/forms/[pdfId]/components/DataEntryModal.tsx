@@ -16,14 +16,60 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
-import { Check, Info, LayoutList } from 'lucide-react';
+import { Check, Info, LayoutList, Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { format, isValid, parseISO } from 'date-fns';
 
 interface DataEntryModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   pdfForm: PDFForm;
   activeFieldId: string | null;
+}
+
+const DatePickerInput = ({ value, onChange, placeholder, disabled, hasError }: { 
+    value?: any, 
+    onChange: (date?: Date) => void, 
+    placeholder?: string,
+    disabled?: boolean,
+    hasError?: boolean
+}) => {
+    let dateValue: Date | undefined = undefined;
+    if (value) {
+        const parsed = value instanceof Date ? value : parseISO(value);
+        if (isValid(parsed)) {
+            dateValue = parsed;
+        }
+    }
+    
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button 
+                    variant="outline" 
+                    disabled={disabled}
+                    className={cn(
+                        "w-full h-12 rounded-xl text-base bg-white shadow-sm transition-all justify-start text-left font-normal border-input",
+                        !dateValue && "text-muted-foreground",
+                        hasError && "border-destructive ring-destructive/20"
+                    )}
+                >
+                    <CalendarIcon className="mr-3 h-5 w-5 text-muted-foreground" />
+                    {dateValue ? format(dateValue, "PPP") : (placeholder || 'Select date...')}
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateValue}
+                  onSelect={(d) => onChange(d)}
+                  initialFocus
+                />
+            </PopoverContent>
+        </Popover>
+    );
 }
 
 export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFieldId }: DataEntryModalProps) {
@@ -112,11 +158,24 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
                       </Select>
                     )}
                   />
+                ) : field.type === 'date' ? (
+                    <Controller
+                        name={field.id}
+                        control={control}
+                        render={({ field: dateField }) => (
+                            <DatePickerInput 
+                                value={dateField.value} 
+                                onChange={(d) => dateField.onChange(d?.toISOString())}
+                                placeholder={field.placeholder || field.label}
+                                hasError={!!errors[field.id]}
+                            />
+                        )}
+                    />
                 ) : (
                   <Input
                     {...register(field.id)}
                     id={field.id}
-                    type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
+                    type={field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'time' ? 'time' : 'text'}
                     placeholder={field.placeholder}
                     className={cn(
                       "h-12 rounded-xl text-base bg-white shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/20",

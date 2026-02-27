@@ -10,11 +10,11 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3, LayoutList, X, ChevronDown, Clock } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3, LayoutList, X, ChevronDown, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
-import { format } from 'date-fns';
+import { format, isValid, parseISO } from 'date-fns';
 import { SmartSappIcon } from '@/components/icons';
 import {
   AlertDialog,
@@ -35,6 +35,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -128,6 +130,70 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: PDFForm['backgroundPa
     return (
         <div className="absolute inset-0 pointer-events-none text-foreground/20">
             {patterns[pattern]}
+        </div>
+    );
+};
+
+const DatePicker = ({ value, onChange, disabled, className, style, placeholder }: { 
+    value?: any, 
+    onChange: (date?: Date) => void, 
+    disabled?: boolean, 
+    className?: string,
+    style?: React.CSSProperties,
+    placeholder?: string 
+}) => {
+    let dateValue: Date | undefined = undefined;
+    if (value) {
+        const parsed = value instanceof Date ? value : parseISO(value);
+        if (isValid(parsed)) {
+            dateValue = parsed;
+        }
+    }
+    
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button 
+                    variant="ghost" 
+                    disabled={disabled}
+                    className={cn(
+                        "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 transition-all justify-start text-left font-medium rounded-none",
+                        !dateValue && "text-muted-foreground/40",
+                        className
+                    )}
+                    style={style}
+                >
+                    <span className="truncate">
+                        {dateValue ? format(dateValue, "PPP") : (placeholder || 'Pick date')}
+                    </span>
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={dateValue}
+                  onSelect={(d) => onChange(d)}
+                  initialFocus
+                />
+            </PopoverContent>
+        </Popover>
+    );
+}
+
+const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
+    return (
+        <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map(star => (
+                <Star
+                    key={star}
+                    className={cn(
+                        'w-10 h-10 cursor-pointer',
+                        star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
+                        disabled ? 'cursor-not-allowed' : ''
+                    )}
+                    onClick={() => !disabled && onChange(star)}
+                />
+            ))}
         </div>
     );
 };
@@ -476,10 +542,24 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             </Select>
                         )}
                     />
+                ) : field.type === 'date' ? (
+                    <Controller
+                        name={field.id}
+                        control={control}
+                        render={({ field: dateField }) => (
+                            <DatePicker 
+                                value={dateField.value} 
+                                onChange={(d) => dateField.onChange(d?.toISOString())}
+                                placeholder={field.placeholder || field.label}
+                                style={{ fontSize: dynamicFontSize }}
+                                className={cn(errors[field.id] && "bg-destructive/5")}
+                            />
+                        )}
+                    />
                 ) : (
                     <Input
                         {...register(field.id)}
-                        type={field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
+                        type={field.type === 'time' ? 'time' : 'text'}
                         placeholder={field.placeholder || field.label}
                         className={cn(
                             "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium transition-all",
