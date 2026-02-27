@@ -204,24 +204,6 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
-    return (
-        <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map(star => (
-                <Star
-                    key={star}
-                    className={cn(
-                        'w-10 h-10 cursor-pointer',
-                        star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
-                        disabled ? 'cursor-not-allowed' : ''
-                    )}
-                    onClick={() => !disabled && onChange(star)}
-                />
-            ))}
-        </div>
-    );
-};
-
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -546,7 +528,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     value && <img src={value} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                 ) : (
                     <span 
-                        className="px-1 font-medium text-black whitespace-nowrap bg-transparent"
+                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
                         style={{ fontSize: dynamicFontSize }}
                     >
                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
@@ -568,7 +550,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         control={control}
                         render={({ field: selectField }) => (
                             <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                <SelectTrigger className="w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium" style={{ fontSize: dynamicFontSize }}>
+                                <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium", field.bold && "font-bold")} style={{ fontSize: dynamicFontSize }}>
                                     <SelectValue placeholder={field.placeholder || field.label} />
                                     <ChevronDown className="h-3 w-3 opacity-20 group-hover/desktop-field:opacity-60" />
                                 </SelectTrigger>
@@ -590,7 +572,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                 onChange={(d) => dateField.onChange(d?.toISOString())}
                                 placeholder={field.placeholder || field.label}
                                 style={{ fontSize: dynamicFontSize }}
-                                className={cn(errors[field.id] && "bg-destructive/5")}
+                                className={cn(errors[field.id] && "bg-destructive/5", field.bold && "font-bold")}
                             />
                         )}
                     />
@@ -601,7 +583,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         placeholder={field.placeholder || field.label}
                         className={cn(
                             "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium transition-all",
-                            errors[field.id] && "border-destructive/40 bg-destructive/5"
+                            errors[field.id] && "border-destructive/40 bg-destructive/5",
+                            field.bold && "font-bold"
                         )}
                         style={{ fontSize: dynamicFontSize }}
                     />
@@ -634,7 +617,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     <img src={value} alt="Captured" className="w-full h-full object-contain" />
                 ) : (
                     <span 
-                        className="font-medium text-primary block truncate w-full"
+                        className={cn("text-primary block truncate w-full", field.bold ? "font-bold" : "font-medium")}
                         style={{ fontSize: dynamicFontSize }}
                     >
                         {field.type === 'date' ? format(new Date(value), 'PPP') : value}
@@ -644,7 +627,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <div className="flex items-center gap-1 opacity-40">
                     {!isInteractiveMedia && <Edit3 className="h-3 w-3 text-muted-foreground shrink-0" />}
                     <span 
-                        className="text-muted-foreground font-medium uppercase truncate"
+                        className={cn("text-muted-foreground uppercase truncate", field.bold ? "font-bold" : "font-medium")}
                         style={{ fontSize: `${Math.max(6, Math.round(8 * currentTotalScale))}px` }}
                     >
                         {field.placeholder || (field.type === 'photo' ? 'Capture' : field.type === 'signature' ? 'Sign' : field.label)}

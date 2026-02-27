@@ -290,6 +290,7 @@ export interface PDFFormField {
   position: { x: number; y: number };
   dimensions: { width: number; height: number };
   fontSize?: number;
+  bold?: boolean;
   required?: boolean;
   options?: string[];
 }

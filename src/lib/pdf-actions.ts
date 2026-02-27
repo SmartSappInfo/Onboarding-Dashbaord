@@ -35,7 +35,10 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
         throw new Error(`Failed to parse PDF template: ${e.message}`);
     }
 
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    // Embed fonts
+    const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    
     const pages = pdfDoc.getPages();
     const fields = pdfForm.fields || [];
     
@@ -67,6 +70,8 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 if (!displayValue || displayValue === 'undefined' || displayValue === 'null') continue;
 
                 const fontSize = field.fontSize || 11;
+                const font = field.bold ? fontBold : fontRegular;
+
                 page.drawText(displayValue, {
                     x: x + 2,
                     y: y_top - fontSize - 2,

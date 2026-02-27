@@ -14,7 +14,7 @@ import {
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Sparkles, Key, Check, X, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Replace, Lock, Eye, EyeOff, Loader2
+  Copy, Replace, Lock, Eye, EyeOff, Loader2, Bold
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -65,6 +65,8 @@ export function Inspector() {
       </ScrollArea>
     );
   }
+
+  const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time';
 
   return (
     <ScrollArea className="flex-grow">
@@ -122,6 +124,14 @@ export function Inspector() {
                 <div className="space-y-2 pt-2 border-t"><Label className="text-xs">Options</Label><Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[80px] text-xs" /></div>
               )}
               <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Required</Label><Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} /></div>
+              
+              {isTextType && (
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <Label className="text-xs flex items-center gap-1.5"><Bold className="h-3 w-3" /> Bold Text</Label>
+                  <Switch checked={!!selectedField.bold} onCheckedChange={v => updateField(selectedField.id, { bold: v })} />
+                </div>
+              )}
+
               <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} /></div>
             </CardContent>
           </Card>
