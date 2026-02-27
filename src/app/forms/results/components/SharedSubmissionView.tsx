@@ -17,6 +17,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { SmartSappIcon } from '@/components/icons';
+import { cn } from '@/lib/utils';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -315,12 +316,19 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                 <div className="absolute inset-0 z-20 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
+                        
+                        const baseFontSize = field.fontSize || 11;
+                        const dynamicFontSize = `${Math.round(baseFontSize * 1.5)}px`;
+
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
                                 {field.type === 'signature' ? (
                                     <img src={val} alt="Sig" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
-                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">
+                                    <span 
+                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+                                        style={{ fontSize: dynamicFontSize }}
+                                    >
                                         {field.type === 'date' ? format(new Date(val), 'PPP') : val}
                                     </span>
                                 )}

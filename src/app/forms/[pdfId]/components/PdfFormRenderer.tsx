@@ -43,7 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Dialog, 
     DialogContent, 
@@ -519,7 +519,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
-    const dynamicFontSize = `${Math.round(10 * currentTotalScale)}px`;
+    // Base font size from document properties, fallback to 11 if not set
+    const baseFontSize = field.fontSize || 11;
+    const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
     if (isSubmitted) {
         return (
@@ -628,7 +630,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     {!isInteractiveMedia && <Edit3 className="h-3 w-3 text-muted-foreground shrink-0" />}
                     <span 
                         className={cn("text-muted-foreground uppercase truncate", field.bold ? "font-bold" : "font-medium")}
-                        style={{ fontSize: `${Math.max(6, Math.round(8 * currentTotalScale))}px` }}
+                        style={{ fontSize: `${Math.max(6, Math.round(baseFontSize * currentTotalScale * 0.8))}px` }}
                     >
                         {field.placeholder || (field.type === 'photo' ? 'Capture' : field.type === 'signature' ? 'Sign' : field.label)}
                     </span>

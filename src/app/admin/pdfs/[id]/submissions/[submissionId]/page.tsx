@@ -305,6 +305,9 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                         const value = formData[field.id];
                         if (!value) return null;
 
+                        const baseFontSize = field.fontSize || 11;
+                        const dynamicFontSize = `${Math.round(baseFontSize * 1.5)}px`;
+
                         return (
                             <div 
                                 key={field.id} 
@@ -323,7 +326,10 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                 {field.type === 'signature' ? (
                                     <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
-                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap">
+                                    <span 
+                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+                                        style={{ fontSize: dynamicFontSize }}
+                                    >
                                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                                     </span>
                                 )}

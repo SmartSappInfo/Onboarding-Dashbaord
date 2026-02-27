@@ -10,11 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Sparkles, Key, Check, X, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Replace, Lock, Eye, EyeOff, Loader2, Bold
+  Copy, Replace, Lock, Eye, EyeOff, Loader2, Bold, Type
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -126,13 +127,31 @@ export function Inspector() {
               <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Required</Label><Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} /></div>
               
               {isTextType && (
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <Label className="text-xs flex items-center gap-1.5"><Bold className="h-3 w-3" /> Bold Text</Label>
-                  <Switch checked={!!selectedField.bold} onCheckedChange={v => updateField(selectedField.id, { bold: v })} />
+                <div className="space-y-4 pt-2 border-t mt-2">
+                  <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-1">Typography</h4>
+                  
+                  <div className="space-y-3 px-1">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3" /> Font Size</Label>
+                      <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded">{selectedField.fontSize || 11}pt</span>
+                    </div>
+                    <Slider
+                      value={[selectedField.fontSize || 11]}
+                      min={8}
+                      max={36}
+                      step={1}
+                      onValueChange={([val]) => updateField(selectedField.id, { fontSize: val })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <Label className="text-xs flex items-center gap-1.5"><Bold className="h-3 w-3" /> Bold Text</Label>
+                    <Switch checked={!!selectedField.bold} onCheckedChange={v => updateField(selectedField.id, { bold: v })} />
+                  </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} /></div>
+              <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5 mt-4"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} /></div>
             </CardContent>
           </Card>
         ) : isMulti ? (

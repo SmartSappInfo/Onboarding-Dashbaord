@@ -440,9 +440,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                         const content = field.type === 'signature' ? (
                                             <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
                                         ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
+                                        
+                                        const dynamicFontSize = `${field.fontSize || 11}px`;
+
                                         return (
                                             <TableCell key={field.id}>
-                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold">{content}</Link> : content}
+                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold" style={{ fontSize: dynamicFontSize }}>{content}</Link> : <div style={{ fontSize: dynamicFontSize }}>{content}</div>}
                                             </TableCell>
                                         );
                                     })}
@@ -653,12 +656,19 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
+                        
+                        const baseFontSize = field.fontSize || 11;
+                        const dynamicFontSize = `${Math.round(baseFontSize * 1.5)}px`;
+
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
                                 {field.type === 'signature' ? (
                                     <img src={val} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
-                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                                    <span 
+                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+                                        style={{ fontSize: dynamicFontSize }}
+                                    >
                                         {field.type === 'date' ? format(new Date(val), 'PPP') : val}
                                     </span>
                                 )}
