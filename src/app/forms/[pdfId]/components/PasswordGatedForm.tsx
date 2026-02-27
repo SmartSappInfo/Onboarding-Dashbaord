@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -45,48 +46,55 @@ export default function PasswordGatedForm({ pdfForm }: PasswordGatedFormProps) {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="flex justify-center mb-4">
-              <SmartSappIcon className="h-12 w-12 text-primary" />
-            </div>
-            <DialogTitle className="text-center">Password Required</DialogTitle>
-            <DialogDescription className="text-center">
-              This document is password protected. Please enter the password to continue.
-            </DialogDescription>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              <DialogFooter>
-                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                   {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Unlock Document
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
-      <div className="text-center text-muted-foreground">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto" />
-        <p className="mt-2">Awaiting password...</p>
+    <div className="flex flex-col min-h-screen bg-muted/20">
+      <div className="flex-grow flex items-center justify-center p-4">
+        <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <div className="flex justify-center mb-4">
+                <SmartSappIcon className="h-12 w-12 text-primary" />
+              </div>
+              <DialogTitle className="text-center">Password Required</DialogTitle>
+              <DialogDescription className="text-center">
+                This document is password protected. Please enter the password to continue.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {error && <p className="text-sm font-medium text-destructive text-center">{error}</p>}
+                <DialogFooter>
+                  <Button type="submit" className="w-full h-12 rounded-xl font-bold" disabled={form.formState.isSubmitting}>
+                    {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Unlock Document
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+        <div className="text-center text-muted-foreground">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+          <p className="mt-2 text-sm font-medium">Awaiting password...</p>
+        </div>
       </div>
+      
+      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t">
+          <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+          <p>&copy; {new Date().getFullYear()} SmartSapp</p>
+      </footer>
     </div>
   );
 }

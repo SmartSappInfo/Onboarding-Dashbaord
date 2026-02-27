@@ -2,7 +2,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format } from 'date-fns';
-import { SmartSappIcon } from '@/components/icons';
+import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -40,10 +40,10 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
         let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
         
         if (field.type === 'email') {
-            const emailSchema = z.string().email({ message: "Invalid email address." });
+            const emailSchema = z.string().email({ message: "Please enter a valid email address." });
             fieldSchema = field.required ? emailSchema : emailSchema.optional().or(z.literal(''));
         } else if (field.type === 'phone') {
-            const phoneSchema = z.string().regex(/^\+?[\d\s\-()]{10,}$/, "Phone number must be at least 10 digits.");
+            const phoneSchema = z.string().regex(/^\+?[\d\s\-()]{10,}$/, "Please enter a valid phone number (at least 10 digits).");
             fieldSchema = field.required ? phoneSchema : phoneSchema.optional().or(z.literal(''));
         } else if (field.required) {
             fieldSchema = z.string({
@@ -218,7 +218,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         .map(f => ({ id: f.id, label: f.label || f.placeholder || 'Unnamed Field' }));
     
     if (missing.length > 0) {
-        setMissingFields(missing);
+        setValidationErrors(missing);
         setShowMissingFieldsModal(true);
     }
   };
@@ -566,6 +566,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </main>
         
+         <footer className="py-6 text-center text-xs sm:text-sm text-muted-foreground bg-background border-t shrink-0 print:hidden relative z-10">
+            <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+            <p>&copy; {new Date().getFullYear()} SmartSapp</p>
+        </footer>
+
          <SignaturePadModal
             open={!!mediaCaptureState}
             onClose={() => setMediaCaptureState(null)}
@@ -584,23 +589,23 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                         <AlertCircle className="h-6 w-6 text-destructive" />
                     </div>
-                    <DialogTitle className="text-center text-xl">Required Fields Missing</DialogTitle>
-                    <DialogDescription className="text-center pt-2">
+                    <DialogTitle className="text-center text-xl font-bold">Required Fields Missing</DialogTitle>
+                    <DialogDescription className="text-center pt-2 text-sm font-medium">
                         Please complete the following fields before submitting the document:
                     </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="max-h-[30vh] border rounded-md my-4">
-                    <ul className="p-4 space-y-2">
+                    <ul className="p-4 space-y-3">
                         {missingFields.map((field, idx) => (
-                            <li key={idx} className="flex items-center gap-2 text-sm">
-                                <div className="h-1.5 w-1.5 rounded-full bg-destructive" />
-                                <span>{field.label}</span>
+                            <li key={idx} className="flex items-center gap-3 text-sm font-medium">
+                                <div className="h-2 w-2 rounded-full bg-destructive" />
+                                <span className="font-bold">{field.label}</span>
                             </li>
                         ))}
                     </ul>
                 </ScrollArea>
                 <DialogFooter>
-                    <Button onClick={handleOkMissingFields} className="w-full">OK, take me there</Button>
+                    <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">OK, take me there</Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
