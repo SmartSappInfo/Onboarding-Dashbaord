@@ -8,6 +8,7 @@ import {
     useSensor, 
     PointerSensor, 
     type DragEndEvent, 
+    type DragStartEvent,
     closestCenter 
 } from '@dnd-kit/core';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
@@ -41,6 +42,18 @@ export function DocumentCanvas() {
     if (pdf.downloadUrl) load();
   }, [pdf.downloadUrl, toast]);
 
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    if (active.data.current?.type === 'FIELD') {
+      const fieldId = active.id as string;
+      // If the field isn't part of the current selection, select it immediately
+      // so the drag logic can move it on the first try.
+      if (!selectedFieldIds.includes(fieldId)) {
+        setSelectedFieldIds([fieldId]);
+      }
+    }
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
     if (active.data.current?.type !== 'FIELD') return;
@@ -56,6 +69,7 @@ export function DocumentCanvas() {
     const dyPercent = (delta.y / height) * 100;
 
     setFields(prev => prev.map(f => {
+      // Move all selected fields on the same page
       if (selectedFieldIds.includes(f.id) && f.pageNumber === movedField.pageNumber) {
         return {
           ...f,
@@ -104,7 +118,12 @@ export function DocumentCanvas() {
   };
 
   return (
-    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+    <DndContext 
+      sensors={sensors} 
+      collisionDetection={closestCenter} 
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
       <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
         <div 
           className="p-8 sm:p-16 pb-64 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
@@ -116,7 +135,7 @@ export function DocumentCanvas() {
         >
           {!pdfDoc ? (
             Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" />
+              <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" key={i} />
             ))
           ) : (
             Array.from({ length: pdfDoc.numPages }).map((_, i) => (

@@ -1,7 +1,8 @@
+
 'use client';
 
 import * as React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable } from '@nd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
@@ -146,7 +147,11 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
         (field.type === 'signature' || field.type === 'photo') ? "flex items-center justify-center" : "p-1"
       )}
-      onClick={(e) => { e.stopPropagation(); selectField(field.id, e.shiftKey, e.metaKey || e.ctrlKey); }}
+      onPointerDown={(e) => { 
+        // Snappier feedback: Select the field immediately on mouse down
+        e.stopPropagation(); 
+        selectField(field.id, e.shiftKey, e.metaKey || e.ctrlKey); 
+      }}
       onDoubleClick={(e) => { e.stopPropagation(); if (!isMulti) setIsEditingPlaceholder(true); }}
     >
       <div {...listeners} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing" />
