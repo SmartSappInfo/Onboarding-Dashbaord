@@ -14,6 +14,8 @@ import {
     Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 export default function MessagingHubPage() {
     const modules = [
@@ -48,14 +50,14 @@ export default function MessagingHubPage() {
             href: '/admin/messaging/composer',
             color: 'text-green-500',
             bg: 'bg-green-500/10',
-            disabled: true // Coming in Phase 4
+            disabled: false 
         }
     ];
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
             <div className="mb-8">
-                <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
+                <h1 className="text-3xl font-black tracking-tight flex items-center gap-3 text-foreground">
                     <MessageSquareText className="h-8 w-8 text-primary" />
                     Messaging Engine
                 </h1>
@@ -103,7 +105,7 @@ export default function MessagingHubPage() {
                                 <p className="font-bold">Email Channel</p>
                                 <p className="text-xs text-muted-foreground italic">Stateless via Admin Dispatcher</p>
                             </div>
-                            <Badge className="ml-auto bg-green-500">Active</Badge>
+                            <Badge className="ml-auto bg-green-500 text-white border-none">Active</Badge>
                         </div>
                         <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-xs">
                             <div className="p-3 bg-orange-500/10 rounded-lg"><Smartphone className="text-orange-500 h-5 w-5" /></div>
@@ -111,7 +113,7 @@ export default function MessagingHubPage() {
                                 <p className="font-bold">SMS Channel</p>
                                 <p className="text-xs text-muted-foreground italic">Branded Sender ID Support</p>
                             </div>
-                            <Badge className="ml-auto bg-green-500">Active</Badge>
+                            <Badge className="ml-auto bg-green-500 text-white border-none">Active</Badge>
                         </div>
                     </CardContent>
                 </Card>
@@ -119,10 +121,3 @@ export default function MessagingHubPage() {
         </div>
     );
 }
-
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
-const Badge = ({ children, className }: any) => (
-    <span className={cn("px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter", className)}>
-        {children}
-    </span>
-);
