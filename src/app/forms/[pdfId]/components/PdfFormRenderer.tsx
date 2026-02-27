@@ -519,7 +519,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             ) : (
                 <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
             )}
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 -ml-1">
                 <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
                 <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
             </div>
@@ -604,8 +604,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <ScrollBar orientation="horizontal" />
             </ScrollArea>
 
-            <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col items-center gap-3">
-                <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
+            <div className="fixed left-4 bottom-24 z-50 flex flex-col items-center gap-3">
+                <div className="flex flex-col items-center bg-background/60 backdrop-blur-sm rounded-full border border-primary/20 py-4 px-2 shadow-2xl h-48">
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>
@@ -618,7 +618,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     <ZoomIn className="h-4 w-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="left">Zoom In</TooltipContent>
+                            <TooltipContent side="right">Zoom In</TooltipContent>
                         </Tooltip>
                         
                         <Slider
@@ -642,11 +642,11 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     <ZoomOut className="h-4 w-4 text-primary" />
                                 </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="left">Zoom Out</TooltipContent>
+                            <TooltipContent side="right">Zoom Out</TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
                 </div>
-                <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
+                <div className="bg-primary/80 text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20 backdrop-blur-sm">
                     {Math.round(zoom * 100)}%
                 </div>
             </div>
