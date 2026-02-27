@@ -10,7 +10,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, Copy, Lock, FileSpreadsheet, Printer, Clock, Users, Trash2, CheckSquare } from 'lucide-react';
+import { 
+    ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, 
+    Copy, Lock, FileSpreadsheet, Printer, Clock, Users, Trash2, 
+    CheckSquare, MoreVertical, FileText
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,7 +34,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { updatePdfResultsSharing, updatePdfFormMapping, deleteSubmissions } from '@/lib/pdf-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -403,18 +407,19 @@ export default function SubmissionsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10">
-        <div className="space-y-1 min-w-0 mb-6 print:hidden">
+        <div className="space-y-1 min-w-0 mb-6">
           <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground" onClick={() => router.push('/admin/pdfs')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Documents
+            <span className="hidden sm:inline">Back to Documents</span>
+            <span className="sm:hidden">Back</span>
           </Button>
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground truncate pr-4" title={pdf?.name}>
-            {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions for "${pdf?.name}"`}
+            {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions: ${pdf?.name}`}
           </h1>
           <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
         </div>
 
-        {/* Quick Stats Grid - Positioned at top */}
+        {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                 <CardContent className="p-4 flex items-center gap-4">
@@ -442,34 +447,39 @@ export default function SubmissionsPage() {
             </Card>
         </div>
 
-        {/* Actions Bar - Aligned Right */}
+        {/* Actions Bar */}
         {!isLoading && (
-            <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 mb-8 print:hidden">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-8">
                 {selectedIds.length > 0 ? (
-                    <Card className="bg-primary/5 border-primary/20 w-full mb-4">
+                    <Card className="bg-primary/5 border-primary/20 w-full animate-in slide-in-from-top-2">
                         <CardContent className="p-3 flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <CheckSquare className="h-5 w-5 text-primary" />
-                                <span className="text-sm font-bold text-primary">{selectedIds.length} records selected</span>
+                                <span className="text-sm font-bold text-primary">{selectedIds.length} selected</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 px-4 font-bold">
-                                    <Download className="h-4 w-4 mr-2" /> Download
+                                <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 px-3 sm:px-4 font-bold">
+                                    <Download className="h-4 w-4 sm:mr-2" /> 
+                                    <span className="hidden sm:inline">Download</span>
                                 </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="h-9 px-4 font-bold">
-                                    <Trash2 className="h-4 w-4 mr-2" /> Delete
+                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="h-9 px-3 sm:px-4 font-bold">
+                                    <Trash2 className="h-4 w-4 sm:mr-2" /> 
+                                    <span className="hidden sm:inline">Delete</span>
                                 </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9 px-4">Cancel</Button>
+                                <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9">
+                                    <X className="h-4 w-4" />
+                                </Button>
                             </div>
                         </CardContent>
                     </Card>
                 ) : (
-                    <>
+                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full">
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 sm:h-10 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
+                                <Button variant="outline" size="sm" className="h-9 sm:h-10 px-3 sm:px-4 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
                                     {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
                                     <span className="hidden sm:inline">Export List</span>
+                                    <span className="sm:hidden">Export</span>
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56">
@@ -484,9 +494,10 @@ export default function SubmissionsPage() {
                             </DropdownMenuContent>
                         </DropdownMenu>
 
-                        <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 sm:gap-2 shadow-sm">
+                        <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 px-3 sm:px-4 sm:gap-2 shadow-sm">
                             <Share2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">Share Results</span>
+                            <span className="hidden sm:inline">Share Portal</span>
+                            <span className="sm:hidden">Share</span>
                         </Button>
                         
                         {submissions && submissions.length > 0 && (
@@ -518,31 +529,32 @@ export default function SubmissionsPage() {
                                 </DropdownMenu>
                             </ButtonGroup>
                         )}
-                    </>
+                    </div>
                 )}
             </div>
         )}
 
-        <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
+        {/* List View: Desktop Table */}
+        <div className="hidden md:block rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent">
+              <TableRow className="hover:bg-transparent bg-muted/30">
                 <TableHead className="w-[50px] pl-6">
                     <Checkbox 
                         checked={submissions?.length ? selectedIds.length === submissions.length : false} 
                         onCheckedChange={toggleSelectAll} 
                     />
                 </TableHead>
-                {displayFields.map((field, idx) => (
-                  <TableHead key={field.id} className={cn("text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4")}>
+                {displayFields.map((field) => (
+                  <TableHead key={field.id} className="text-[10px] font-black uppercase tracking-widest py-4">
                       <div className="flex items-center gap-1.5">
                         {field.label || 'Unnamed Field'}
-                        {field.id === selectedNamingFieldId && <Tooltip><TooltipTrigger><Key className="h-3 w-3 text-primary" /></TooltipTrigger><TooltipContent>Primary Naming Field</TooltipContent></Tooltip>}
+                        {field.id === selectedNamingFieldId && <Key className="h-3 w-3 text-primary" />}
                       </div>
                   </TableHead>
                 ))}
-                <TableHead className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider py-4">Submission Date</TableHead>
-                <TableHead className="w-[120px] text-right py-4 pr-6 text-[10px] font-bold text-muted-foreground uppercase">Actions</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Submitted At</TableHead>
+                <TableHead className="w-[120px] text-right py-4 pr-6 text-[10px] font-black uppercase tracking-widest">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -551,7 +563,7 @@ export default function SubmissionsPage() {
                     <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
                     {Array.from({ length: 3 }).map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>)}
                     <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
                   </TableRow>
                 )) : submissions && submissions.length > 0 ? submissions.map((submission) => (
                   <TableRow key={submission.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(submission.id) && "bg-primary/5")}>
@@ -581,54 +593,136 @@ export default function SubmissionsPage() {
                     </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-1">
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                                <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
-                                  <Eye className="h-4 w-4" />
-                                  <span className="sr-only">View Submission</span>
-                                </Link>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>View Details</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>
-                                {downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                                <span className="sr-only">Download PDF</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Download Signed PDF</TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
+                        <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
+                                <Eye className="h-4 w-4" />
+                            </Link>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>
+                            {downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Download className="h-4 w-4" />}
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
                 )) : (
                 <TableRow>
-                  <TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground">No submissions have been received for this document yet.</TableCell>
+                  <TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground">No submissions yet.</TableCell>
                 </TableRow>
               )}
             </TableBody>
           </Table>
+        </div>
+
+        {/* Mobile Card View */}
+        <div className="grid gap-4 md:hidden">
+            {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)
+            ) : submissions && submissions.length > 0 ? (
+                submissions.map((submission) => {
+                    const namingField = displayFields.find(f => f.id === selectedNamingFieldId) || displayFields[0];
+                    const namingValue = submission.formData[namingField?.id] || 'Unnamed Submission';
+                    const secondaryFields = displayFields.filter(f => f.id !== namingField?.id);
+
+                    return (
+                        <Card key={submission.id} className={cn(
+                            "relative overflow-hidden transition-all",
+                            selectedIds.includes(submission.id) ? "ring-2 ring-primary bg-primary/5 shadow-md" : "bg-card border-border/50"
+                        )}>
+                            <div className="absolute top-3 left-3 z-10">
+                                <Checkbox 
+                                    checked={selectedIds.includes(submission.id)} 
+                                    onCheckedChange={() => toggleSelect(submission.id)} 
+                                    className="bg-background"
+                                />
+                            </div>
+                            <CardHeader className="pl-10 pt-4 pb-2">
+                                <div className="flex items-start justify-between">
+                                    <div className="min-w-0 pr-2">
+                                        <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="block">
+                                            <CardTitle className="text-lg font-black truncate leading-tight group-hover:text-primary transition-colors">
+                                                {namingValue}
+                                            </CardTitle>
+                                        </Link>
+                                        <CardDescription className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 mt-1">
+                                            <Clock className="h-3 w-3" />
+                                            {formatDistanceToNow(new Date(submission.submittedAt), { addSuffix: true })}
+                                        </CardDescription>
+                                    </div>
+                                    <DropdownMenu modal={false}>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions/${submission.id}`)}>
+                                                <Eye className="mr-2 h-4 w-4" /> View Full Detail
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => handleDownloadClick(submission.id)}>
+                                                <Download className="mr-2 h-4 w-4" /> Download PDF
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="pl-10 pb-4 space-y-3">
+                                {secondaryFields.map(field => (
+                                    <div key={field.id} className="space-y-0.5">
+                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">{field.label || 'Field'}</p>
+                                        <div className="text-sm font-medium truncate">
+                                            {field.type === 'signature' ? (
+                                                <div className="h-6 w-12 relative bg-muted rounded overflow-hidden">
+                                                    {submission.formData[field.id] && <img src={submission.formData[field.id]} alt="sig" className="h-full w-full object-contain" />}
+                                                </div>
+                                            ) : (
+                                                submission.formData[field.id] || <span className="text-muted-foreground italic opacity-50">—</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </CardContent>
+                            <CardFooter className="bg-muted/30 p-2 flex gap-2">
+                                <Button variant="ghost" size="sm" className="flex-1 h-9 font-bold text-xs" asChild>
+                                    <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
+                                        <Eye className="h-3.5 w-3.5 mr-2" /> View
+                                    </Link>
+                                </Button>
+                                <Button 
+                                    variant="secondary" 
+                                    size="sm" 
+                                    className="flex-1 h-9 font-bold text-xs"
+                                    onClick={() => handleDownloadClick(submission.id)}
+                                    disabled={!!downloadingId && downloadingId !== submission.id}
+                                >
+                                    {downloadingId === submission.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Download className="h-3.5 w-3.5 mr-2" />}
+                                    Download
+                                </Button>
+                            </CardFooter>
+                        </Card>
+                    )
+                })
+            ) : (
+                <div className="text-center py-20 border-2 border-dashed rounded-xl bg-card">
+                    <FileText className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                    <p className="text-muted-foreground font-medium">No submissions found.</p>
+                </div>
+            )}
         </div>
       </div>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>Delete {selectedIds.length} Records?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete {selectedIds.length} selected submission records and their associated signed documents. This action cannot be undone.
+              This will permanently delete the selected submission records and their associated signed documents. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeletingSelected}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSelected} disabled={isDeletingSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {isDeletingSelected ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Delete {selectedIds.length} Records
+              Delete Records
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -643,18 +737,18 @@ export default function SubmissionsPage() {
       )}
 
       {isExportingPDF && (
-          <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-              <Card className="w-80 shadow-2xl border-primary/20 bg-card rounded-2xl">
-                  <CardContent className="p-8 flex flex-col items-center gap-6">
+          <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300 p-4">
+              <Card className="w-full max-w-sm shadow-2xl border-primary/20 bg-card rounded-2xl">
+                  <CardContent className="p-8 flex flex-col items-center gap-6 text-center">
                       <div className="relative">
                           <Loader2 className="h-12 w-12 animate-spin text-primary" />
                           <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
                       </div>
-                      <div className="text-center space-y-1">
-                          <h2 className="font-black text-xl tracking-tight">Generating Report</h2>
-                          <p className="text-sm text-muted-foreground font-medium">Creating A4 multi-page document...</p>
+                      <div className="space-y-1">
+                          <h2 className="font-black text-xl tracking-tight uppercase">Generating Report</h2>
+                          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Building A4 multi-page document...</p>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground hover:text-foreground">Cancel</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground hover:text-foreground">Cancel Generation</Button>
                   </CardContent>
               </Card>
           </div>
@@ -696,16 +790,16 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden">
+            <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0">
                 <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="text-2xl font-black tracking-tight">Share Results Portal</DialogTitle>
+                    <DialogTitle className="text-2xl font-black tracking-tight">Share Portal</DialogTitle>
                     <DialogDescription className="text-sm font-medium">Allow external stakeholders to view and download submissions securely.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6 p-6">
                     <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-muted/30 p-4">
                         <div className="space-y-0.5">
                             <Label className="text-sm font-bold uppercase tracking-wider">Public Access</Label>
-                            <p className="text-xs text-muted-foreground font-medium">Enable to allow external viewing via link.</p>
+                            <p className="text-xs text-muted-foreground font-medium">Enable viewing via link.</p>
                         </div>
                         <Switch checked={isShared} onCheckedChange={setIsShared} />
                     </div>
@@ -713,13 +807,13 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Lock className="h-3 w-3" /> Results Password</Label>
-                                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-11" />
+                                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-11 rounded-xl" />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Share Link</Label>
                                 <div className="flex items-center gap-2">
-                                    <Input value={shareUrl} readOnly className="text-[10px] bg-muted h-11 font-mono" />
-                                    <Button size="icon" variant="outline" className="h-11 w-11 shrink-0 rounded-lg shadow-sm" onClick={() => {
+                                    <Input value={shareUrl} readOnly className="text-[10px] bg-muted h-11 font-mono rounded-xl" />
+                                    <Button size="icon" variant="outline" className="h-11 w-11 shrink-0 rounded-xl shadow-sm" onClick={() => {
                                         navigator.clipboard.writeText(shareUrl);
                                         toast({ title: 'Link Copied' });
                                     }}>
@@ -732,7 +826,7 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
                 </div>
                 <DialogFooter className="p-6 pt-0">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="font-bold">
+                    <Button onClick={handleSave} disabled={isSaving} className="font-bold rounded-xl px-8">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Settings'}
                     </Button>
                 </DialogFooter>
@@ -801,7 +895,6 @@ function HighFidelityDownloader({
 
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
-                // Reduce scale on iOS to prevent memory exhaustion crashes
                 const captureScale = isIOS ? 1.5 : 2;
 
                 const canvas = await html2canvas(el, { scale: captureScale, useCORS: true, logging: false, backgroundColor: '#ffffff' });
@@ -856,9 +949,9 @@ function HighFidelityDownloader({
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     <div>
                         <h2 className="text-lg font-bold">
-                            {batchProgress ? `Downloading Document ${batchProgress.current} of ${batchProgress.total}` : 'Generating Signed Document'}
+                            {batchProgress ? `Processing Document ${batchProgress.current} of ${batchProgress.total}` : 'Generating Signed Document'}
                         </h2>
-                        <p className="text-sm text-muted-foreground font-medium">Capturing high-fidelity pages...</p>
+                        <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Capturing high-fidelity pages...</p>
                     </div>
                 </div>
                 <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">
@@ -895,8 +988,8 @@ function HighFidelityDownloader({
             </div>
             
             <div className="p-4 border-t bg-card text-center print:hidden">
-                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
-                    Stop Batch Download
+                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold rounded-xl border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
+                    Stop Batch Operation
                 </Button>
             </div>
         </div>
@@ -956,7 +1049,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', alignItems: 'flex-start', justifyItems: 'flex-start' }}>
                                 {field.type === 'signature' ? (
-                                    <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                    <img src={value} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
                                     <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
                                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
