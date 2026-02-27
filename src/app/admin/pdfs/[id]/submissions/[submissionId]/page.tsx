@@ -72,13 +72,24 @@ export default function SubmissionDetailPage() {
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${pdfForm?.name || 'signed'}-submission.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const fileName = `${pdfForm?.name || 'signed'}-submission.pdf`;
+
+        // Detection for iOS Safari to handle blob download triggers
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        if (isIOS) {
+            window.location.assign(url);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 500);
+        }
         
         toast({ title: 'Download Successful' });
     } catch (e: any) {
@@ -94,7 +105,7 @@ export default function SubmissionDetailPage() {
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        const pdfDoc = await PDFDocument.create();
+        const pdfBundle = await PDFDocument.create();
         const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
         
         if (!pageElements || !pageElements.length) {
@@ -103,12 +114,16 @@ export default function SubmissionDetailPage() {
 
         toast({ title: 'Preparing Front-end Download', description: 'Capturing pages as images...' });
 
+        // iOS Detection
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
+            // Reduce scale on iOS to prevent memory exhaustion crashes
+            const captureScale = isIOS ? 1.5 : 2;
             
-            // Capture the element as a canvas with high scale for quality
             const canvas = await html2canvas(el, {
-                scale: 2,
+                scale: captureScale,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff'
@@ -116,9 +131,9 @@ export default function SubmissionDetailPage() {
             
             const imgData = canvas.toDataURL('image/jpeg', 0.9);
             const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-            const image = await pdfDoc.embedJpg(imgBytes);
+            const image = await pdfBundle.embedJpg(imgBytes);
             
-            const page = pdfDoc.addPage([image.width, image.height]);
+            const page = pdfBundle.addPage([image.width, image.height]);
             page.drawImage(image, {
                 x: 0,
                 y: 0,
@@ -127,16 +142,24 @@ export default function SubmissionDetailPage() {
             });
         }
 
-        const pdfBytes = await pdfDoc.save();
+        const pdfBytes = await pdfBundle.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${pdfForm?.name || 'signed'}-frontend-capture.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const fileName = `${pdfForm?.name || 'signed'}-frontend-capture.pdf`;
+
+        if (isIOS) {
+            window.location.assign(url);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                if (document.body.contains(a)) document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 500);
+        }
         
         toast({ title: 'Front-end Download Successful' });
     } catch (e: any) {

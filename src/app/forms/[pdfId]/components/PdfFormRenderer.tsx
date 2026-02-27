@@ -433,7 +433,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         const html2canvas = (await import('html2canvas')).default;
         const { PDFDocument } = await import('pdf-lib');
         
-        const pdfDoc = await PDFDocument.create();
+        const pdfBundle = await PDFDocument.create();
         const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
         
         if (!pageElements || !pageElements.length) {
@@ -442,11 +442,17 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
         toast({ title: 'Preparing Download', description: 'Processing document pages...' });
 
+        // Detection for iOS Safari to handle blob download triggers and memory limits
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
         for (let i = 0; i < pageElements.length; i++) {
             const el = pageElements[i] as HTMLElement;
             
+            // Lower scale for mobile to prevent iOS tab crashes due to high memory usage
+            const captureScale = isIOS || isMobile ? 1.5 : 2;
+
             const canvas = await html2canvas(el, {
-                scale: 2,
+                scale: captureScale,
                 useCORS: true,
                 logging: false,
                 backgroundColor: '#ffffff'
@@ -454,9 +460,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             
             const imgData = canvas.toDataURL('image/jpeg', 0.9);
             const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-            const image = await pdfDoc.embedJpg(imgBytes);
+            const image = await pdfBundle.embedJpg(imgBytes);
             
-            const page = pdfDoc.addPage([image.width, image.height]);
+            const page = pdfBundle.addPage([image.width, image.height]);
             page.drawImage(image, {
                 x: 0,
                 y: 0,
@@ -465,18 +471,29 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             });
         }
 
-        const pdfBytes = await pdfDoc.save();
+        const pdfBytes = await pdfBundle.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${pdfForm.name || 'signed'}-document.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const fileName = `${pdfForm.name || 'signed'}-document.pdf`;
+
+        if (isIOS) {
+            // iOS Safari is restrictive with programmatic a.click() for blobs.
+            // window.location.assign is the most reliable way to trigger the native viewer/share sheet.
+            window.location.assign(url);
+        } else {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            // Longer timeout for revoke to ensure the download actually starts on slower browsers
+            setTimeout(() => {
+                if (document.body.contains(a)) document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 500);
+        }
         
-        toast({ title: 'Download Successful' });
+        toast({ title: 'Download Started' });
     } catch (e: any) {
         console.error("Download error:", e);
         toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
@@ -801,7 +818,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         {Math.round(zoom * 100)}%
                     </div>
                 </div>
-            </main>
+            </header>
 
             <SignaturePadModal
                 open={!!mediaCaptureState}

@@ -525,7 +525,7 @@ export default function SubmissionsPage() {
 
         <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
-            <TableHeader className="bg-muted/50 border-b border-border/50">
+            <TableHeader>
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-[50px] pl-6">
                     <Checkbox 
@@ -795,9 +795,16 @@ function HighFidelityDownloader({
             const pdfBundle = await PDFDocument.create();
             const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
             if (!pageWrappers.length) throw new Error("No pages rendered.");
+
+            // iOS Detection
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
-                const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+                // Reduce scale on iOS to prevent memory exhaustion crashes
+                const captureScale = isIOS ? 1.5 : 2;
+
+                const canvas = await html2canvas(el, { scale: captureScale, useCORS: true, logging: false, backgroundColor: '#ffffff' });
                 const imgData = canvas.toDataURL('image/jpeg', 0.9);
                 const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
                 const image = await pdfBundle.embedJpg(imgBytes);
@@ -812,12 +819,20 @@ function HighFidelityDownloader({
             const pdfBytes = await pdfBundle.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = fileName;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+
+            if (isIOS) {
+                window.location.assign(url);
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    if (document.body.contains(a)) document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 500);
+            }
             onFinished(true, url);
         } catch (e: any) {
             console.error("Capture failed", e);
@@ -919,13 +934,14 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                     }
                 }
             } catch (e: any) {
-                if (e.name !== 'RenderingCancelledException') console.error("Renderer: task failed", e);
+                if (e.name === 'RenderingCancelledException') return;
+                console.error("Renderer: task failed", e);
             } finally {
                 if (!isCancelled) setIsRendering(false);
             }
         };
         render();
-        return () => { isCancelled = true; if (renderTaskRef.current) renderTaskRef.current.cancel(); };
+        return () => { isCancelled = true; if (renderTaskRef.current) { renderTaskRef.current.cancel(); } };
     }, [pdf, pageNumber]);
 
     return (
