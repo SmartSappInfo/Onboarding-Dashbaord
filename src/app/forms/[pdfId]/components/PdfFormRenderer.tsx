@@ -42,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Dialog, 
     DialogContent, 
@@ -300,8 +300,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       if (e.ctrlKey) {
         e.preventDefault();
         const delta = -e.deltaY;
-        const zoomStep = 0.1;
-        const factor = delta > 0 ? 1 + zoomStep : 1 - zoomStep;
+        // Use exponential scaling for smooth, symmetric zoom
+        const factor = Math.exp(delta * 0.005);
         setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
       }
     };
@@ -330,16 +330,22 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       }
     };
 
+    const onTouchEnd = () => {
+      touchStartDist.current = null;
+    };
+
     viewport.addEventListener('wheel', onWheel, { passive: false });
     viewport.addEventListener('touchstart', onTouchStart, { passive: false });
     viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    viewport.addEventListener('touchend', onTouchEnd);
     
     return () => {
       viewport.removeEventListener('wheel', onWheel);
       viewport.removeEventListener('touchstart', onTouchStart);
       viewport.removeEventListener('touchmove', onTouchMove);
+      viewport.removeEventListener('touchend', onTouchEnd);
     };
-  }, []);
+  }, [setZoom]);
 
   React.useEffect(() => {
     const loadPdf = async () => {

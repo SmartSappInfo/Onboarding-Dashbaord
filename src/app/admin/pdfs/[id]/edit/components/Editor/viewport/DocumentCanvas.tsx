@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,10 +20,16 @@ import { useToast } from '@/hooks/use-toast';
 const pdfjsPromise = import('pdfjs-dist');
 
 export function DocumentCanvas() {
-  const { pdf, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom } = useEditor();
+  const { pdf, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom, setZoom } = useEditor();
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
+
+  // Zoom handling refs to maintain state in event listeners
+  const zoomRef = React.useRef(zoom);
+  React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  const touchStartDist = React.useRef<number | null>(null);
+  const startZoom = React.useRef<number>(1.0);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -42,12 +47,68 @@ export function DocumentCanvas() {
     if (pdf.downloadUrl) load();
   }, [pdf.downloadUrl, toast]);
 
+  // Intercept Ctrl + Scroll and Pinch gestures
+  React.useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        // Modern trackpads send ctrlKey + deltaY for pinch
+        const delta = -e.deltaY;
+        // Use an exponential scaling factor for smoother, symmetric zooming
+        const factor = Math.exp(delta * 0.005);
+        setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        touchStartDist.current = dist;
+        startZoom.current = zoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDist.current !== null) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        const factor = dist / touchStartDist.current;
+        const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
+        setZoom(newZoom);
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchStartDist.current = null;
+    };
+
+    // Use non-passive listeners to allow e.preventDefault()
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
+    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    viewport.addEventListener('touchend', onTouchEnd);
+    
+    return () => {
+      viewport.removeEventListener('wheel', onWheel);
+      viewport.removeEventListener('touchstart', onTouchStart);
+      viewport.removeEventListener('touchmove', onTouchMove);
+      viewport.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [setZoom]);
+
   const handleDragStart = (event: DragStartEvent) => {
     const { active } = event;
     if (active.data.current?.type === 'FIELD') {
       const fieldId = active.id as string;
-      // If the field isn't part of the current selection, select it immediately
-      // so the drag logic can move it on the first try.
       if (!selectedFieldIds.includes(fieldId)) {
         setSelectedFieldIds([fieldId]);
       }
@@ -69,7 +130,6 @@ export function DocumentCanvas() {
     const dyPercent = (delta.y / height) * 100;
 
     setFields(prev => prev.map(f => {
-      // Move all selected fields on the same page
       if (selectedFieldIds.includes(f.id) && f.pageNumber === movedField.pageNumber) {
         return {
           ...f,
