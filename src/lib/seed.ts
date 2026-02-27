@@ -2,10 +2,10 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
-import { addDays, format, isAfter, startOfToday, subDays } from 'date-fns';
+import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
 
 // --- SEED DATA ---
 
@@ -171,13 +171,14 @@ export async function seedMessaging(firestore: Firestore): Promise<number> {
   const profiles: Omit<SenderProfile, 'id'>[] = [
     { name: 'SmartSapp Primary SMS', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
     { name: 'Onboarding Email', channel: 'email', identifier: 'onboarding@smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { name: 'School Support', channel: 'email', identifier: 'support@smartsapp.com', isDefault: false, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
   ];
   
-  const profileRefs: string[] = [];
+  const profileMap: Record<string, string> = {};
   profiles.forEach(p => {
     const ref = doc(collection(firestore, 'sender_profiles'));
     batch.set(ref, p);
-    profileRefs.push(ref.id);
+    profileMap[p.name] = ref.id;
   });
 
   // 3. Message Style
@@ -228,13 +229,84 @@ export async function seedMessaging(firestore: Firestore): Promise<number> {
       isActive: true,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
+    },
+    {
+      name: 'Survey Completion (Email)',
+      category: 'surveys',
+      channel: 'email',
+      subject: 'New Response: {{survey_title}}',
+      body: '<p>A new response has been received for <strong>{{survey_title}}</strong>.</p><p>Respondent Score: {{score}} / {{max_score}}</p><p>Date: {{submission_date}}</p>',
+      styleId: styleRef.id,
+      variables: ['survey_title', 'score', 'max_score', 'submission_date'],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      name: 'Document Signed Confirmation (SMS)',
+      category: 'forms',
+      channel: 'sms',
+      body: 'Hi, your document "{{form_name}}" has been successfully signed and processed on {{submission_date}}. Thank you!',
+      variables: ['form_name', 'submission_date'],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     }
   ];
 
-  templates.forEach(t => batch.set(doc(collection(firestore, 'message_templates')), t));
+  const templateMap: Record<string, string> = {};
+  templates.forEach(t => {
+    const ref = doc(collection(firestore, 'message_templates'));
+    batch.set(ref, t);
+    templateMap[t.name] = ref.id;
+  });
+
+  // 5. Seed some logs for demo visibility
+  const sampleLogs: Omit<MessageLog, 'id'>[] = [
+    {
+        templateId: templateMap['Welcome School (SMS)'],
+        templateName: 'Welcome School (SMS)',
+        senderProfileId: profileMap['SmartSapp Primary SMS'],
+        senderName: 'SmartSapp Primary SMS',
+        channel: 'sms',
+        recipient: '+233 24 000 0001',
+        body: 'Welcome Ghana International School to SmartSapp! Your onboarding specialist is Sitso. Let\'s get started!',
+        status: 'sent',
+        sentAt: subHours(new Date(), 2).toISOString(),
+        variables: { school_name: 'Ghana International School', agent_name: 'Sitso' }
+    },
+    {
+        templateId: templateMap['Meeting Reminder (Email)'],
+        templateName: 'Meeting Reminder (Email)',
+        senderProfileId: profileMap['Onboarding Email'],
+        senderName: 'Onboarding Email',
+        channel: 'email',
+        recipient: 'principal@gis.edu.gh',
+        subject: 'Reminder: Parent Engagement for Ghana International School',
+        body: '<p>Hi Dr. Mary Ashun,</p><p>This is a reminder for your <strong>Parent Engagement</strong> scheduled for tomorrow at 10:00 AM.</p>',
+        status: 'sent',
+        sentAt: subHours(new Date(), 5).toISOString(),
+        variables: { meeting_type: 'Parent Engagement', school_name: 'Ghana International School', contact_name: 'Dr. Mary Ashun' }
+    },
+    {
+        templateId: templateMap['Document Signed Confirmation (SMS)'],
+        templateName: 'Document Signed Confirmation (SMS)',
+        senderProfileId: profileMap['SmartSapp Primary SMS'],
+        senderName: 'SmartSapp Primary SMS',
+        channel: 'sms',
+        recipient: '+233 24 999 8888',
+        body: 'Hi, your document "Enrollment Form" has been successfully signed and processed. Thank you!',
+        status: 'failed',
+        error: 'Carrier Rejected: Invalid Handset Number',
+        sentAt: subHours(new Date(), 1).toISOString(),
+        variables: { form_name: 'Enrollment Form' }
+    }
+  ];
+
+  sampleLogs.forEach(l => batch.set(doc(collection(firestore, 'message_logs')), l));
 
   await batch.commit();
-  return profiles.length + 1 + templates.length;
+  return profiles.length + 1 + templates.length + sampleLogs.length;
 }
 
 export async function seedActivities(firestore: Firestore): Promise<number> {
