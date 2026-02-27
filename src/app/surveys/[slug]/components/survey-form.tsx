@@ -965,15 +965,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     if (isCoverPage) {
         return (
             <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                <div className="flex justify-center mb-1 sm:mb-4">
-                    {survey.logoUrl ? (
-                        <div className="relative h-10 w-40 sm:h-14 sm:w-56">
-                            <Image src={survey.logoUrl} alt="Logo" fill className="object-contain" />
-                        </div>
-                    ) : (
-                        <SmartSappLogo className="h-10 sm:h-14" />
-                    )}
-                </div>
                 {showTitles && (
                     <>
                         {survey.bannerImageUrl && (
