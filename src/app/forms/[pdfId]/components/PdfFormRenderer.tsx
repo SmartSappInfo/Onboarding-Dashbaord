@@ -10,7 +10,24 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3, LayoutList, X, ChevronDown, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { 
+    Loader2, 
+    Download, 
+    CheckCircle2, 
+    Send, 
+    ShieldAlert, 
+    AlertTriangle, 
+    ZoomIn, 
+    ZoomOut, 
+    AlertCircle, 
+    Edit3, 
+    LayoutList, 
+    X, 
+    ChevronDown, 
+    Clock, 
+    Calendar as CalendarIcon,
+    Star
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -27,7 +44,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription, 
+    DialogFooter 
+} from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
@@ -157,7 +181,7 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
                     variant="ghost" 
                     disabled={disabled}
                     className={cn(
-                        "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 transition-all justify-start text-left font-medium rounded-none",
+                        "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 transition-all justify-start text-left font-normal rounded-none",
                         !dateValue && "text-muted-foreground/40",
                         className
                     )}
@@ -180,7 +204,7 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
+const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
         <div className="flex gap-1">
             {[1, 2, 3, 4, 5].map(star => (
@@ -477,8 +501,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         const fileName = `${pdfForm.name || 'signed'}-document.pdf`;
 
         if (isIOS) {
-            // iOS Safari is restrictive with programmatic a.click() for blobs.
-            // window.location.assign is the most reliable way to trigger the native viewer/share sheet.
             window.location.assign(url);
         } else {
             const a = document.createElement('a');
@@ -486,7 +508,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             a.download = fileName;
             document.body.appendChild(a);
             a.click();
-            // Longer timeout for revoke to ensure the download actually starts on slower browsers
             setTimeout(() => {
                 if (document.body.contains(a)) document.body.removeChild(a);
                 window.URL.revokeObjectURL(url);
@@ -604,7 +625,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 errors[field.id] && "border-destructive bg-destructive/5"
             )}
         >
-            {/* Hover Indicator */}
             <div className="absolute -top-6 left-0 opacity-0 group-hover/field:opacity-100 transition-opacity whitespace-nowrap bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full pointer-events-none z-50 shadow-lg">
                 Click to {isInteractiveMedia ? (field.type === 'photo' ? 'Capture' : 'Sign') : 'Edit'}
             </div>
@@ -641,9 +661,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   return (
     <FormProvider {...methods}>
         <div className="light flex flex-col h-[100dvh] overflow-hidden text-foreground selection:bg-primary/20 relative" style={{ backgroundColor: bgColor }}>
-        <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
-        
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
+            <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
+            
+            <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
                 {pdfForm.logoUrl ? (
                     <div className="relative h-9 w-12 shrink-0">
                         <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
@@ -818,7 +838,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         {Math.round(zoom * 100)}%
                     </div>
                 </div>
-            </header>
+            </main>
 
             <SignaturePadModal
                 open={!!mediaCaptureState}
