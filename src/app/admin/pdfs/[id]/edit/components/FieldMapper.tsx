@@ -54,13 +54,13 @@ function EditorLayout() {
     } = useEditor();
 
     return (
-        <div className="flex h-screen w-full overflow-hidden bg-muted/30">
+        <div className="flex h-full w-full overflow-hidden bg-muted/30 relative">
             {/* Main Canvas Area */}
             <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
                 <DocumentCanvas />
 
                 {/* Vertical Zoom Controls - Center Right */}
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-3">
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3">
                     <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                         <Button 
                             variant="ghost" 
@@ -94,8 +94,8 @@ function EditorLayout() {
                 </div>
 
                 {/* Floating Global Tool Docker - Bottom Center */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
-                    <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[95vw] no-scrollbar">
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[70] w-fit">
+                    <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
                         <TooltipProvider>
                             {/* 1. Field Creation Group */}
                             <div className="flex items-center gap-1 px-2 shrink-0">

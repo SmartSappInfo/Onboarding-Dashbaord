@@ -11,11 +11,12 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Eye, EyeOff, Bold, Type
+  Copy, Eye, EyeOff, Bold, Type, FileText, ShieldAlert, Settings
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -59,8 +60,37 @@ export function Inspector() {
   if (isSidebarCollapsed) {
     return (
       <ScrollArea className="flex-grow">
-        <div className="p-2 space-y-4">
-          <SortableFieldList />
+        <div className="flex flex-col items-center gap-6 py-6">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground cursor-help">
+                  <FileText className="h-5 w-5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">Document Fields</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="p-2 rounded-lg bg-muted/50 text-muted-foreground cursor-help">
+                  <ShieldAlert className="h-5 w-5" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="left">Access Control</TooltipContent>
+            </Tooltip>
+
+            {selectedField && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary animate-in zoom-in-50 duration-300 cursor-help">
+                    <Settings className="h-5 w-5" />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left">Field Properties</TooltipContent>
+              </Tooltip>
+            )}
+          </TooltipProvider>
         </div>
       </ScrollArea>
     );
