@@ -303,6 +303,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                         if (!value) return null;
 
                         const dynamicFontSize = `${field.fontSize || 11}px`;
+                        const verticalAlign = field.verticalAlignment || 'center';
 
                         return (
                             <div 
@@ -314,8 +315,9 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                     width: `${field.dimensions.width}%`, 
                                     height: `${field.dimensions.height}%`,
                                     display: 'flex',
-                                    alignItems: 'flex-start',
-                                    justifyContent: 'flex-start',
+                                    flexDirection: 'column',
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start',
+                                    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
                                     overflow: 'visible',
                                 }}
                             >
@@ -324,7 +326,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                 ) : (
                                     <span 
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
-                                        style={{ fontSize: dynamicFontSize }}
+                                        style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
                                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                                     </span>

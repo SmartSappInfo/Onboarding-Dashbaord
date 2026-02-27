@@ -61,7 +61,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
-  // Pixel-based font size calculation relative to zoom (removed 1.5 base scale)
   const currentTotalScale = zoom;
   const baseFontSize = field.fontSize || 11;
   const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
@@ -119,6 +118,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     };
   }, [isResizing, field.id, pageDimensions, updateField]);
 
+  const verticalAlign = field.verticalAlignment || 'center';
+
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${field.position.x}%`,
@@ -130,7 +131,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     opacity: isDragging ? 0.4 : 1,
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: field.verticalAlignment === 'center' ? 'center' : field.verticalAlignment === 'bottom' ? 'flex-end' : 'flex-start',
+    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
     textAlign: field.alignment || 'left',
     fontSize: dynamicFontSize,
     fontWeight: field.bold ? 'bold' : 'normal',
@@ -342,7 +343,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {field.verticalAlignment === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : field.verticalAlignment === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
+                              {verticalAlign === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : verticalAlign === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>

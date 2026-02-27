@@ -121,6 +121,7 @@ export function EditorProvider({
       position: { x: 10, y: 10 },
       dimensions: { width: 20, height: 5 },
       required: false,
+      verticalAlignment: 'center', // Default to centered vertically
       options: type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined
     };
     setFields(prev => [...prev, newField]);

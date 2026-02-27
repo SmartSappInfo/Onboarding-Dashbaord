@@ -512,11 +512,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    // Scale pixel font size relative to current zoom (removed 1.5 base scale)
     const currentTotalScale = zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
+    const verticalAlign = field.verticalAlignment || 'center';
+
     const fieldStyle: React.CSSProperties = {
         fontSize: dynamicFontSize,
         fontWeight: field.bold ? 'bold' : 'normal',
@@ -525,7 +526,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         textAlign: field.alignment || 'left',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: field.verticalAlignment === 'center' ? 'center' : field.verticalAlignment === 'bottom' ? 'flex-end' : 'flex-start',
+        justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
     };
 
     if (isSubmitted) {

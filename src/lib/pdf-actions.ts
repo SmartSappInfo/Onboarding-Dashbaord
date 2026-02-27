@@ -84,10 +84,11 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 if (field.alignment === 'center') textX = x + (fieldWidth - textWidth) / 2;
                 else if (field.alignment === 'right') textX = x + fieldWidth - textWidth - 2;
 
-                // Vertical Alignment
-                let textY = y_top - fontSize - 2;
-                if (field.verticalAlignment === 'center') textY = y_top - (fieldHeight + fontSize) / 2;
-                else if (field.verticalAlignment === 'bottom') textY = y_top - fieldHeight + 2;
+                // Vertical Alignment (Default to Center)
+                const vAlign = field.verticalAlignment || 'center';
+                let textY = y_top - fontSize - 2; // Default (Topish)
+                if (vAlign === 'center') textY = y_top - (fieldHeight + fontSize) / 2;
+                else if (vAlign === 'bottom') textY = y_top - fieldHeight + 2;
 
                 page.drawText(displayValue, {
                     x: textX,

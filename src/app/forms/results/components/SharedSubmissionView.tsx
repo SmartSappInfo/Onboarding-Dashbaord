@@ -318,15 +318,29 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                         const val = formData[field.id]; if (!val) return null;
                         
                         const dynamicFontSize = `${field.fontSize || 11}px`;
+                        const verticalAlign = field.verticalAlignment || 'center';
 
                         return (
-                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
+                            <div 
+                                key={field.id} 
+                                style={{ 
+                                    position: 'absolute', 
+                                    left: `${field.position.x}%`, 
+                                    top: `${field.position.y}%`, 
+                                    width: `${field.dimensions.width}%`, 
+                                    height: `${field.dimensions.height}%`, 
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
+                                }}
+                            >
                                 {field.type === 'signature' ? (
                                     <img src={val} alt="Sig" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
                                     <span 
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
-                                        style={{ fontSize: dynamicFontSize }}
+                                        style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
                                         {field.type === 'date' ? format(new Date(val), 'PPP') : val}
                                     </span>

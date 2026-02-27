@@ -442,10 +442,19 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                         ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         
                                         const dynamicFontSize = `${field.fontSize || 11}px`;
+                                        const verticalAlign = field.verticalAlignment || 'center';
 
                                         return (
-                                            <TableCell key={field.id}>
-                                                {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold" style={{ fontSize: dynamicFontSize }}>{content}</Link> : <div style={{ fontSize: dynamicFontSize }}>{content}</div>}
+                                            <TableCell key={field.id} style={{ height: 'inherit' }}>
+                                                <div 
+                                                    className="flex flex-col h-full"
+                                                    style={{ 
+                                                        fontSize: dynamicFontSize,
+                                                        justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start'
+                                                    }}
+                                                >
+                                                    {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold">{content}</Link> : content}
+                                                </div>
                                             </TableCell>
                                         );
                                     })}
@@ -658,15 +667,29 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         const val = formData[field.id]; if (!val) return null;
                         
                         const dynamicFontSize = `${field.fontSize || 11}px`;
+                        const verticalAlign = field.verticalAlignment || 'center';
 
                         return (
-                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>
+                            <div 
+                                key={field.id} 
+                                style={{ 
+                                    position: 'absolute', 
+                                    left: `${field.position.x}%`, 
+                                    top: `${field.position.y}%`, 
+                                    width: `${field.dimensions.width}%`, 
+                                    height: `${field.dimensions.height}%`, 
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
+                                }}
+                            >
                                 {field.type === 'signature' ? (
                                     <img src={val} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
                                     <span 
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
-                                        style={{ fontSize: dynamicFontSize }}
+                                        style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
                                         {field.type === 'date' ? format(new Date(val), 'PPP') : val}
                                     </span>
