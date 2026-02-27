@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Separator } from '@/components/ui/separator';
 import { 
     Check, 
     ChevronRight, 
@@ -35,6 +36,9 @@ import {
     FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSearchParams } from 'next/navigation';
+import { SmartSappIcon } from '@/components/icons';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
@@ -51,6 +55,7 @@ export default function ComposerWizard() {
     const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
     const [step, setStep] = React.useState(1);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     
@@ -74,6 +79,25 @@ export default function ComposerWizard() {
     const watchedChannel = watch('channel');
     const watchedTemplateId = watch('templateId');
     const watchedMode = watch('mode');
+
+    // Handle deep linking from other modules
+    React.useEffect(() => {
+        const tId = searchParams.get('templateId');
+        const chan = searchParams.get('channel') as 'email' | 'sms' | null;
+        const rec = searchParams.get('recipient');
+        
+        if (chan) setValue('channel', chan);
+        if (tId) setValue('templateId', tId);
+        if (rec) setValue('recipient', rec);
+
+        // Pre-fill any variable passed as var_X
+        searchParams.forEach((value, key) => {
+            if (key.startsWith('var_')) {
+                const varName = key.replace('var_', '');
+                setValue(`variables.${varName}`, value);
+            }
+        });
+    }, [searchParams, setValue]);
 
     // Data fetching
     const templatesQuery = useMemoFirebase(() => {

@@ -1,5 +1,3 @@
-
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -10,7 +8,7 @@ import type { School, OnboardingStage, Module } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -168,9 +166,9 @@ export default function SchoolsPage() {
       return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />;
     }
     if (sortConfig.direction === 'asc') {
-      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; // Replace with ArrowUp when available
+      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; 
     }
-    return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; // Replace with ArrowDown
+    return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />;
   };
 
   const handleDeleteSchool = () => {
@@ -386,6 +384,12 @@ export default function SchoolsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    <span>Send Message</span>
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
                               <UserPlus className="mr-2 h-4 w-4" />
                               <span>Assign to User</span>
@@ -457,6 +461,12 @@ export default function SchoolsPage() {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                                                    <Send className="mr-2 h-4 w-4" />
+                                                    <span>Send Message</span>
+                                                </Link>
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
                                               <UserPlus className="mr-2 h-4 w-4" />
                                               <span>Assign to User</span>
@@ -573,5 +583,3 @@ export default function SchoolsPage() {
     </TooltipProvider>
   );
 }
-
-    

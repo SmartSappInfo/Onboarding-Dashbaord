@@ -220,6 +220,11 @@ export interface Survey {
   webhookUrl?: string; // Legacy
   webhookId?: string; // Reference to a reusable webhook
   webhookEnabled?: boolean;
+  // Messaging Automations
+  automationMessagingEnabled?: boolean;
+  automationTemplateId?: string;
+  automationSenderProfileId?: string;
+  automationRecipient?: string;
 }
 
 export interface SurveyResponse {
@@ -318,6 +323,10 @@ export interface PDFForm {
     // Integrations
     webhookId?: string;
     webhookEnabled?: boolean;
+    // Messaging Automations
+    confirmationMessagingEnabled?: boolean;
+    confirmationTemplateId?: string;
+    confirmationSenderProfileId?: string;
 }
 
 export interface Submission {

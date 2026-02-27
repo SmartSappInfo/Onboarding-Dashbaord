@@ -13,13 +13,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus } from 'lucide-react';
+import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus, Send } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import LogActivityModal from './LogActivityModal';
 import NotesSection from '../../components/NotesSection';
+import Link from 'next/link';
 
 interface SchoolDetailsModalProps {
   school: School | null;
@@ -148,18 +149,30 @@ export default function SchoolDetailsModal({ school, open, onOpenChange, onNavig
                           </DetailItem>
                         </div>
                     </div>
+                    
+                    <div className="mt-12">
+                        <NotesSection schoolId={school.id} />
+                    </div>
                 </div>
             </ScrollArea>
           </div>
 
-          <SheetFooter className="p-6 mt-auto border-t justify-between">
-            <Button variant="outline" onClick={() => setIsLogActivityModalOpen(true)}>
-                <MessageSquarePlus className="mr-2 h-4 w-4" />
-                Log Interaction
-            </Button>
+          <SheetFooter className="p-6 mt-auto border-t justify-between flex-row gap-2">
+            <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setIsLogActivityModalOpen(true)}>
+                    <MessageSquarePlus className="mr-2 h-4 w-4" />
+                    Log
+                </Button>
+                <Button variant="outline" asChild>
+                    <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                        <Send className="mr-2 h-4 w-4" />
+                        Message
+                    </Link>
+                </Button>
+            </div>
             <Button onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
               <PenSquare className="mr-2 h-4 w-4" />
-              Edit School Details
+              Edit Details
             </Button>
           </SheetFooter>
         </SheetContent>

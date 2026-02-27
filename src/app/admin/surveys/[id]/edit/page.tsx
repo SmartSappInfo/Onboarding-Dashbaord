@@ -2,18 +2,18 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
+import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import SurveyFormBuilder from '../../components/survey-form-builder';
@@ -132,6 +132,11 @@ const formSchema = z.object({
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
   showSurveyTitles: z.boolean().default(true),
+  // Messaging
+  automationMessagingEnabled: z.boolean().default(false),
+  automationTemplateId: z.string().optional(),
+  automationSenderProfileId: z.string().optional(),
+  automationRecipient: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -189,6 +194,18 @@ function EditSurveyContent() {
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
 
+    const templatesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'message_templates'), orderBy('name', 'asc'));
+    }, [firestore]);
+    const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
+
+    const profilesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'sender_profiles'), orderBy('name', 'asc'));
+    }, [firestore]);
+    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
+
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -215,6 +232,10 @@ function EditSurveyContent() {
             startButtonText: 'Let\'s Start',
             showCoverPage: true,
             showSurveyTitles: true,
+            automationMessagingEnabled: false,
+            automationTemplateId: '',
+            automationSenderProfileId: '',
+            automationRecipient: '',
         }
     });
 
@@ -271,6 +292,10 @@ function EditSurveyContent() {
                 startButtonText: survey.startButtonText || 'Let\'s Start',
                 showCoverPage: survey.showCoverPage ?? true,
                 showSurveyTitles: survey.showSurveyTitles ?? true,
+                automationMessagingEnabled: survey.automationMessagingEnabled || false,
+                automationTemplateId: survey.automationTemplateId || '',
+                automationSenderProfileId: survey.automationSenderProfileId || '',
+                automationRecipient: survey.automationRecipient || '',
             });
 
             if (firestore) {
@@ -721,11 +746,11 @@ function EditSurveyContent() {
                         </div>
 
                         <div className={cn("space-y-8", step !== 4 && 'hidden')}>
-                            <div className="space-y-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <Card>
                                     <CardHeader>
-                                        <CardTitle>Publish</CardTitle>
-                                        <CardDescription>Configure the final settings and publish your survey.</CardDescription>
+                                        <CardTitle>Finalize & Integrate</CardTitle>
+                                        <CardDescription>Set the survey status and connect external automations.</CardDescription>
                                     </CardHeader>
                                     <CardContent className="space-y-8">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -783,6 +808,91 @@ function EditSurveyContent() {
                                         <Separator />
 
                                         <WebhookManager />
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="border-primary/20 bg-primary/5">
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-primary" /> Messaging Automation</CardTitle>
+                                        <CardDescription>Automatically notify an administrator or the respondent upon completion.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <div className="flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm">
+                                            <div className="space-y-0.5">
+                                                <Label className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                                                    <Mail className="h-4 w-4 text-primary" />
+                                                    Completion Message
+                                                </Label>
+                                                <p className="text-xs text-muted-foreground font-medium">Trigger an automated dispatch on each response.</p>
+                                            </div>
+                                            <FormField
+                                                control={form.control}
+                                                name="automationMessagingEnabled"
+                                                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                            />
+                                        </div>
+
+                                        {watch('automationMessagingEnabled') && (
+                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Message Template</Label>
+                                                    <Controller
+                                                        name="automationTemplateId"
+                                                        control={form.control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                <SelectTrigger className="h-11 bg-white rounded-xl shadow-sm border-border/50">
+                                                                    <SelectValue placeholder="Select a template..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">No Template Selected</SelectItem>
+                                                                    {templates?.filter(t => t.category === 'surveys' && t.isActive).map(t => (
+                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sender Profile</Label>
+                                                    <Controller
+                                                        name="automationSenderProfileId"
+                                                        control={form.control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                <SelectTrigger className="h-11 bg-white rounded-xl shadow-sm border-border/50">
+                                                                    <SelectValue placeholder="Select a sender..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">No Sender Selected</SelectItem>
+                                                                    {profiles?.filter(p => p.isActive).map(p => (
+                                                                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recipient Overwrite</Label>
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="automationRecipient"
+                                                        render={({ field }) => (
+                                                            <Input 
+                                                                {...field} 
+                                                                placeholder="e.g. admin@school.edu.gh" 
+                                                                className="h-11 bg-white"
+                                                            />
+                                                        )}
+                                                    />
+                                                    <p className="text-[10px] text-muted-foreground italic px-1">
+                                                        Leave empty to use the respondent's contact info from the survey (if email/phone fields are present).
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </CardContent>
                                 </Card>
                             </div>

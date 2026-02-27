@@ -1,4 +1,3 @@
-
 'use client';
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2, Send } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -75,6 +74,11 @@ export default function MeetingsPage() {
     return new Map(schools.map(s => [s.id, s.logoUrl]));
   }, [schools]);
 
+  const schoolEmailMap = useMemo(() => {
+    if (!schools) return new Map<string, string | undefined>();
+    return new Map(schools.map(s => [s.id, s.email]));
+  }, [schools]);
+
   const filteredMeetings = useMemo(() => {
     if (!meetings || !schools) return [];
     
@@ -130,6 +134,7 @@ export default function MeetingsPage() {
 
   const renderDropdown = (meeting: Meeting) => {
     const type = meeting.type || MEETING_TYPES[0];
+    const schoolEmail = schoolEmailMap.get(meeting.schoolId);
     return (
         <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -140,6 +145,12 @@ export default function MeetingsPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem asChild>
+                <Link href={`/admin/messaging/composer?recipient=${schoolEmail || ''}&var_school_name=${encodeURIComponent(meeting.schoolName)}&var_meeting_type=${encodeURIComponent(type.name)}&var_date=${format(new Date(meeting.meetingTime), 'PPP')}&var_time=${format(new Date(meeting.meetingTime), 'p')}&var_link=${encodeURIComponent(meeting.meetingLink)}`}>
+                    <Send className="mr-2 h-4 w-4" />
+                    <span>Send Invite/Reminder</span>
+                </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/admin/meetings/${meeting.id}/edit`)}>
                 <Edit className="mr-2 h-4 w-4" />
                 <span>Edit Meeting</span>
