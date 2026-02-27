@@ -27,6 +27,17 @@ service cloud.firestore {
      match /modules/{document=**} {
       allow read, write: if isAuthorized();
     }
+    
+    // Messaging Engine Rules
+    match /sender_profiles/{profileId} {
+      allow read, write: if isAuthorized();
+    }
+    match /message_styles/{styleId} {
+      allow read, write: if isAuthorized();
+    }
+    match /message_templates/{templateId} {
+      allow read, write: if isAuthorized();
+    }
 
     // --- School Rules ---
     match /schools/{schoolId} {

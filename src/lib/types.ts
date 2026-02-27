@@ -326,3 +326,38 @@ export interface Submission {
   submittedAt: string; // ISO String
   formData: { [key: string]: any };
 }
+
+// --- MESSAGING SYSTEM TYPES ---
+
+export interface SenderProfile {
+  id: string;
+  name: string;
+  channel: 'sms' | 'email';
+  identifier: string; // Sender ID for SMS or From Email Address
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageStyle {
+  id: string;
+  name: string;
+  htmlWrapper: string; // Must include {{content}}
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageTemplate {
+  id: string;
+  name: string;
+  category: 'forms' | 'surveys' | 'meetings' | 'general';
+  channel: 'sms' | 'email';
+  subject?: string; // Email only
+  body: string; // Handles {{var}} syntax
+  styleId?: string; // Link to MessageStyle (Email only)
+  variables: string[]; // List of required variable names
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

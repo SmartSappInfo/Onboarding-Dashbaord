@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -35,34 +34,49 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
-    "Webhook": {
-      "title": "Webhook",
-      "description": "A reusable named external endpoint for data integration.",
+    "SenderProfile": {
+      "title": "Sender Profile",
+      "description": "Configured identity for sending SMS or Emails.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string", "description": "A friendly name for the webhook." },
-        "url": { "type": "string", "format": "uri", "description": "The external endpoint URL." },
+        "name": { "type": "string" },
+        "channel": { "type": "string", "enum": ["sms", "email"] },
+        "identifier": { "type": "string" },
+        "isDefault": { "type": "boolean" },
+        "isActive": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" },
-        "createdBy": { "type": "string" }
-      },
-      "required": ["name", "url"]
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     },
-    "Survey": {
-      "title": "Survey",
-      "description": "A feedback form or assessment.",
+    "MessageStyle": {
+      "title": "Message Style",
+      "description": "Visual HTML wrappers for branded emails.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "internalName": { "type": "string", "description": "Internal name used for administration." },
-        "title": { "type": "string", "description": "Public title displayed to respondents." },
-        "slug": { "type": "string" },
-        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
-        "webhookId": { "type": "string", "description": "Reference to a Webhook entity." },
-        "webhookEnabled": { "type": "boolean", "description": "Whether to fire the webhook on submission." },
-        "scoringEnabled": { "type": "boolean" },
-        "maxScore": { "type": "number" }
+        "name": { "type": "string" },
+        "htmlWrapper": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MessageTemplate": {
+      "title": "Message Template",
+      "description": "Dynamic content definitions for communications.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "category": { "type": "string", "enum": ["forms", "surveys", "meetings", "general"] },
+        "channel": { "type": "string", "enum": ["sms", "email"] },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "styleId": { "type": "string" },
+        "variables": { "type": "array", "items": { "type": "string" } },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -78,13 +92,17 @@
       "schema": "#/entities/School",
       "description": "Schools in the onboarding pipeline."
     },
-    "/webhooks/{webhookId}": {
-      "schema": "#/entities/Webhook",
-      "description": "Reusable webhook endpoints."
+    "/sender_profiles/{profileId}": {
+      "schema": "#/entities/SenderProfile",
+      "description": "Authorized sender identities."
     },
-    "/surveys/{surveyId}": {
-      "schema": "#/entities/Survey",
-      "description": "Configurable surveys and assessments."
+    "/message_styles/{styleId}": {
+      "schema": "#/entities/MessageStyle",
+      "description": "Branded HTML email wrappers."
+    },
+    "/message_templates/{templateId}": {
+      "schema": "#/entities/MessageTemplate",
+      "description": "Reusable message content definitions."
     }
   }
 }
