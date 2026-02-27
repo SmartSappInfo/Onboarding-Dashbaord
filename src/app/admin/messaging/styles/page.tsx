@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,8 @@ import {
     ArrowLeft,
     AlertCircle,
     Sparkles,
-    Check
+    Check,
+    Pencil
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -37,7 +38,13 @@ export default function MessageStylesPage() {
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [previewStyle, setPreviewStyle] = React.useState<MessageStyle | null>(null);
     
-    // Manual Form State
+    // Edit State
+    const [editingStyle, setEditingStyle] = React.useState<MessageStyle | null>(null);
+    const [editName, setEditName] = React.useState('');
+    const [editHtml, setEditHtml] = React.useState('');
+    const [isUpdating, setIsUpdating] = React.useState(false);
+
+    // Manual Add Form State
     const [name, setName] = React.useState('');
     const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px;">\n    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">\n      {{content}}\n    </div>\n  </body>\n</html>');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -81,6 +88,37 @@ export default function MessageStylesPage() {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to create style.' });
         } finally {
             setIsSubmitting(false);
+        }
+    };
+
+    const handleEditClick = (style: MessageStyle) => {
+        setEditingStyle(style);
+        setEditName(style.name);
+        setEditHtml(style.htmlWrapper);
+    };
+
+    const handleUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!firestore || !editingStyle || !editName || !editHtml) return;
+
+        if (!editHtml.includes('{{content}}')) {
+            toast({ variant: 'destructive', title: 'Invalid Wrapper', description: 'HTML must include the {{content}} placeholder.' });
+            return;
+        }
+
+        setIsUpdating(true);
+        try {
+            await updateDoc(doc(firestore, 'message_styles', editingStyle.id), {
+                name: editName.trim(),
+                htmlWrapper: editHtml.trim(),
+                updatedAt: new Date().toISOString(),
+            });
+            setEditingStyle(null);
+            toast({ title: 'Style Updated', description: 'Changes saved successfully.' });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Update Failed' });
+        } finally {
+            setIsUpdating(false);
         }
     };
 
@@ -156,7 +194,7 @@ export default function MessageStylesPage() {
                             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Engine
                         </Link>
                     </Button>
-                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
+                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-3 text-foreground">
                         <Palette className="h-8 w-8 text-primary" />
                         Visual Styles
                     </h1>
@@ -166,9 +204,9 @@ export default function MessageStylesPage() {
                     <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-10 px-4 gap-2 font-bold shadow-lg">
                         <Sparkles className="h-4 w-4" /> Create with AI
                     </RainbowButton>
-                    <Button onClick={() => setIsAdding(!isAdding)} variant="outline">
+                    <Button onClick={() => setIsAdding(!isAdding)} variant="outline" className="font-bold">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                        {isAdding ? 'Cancel' : 'Manual New Style'}
+                        {isAdding ? 'Cancel' : 'New Style'}
                     </Button>
                 </div>
             </div>
@@ -211,29 +249,38 @@ export default function MessageStylesPage() {
                 </Card>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {isLoading ? (
-                    Array.from({ length: 3 }).map((_, i) => <Card key={i} className="h-48 animate-pulse bg-muted" />)
+                    Array.from({ length: 3 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-2xl" />)
                 ) : styles?.length ? (
                     styles.map((style) => (
-                        <Card key={style.id} className="group relative overflow-hidden border-border/50 hover:shadow-lg transition-all">
-                            <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="secondary" size="icon" className="h-8 w-8" onClick={() => setPreviewStyle(style)}>
-                                    <Eye className="h-4 w-4" />
-                                </Button>
-                                <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDelete(style.id)}>
-                                    <Trash2 className="h-4 w-4" />
-                                </Button>
+                        <Card key={style.id} className="group relative overflow-hidden border-border/50 hover:shadow-xl transition-all rounded-2xl bg-card">
+                            <div className="aspect-[4/3] w-full bg-slate-100 relative overflow-hidden border-b">
+                                <iframe 
+                                    srcDoc={style.htmlWrapper.replace('{{content}}', '<div style="height: 100px; background: #eee; border: 2px dashed #ccc; display: flex; align-items: center; justify-center; font-family: sans-serif; font-size: 12px; color: #999;">Body</div>')}
+                                    className="w-[800px] h-[600px] origin-top-left scale-[0.35] sm:scale-[0.4] pointer-events-none border-none"
+                                    title={`Preview of ${style.name}`}
+                                />
+                                <div className="absolute inset-0 bg-transparent" /> {/* Click interceptor */}
                             </div>
-                            <CardHeader className="bg-muted/20 pb-4">
-                                <CardTitle className="text-lg">{style.name}</CardTitle>
-                                <CardDescription className="text-xs">HTML Email Wrapper</CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-4">
-                                <div className="text-[10px] font-mono text-muted-foreground line-clamp-3 bg-muted/30 p-2 rounded border border-dashed">
-                                    {style.htmlWrapper}
+                            
+                            <CardHeader className="p-4 flex flex-row items-center justify-between space-y-0">
+                                <div className="min-w-0">
+                                    <CardTitle className="text-sm font-bold truncate pr-2">{style.name}</CardTitle>
+                                    <CardDescription className="text-[10px] uppercase font-black tracking-tighter">Email Wrapper</CardDescription>
                                 </div>
-                            </CardContent>
+                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setPreviewStyle(style)}>
+                                        <Eye className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleEditClick(style)}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(style.id)}>
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </CardHeader>
                         </Card>
                     ))
                 ) : (
@@ -243,6 +290,45 @@ export default function MessageStylesPage() {
                     </div>
                 )}
             </div>
+
+            {/* Manual Edit Dialog */}
+            <Dialog open={!!editingStyle} onOpenChange={(o) => !o && setEditingStyle(null)}>
+                <DialogContent className="max-w-3xl h-[85vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-card shrink-0">
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-5 w-5 text-primary" />
+                            Edit Visual Style
+                        </DialogTitle>
+                        <DialogDescription>Manually update the name or HTML wrapper for this style.</DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-muted/5">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Style Name</Label>
+                            <Input value={editName} onChange={e => setEditName(e.target.value)} className="h-11 rounded-xl" />
+                        </div>
+                        <div className="space-y-2">
+                            <div className="flex justify-between items-center px-1">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">HTML Wrapper Code</Label>
+                                <Badge className="bg-orange-500/10 text-orange-600 border-none text-[8px] uppercase tracking-widest h-5 px-2">Must contain &#123;&#123;content&#125;&#125;</Badge>
+                            </div>
+                            <Textarea 
+                                value={editHtml} 
+                                onChange={e => setEditHtml(e.target.value)} 
+                                className="min-h-[400px] font-mono text-xs bg-white rounded-xl shadow-inner border-none focus-visible:ring-1 focus-visible:ring-primary/20" 
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="p-4 border-t bg-card shrink-0">
+                        <Button variant="ghost" onClick={() => setEditingStyle(null)}>Cancel</Button>
+                        <Button onClick={handleUpdate} disabled={isUpdating} className="font-bold rounded-xl px-8 shadow-lg">
+                            {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* AI Generator Dialog */}
             <Dialog open={isAiGenerating} onOpenChange={setIsAiGenerating}>
