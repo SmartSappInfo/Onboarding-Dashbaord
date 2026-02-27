@@ -86,7 +86,7 @@ export function Inspector() {
             <CardHeader className="py-4">
               <CardTitle className="flex justify-between items-center text-sm font-semibold">
                 <span>Field Properties</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeField(selectedField.id)}>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeField(selectedField.id)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </CardTitle>
@@ -144,6 +144,7 @@ export function Inspector() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button 
+                            type="button"
                             variant={selectedField.bold ? "secondary" : "outline"} 
                             size="icon" 
                             className={cn("h-9 w-full rounded-xl", selectedField.bold && "bg-primary/10 text-primary border-primary/20")}
@@ -157,6 +158,7 @@ export function Inspector() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button 
+                            type="button"
                             variant={selectedField.italic ? "secondary" : "outline"} 
                             size="icon" 
                             className={cn("h-9 w-full rounded-xl", selectedField.italic && "bg-primary/10 text-primary border-primary/20")}
@@ -170,6 +172,7 @@ export function Inspector() {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button 
+                            type="button"
                             variant={selectedField.underline ? "secondary" : "outline"} 
                             size="icon" 
                             className={cn("h-9 w-full rounded-xl", selectedField.underline && "bg-primary/10 text-primary border-primary/20")}
@@ -191,6 +194,7 @@ export function Inspector() {
                           <Tooltip key={a}>
                             <TooltipTrigger asChild>
                               <Button 
+                                type="button"
                                 variant={selectedField.alignment === a ? "secondary" : "ghost"} 
                                 size="sm" 
                                 onClick={() => updateField(selectedField.id, { alignment: a })} 
@@ -216,6 +220,7 @@ export function Inspector() {
                           <Tooltip key={a}>
                             <TooltipTrigger asChild>
                               <Button 
+                                type="button"
                                 variant={selectedField.verticalAlignment === a ? "secondary" : "ghost"} 
                                 size="sm" 
                                 onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
@@ -258,7 +263,7 @@ export function Inspector() {
                     {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
                       <Tooltip key={a}>
                         <TooltipTrigger asChild>
-                          <Button variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
                             {a === 'left' && <AlignStartVertical className="h-4 w-4" />}
                             {a === 'center-h' && <AlignCenterVertical className="h-4 w-4" />}
                             {a === 'right' && <AlignEndVertical className="h-4 w-4" />}
@@ -286,7 +291,7 @@ export function Inspector() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}>
+                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}>
                           <AlignHorizontalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Horiz.
                         </Button>
                       </TooltipTrigger>
@@ -294,7 +299,7 @@ export function Inspector() {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}>
+                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}>
                           <AlignVerticalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Vert.
                         </Button>
                       </TooltipTrigger>
@@ -305,8 +310,8 @@ export function Inspector() {
               </div>
               <div className="space-y-4 border-t pt-4">
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
-                  <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => { setFields(p => p.filter(f => !selectedFieldIds.includes(f.id))); setSelectedFieldIds([]); }}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => { setFields(p => p.filter(f => !selectedFieldIds.includes(f.id))); setSelectedFieldIds([]); }}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
                 </div>
               </div>
             </CardContent>

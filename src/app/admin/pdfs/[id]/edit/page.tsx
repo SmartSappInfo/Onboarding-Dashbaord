@@ -242,13 +242,12 @@ export default function EditPdfPage() {
       if (savedData) {
           try {
               const parsed = JSON.parse(savedData);
-              // Only offer recovery if the content is actually different
               if (JSON.stringify(parsed.fields) !== JSON.stringify(initialFields) || JSON.stringify(parsed.details) !== JSON.stringify(initialData)) {
                   toast({
                       title: "Unsaved Changes Found",
                       description: "Would you like to restore your last session?",
                       action: (
-                          <Button variant="default" size="sm" onClick={() => {
+                          <Button variant="default" size="sm" type="button" onClick={() => {
                               setFields(parsed.fields || []);
                               setNamingFieldId(parsed.namingFieldId || null);
                               reset(parsed.details);
@@ -454,7 +453,7 @@ export default function EditPdfPage() {
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
                     <div className="mb-8 flex justify-between items-end">
                         <div>
-                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
+                            <Button asChild variant="ghost" type="button" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
                                 <Link href="/admin/pdfs">
                                     <ArrowLeft className="mr-2 h-4 w-4" />
                                     Back to Library
@@ -655,7 +654,7 @@ export default function EditPdfPage() {
                                             setFields={setFields}
                                             namingFieldId={namingFieldId}
                                             setNamingFieldId={setNamingFieldId}
-                                            onSave={() => {}} // No auto-saving to DB from builder
+                                            onSave={() => {}} // No auto-saving to DB from builder phase UI
                                             isSaving={isSaving}
                                             onPreview={() => setIsPreviewOpen(true)}
                                             isStatusChanging={isStatusChanging}
@@ -926,20 +925,19 @@ export default function EditPdfPage() {
                         <Sparkles className="h-6 w-6 text-primary" />
                     </div>
                     <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
-                    <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
                     <AlertDialogDescription className="text-center">
                         You already have {fields.length} fields. How should the AI proceed?
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="grid gap-4 py-4">
-                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}>
+                    <Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}>
                         <div className="flex items-center gap-2 font-bold group-hover:text-primary transition-colors">
                             <Play className="h-4 w-4 text-primary" />
                             Continue Designing
                         </div>
                         <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Keep existing work and find missing fields.</span>
                     </Button>
-                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}>
+                    <Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}>
                         <div className="flex items-center gap-2 font-bold text-destructive">
                             <RefreshCcw className="h-4 w-4" />
                             Re-design from Scratch
@@ -948,7 +946,7 @@ export default function EditPdfPage() {
                     </Button>
                 </div>
                 <AlertDialogFooter>
-                    <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
+                    <AlertDialogCancel type="button" className="w-full rounded-xl">Cancel</AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>

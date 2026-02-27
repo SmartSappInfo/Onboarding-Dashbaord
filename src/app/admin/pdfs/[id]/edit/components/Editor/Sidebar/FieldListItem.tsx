@@ -54,7 +54,7 @@ export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRe
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-center gap-1 group">
-      <button {...attributes} {...listeners} className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-3 w-3" /></button>
+      <button {...attributes} {...listeners} type="button" className="cursor-grab p-1 hover:bg-muted rounded text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity"><GripVertical className="h-3 w-3" /></button>
       <div 
         className={cn("w-full text-left p-2 rounded-md flex items-center gap-2 hover:bg-muted transition-colors cursor-pointer", isSelected && 'bg-muted ring-1 ring-primary')}
         onClick={onSelect}
@@ -69,7 +69,7 @@ export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRe
         {isNamingField && <Key className="h-3 w-3 text-primary shrink-0" />}
         {field.required && <span className="text-destructive font-bold">*</span>}
       </div>
-      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
+      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100" onClick={onRemove}><Trash2 className="h-4 w-4" /></Button>
     </div>
   );
 }

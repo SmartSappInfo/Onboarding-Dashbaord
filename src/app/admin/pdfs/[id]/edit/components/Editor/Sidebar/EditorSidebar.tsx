@@ -29,6 +29,7 @@ export function EditorSidebar() {
         <Button 
           variant="ghost" 
           size="icon" 
+          type="button"
           className={cn("h-8 w-8", isSidebarCollapsed ? "mx-auto" : "ml-auto")} 
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         >

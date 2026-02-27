@@ -69,6 +69,7 @@ function EditorLayout() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
+                                        type="button"
                                         className="h-8 w-8 rounded-full mb-2" 
                                         onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
                                     >
@@ -93,6 +94,7 @@ function EditorLayout() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
+                                        type="button"
                                         className="h-8 w-8 rounded-full mt-2" 
                                         onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
                                     >
@@ -128,7 +130,7 @@ function EditorLayout() {
                                 <div className="flex items-center gap-1.5 px-2 shrink-0">
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={undo} disabled={!canUndo}>
+                                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={undo} disabled={!canUndo}>
                                                 <Undo className="h-4 w-4" />
                                             </Button>
                                         </TooltipTrigger>
@@ -136,7 +138,7 @@ function EditorLayout() {
                                     </Tooltip>
                                     <Tooltip>
                                         <TooltipTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={redo} disabled={!canRedo}>
+                                            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={redo} disabled={!canRedo}>
                                                 <Redo className="h-4 w-4" />
                                             </Button>
                                         </TooltipTrigger>
@@ -151,6 +153,7 @@ function EditorLayout() {
                                         <TooltipTrigger asChild>
                                             <Button 
                                                 variant="outline"
+                                                type="button"
                                                 onClick={onDetect} 
                                                 disabled={isDetecting} 
                                                 className="h-9 px-4 rounded-xl font-bold border-primary/20 hover:bg-primary/5 transition-all text-primary"
@@ -166,6 +169,7 @@ function EditorLayout() {
                                         <TooltipTrigger asChild>
                                             <Button 
                                                 variant="outline"
+                                                type="button"
                                                 onClick={() => setViewMode('preview')} 
                                                 className="h-9 px-4 rounded-xl font-bold border-border/50 gap-2"
                                             >
@@ -183,6 +187,7 @@ function EditorLayout() {
                                             <Button 
                                                 variant="ghost" 
                                                 size="icon" 
+                                                type="button"
                                                 className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" 
                                                 onClick={() => setIsFullScreen(!isFullScreen)}
                                             >
@@ -200,6 +205,7 @@ function EditorLayout() {
                 {isPreviewing && (
                     <div className="absolute top-6 right-6 z-[100] animate-in fade-in slide-in-from-top-4">
                         <Button 
+                            type="button"
                             onClick={() => setViewMode('design')}
                             className="rounded-full shadow-2xl gap-2 h-12 px-6 font-bold"
                         >
@@ -222,6 +228,7 @@ function ToolButton({ icon: Icon, label, onClick }: { icon: any, label: string, 
                 <Button 
                     variant="ghost" 
                     size="icon" 
+                    type="button"
                     className="h-9 w-9 rounded-xl border-none hover:bg-primary/10 transition-colors" 
                     onClick={onClick}
                 >

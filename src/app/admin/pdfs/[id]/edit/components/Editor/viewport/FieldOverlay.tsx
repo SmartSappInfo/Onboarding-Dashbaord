@@ -208,7 +208,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingPlaceholder(true)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingPlaceholder(true)}>
                       <ALargeSmall className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -219,7 +219,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                           <Replace className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -245,6 +245,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
+                          type="button"
                           variant={field.bold ? "secondary" : "ghost"} 
                           size="icon" 
                           className={cn("h-8 w-8 rounded-lg", field.bold && "text-primary bg-primary/10")} 
@@ -259,6 +260,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
+                          type="button"
                           variant={field.italic ? "secondary" : "ghost"} 
                           size="icon" 
                           className={cn("h-8 w-8 rounded-lg", field.italic && "text-primary bg-primary/10")} 
@@ -273,6 +275,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
+                          type="button"
                           variant={field.underline ? "secondary" : "ghost"} 
                           size="icon" 
                           className={cn("h-8 w-8 rounded-lg", field.underline && "text-primary bg-primary/10")} 
@@ -291,6 +294,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
+                          type="button"
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 rounded-lg" 
@@ -307,6 +311,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 
+                          type="button"
                           variant="ghost" 
                           size="icon" 
                           className="h-8 w-8 rounded-lg" 
@@ -326,7 +331,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                               {hAlign === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : hAlign === 'right' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
@@ -344,7 +349,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                            <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
                               {vAlign === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : vAlign === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
@@ -366,7 +371,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => duplicateFields([field.id])}>
                       <Copy className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
@@ -374,7 +379,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
