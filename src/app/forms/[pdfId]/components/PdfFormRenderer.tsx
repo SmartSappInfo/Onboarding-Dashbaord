@@ -580,7 +580,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             <Skeleton className="w-[8.5in] h-[11in] max-w-full rounded-lg shadow-lg bg-card" />
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4 sm:gap-8 pb-24">
+                        <div className="flex flex-col gap-4 sm:gap-8 pb-8">
                             {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                 <div key={index} className="page-capture-wrapper">
                                     <PageRenderer
@@ -592,6 +592,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     />
                                 </div>
                             ))}
+                            
+                            {/* Branding Footer inside ScrollArea */}
+                            <footer className="py-12 text-center text-xs sm:text-sm text-muted-foreground w-full">
+                                <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+                                <p>&copy; {new Date().getFullYear()} SmartSapp</p>
+                            </footer>
                         </div>
                     )}
                 </div>
@@ -645,11 +651,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 </div>
             </div>
         </main>
-        
-         <footer className="py-6 text-center text-xs sm:text-sm text-muted-foreground bg-background/80 border-t shrink-0 print:hidden relative z-20">
-            <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-            <p>&copy; {new Date().getFullYear()} SmartSapp</p>
-        </footer>
 
          <SignaturePadModal
             open={!!mediaCaptureState}
