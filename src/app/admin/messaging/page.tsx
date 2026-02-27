@@ -76,15 +76,17 @@ export default function MessagingHubPage() {
                 "h-full transition-all duration-300 border-border/50 group-hover:shadow-xl group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden",
                 mod.border
             )}>
-                <CardHeader className="p-6">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110", mod.bg)}>
-                        <mod.icon className={cn("h-6 w-6", mod.color)} />
+                <CardHeader className="p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shrink-0", mod.bg)}>
+                            <mod.icon className={cn("h-6 w-6", mod.color)} />
+                        </div>
+                        <CardTitle className="text-xl font-bold tracking-tight flex items-center justify-between flex-1">
+                            {mod.title}
+                            <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
+                        </CardTitle>
                     </div>
-                    <CardTitle className="text-xl font-black tracking-tight flex items-center justify-between">
-                        {mod.title}
-                        <ArrowRight className="h-4 w-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
-                    </CardTitle>
-                    <CardDescription className="text-xs leading-relaxed font-medium mt-2 text-muted-foreground/80">
+                    <CardDescription className="text-sm leading-relaxed font-medium text-muted-foreground/80">
                         {mod.description}
                     </CardDescription>
                 </CardHeader>
@@ -100,7 +102,7 @@ export default function MessagingHubPage() {
                     <div className="p-2 bg-primary/10 rounded-xl">
                         <MessageSquareText className="h-6 w-6 text-primary" />
                     </div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground">
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
                         Messaging Engine
                     </h1>
                 </div>
