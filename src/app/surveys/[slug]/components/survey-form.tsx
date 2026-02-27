@@ -524,7 +524,7 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-lg sm:text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
+                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
@@ -1078,8 +1078,34 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         </Button>
                     )}
                 </div>
-            </Blur>
-            {/* Animation overlay and missing fields logic omitted for brevity as they remain largely unchanged */}
+            </form>
+
+            <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                            <AlertCircle className="h-6 w-6 text-destructive" />
+                        </div>
+                        <DialogTitle className="text-center text-xl font-bold">Required Questions Missing</DialogTitle>
+                        <DialogDescription className="text-center pt-2 text-sm font-medium">
+                            Please answer the following questions before submitting:
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[30vh] border rounded-md my-4">
+                        <ul className="p-4 space-y-3">
+                            {missingFields.map((field, idx) => (
+                                <li key={idx} className="flex items-center gap-3 text-sm font-medium">
+                                    <div className="h-2 w-2 rounded-full bg-destructive" />
+                                    <span className="font-bold">{field.label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">Go Fix These</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
