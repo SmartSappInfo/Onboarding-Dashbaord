@@ -196,7 +196,7 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         } else {
           blobToUpload = fileState.file;
           finalFile = fileState.file;
-          finalMimeType = fileState.file.type;
+          finalMimeType = fileState.file.type || (mediaType === 'document' ? 'application/pdf' : 'application/octet-stream');
           finalFilename = fileState.editingState?.filename 
             ? `${fileState.editingState.filename}.${fileState.file.name.split('.').pop()}` 
             : fileState.file.name;
@@ -216,7 +216,8 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
             async () => {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               
-              const newAssetData: Omit<MediaAsset, 'id' | 'createdAt'> = {
+              // Clean data object: Firestore Web SDK fails if fields are 'undefined'
+              const newAssetData: any = {
                 name: finalFilename,
                 originalName: fileState.file.name,
                 url: downloadURL,
@@ -224,20 +225,20 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
                 type: mediaType,
                 mimeType: finalMimeType,
                 size: blobToUpload.size,
-                width: finalWidth,
-                height: finalHeight,
-                format: mediaType === 'image' && fileState.editingState ? fileState.editingState.format : undefined,
                 uploadedBy: user.uid,
+                createdAt: new Date().toISOString()
               };
 
-              const docRef = await addDoc(collection(firestore, 'media'), {
-                  ...newAssetData,
-                  createdAt: new Date().toISOString()
-              });
+              if (finalWidth !== undefined) newAssetData.width = finalWidth;
+              if (finalHeight !== undefined) newAssetData.height = finalHeight;
+              if (mediaType === 'image' && fileState.editingState?.format) {
+                  newAssetData.format = fileState.editingState.format;
+              }
+
+              const docRef = await addDoc(collection(firestore, 'media'), newAssetData);
 
               if (onUploadComplete) {
-                const docSnap = { id: docRef.id, ...newAssetData, createdAt: new Date().toISOString() }
-                onUploadComplete(docSnap as MediaAsset);
+                onUploadComplete({ id: docRef.id, ...newAssetData } as MediaAsset);
               }
               setStagedFiles(prev => prev.map((fs) => fs.id === fileState.id ? { ...fs, status: 'completed' } : fs));
               resolve();
