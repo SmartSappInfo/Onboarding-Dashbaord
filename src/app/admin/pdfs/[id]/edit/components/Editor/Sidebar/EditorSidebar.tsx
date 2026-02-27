@@ -4,11 +4,11 @@ import * as React from 'react';
 import { useEditor } from '../EditorContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { PanelLeftClose, PanelLeftOpen, Save, Eye, Loader2 } from 'lucide-react';
+import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Inspector } from './Inspector';
 
 export function EditorSidebar() {
-  const { isSidebarCollapsed, setIsSidebarCollapsed, onPreview, onSave, isSaving } = useEditor();
+  const { isSidebarCollapsed, setIsSidebarCollapsed } = useEditor();
 
   return (
     <div 
@@ -18,23 +18,23 @@ export function EditorSidebar() {
       )}
     >
       <div className="flex items-center justify-between p-4 border-b shrink-0 bg-background/50 backdrop-blur-sm">
-        {!isSidebarCollapsed && <h2 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Properties</h2>}
-        <Button variant="ghost" size="icon" className="h-8 w-8 ml-auto" onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}>
+        {!isSidebarCollapsed && (
+          <div className="flex flex-col">
+            <h2 className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Properties</h2>
+            <p className="text-[10px] text-muted-foreground/60 font-medium">Fine-tune selected elements</p>
+          </div>
+        )}
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className={cn("h-8 w-8", isSidebarCollapsed ? "mx-auto" : "ml-auto")} 
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        >
           {isSidebarCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </Button>
       </div>
 
       <Inspector />
-
-      {!isSidebarCollapsed && (
-        <div className="p-4 border-t flex flex-col gap-2 bg-muted/10 shrink-0">
-          <Button variant="outline" onClick={onPreview} size="sm"><Eye className="mr-2 h-4 w-4" /> Preview</Button>
-          <Button onClick={onSave} disabled={isSaving} size="sm">
-            {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} 
-            {isSaving ? 'Saving...' : 'Save'}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }

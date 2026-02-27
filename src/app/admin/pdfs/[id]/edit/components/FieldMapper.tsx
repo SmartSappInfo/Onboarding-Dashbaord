@@ -93,11 +93,11 @@ function EditorLayout() {
                     </div>
                 </div>
 
-                {/* Floating Tool Docker - Bottom Center */}
+                {/* Floating Global Tool Docker - Bottom Center */}
                 <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
                     <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[95vw] no-scrollbar">
                         <TooltipProvider>
-                            {/* Field Creation Group */}
+                            {/* 1. Field Creation Group */}
                             <div className="flex items-center gap-1 px-2 shrink-0">
                                 <ToolButton icon={Text} label="Add Text" onClick={() => addField('text')} />
                                 <ToolButton icon={Signature} label="Add Signature" onClick={() => addField('signature')} />
@@ -111,11 +111,11 @@ function EditorLayout() {
 
                             <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                            {/* History Group */}
+                            {/* 2. History Group */}
                             <div className="flex items-center gap-1.5 px-2 shrink-0">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={undo} disabled={!canUndo}>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={undo} disabled={!canUndo}>
                                             <Undo className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
@@ -123,7 +123,7 @@ function EditorLayout() {
                                 </Tooltip>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={redo} disabled={!canRedo}>
+                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={redo} disabled={!canRedo}>
                                             <Redo className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
@@ -133,14 +133,15 @@ function EditorLayout() {
 
                             <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                            {/* AI Action Group */}
-                            <div className="px-2 shrink-0">
+                            {/* 3. Operational Action Group */}
+                            <div className="flex items-center gap-2 px-2 shrink-0">
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button 
+                                            variant="outline"
                                             onClick={onDetect} 
                                             disabled={isDetecting} 
-                                            className="h-9 px-4 rounded-xl font-bold bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                                            className="h-9 px-4 rounded-xl font-bold border-primary/20 hover:bg-primary/5 transition-all text-primary"
                                         >
                                             {isDetecting ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Sparkles className="h-4 w-4 sm:mr-2" />}
                                             <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI Detect'}</span>
@@ -148,13 +149,41 @@ function EditorLayout() {
                                     </TooltipTrigger>
                                     <TooltipContent side="top">Auto-detect fields with AI</TooltipContent>
                                 </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            variant="outline"
+                                            onClick={onPreview} 
+                                            className="h-9 px-4 rounded-xl font-bold border-border/50 gap-2"
+                                        >
+                                            <Eye className="h-4 w-4" />
+                                            <span className="hidden sm:inline">Preview</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Preview as user</TooltipContent>
+                                </Tooltip>
+
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            onClick={onSave} 
+                                            disabled={isSaving}
+                                            className="h-9 px-6 rounded-xl font-black shadow-lg shadow-primary/20 gap-2"
+                                        >
+                                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                            <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Draft'}</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Persist changes</TooltipContent>
+                                </Tooltip>
                             </div>
                         </TooltipProvider>
                     </div>
                 </div>
             </div>
 
-            {/* Properties Sidebar */}
+            {/* Properties Sidebar - Purely for field settings now */}
             <EditorSidebar />
         </div>
     );
@@ -165,7 +194,7 @@ function ToolButton({ icon: Icon, label, onClick }: { icon: any, label: string, 
         <Tooltip>
             <TooltipTrigger asChild>
                 <Button 
-                    variant="outline" 
+                    variant="ghost" 
                     size="icon" 
                     className="h-9 w-9 rounded-xl border-none hover:bg-primary/10 transition-colors" 
                     onClick={onClick}

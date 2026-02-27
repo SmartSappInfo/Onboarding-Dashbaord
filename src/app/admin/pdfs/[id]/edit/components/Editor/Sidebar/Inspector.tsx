@@ -13,9 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Slider } from '@/components/ui/slider';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-  Trash2, Sparkles, Key, Check, X, AlignStartHorizontal, AlignCenterHorizontal, 
+  Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
-  Copy, Replace, Lock, Eye, EyeOff, Loader2, Bold, Type
+  Copy, Eye, EyeOff, Bold, Type
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -47,14 +47,13 @@ const DistributeVertical = (props: React.SVGProps<SVGSVGElement>) => (
 export function Inspector() {
   const { 
     fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
-    addField, updateField, removeField, duplicateFields, alignFields, distributeFields,
-    isSidebarCollapsed, isDetecting, onDetect, pdf, onStatusChange, isStatusChanging,
+    updateField, removeField, duplicateFields, alignFields, distributeFields,
+    isSidebarCollapsed, pdf, onStatusChange, isStatusChanging,
     password, setPassword, passwordProtected, setPasswordProtected
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
   const isMulti = selectedFieldIds.length > 1;
-  const hasSuggestions = fields.some(f => f.isSuggestion);
   const [showPassword, setShowPassword] = React.useState(false);
 
   if (isSidebarCollapsed) {
@@ -72,96 +71,94 @@ export function Inspector() {
   return (
     <ScrollArea className="flex-grow">
       <div className="p-4 space-y-4">
-        {/* Quick Add Section */}
-        <Card>
-          <CardHeader className="py-3"><CardTitle className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Quick Add</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-2 pb-4">
-            {(Object.keys(fieldIcons) as Array<keyof typeof fieldIcons>).map(type => (
-              <Button key={type} variant="outline" size="sm" className="h-8 text-[10px] justify-start px-2 capitalize" onClick={() => addField(type)}>
-                {React.createElement(fieldIcons[type], { className: "h-3 w-3 mr-1.5 text-primary" })} {type}
-              </Button>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* AI Section */}
-        <Card className={cn(hasSuggestions && "border-green-500 bg-green-50/10")}>
-          <CardHeader className="py-3"><CardTitle className="text-[10px] font-bold uppercase flex items-center gap-1.5 tracking-widest"><Sparkles className="h-3 w-3 text-primary" /> AI Assistant</CardTitle></CardHeader>
-          <CardContent className="space-y-2 pb-4">
-            {!hasSuggestions ? (
-              <Button onClick={onDetect} disabled={isDetecting} className="w-full h-9 text-xs font-bold">
-                {isDetecting ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Sparkles className="h-3 w-3 mr-2" />} Auto-Detect Fields
-              </Button>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <Button size="sm" className="w-full bg-green-600 hover:bg-green-700 text-xs" onClick={() => setFields(prev => prev.map(f => ({ ...f, isSuggestion: false })))}>
-                  <Check className="h-3 w-3 mr-2" /> Accept All
-                </Button>
-                <Button size="sm" variant="outline" className="w-full border-red-200 text-red-600 text-xs" onClick={() => setFields(prev => prev.filter(f => !f.isSuggestion))}>
-                  <X className="h-3 w-3 mr-2" /> Reject All
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Dynamic Forms */}
+        
+        {/* Selection Context */}
         {selectedField ? (
-          <Card>
+          <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="py-4">
-              <CardTitle className="flex justify-between items-center text-sm font-semibold"><span>Field Properties</span><Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => removeField(selectedField.id)}><Trash2 className="h-4 w-4" /></Button></CardTitle>
-              <CardDescription className="text-[10px]">ID: {selectedField.id}</CardDescription>
+              <CardTitle className="flex justify-between items-center text-sm font-semibold">
+                <span>Field Properties</span>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeField(selectedField.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </CardTitle>
+              <CardDescription className="text-[10px] font-mono">ID: {selectedField.id}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2"><Label className="text-xs">Label</Label><Input value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-8 text-sm" /></div>
-              <div className="space-y-2"><Label className="text-xs">Placeholder</Label><Input value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-8 text-sm" /></div>
-              <div className="space-y-2"><Label className="text-xs">Type</Label>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                <Input value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Placeholder</Label>
+                <Input value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Type</Label>
                 <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
-                  <SelectTrigger className="h-8 text-sm capitalize"><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.keys(fieldIcons).map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
+                  <SelectTrigger className="h-9 text-sm capitalize rounded-xl bg-background border-border/50"><SelectValue /></SelectTrigger>
+                  <SelectContent className="rounded-xl">{Object.keys(fieldIcons).map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               {selectedField.type === 'dropdown' && (
-                <div className="space-y-2 pt-2 border-t"><Label className="text-xs">Options</Label><Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[80px] text-xs" /></div>
+                <div className="space-y-2 pt-2 border-t">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Options (One per line)</Label>
+                  <Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[100px] text-xs rounded-xl bg-background border-border/50" />
+                </div>
               )}
-              <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Required</Label><Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} /></div>
+              <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
+                <Label className="text-xs font-bold">Required Field</Label>
+                <Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} />
+              </div>
               
               {isTextType && (
-                <div className="space-y-4 pt-2 border-t mt-2">
-                  <h4 className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest px-1">Typography</h4>
+                <div className="space-y-4 pt-4 border-t mt-2">
+                  <h4 className="text-[10px] font-black uppercase text-primary tracking-widest px-1">Typography</h4>
                   
                   <div className="space-y-3 px-1">
                     <div className="flex justify-between items-center">
-                      <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3" /> Font Size</Label>
-                      <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded">{selectedField.fontSize || 11}pt</span>
+                      <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3 text-muted-foreground" /> Font Size</Label>
+                      <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded font-bold">{selectedField.fontSize || 11}pt</span>
                     </div>
-                    <Slider
-                      value={[selectedField.fontSize || 11]}
-                      min={8}
-                      max={36}
-                      step={1}
-                      onValueChange={([val]) => updateField(selectedField.id, { fontSize: val })}
-                    />
+                    <div className="px-1">
+                      <Slider
+                        value={[selectedField.fontSize || 11]}
+                        min={8}
+                        max={36}
+                        step={1}
+                        onValueChange={([val]) => updateField(selectedField.id, { fontSize: val })}
+                      />
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <Label className="text-xs flex items-center gap-1.5"><Bold className="h-3 w-3" /> Bold Text</Label>
+                  <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
+                    <Label className="text-xs flex items-center gap-1.5 font-bold"><Bold className="h-3.5 w-3.5" /> Bold Text</Label>
                     <Switch checked={!!selectedField.bold} onCheckedChange={v => updateField(selectedField.id, { bold: v })} />
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-between rounded-lg border p-3 bg-primary/5 mt-4"><Label className="text-xs flex items-center gap-1.5"><Key className="h-3 w-3" /> Naming Field</Label><Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} /></div>
+              <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-white shadow-sm mt-4">
+                <div className="space-y-0.5">
+                  <Label className="text-xs flex items-center gap-1.5 font-black text-primary uppercase tracking-tighter"><Key className="h-3 w-3" /> Naming Field</Label>
+                  <p className="text-[9px] text-muted-foreground leading-none font-medium">Use for submission titles</p>
+                </div>
+                <Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} />
+              </div>
             </CardContent>
           </Card>
         ) : isMulti ? (
-          <Card>
-            <CardHeader className="py-4"><CardTitle className="text-sm font-semibold text-primary">Bulk Editing</CardTitle><CardDescription className="text-[10px]">{selectedFieldIds.length} selected</CardDescription></CardHeader>
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="py-4">
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-primary">Bulk Editing</CardTitle>
+              <CardDescription className="text-xs font-bold">{selectedFieldIds.length} elements selected</CardDescription>
+            </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-2"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Alignment</Label>
-                <div className="grid grid-cols-3 gap-1">
+              <div className="space-y-3">
+                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Alignment</Label>
+                <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
                   {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
-                    <Button key={a} variant="outline" size="sm" onClick={() => alignFields(a)} className="h-8">
+                    <Button key={a} variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
                       {a === 'left' && <AlignStartHorizontal className="h-4 w-4" />}
                       {a === 'center-h' && <AlignCenterHorizontal className="h-4 w-4" />}
                       {a === 'right' && <AlignEndHorizontal className="h-4 w-4" />}
@@ -172,28 +169,59 @@ export function Inspector() {
                   ))}
                 </div>
               </div>
-              <div className="space-y-2 border-t pt-4"><Label className="text-[10px] uppercase font-bold text-muted-foreground">Distribution</Label>
-                <div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4 mr-2"/>Horiz.</Button><Button variant="outline" size="sm" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4 mr-2"/>Vert.</Button></div>
+              <div className="space-y-3 border-t pt-4">
+                <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Distribution</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4 mr-2 text-primary"/>Horiz.</Button>
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4 mr-2 text-primary"/>Vert.</Button>
+                </div>
               </div>
-              <div className="space-y-4 border-t pt-4"><div className="grid grid-cols-2 gap-2"><Button variant="outline" size="sm" className="h-8 text-xs gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3 w-3" /> Duplicate</Button><Button variant="destructive" size="sm" className="h-8 text-xs gap-2" onClick={() => { setFields(p => p.filter(f => !selectedFieldIds.includes(f.id))); setSelectedFieldIds([]); }}><Trash2 className="h-3 w-3" /> Delete</Button></div></div>
+              <div className="space-y-4 border-t pt-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
+                  <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => { setFields(p => p.filter(f => !selectedFieldIds.includes(f.id))); setSelectedFieldIds([]); }}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
         ) : (
           <>
             <Card>
-              <CardHeader className="py-4"><CardTitle className="text-base font-semibold">Fields ({fields.length})</CardTitle></CardHeader>
-              <CardContent className="px-2 pb-2"><SortableFieldList /></CardContent>
+              <CardHeader className="py-4 border-b bg-muted/5">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Document Fields</CardTitle>
+                <CardDescription className="text-[10px] font-bold">{fields.length} active mapping points</CardDescription>
+              </CardHeader>
+              <CardContent className="p-2">
+                <SortableFieldList />
+              </CardContent>
             </Card>
             
             <Card>
-              <CardHeader className="py-4"><CardTitle className="text-sm font-semibold">Document Settings</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between rounded-lg border p-3"><Label className="text-xs">Password Protect</Label><Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} /></div>
-                {passwordProtected && <div className="relative"><Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="h-8 text-sm pr-8" /><Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}</Button></div>}
-                <div className="space-y-2 pt-2 border-t"><Label className="text-xs">Status</Label>
+              <CardHeader className="py-4 border-b bg-muted/5">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Access Control</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-4">
+                <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
+                  <Label className="text-xs font-bold">Password Protected</Label>
+                  <Switch checked={passwordProtected} onCheckedChange={setPasswordProtected} />
+                </div>
+                {passwordProtected && (
+                  <div className="relative animate-in slide-in-from-top-2 duration-300">
+                    <Input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} className="h-9 text-sm pr-10 rounded-xl" placeholder="Set global password..." />
+                    <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-muted-foreground" onClick={() => setShowPassword(!showPassword)}>
+                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                    </Button>
+                  </div>
+                )}
+                <div className="space-y-2 pt-2 border-t border-dashed">
+                  <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Document Status</Label>
                   <Select value={pdf.status} onValueChange={(v: any) => onStatusChange(v)} disabled={isStatusChanging}>
-                    <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent>
+                    <SelectTrigger className="h-9 text-sm font-bold rounded-xl"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="published">Published</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
               </CardContent>
