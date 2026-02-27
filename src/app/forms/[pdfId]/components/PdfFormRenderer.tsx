@@ -512,8 +512,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    // Scale pixel font size relative to A4 base scale (1.5) and current zoom
-    const currentTotalScale = 1.5 * zoom;
+    // Scale pixel font size relative to current zoom (removed 1.5 base scale)
+    const currentTotalScale = zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     

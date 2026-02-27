@@ -533,7 +533,7 @@ function HighFidelityDownloader({
             try {
                 const pdfjs = await pdfjsPromise;
                 const pdfjsVersion = '4.4.168';
-                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
+                pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
                 const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
                 setPdfDoc(loaded);
             } catch (e) {
@@ -657,8 +657,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
                         
-                        const baseFontSize = field.fontSize || 11;
-                        const dynamicFontSize = `${Math.round(baseFontSize * 1.5)}px`;
+                        const dynamicFontSize = `${field.fontSize || 11}px`;
 
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex' }}>

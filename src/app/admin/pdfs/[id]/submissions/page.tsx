@@ -810,7 +810,7 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
                                 <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-11 rounded-xl" />
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Share Link</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Share Link</Label>
                                 <div className="flex items-center gap-2">
                                     <Input value={shareUrl} readOnly className="text-[10px] bg-muted h-11 font-mono rounded-xl" />
                                     <Button size="icon" variant="outline" className="h-11 w-11 shrink-0 rounded-xl shadow-sm" onClick={() => {
@@ -1046,12 +1046,18 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const value = formData[field.id];
                         if (!value) return null;
+                        
+                        const dynamicFontSize = `${field.fontSize || 11}px`;
+
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', alignItems: 'flex-start', justifyItems: 'flex-start' }}>
                                 {field.type === 'signature' ? (
                                     <img src={value} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
-                                    <span className="text-[14px] px-1 font-medium text-black whitespace-nowrap bg-transparent">
+                                    <span 
+                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+                                        style={{ fontSize: dynamicFontSize }}
+                                    >
                                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
                                     </span>
                                 )}

@@ -61,9 +61,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
 
-  // Pixel-based font size calculation relative to zoom and base scale
-  const baseScale = 1.5;
-  const currentTotalScale = baseScale * zoom;
+  // Pixel-based font size calculation relative to zoom (removed 1.5 base scale)
+  const currentTotalScale = zoom;
   const baseFontSize = field.fontSize || 11;
   const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
 

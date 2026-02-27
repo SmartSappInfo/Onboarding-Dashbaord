@@ -210,7 +210,7 @@ export default function SubmissionDetailPage() {
             >
                 <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
                     {isLoading ? (
-                        Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
+                        Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                             <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
@@ -302,8 +302,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                         const value = formData[field.id];
                         if (!value) return null;
 
-                        const baseFontSize = field.fontSize || 11;
-                        const dynamicFontSize = `${Math.round(baseFontSize * 1.5)}px`;
+                        const dynamicFontSize = `${field.fontSize || 11}px`;
 
                         return (
                             <div 
