@@ -14,8 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format } from 'date-fns';
-import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
-import { Card, CardContent } from '@/components/ui/card';
+import { SmartSappIcon } from '@/components/icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -139,6 +139,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [submissionId, setSubmissionId] = React.useState<string | null>(searchParams.get('submissionId'));
   const [isSubmitted, setIsSubmitted] = React.useState(!!searchParams.get('submissionId'));
+  const [showDownloadBubble, setShowDownloadBubble] = React.useState(false);
   
   const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
   
@@ -185,6 +186,13 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       }
     });
   }, [pdfForm.fields, setValue, getValues]);
+
+  // Show bubble on submission
+  React.useEffect(() => {
+    if (isSubmitted) {
+        setShowDownloadBubble(true);
+    }
+  }, [isSubmitted]);
 
   React.useEffect(() => {
     pdfForm.fields.forEach(field => {
@@ -344,6 +352,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
 
   const handleDownload = async () => {
+    setShowDownloadBubble(false);
     setIsDownloading(true);
     try {
         const html2canvas = (await import('html2canvas')).default;
@@ -513,7 +522,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
        
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
             {pdfForm.logoUrl ? (
-                <div className="relative h-9 w-9 shrink-0">
+                <div className="relative h-9 w-12 shrink-0">
                     <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
                 </div>
             ) : (
@@ -524,7 +533,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                 <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
             </div>
             <div className="flex-1" />
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative">
                 {!isSubmitted ? (
                     <TooltipProvider>
                         <Tooltip>
@@ -562,6 +571,30 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         </Button>
                     </div>
                 )}
+
+                {/* Animated Chat Bubble Callout */}
+                <AnimatePresence>
+                    {showDownloadBubble && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: [0, -10, 0] }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ 
+                                opacity: { duration: 0.3 },
+                                y: { repeat: Infinity, duration: 2, ease: "easeInOut" }
+                            }}
+                            className="absolute top-12 right-0 z-50 pointer-events-none"
+                        >
+                            <div className="bg-primary text-white px-4 py-3 rounded-2xl shadow-2xl relative min-w-[220px] border border-white/20">
+                                <div className="absolute -top-1.5 right-8 w-3 h-3 bg-primary rotate-45 rounded-sm" />
+                                <p className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">
+                                    Your Form Has been Submitted.<br/>
+                                    <span className="text-white/80">Download Your Copy Here</span>
+                                </p>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
         </header>
 
@@ -596,7 +629,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             {/* Branding Footer inside ScrollArea */}
                             <footer className="py-12 text-center text-xs sm:text-sm text-muted-foreground w-full">
                                 <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-                                <p>&copy; {new Date().getFullYear()} SmartSapp</p>
+                                <p>&copy; 2026 SmartSapp</p>
                             </footer>
                         </div>
                     )}
