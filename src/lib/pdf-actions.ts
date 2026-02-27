@@ -79,10 +79,11 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
                 const textWidth = font.widthOfTextAtSize(displayValue, fontSize);
                 
-                // Alignment logic
+                // Horizontal Alignment (Default to Center)
+                const hAlign = field.alignment || 'center';
                 let textX = x + 2;
-                if (field.alignment === 'center') textX = x + (fieldWidth - textWidth) / 2;
-                else if (field.alignment === 'right') textX = x + fieldWidth - textWidth - 2;
+                if (hAlign === 'center') textX = x + (fieldWidth - textWidth) / 2;
+                else if (hAlign === 'right') textX = x + fieldWidth - textWidth - 2;
 
                 // Vertical Alignment (Default to Center)
                 const vAlign = field.verticalAlignment || 'center';
@@ -114,13 +115,21 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     const imageBuffer = Buffer.from(base64Data, 'base64');
                     
                     const img = await pdfDoc.embedPng(imageBuffer);
+                    
+                    // Proportional scaling math (Contain)
                     const scale = Math.min(fieldWidth / img.width, fieldHeight / img.height);
+                    const drawWidth = img.width * scale;
+                    const drawHeight = img.height * scale;
+                    
+                    // Centering math
+                    const offsetX = (fieldWidth - drawWidth) / 2;
+                    const offsetY = (fieldHeight - drawHeight) / 2;
 
                     page.drawImage(img, {
-                        x: x,
-                        y: y_top - fieldHeight,
-                        width: img.width * scale,
-                        height: img.height * scale,
+                        x: x + offsetX,
+                        y: y_top - fieldHeight + offsetY,
+                        width: drawWidth,
+                        height: drawHeight,
                     });
                 }
             }

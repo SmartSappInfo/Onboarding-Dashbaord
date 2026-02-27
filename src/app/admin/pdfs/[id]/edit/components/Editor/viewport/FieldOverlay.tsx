@@ -60,10 +60,13 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const isNaming = field.id === namingFieldId;
 
   const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
+  const isMediaField = field.type === 'signature' || field.type === 'photo';
 
-  const currentTotalScale = zoom;
   const baseFontSize = field.fontSize || 11;
-  const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
+  const dynamicFontSize = `${Math.round(baseFontSize * zoom)}px`;
+  
+  const hAlign = field.alignment || 'left';
+  const vAlign = field.verticalAlignment || 'center';
 
   const handleResizeStart = (e: React.MouseEvent, handle: ResizeHandle) => {
     e.stopPropagation();
@@ -118,8 +121,6 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     };
   }, [isResizing, field.id, pageDimensions, updateField]);
 
-  const verticalAlign = field.verticalAlignment || 'center';
-
   const style: React.CSSProperties = {
     position: 'absolute',
     left: `${field.position.x}%`,
@@ -131,8 +132,9 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     opacity: isDragging ? 0.4 : 1,
     display: 'flex',
     flexDirection: 'column',
-    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
-    textAlign: field.alignment || 'left',
+    justifyContent: vAlign === 'center' ? 'center' : vAlign === 'bottom' ? 'flex-end' : 'flex-start',
+    alignItems: hAlign === 'center' ? 'center' : hAlign === 'right' ? 'flex-end' : 'flex-start',
+    textAlign: hAlign || 'left',
     fontSize: dynamicFontSize,
     fontWeight: field.bold ? 'bold' : 'normal',
     fontStyle: field.italic ? 'italic' : 'normal',
@@ -151,7 +153,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       className={cn(
         "absolute border-2 transition-colors cursor-default select-none",
         isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
-        (field.type === 'signature' || field.type === 'photo') ? "flex items-center justify-center" : "p-1"
+        isMediaField ? "flex items-center justify-center p-0 overflow-hidden" : "p-1"
       )}
       onPointerDown={(e) => { 
         e.stopPropagation(); 
@@ -179,7 +181,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       ) : (
         field.placeholder && (
           <span 
-            className="text-muted-foreground italic z-10 pointer-events-none truncate block w-full"
+            className="text-muted-foreground italic z-10 pointer-events-none truncate block w-full px-1"
             style={{ fontSize: 'inherit' }}
           >
             {field.placeholder}
@@ -325,7 +327,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {field.alignment === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : field.alignment === 'right' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
+                              {hAlign === 'center' ? <AlignCenterVertical className="h-4 w-4" /> : hAlign === 'right' ? <AlignEndVertical className="h-4 w-4" /> : <AlignStartVertical className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>
@@ -343,7 +345,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                         <TooltipTrigger asChild>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                              {verticalAlign === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : verticalAlign === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
+                              {vAlign === 'center' ? <AlignCenterHorizontal className="h-4 w-4" /> : vAlign === 'bottom' ? <AlignEndHorizontal className="h-4 w-4" /> : <AlignStartHorizontal className="h-4 w-4" />}
                             </Button>
                           </DropdownMenuTrigger>
                         </TooltipTrigger>

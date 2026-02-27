@@ -219,7 +219,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   
   const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
   const [isDataEntryOpen, setIsDataEntryOpen] = React.useState(false);
-  const [activeDataFieldId, setActiveDataFieldId] = React.useState<string | null>(null);
+  const [activeDataFieldId, ReactsetActiveDataFieldId] = React.useState<string | null>(null);
   
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
@@ -389,7 +389,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             const element = document.getElementById(firstId);
             if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-            setActiveDataFieldId(firstId);
+            ReactsetActiveDataFieldId(firstId);
             setIsDataEntryOpen(true);
         }
     }
@@ -505,7 +505,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     if (field.type === 'signature' || field.type === 'photo') {
         setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
     } else if (isMobile) {
-        setActiveDataFieldId(field.id);
+        ReactsetActiveDataFieldId(field.id);
         setIsDataEntryOpen(true);
     }
   }
@@ -516,24 +516,26 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
-    const verticalAlign = field.verticalAlignment || 'center';
+    const hAlign = field.alignment || 'center';
+    const vAlign = field.verticalAlignment || 'center';
 
     const fieldStyle: React.CSSProperties = {
         fontSize: dynamicFontSize,
         fontWeight: field.bold ? 'bold' : 'normal',
         fontStyle: field.italic ? 'italic' : 'normal',
         textDecoration: field.underline ? 'underline' : 'none',
-        textAlign: field.alignment || 'left',
+        textAlign: hAlign || 'left',
         display: 'flex',
         flexDirection: 'column',
-        justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
+        justifyContent: vAlign === 'center' ? 'center' : vAlign === 'bottom' ? 'flex-end' : 'flex-start',
+        alignItems: hAlign === 'center' ? 'center' : hAlign === 'right' ? 'flex-end' : 'flex-start',
     };
 
     if (isSubmitted) {
         return (
-            <div className="w-full h-full flex items-start justify-start overflow-visible" style={fieldStyle}>
+            <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
                 {(field.type === 'signature' || field.type === 'photo') ? (
-                    value && <img src={value} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                    value && <img src={value} alt="Media" className="w-full h-full object-contain" crossOrigin="anonymous" />
                 ) : (
                     <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "text-black" : "text-black/80")}>
                         {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
@@ -624,7 +626,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                     </span>
                 )
             ) : (
-                <div className={cn("flex items-center gap-1 opacity-40", field.alignment === 'center' ? 'justify-center' : field.alignment === 'right' ? 'justify-end' : 'justify-start')}>
+                <div className={cn("flex items-center gap-1 opacity-40", hAlign === 'center' ? 'justify-center' : hAlign === 'right' ? 'justify-end' : 'justify-start')}>
                     {!isInteractiveMedia && <Edit3 className="h-3 w-3 text-muted-foreground shrink-0" />}
                     <span 
                         className="text-muted-foreground uppercase truncate"
