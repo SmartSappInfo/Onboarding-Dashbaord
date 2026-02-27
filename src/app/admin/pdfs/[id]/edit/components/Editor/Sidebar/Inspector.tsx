@@ -47,7 +47,7 @@ const DistributeVertical = (props: React.SVGProps<SVGSVGElement>) => (
 
 export function Inspector() {
   const { 
-    fields, setFields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
+    fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, removeField, duplicateFields, alignFields, distributeFields,
     isSidebarCollapsed
   } = useEditor();
@@ -197,38 +197,50 @@ export function Inspector() {
                   <div className="space-y-3">
                     <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Horizontal Alignment</Label>
                     <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
-                      {(['left', 'center', 'right'] as const).map(a => (
-                        <Button 
-                          key={a} 
-                          variant={selectedField.alignment === a ? "secondary" : "ghost"} 
-                          size="sm" 
-                          onClick={() => updateField(selectedField.id, { alignment: a })} 
-                          className={cn("h-9 rounded-lg", selectedField.alignment === a && "bg-primary/10 text-primary")}
-                        >
-                          {a === 'left' && <AlignLeft className="h-4 w-4" />}
-                          {a === 'center' && <AlignCenter className="h-4 w-4" />}
-                          {a === 'right' && <AlignRight className="h-4 w-4" />}
-                        </Button>
-                      ))}
+                      <TooltipProvider>
+                        {(['left', 'center', 'right'] as const).map(a => (
+                          <Tooltip key={a}>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant={selectedField.alignment === a ? "secondary" : "ghost"} 
+                                size="sm" 
+                                onClick={() => updateField(selectedField.id, { alignment: a })} 
+                                className={cn("h-9 rounded-lg", selectedField.alignment === a && "bg-primary/10 text-primary")}
+                              >
+                                {a === 'left' && <AlignLeft className="h-4 w-4" />}
+                                {a === 'center' && <AlignCenter className="h-4 w-4" />}
+                                {a === 'right' && <AlignRight className="h-4 w-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Align {a.charAt(0).toUpperCase() + a.slice(1)}</TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
                     </div>
                   </div>
 
                   <div className="space-y-3">
                     <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Vertical Alignment</Label>
                     <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
-                      {(['top', 'center', 'bottom'] as const).map(a => (
-                        <Button 
-                          key={a} 
-                          variant={selectedField.verticalAlignment === a ? "secondary" : "ghost"} 
-                          size="sm" 
-                          onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
-                          className={cn("h-9 rounded-lg", selectedField.verticalAlignment === a && "bg-primary/10 text-primary")}
-                        >
-                          {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
-                          {a === 'center' && <AlignCenterVertical className="h-4 w-4" />}
-                          {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
-                        </Button>
-                      ))}
+                      <TooltipProvider>
+                        {(['top', 'center', 'bottom'] as const).map(a => (
+                          <Tooltip key={a}>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant={selectedField.verticalAlignment === a ? "secondary" : "ghost"} 
+                                size="sm" 
+                                onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
+                                className={cn("h-9 rounded-lg", selectedField.verticalAlignment === a && "bg-primary/10 text-primary")}
+                              >
+                                {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
+                                {a === 'center' && <AlignCenterVertical className="h-4 w-4" />}
+                                {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Align {a.charAt(0).toUpperCase() + a.slice(1)}</TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
@@ -253,23 +265,53 @@ export function Inspector() {
               <div className="space-y-3">
                 <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Alignment</Label>
                 <div className="grid grid-cols-3 gap-1 bg-background p-1 rounded-xl border border-border/50">
-                  {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
-                    <Button key={a} variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
-                      {a === 'left' && <AlignStartHorizontal className="h-4 w-4" />}
-                      {a === 'center-h' && <AlignCenterHorizontal className="h-4 w-4" />}
-                      {a === 'right' && <AlignEndHorizontal className="h-4 w-4" />}
-                      {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
-                      {a === 'center-v' && <AlignCenterVertical className="h-4 w-4" />}
-                      {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
-                    </Button>
-                  ))}
+                  <TooltipProvider>
+                    {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
+                      <Tooltip key={a}>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
+                            {a === 'left' && <AlignStartHorizontal className="h-4 w-4" />}
+                            {a === 'center-h' && <AlignCenterHorizontal className="h-4 w-4" />}
+                            {a === 'right' && <AlignEndHorizontal className="h-4 w-4" />}
+                            {a === 'top' && <AlignStartVertical className="h-4 w-4" />}
+                            {a === 'center-v' && <AlignCenterVertical className="h-4 w-4" />}
+                            {a === 'bottom' && <AlignEndVertical className="h-4 w-4" />}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          {a === 'left' ? 'Align Left' : 
+                           a === 'center-h' ? 'Align Center Horizontally' : 
+                           a === 'right' ? 'Align Right' : 
+                           a === 'top' ? 'Align Top' : 
+                           a === 'center-v' ? 'Align Center Vertically' : 
+                           'Align Bottom'}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </TooltipProvider>
                 </div>
               </div>
               <div className="space-y-3 border-t pt-4">
                 <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Distribution</Label>
                 <div className="grid grid-cols-2 gap-2">
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}><DistributeHorizontal className="h-4 w-4 mr-2 text-primary"/>Horiz.</Button>
-                  <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}><DistributeVertical className="h-4 w-4 mr-2 text-primary"/>Vert.</Button>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}>
+                          <DistributeHorizontal className="h-4 w-4 mr-2 text-primary"/>Horiz.
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Distribute Horizontally</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}>
+                          <DistributeVertical className="h-4 w-4 mr-2 text-primary"/>Vert.
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Distribute Vertically</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </div>
               <div className="space-y-4 border-t pt-4">
@@ -285,7 +327,7 @@ export function Inspector() {
             <Card>
               <CardHeader className="py-4 border-b bg-muted/5">
                 <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Document Fields</CardTitle>
-                <CardDescription className="text-[10px] font-bold">{fields.length} active mapping points</CardDescription>
+                <CardDescription className="text-[10px] font-bold">{(fields || []).length} active mapping points</CardDescription>
               </CardHeader>
               <CardContent className="p-2">
                 <SortableFieldList />

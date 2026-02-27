@@ -62,31 +62,45 @@ function EditorLayout() {
                 {/* Vertical Zoom Controls - Center Right */}
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3">
                     <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full mb-2" 
-                            onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
-                        >
-                            <ZoomIn className="h-4 w-4 text-primary" />
-                        </Button>
-                        <Slider 
-                            orientation="vertical" 
-                            min={0.5} 
-                            max={3} 
-                            step={0.05} 
-                            value={[zoom]} 
-                            onValueChange={([v]) => setZoom(v)} 
-                            className="flex-grow py-2" 
-                        />
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-full mt-2" 
-                            onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
-                        >
-                            <ZoomOut className="h-4 w-4 text-primary" />
-                        </Button>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 rounded-full mb-2" 
+                                        onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
+                                    >
+                                        <ZoomIn className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom In</TooltipContent>
+                            </Tooltip>
+                            
+                            <Slider 
+                                orientation="vertical" 
+                                min={0.5} 
+                                max={3} 
+                                step={0.05} 
+                                value={[zoom]} 
+                                onValueChange={([v]) => setZoom(v)} 
+                                className="flex-grow py-2" 
+                            />
+                            
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 rounded-full mt-2" 
+                                        onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
+                                    >
+                                        <ZoomOut className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom Out</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </div>
                     <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
                         {Math.round(zoom * 100)}%
