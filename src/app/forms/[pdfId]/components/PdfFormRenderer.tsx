@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -31,6 +30,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
+import Image from 'next/image';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -56,6 +56,77 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
     }, {} as Record<string, z.ZodTypeAny>);
     return z.object(schemaObject);
 }
+
+const BackgroundPattern = ({ pattern, color }: { pattern?: PDFForm['backgroundPattern'], color?: string }) => {
+    if (!pattern || pattern === 'none') return null;
+
+    if (pattern === 'gradient') {
+        return (
+            <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-90" />
+        );
+    }
+
+    const patterns: Record<string, React.ReactNode> = {
+        dots: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <circle cx="2" cy="2" r="1" fill={color || "currentColor"} opacity="0.1" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#dots)" />
+            </svg>
+        ),
+        grid: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+            </svg>
+        ),
+        circuit: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="circuit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <path d="M0 10h20v10H0zM30 30h40v10H30zM80 50h20v10H80zM10 70h30v10H10zM60 80h20v10H60z" fill="none" stroke={color || "currentColor"} strokeWidth="0.5" opacity="0.05" />
+                        <circle cx="20" cy="15" r="2" fill={color || "currentColor"} opacity="0.1" />
+                        <circle cx="70" cy="35" r="2" fill={color || "currentColor"} opacity="0.1" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#circuit)" />
+            </svg>
+        ),
+        topography: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="topo" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+                        <path d="M0 50c20-10 40-10 60 0s40 10 60 0M0 20c20-10 40-10 60 0s40 10 60 0M0 80c20-10 40-10 60 0s40 10 60 0" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#topo)" />
+            </svg>
+        ),
+        cubes: (
+            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <pattern id="cubes" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+                        <path d="M30 0l30 15v30L30 60 0 45V15z" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#cubes)" />
+            </svg>
+        )
+    };
+
+    return (
+        <div className="absolute inset-0 pointer-events-none text-foreground/20">
+            {patterns[pattern]}
+        </div>
+    );
+};
 
 export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
   const router = useRouter();
@@ -218,7 +289,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         .map(f => ({ id: f.id, label: f.label || f.placeholder || 'Unnamed Field' }));
     
     if (missing.length > 0) {
-        setValidationErrors(missing);
+        setMissingFields(missing);
         setShowMissingFieldsModal(true);
     }
   };
@@ -434,13 +505,22 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   }
 
   const hasSignature = pdfForm.fields.some(f => f.type === 'signature');
+  const bgColor = pdfForm.backgroundColor || '#F1F5F9';
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-muted/20 overflow-hidden text-foreground selection:bg-primary/20">
+    <div className="light flex flex-col h-[100dvh] overflow-hidden text-foreground selection:bg-primary/20 relative" style={{ backgroundColor: bgColor }}>
+       <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
+       
        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-3 shadow-sm shrink-0">
-            <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
+            {pdfForm.logoUrl ? (
+                <div className="relative h-8 w-32 shrink-0">
+                    <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
+                </div>
+            ) : (
+                <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
+            )}
             <div className="flex flex-col min-w-0">
-                <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.name}</h1>
+                <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
                 <p className="text-[10px] text-muted-foreground leading-none">Powered by SmartSapp</p>
             </div>
             <div className="flex-1" />
@@ -485,7 +565,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </header>
 
-        <main className="flex-grow relative overflow-hidden overscroll-behavior-none bg-muted/30">
+        <main className="flex-grow relative overflow-hidden overscroll-behavior-none z-10">
             <ScrollArea 
                 className="h-full w-full"
                 viewportRef={viewportRef}
@@ -566,7 +646,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             </div>
         </main>
         
-         <footer className="py-6 text-center text-xs sm:text-sm text-muted-foreground bg-background border-t shrink-0 print:hidden relative z-10">
+         <footer className="py-6 text-center text-xs sm:text-sm text-muted-foreground bg-background/80 border-t shrink-0 print:hidden relative z-20">
             <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
             <p>&copy; {new Date().getFullYear()} SmartSapp</p>
         </footer>

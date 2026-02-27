@@ -1,24 +1,25 @@
 'use client';
 
 import * as React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    ArrowLeft, Pencil, Save, Loader2, Sparkles, Copy, Check, X, 
-    RefreshCcw, Play, AlertCircle, Eye
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, Palette, Layout, Link as LinkIcon, Eye, Save
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
-import { updatePdfFormMapping, updatePdfFormStatus, updatePdfFormName, updatePdfFormSlug } from '@/lib/pdf-actions';
+import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
+import { FormProvider, useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
 import { identifyPrimaryField } from '@/ai/flows/identify-primary-field-flow';
-import { RainbowButton } from '@/components/ui/rainbow-button';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import {
@@ -31,34 +32,106 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { MediaSelect } from '../../schools/components/media-select';
+import WebhookManager from '../../surveys/components/webhook-manager';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
+
+const formSchema = z.object({
+  name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
+  publicTitle: z.string().min(2, { message: 'Public title must be at least 2 characters.' }),
+  logoUrl: z.string().url().optional().or(z.literal('')),
+  backgroundColor: z.string().optional(),
+  backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
+  patternColor: z.string().optional(),
+  status: z.enum(['draft', 'published', 'archived']),
+  slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
+  webhookEnabled: z.boolean().default(false),
+  webhookId: z.string().optional(),
+  passwordProtected: z.boolean().default(false),
+  password: z.string().optional(),
+});
+
+type FormData = z.infer<typeof formSchema>;
+
+const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
+    const steps = ['Details', 'Builder', 'Publish'];
+
+    return (
+        <div className="flex justify-center items-center mb-12">
+            {steps.map((step, index) => {
+                const stepNum = index + 1;
+                return (
+                    <React.Fragment key={step}>
+                        <button 
+                            type="button"
+                            onClick={() => onStepClick(stepNum)}
+                            className="flex flex-col items-center group outline-none"
+                        >
+                            <div
+                                className={cn(
+                                    'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-all group-hover:scale-110',
+                                    currentStep > stepNum ? 'bg-primary border-primary text-primary-foreground' : '',
+                                    currentStep === stepNum ? 'border-primary' : 'border-border',
+                                )}
+                            >
+                                {currentStep > stepNum ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === stepNum ? 'text-primary' : 'text-muted-foreground')}>{stepNum}</span>}
+                            </div>
+                            <p className={cn('mt-2 text-[10px] uppercase tracking-wider transition-colors', currentStep >= stepNum ? 'font-bold text-primary' : 'text-muted-foreground font-medium group-hover:text-primary/70')}>{step}</p>
+                        </button>
+                        {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+};
 
 export default function EditPdfPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
   const { toast } = useToast();
   const pdfId = params.id as string;
   const firestore = useFirestore();
   const { user } = useUser();
 
+  const [step, setStep] = React.useState(1);
   const [fields, setFields] = React.useState<PDFFormField[]>([]);
   const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
-  const [password, setPassword] = React.useState('');
-  const [passwordProtected, setPasswordProtected] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDetecting, setIsDetecting] = React.useState(false);
   const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
-  const [isEditingTitle, setIsEditingTitle] = React.useState(false);
-  const [editableTitle, setEditableTitle] = React.useState('');
-  const [editableSlug, setEditableSlug] = React.useState('');
-  const [isSavingSlug, setIsSavingSlug] = React.useState(false);
-  const [isEditingSlug, setIsEditingSlug] = React.useState(false);
-  const [tempSlug, setTempSlug] = React.useState('');
-  
-  // Detection Mode Dialog State
   const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
 
-  // Undo/Redo Logic
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+        name: '',
+        publicTitle: '',
+        status: 'draft',
+        slug: '',
+        logoUrl: '',
+        backgroundColor: '#F1F5F9',
+        backgroundPattern: 'none',
+        patternColor: '#3B5FFF',
+        webhookEnabled: false,
+        passwordProtected: false,
+    }
+  });
+
+  const { reset, watch, setValue, getValues, trigger } = form;
+  const watchedBgColor = watch('backgroundColor');
+  const watchedPattern = watch('backgroundPattern');
+
+  // Undo/Redo Logic for Fields
   const {
     state: historyState,
     set: setHistory,
@@ -70,7 +143,7 @@ export default function EditPdfPage() {
   } = useUndoRedo<PDFFormField[]>([]);
 
   const isProgrammaticChange = React.useRef(false);
-  const debouncedFields = useDebounce(fields, 800); // 800ms debounce for history snapshots
+  const debouncedFields = useDebounce(fields, 800);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -80,18 +153,36 @@ export default function EditPdfPage() {
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
   React.useEffect(() => {
-    if (pdf) {
+    if (pdf && !form.formState.isDirty) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
       setFields(initialFields);
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
-      setPassword(pdf.password || '');
-      setPasswordProtected(pdf.passwordProtected || false);
-      setEditableTitle(pdf.name);
-      setEditableSlug(pdf.slug || pdf.id);
-      setTempSlug(pdf.slug || pdf.id);
+      
+      reset({
+        name: pdf.name || '',
+        publicTitle: pdf.publicTitle || pdf.name || '',
+        status: pdf.status || 'draft',
+        slug: pdf.slug || pdf.id,
+        logoUrl: pdf.logoUrl || '',
+        backgroundColor: pdf.backgroundColor || '#F1F5F9',
+        backgroundPattern: pdf.backgroundPattern || 'none',
+        patternColor: pdf.patternColor || '#3B5FFF',
+        webhookEnabled: pdf.webhookEnabled || false,
+        webhookId: pdf.webhookId || '',
+        passwordProtected: pdf.passwordProtected || false,
+        password: pdf.password || '',
+      });
     }
-  }, [pdf, resetHistory]);
+  }, [pdf, reset, resetHistory]);
+
+  React.useEffect(() => {
+    const urlStep = searchParams.get('step');
+    if (urlStep) {
+        const parsed = parseInt(urlStep, 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 3) setStep(parsed);
+    }
+  }, [searchParams]);
 
   // Sync fields to history
   React.useEffect(() => {
@@ -107,46 +198,11 @@ export default function EditPdfPage() {
     }
   }, [historyState]);
 
-  const handleUndo = React.useCallback(() => {
-    if (canUndo) {
-        isProgrammaticChange.current = true;
-        undoHistory();
-    }
-  }, [canUndo, undoHistory]);
-
-  const handleRedo = React.useCallback(() => {
-    if (canRedo) {
-        isProgrammaticChange.current = true;
-        redoHistory();
-    }
-  }, [canRedo, redoHistory]);
-
-  // Global Keyboard Shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-            e.preventDefault();
-            if (e.shiftKey) {
-                handleRedo();
-            } else {
-                handleUndo();
-            }
-        }
-        if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-            e.preventDefault();
-            handleRedo();
-        }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo]);
-
-  const handleSave = async () => {
+  const handleSave = async (data: FormData) => {
     setIsSaving(true);
     
     let finalNamingFieldId = namingFieldId;
 
-    // AI Detection: Only run if no naming field is manually selected and we have fields
     if (!finalNamingFieldId && fields.length > 0) {
         try {
             const aiResult = await identifyPrimaryField({ 
@@ -155,7 +211,6 @@ export default function EditPdfPage() {
             if (aiResult.suggestedFieldId) {
                 finalNamingFieldId = aiResult.suggestedFieldId;
                 setNamingFieldId(finalNamingFieldId);
-                toast({ title: 'AI Field Detection', description: `Automatically using "${fields.find(f => f.id === finalNamingFieldId)?.label || 'Field'}" for file naming.` });
             }
         } catch (e) {
             console.warn("AI Naming Field Detection failed:", e);
@@ -164,78 +219,66 @@ export default function EditPdfPage() {
 
     // Determine display fields: Key field (first) + next 2 non-signature fields
     const displayFieldIds: string[] = [];
-    if (finalNamingFieldId) {
-        displayFieldIds.push(finalNamingFieldId);
-    }
-    
+    if (finalNamingFieldId) displayFieldIds.push(finalNamingFieldId);
     const otherFields = fields
         .filter(f => f.id !== finalNamingFieldId && f.type !== 'signature')
         .slice(0, 3 - displayFieldIds.length)
         .map(f => f.id);
-    
     displayFieldIds.push(...otherFields);
 
-    const result = await updatePdfFormMapping(pdfId, {
+    const result = await savePdfForm(pdfId, {
+      ...data,
       fields,
       namingFieldId: finalNamingFieldId,
       displayFieldIds,
-      password: passwordProtected ? password : '',
-      passwordProtected,
     });
 
     if (result.success) {
-      toast({ title: 'Field map saved successfully!' });
+      toast({ title: 'Document Saved' });
+      router.push('/admin/pdfs');
     } else {
-      toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
+      toast({ variant: 'destructive', title: 'Save Failed' });
     }
     setIsSaving(false);
   };
 
-  const handleSlugSave = async () => {
-    if (!pdf || tempSlug === pdf.slug) {
-        setIsEditingSlug(false);
+  const handleNext = async () => {
+    let fieldsToValidate: any[] = [];
+    if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+    if (step === 2) fieldsToValidate = []; // Builder has internal validation if needed
+    
+    const isStepValid = await trigger(fieldsToValidate);
+    if (!isStepValid) {
+        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors before proceeding.' });
         return;
     }
-    setIsSavingSlug(true);
-    const result = await updatePdfFormSlug(pdfId, tempSlug);
-    if (result.success) {
-        setEditableSlug(result.slug!);
-        toast({ title: 'URL Slug updated!' });
-        setIsEditingSlug(false);
-    } else {
-        setTempSlug(pdf.slug || pdf.id);
-        toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
+
+    const nextStep = step + 1;
+    setStep(nextStep);
+    router.push(`${pathname}?step=${nextStep}`, { scroll: false });
+  };
+
+  const handleStepChange = async (targetStep: number) => {
+    if (targetStep === step) return;
+    if (targetStep > step) {
+        const isStepValid = await trigger();
+        if (!isStepValid) return;
     }
-    setIsSavingSlug(false);
+    setStep(targetStep);
+    router.push(`${pathname}?step=${targetStep}`, { scroll: false });
   };
 
-  const handleDetectClick = () => {
-      if (fields.length > 0) {
-          setIsDetectionModeOpen(true);
-      } else {
-          handleRunDetection('overwrite');
-      }
-  };
-
-  const handleRunDetection = async (mode: 'overwrite' | 'continue') => {
+  const handleDetectClick = async (mode: 'overwrite' | 'continue') => {
     if (isDetecting || !pdf?.downloadUrl) return;
     setIsDetectionModeOpen(false);
     setIsDetecting(true);
     
-    toast({ 
-        title: mode === 'overwrite' ? 'AI Redesign Started' : 'AI Filling Gaps...', 
-        description: 'Analyzing your PDF structure. This may take a moment...' 
-    });
-    
     try {
         const response = await fetch(pdf.downloadUrl);
-        if (!response.ok) throw new Error("Failed to fetch PDF data.");
         const blob = await response.blob();
-        
-        const base64data = await new Promise<string>((resolve, reject) => {
+        const base64data = await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = () => reject(new Error("Failed to read file."));
             reader.readAsDataURL(blob);
         });
 
@@ -244,273 +287,314 @@ export default function EditPdfPage() {
             existingFields: mode === 'continue' ? fields : undefined
         });
 
-        if (result.fields && result.fields.length > 0) {
-            const newSuggestions: (PDFFormField & { isSuggestion?: boolean })[] = result.fields.map(suggestion => ({ 
+        if (result.fields?.length > 0) {
+            const newSuggestions = result.fields.map(suggestion => ({ 
                 ...suggestion, 
                 id: `ai_${Date.now()}_${Math.random().toString(36).substr(2,5)}`, 
                 isSuggestion: true, 
             }));
 
-            // Apply AI suggested naming field if found
-            const suggestedNamingField = result.fields.find(f => f.isNamingField);
-            let newNamingFieldId = namingFieldId;
-
-            if (suggestedNamingField) {
-                const correspondingField = newSuggestions.find(nf => 
-                    nf.label === suggestedNamingField.label && 
-                    nf.position.x === suggestedNamingField.position.x && 
-                    nf.position.y === suggestedNamingField.position.y
-                );
-                if (correspondingField) {
-                    newNamingFieldId = correspondingField.id;
-                }
-            }
-
             if (mode === 'overwrite') {
                 setFields(newSuggestions);
-                setNamingFieldId(newNamingFieldId);
             } else {
-                // Keep existing fields, add new ones as suggestions
                 setFields(prev => [...prev, ...newSuggestions]);
-                // Only update naming field if we don't have one
-                if (!namingFieldId) setNamingFieldId(newNamingFieldId);
             }
-
-            toast({ 
-                title: 'AI Analysis Complete', 
-                description: `${result.fields.length} potential fields detected. Review and accept suggestions.` 
-            });
-        } else {
-            toast({ variant: 'destructive', title: 'No Fields Detected', description: 'The AI could not find any additional fields in this document.' });
+            toast({ title: 'AI Detection Complete', description: `${result.fields.length} potential fields found.` });
         }
     } catch (error: any) {
-        toast({ variant: 'destructive', title: 'AI Detection Failed', description: error.message || 'An unknown error occurred.' });
+        toast({ variant: 'destructive', title: 'AI Detection Failed' });
     } finally {
         setIsDetecting(false);
     }
   };
-  
-  const handleStatusChange = async (newStatus: PDFForm['status']) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'You must be logged in.' });
-        return;
-    }
-    setIsStatusChanging(true);
-    const result = await updatePdfFormStatus(pdf!.id, newStatus, user.uid);
-    if (result.success) {
-        toast({ title: 'Status Updated' });
-    } else {
-        toast({ variant: 'destructive', title: 'Error', description: result.error });
-    }
-    setIsStatusChanging(false);
-  };
 
-  const handleTitleSave = async () => {
-    if (!pdf || editableTitle.trim() === '' || editableTitle.trim() === pdf.name) {
-      setIsEditingTitle(false);
-      return;
-    }
-    const result = await updatePdfFormName(pdf.id, editableTitle);
-    if (result.success) {
-      toast({ title: 'Title updated successfully!' });
-    } else {
-      toast({ variant: 'destructive', title: 'Save Failed', description: result.error });
-      setEditableTitle(pdf.name); // Revert on failure
-    }
-    setIsEditingTitle(false);
-  };
-
-
-  if (isLoading) {
-    return (
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 flex flex-col">
-        <div className="flex-shrink-0">
-          <Skeleton className="h-8 w-1/4" />
-        </div>
-        <div className="flex-grow min-h-0 mt-4">
-          <Skeleton className="h-[calc(100%-4rem)] w-full" />
-        </div>
-      </div>
-    )
-  }
-
-  if (!pdf) {
-      return (
-        <div className="text-center py-20">
-            <p>Document not found.</p>
-        </div>
-      );
-  }
-
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  const publicUrl = `${origin}/forms/${editableSlug}`;
+  if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
 
   return (
-    <div className="h-full overflow-hidden flex flex-col">
-      <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card">
-        <div className="flex items-center gap-2 min-w-0">
-            <Button variant="ghost" onClick={() => router.push('/admin/pdfs')} className="shrink-0">
-                <ArrowLeft className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Back</span>
-            </Button>
-            <div className="flex flex-col min-w-0">
-                {isEditingTitle ? (
-                  <Input
-                    value={editableTitle}
-                    onChange={(e) => setEditableTitle(e.target.value)}
-                    onBlur={handleTitleSave}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleTitleSave(); if (e.key === 'Escape') setIsEditingTitle(false);}}
-                    className="text-lg font-semibold h-9"
-                    autoFocus
-                  />
-                ) : (
-                  <div className="flex items-center gap-1 group min-w-0">
-                    <h1 className="text-lg font-semibold truncate" title={pdf.name}>{pdf.name}</h1>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 flex-shrink-0" onClick={() => setIsEditingTitle(true)}>
-                      < Pencil className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+    <FormProvider {...form}>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
+            <div className="w-full md:w-[90%] mx-auto">
+                <Button asChild variant="ghost" className="mb-4 -ml-4">
+                    <Link href="/admin/pdfs">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Documents
+                    </Link>
+                </Button>
                 
-                <div className="flex items-center gap-2 text-[10px] text-muted-foreground mt-[-2px]">
-                    <div className="flex items-center gap-0.5 truncate">
-                        <span>{origin}/forms/</span>
-                        {isEditingSlug ? (
-                            <div className="flex items-center gap-1">
-                                <Input 
-                                    value={tempSlug} 
-                                    onChange={e => setTempSlug(e.target.value)} 
-                                    onBlur={handleSlugSave}
-                                    onKeyDown={e => { if (e.key === 'Enter') handleSlugSave(); if (e.key === 'Escape') setIsEditingSlug(false);}}
-                                    className="h-5 text-[10px] py-0 px-1 w-32"
-                                    autoFocus
-                                />
-                                {isSavingSlug && <Loader2 className="h-3 w-3 animate-spin" />}
+                <Stepper currentStep={step} onStepClick={handleStepChange} />
+
+                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-8">
+                    
+                    {/* Step 1: Details */}
+                    <div className={cn(step !== 1 && 'hidden')}>
+                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                            <Card className="xl:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Document Details</CardTitle>
+                                    <CardDescription>Internal and public naming for your document.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <Controller
+                                        name="name"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label>Internal Name (Administrative)</Label>
+                                                <Input {...field} placeholder="e.g. 2024 Enrollment Form" />
+                                                <p className="text-xs text-muted-foreground">Used only within the admin workspace.</p>
+                                            </div>
+                                        )}
+                                    />
+                                    <Controller
+                                        name="publicTitle"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label>Public Title</Label>
+                                                <Input {...field} placeholder="e.g. School Admission Application" />
+                                                <p className="text-xs text-muted-foreground">This title is visible to users on the signing page.</p>
+                                            </div>
+                                        )}
+                                    />
+                                </CardContent>
+                            </Card>
+
+                            <div className="space-y-8">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Appearance</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="space-y-6">
+                                        <Controller
+                                            name="logoUrl"
+                                            control={form.control}
+                                            render={({ field }) => (
+                                                <div className="space-y-2">
+                                                    <Label>Brand Logo</Label>
+                                                    <MediaSelect {...field} filterType="image" />
+                                                </div>
+                                            )}
+                                        />
+                                        <div className="space-y-4">
+                                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Background Design</Label>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <Controller
+                                                    name="backgroundColor"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px]">Base Color</Label>
+                                                            <div className="flex gap-2">
+                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg" />
+                                                                <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                />
+                                                <Controller
+                                                    name="patternColor"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px]">Pattern Color</Label>
+                                                            <div className="flex gap-2">
+                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg" />
+                                                                <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                />
+                                            </div>
+                                            <Controller
+                                                name="backgroundPattern"
+                                                control={form.control}
+                                                render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <SelectTrigger className="h-10 text-xs">
+                                                            <SelectValue placeholder="Style..." />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            <SelectItem value="none">Solid Color</SelectItem>
+                                                            <SelectItem value="dots">Dots</SelectItem>
+                                                            <SelectItem value="grid">Grid</SelectItem>
+                                                            <SelectItem value="circuit">Circuit</SelectItem>
+                                                            <SelectItem value="topography">Topography</SelectItem>
+                                                            <SelectItem value="gradient">Gradient</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                        </div>
+                                    </CardContent>
+                                </Card>
                             </div>
-                        ) : (
-                            <button 
-                                onClick={() => setIsEditingSlug(true)}
-                                className="font-medium text-foreground hover:underline cursor-pointer flex items-center gap-1"
-                            >
-                                {editableSlug}
-                                <Pencil className="h-2 w-2 opacity-0 group-hover:opacity-100" />
-                            </button>
-                        )}
+                        </div>
                     </div>
-                    {!isEditingSlug && (
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-4 w-4 hover:text-primary transition-colors shrink-0" 
-                            onClick={() => {
-                                navigator.clipboard.writeText(publicUrl);
-                                toast({ title: 'Link Copied', description: 'Public form URL copied to clipboard.' });
-                            }}
-                        >
-                            <Copy className="h-3 w-3" />
-                        </Button>
-                    )}
-                </div>
+
+                    {/* Step 2: Builder */}
+                    <div className={cn("h-[80vh] border rounded-2xl overflow-hidden", step !== 2 && 'hidden')}>
+                        <FieldMapper
+                            pdf={pdf}
+                            fields={fields}
+                            setFields={setFields}
+                            namingFieldId={namingFieldId}
+                            setNamingFieldId={setNamingFieldId}
+                            onSave={() => handleSave(getValues())}
+                            isSaving={isSaving}
+                            onPreview={() => setIsPreviewOpen(true)}
+                            isStatusChanging={isStatusChanging}
+                            onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
+                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleRunDetection('overwrite')}
+                            isDetecting={isDetecting}
+                            undo={undoHistory}
+                            redo={redoHistory}
+                            canUndo={canUndo}
+                            canRedo={canRedo}
+                        />
+                    </div>
+
+                    {/* Step 3: Publish */}
+                    <div className={cn("space-y-8", step !== 3 && 'hidden')}>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Finalize & Integrate</CardTitle>
+                                <CardDescription>Set the document status and connect external automations.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-10">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <Controller
+                                        name="status"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label>Status</Label>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <SelectTrigger className="h-11">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="draft">Draft</SelectItem>
+                                                        <SelectItem value="published">Published</SelectItem>
+                                                        <SelectItem value="archived">Archived</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+                                    />
+                                    <Controller
+                                        name="slug"
+                                        control={form.control}
+                                        render={({ field }) => (
+                                            <div className="space-y-2">
+                                                <Label>URL Backhalf</Label>
+                                                <div className="flex h-11 border rounded-xl overflow-hidden shadow-sm">
+                                                    <div className="bg-muted px-3 flex items-center text-[10px] font-mono text-muted-foreground border-r">/forms/</div>
+                                                    <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full" />
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground mt-1">This creates the public link for the form.</p>
+                                            </div>
+                                        )}
+                                    />
+                                </div>
+
+                                <Separator />
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between p-4 bg-muted/30 border rounded-2xl">
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                                <ShieldAlert className="h-4 w-4 text-primary" />
+                                                Password Protection
+                                            </Label>
+                                            <p className="text-xs text-muted-foreground">Restrict access to this document via a global password.</p>
+                                        </div>
+                                        <Controller
+                                            name="passwordProtected"
+                                            control={form.control}
+                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                        />
+                                    </div>
+                                    {watch('passwordProtected') && (
+                                        <Controller
+                                            name="password"
+                                            control={form.control}
+                                            render={({ field }) => (
+                                                <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                                    <Label className="text-xs font-bold">Access Password</Label>
+                                                    <Input {...field} type="password" placeholder="Enter password..." className="h-11" />
+                                                </div>
+                                            )}
+                                        />
+                                    )}
+                                </div>
+
+                                <Separator />
+
+                                <WebhookManager />
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    <div className="flex justify-between items-center mt-12 pb-20">
+                        <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')}>Cancel</Button>
+                        <div className="flex items-center gap-4">
+                            {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)}>Previous</Button>}
+                            {step < 3 ? (
+                                <Button type="button" onClick={handleNext} className="gap-2 px-8 font-bold">
+                                    Next <ArrowRight className="h-4 w-4" />
+                                </Button>
+                            ) : (
+                                <Button type="submit" disabled={isSaving} className="gap-2 px-10 font-black shadow-xl">
+                                    {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    Save Document
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
-        <div className="flex items-center gap-2">
-            <RainbowButton onClick={handleDetectClick} disabled={isDetecting} className="h-9 px-3 sm:px-4">
-                {isDetecting ? (
-                    <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                ) : (
-                    <Sparkles className="h-4 w-4 sm:mr-2" />
-                )}
-                <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI-Detect'}</span>
-            </RainbowButton>
-            
-            <Button variant="outline" onClick={() => setIsPreviewOpen(true)} className="h-9 px-3 sm:px-4">
-                <Eye className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Preview</span>
-            </Button>
 
-            <Button onClick={handleSave} disabled={isSaving} className="px-3 sm:px-4">
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin sm:mr-2" /> : <Save className="mr-2 h-4 w-4" />}
-                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save'}</span>
-            </Button>
-        </div>
-      </div>
-
-      <div className="flex-grow min-h-0">
-        <FieldMapper
-            pdf={pdf}
-            fields={fields}
-            setFields={setFields}
-            namingFieldId={namingFieldId}
-            setNamingFieldId={setNamingFieldId}
-            password={password}
-            setPassword={setPassword}
-            passwordProtected={passwordProtected}
-            setPasswordProtected={setPasswordProtected}
-            onStatusChange={handleStatusChange}
-            isStatusChanging={isStatusChanging}
-            onPreview={() => setIsPreviewOpen(true)}
-            onSave={handleSave}
-            isSaving={isSaving}
-            onDetect={handleDetectClick}
-            isDetecting={isDetecting}
-            undo={handleUndo}
-            redo={handleRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
+        <PdfPreviewDialog
+            isOpen={isPreviewOpen}
+            onClose={() => setIsPreviewOpen(false)}
+            pdfForm={{ ...pdf, fields, namingFieldId, ...watch() }}
         />
-      </div>
 
-      <PdfPreviewDialog
-        isOpen={isPreviewOpen}
-        onClose={() => setIsPreviewOpen(false)}
-        pdfForm={{ ...pdf, fields: fields, namingFieldId, password, passwordProtected, slug: editableSlug }}
-      />
-
-      {/* Detection Mode Selection Dialog */}
-      <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
-        <AlertDialogContent className="sm:max-w-md">
-          <AlertDialogHeader>
-            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <AlertDialogTitle className="text-center">How should the AI help?</AlertDialogTitle>
-            <AlertDialogDescription className="text-center">
-              You already have {fields.length} fields on this document. Choose how the AI should proceed.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="grid gap-4 py-4">
-            <Button 
-                variant="outline" 
-                className="h-auto flex-col items-start gap-1 p-4 text-left" 
-                onClick={() => handleRunDetection('continue')}
-            >
-                <div className="flex items-center gap-2 font-bold">
-                    <Play className="h-4 w-4 text-primary" />
-                    Continue Designing
+        <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
+            <AlertDialogContent className="sm:max-w-md">
+                <AlertDialogHeader>
+                    <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                        <Sparkles className="h-6 w-6 text-primary" />
+                    </div>
+                    <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
+                    <AlertDialogDescription className="text-center">
+                        You already have {fields.length} fields. How should the AI proceed?
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="grid gap-4 py-4">
+                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left" onClick={() => handleDetectClick('continue')}>
+                        <div className="flex items-center gap-2 font-bold"><Play className="h-4 w-4 text-primary" />Continue Designing</div>
+                        <span className="text-xs text-muted-foreground font-normal">Keep existing work and let AI find missing fields.</span>
+                    </Button>
+                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left border-destructive/20 hover:bg-destructive/5" onClick={() => handleDetectClick('overwrite')}>
+                        <div className="flex items-center gap-2 font-bold text-destructive"><RefreshCcw className="h-4 w-4" />Re-design from Scratch</div>
+                        <span className="text-xs text-muted-foreground font-normal">Wipe the canvas and let AI build the entire form.</span>
+                    </Button>
                 </div>
-                <span className="text-xs text-muted-foreground font-normal">
-                    Keep your current work. AI will fill in missing fields and refine positioning.
-                </span>
-            </Button>
-            <Button 
-                variant="outline" 
-                className="h-auto flex-col items-start gap-1 p-4 text-left border-destructive/20 hover:border-destructive/50 hover:bg-destructive/5" 
-                onClick={() => handleRunDetection('overwrite')}
-            >
-                <div className="flex items-center gap-2 font-bold text-destructive">
-                    <RefreshCcw className="h-4 w-4" />
-                    Re-design from Scratch
-                </div>
-                <span className="text-xs text-muted-foreground font-normal">
-                    Wipe the canvas and let AI build the entire form from the ground up.
-                </span>
-            </Button>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+                <AlertDialogFooter>
+                    <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    </FormProvider>
   );
 }
+
+const ShieldAlert = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
+    <path d="M12 8v4"/><path d="M12 16h.01"/>
+  </svg>
+);

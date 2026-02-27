@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -292,7 +291,8 @@ export interface PDFFormField {
     
 export interface PDFForm {
     id: string;
-    name: string;
+    name: string; // Internal name
+    publicTitle: string; // New: Publicly visible title
     slug: string;
     originalFileName: string;
     storagePath: string;
@@ -308,6 +308,14 @@ export interface PDFForm {
     passwordProtected?: boolean;
     resultsShared?: boolean;
     resultsPassword?: string;
+    // Branding & Appearance
+    logoUrl?: string;
+    backgroundColor?: string;
+    backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
+    patternColor?: string;
+    // Integrations
+    webhookId?: string;
+    webhookEnabled?: boolean;
 }
 
 export interface Submission {

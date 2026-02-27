@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -13,6 +12,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Loader2 } from 'lucide-react';
 import { SmartSappIcon } from '@/components/icons';
+import Image from 'next/image';
 
 const passwordSchema = z.object({
   password: z.string().min(1, 'Password is required.'),
@@ -45,14 +45,22 @@ export default function PasswordGatedForm({ pdfForm }: PasswordGatedFormProps) {
     return <PdfFormRenderer pdfForm={pdfForm} />;
   }
 
+  const bgColor = pdfForm.backgroundColor || '#F1F5F9';
+
   return (
-    <div className="flex flex-col min-h-screen bg-muted/20">
-      <div className="flex-grow flex items-center justify-center p-4">
+    <div className="flex flex-col min-h-screen relative overflow-hidden" style={{ backgroundColor: bgColor }}>
+      <div className="flex-grow flex items-center justify-center p-4 relative z-10">
         <Dialog open={!isUnlocked} onOpenChange={(open) => { if (open === false) { /* prevent closing */ } }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
               <div className="flex justify-center mb-4">
-                <SmartSappIcon className="h-12 w-12 text-primary" />
+                {pdfForm.logoUrl ? (
+                    <div className="relative h-12 w-48">
+                        <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain" />
+                    </div>
+                ) : (
+                    <SmartSappIcon className="h-12 w-12 text-primary" />
+                )}
               </div>
               <DialogTitle className="text-center">Password Required</DialogTitle>
               <DialogDescription className="text-center">
@@ -91,7 +99,7 @@ export default function PasswordGatedForm({ pdfForm }: PasswordGatedFormProps) {
         </div>
       </div>
       
-      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t">
+      <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t relative z-10">
           <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
           <p>&copy; {new Date().getFullYear()} SmartSapp</p>
       </footer>

@@ -114,12 +114,16 @@ export async function createPdfForm(data: any, userId: string) {
   // 1. Create the PDF record
   const docRef = await adminDb.collection('pdfs').add({
     ...formData,
+    publicTitle: formData.name,
     slug,
     status: 'draft',
     fields: [],
     createdBy: userId,
     createdAt: timestamp,
     updatedAt: timestamp,
+    backgroundPattern: 'none',
+    backgroundColor: '#F1F5F9',
+    patternColor: '#3B5FFF',
   });
   
   // 2. If this was a direct upload (indicated by size/mimeType), also create a Media record
@@ -148,6 +152,16 @@ export async function createPdfForm(data: any, userId: string) {
 
   revalidatePath('/admin/pdfs');
   return { success: true, id: docRef.id };
+}
+
+export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
+    await adminDb.collection('pdfs').doc(pdfId).update({
+        ...data,
+        updatedAt: new Date().toISOString(),
+    });
+    revalidatePath(`/admin/pdfs/${pdfId}/edit`);
+    revalidatePath('/admin/pdfs');
+    return { success: true };
 }
 
 export async function updatePdfFormName(pdfId: string, newName: string) {
@@ -235,7 +249,9 @@ export async function updatePdfFormStatus(pdfId: string, status: string, userId:
 export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
     await adminDb.collection('pdfs').doc(pdfId).delete();
     try {
-        await adminStorage.file(storagePath).delete();
+        if (storagePath) {
+            await adminStorage.file(storagePath).delete();
+        }
     } catch (e) {
         console.warn("Storage file not found during deletion:", storagePath);
     }
