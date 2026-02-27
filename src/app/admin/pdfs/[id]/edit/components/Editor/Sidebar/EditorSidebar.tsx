@@ -8,7 +8,9 @@ import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Inspector } from './Inspector';
 
 export function EditorSidebar() {
-  const { isSidebarCollapsed, setIsSidebarCollapsed } = useEditor();
+  const { isSidebarCollapsed, setIsSidebarCollapsed, viewMode } = useEditor();
+
+  if (viewMode === 'preview') return null;
 
   return (
     <div 

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import type { PDFForm, PDFFormField } from '@/lib/types';
-import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState } from './types';
+import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState, EditorViewMode } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
 
 interface EditorContextType {
@@ -12,6 +12,8 @@ interface EditorContextType {
   selectedFieldIds: string[];
   zoom: number;
   isSidebarCollapsed: boolean;
+  isFullScreen: boolean;
+  viewMode: EditorViewMode;
   namingFieldId: string | null;
   marquee: MarqueeState | null;
   isDetecting: boolean;
@@ -27,6 +29,8 @@ interface EditorContextType {
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
   setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsFullScreen: React.Dispatch<React.SetStateAction<boolean>>;
+  setViewMode: React.Dispatch<React.SetStateAction<EditorViewMode>>;
   setNamingFieldId: (id: string | null) => void;
   setMarquee: React.Dispatch<React.SetStateAction<MarqueeState | null>>;
   
@@ -104,6 +108,8 @@ export function EditorProvider({
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [zoom, setZoom] = React.useState(1.0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const [isFullScreen, setIsFullScreen] = React.useState(false);
+  const [viewMode, setViewMode] = React.useState<EditorViewMode>('design');
   const [marquee, setMarquee] = React.useState<MarqueeState | null>(null);
 
   const addField = React.useCallback((type: LocalPDFFormField['type']) => {
@@ -131,12 +137,13 @@ export function EditorProvider({
   }, [setFields]);
 
   const selectField = React.useCallback((id: string, multi: boolean = false, toggle: boolean = false) => {
+    if (viewMode === 'preview') return;
     setSelectedFieldIds(prev => {
       if (toggle) return prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id];
       if (multi) return prev.includes(id) ? prev : [...prev, id];
       return [id];
     });
-  }, []);
+  }, [viewMode]);
 
   const duplicateFields = React.useCallback((ids: string[]) => {
     const toDuplicate = fields.filter(f => ids.includes(f.id));
@@ -166,7 +173,7 @@ export function EditorProvider({
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only process arrow keys if fields are selected
-      if (selectedFieldIds.length === 0) return;
+      if (selectedFieldIds.length === 0 || viewMode === 'preview') return;
 
       // Don't nudge if user is typing in an input, textarea or contenteditable
       const activeEl = document.activeElement;
@@ -210,17 +217,17 @@ export function EditorProvider({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedFieldIds, setFields]);
+  }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving,
-    setFields, setSelectedFieldIds, setZoom, setIsSidebarCollapsed, setNamingFieldId, setMarquee,
+    setFields, setSelectedFieldIds, setZoom, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, setFields, setNamingFieldId,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,

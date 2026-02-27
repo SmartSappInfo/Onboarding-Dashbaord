@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye 
+    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle
 } from 'lucide-react';
 
 import { 
@@ -50,11 +50,17 @@ interface FieldMapperProps {
 function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
-        onDetect, isDetecting, onPreview 
+        onDetect, isDetecting, onPreview, isFullScreen, setIsFullScreen,
+        viewMode, setViewMode
     } = useEditor();
 
+    const isPreviewing = viewMode === 'preview';
+
     return (
-        <div className="flex h-full w-full overflow-hidden bg-muted/30 relative">
+        <div className={cn(
+            "flex h-full w-full overflow-hidden bg-muted/30 relative transition-all duration-300",
+            isFullScreen && "fixed inset-0 z-[90] bg-background"
+        )}>
             {/* Main Canvas Area */}
             <div className="flex-1 relative min-w-0 flex flex-col overflow-hidden">
                 <DocumentCanvas />
@@ -108,83 +114,114 @@ function EditorLayout() {
                 </div>
 
                 {/* Floating Global Tool Docker - Top Center */}
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] w-fit">
-                    <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
-                        <TooltipProvider>
-                            {/* 1. Field Creation Group */}
-                            <div className="flex items-center gap-1 px-2 shrink-0">
-                                <ToolButton icon={Text} label="Add Text" onClick={() => addField('text')} />
-                                <ToolButton icon={Signature} label="Add Signature" onClick={() => addField('signature')} />
-                                <ToolButton icon={Calendar} label="Add Date" onClick={() => addField('date')} />
-                                <ToolButton icon={ChevronDownSquare} label="Add Dropdown" onClick={() => addField('dropdown')} />
-                                <ToolButton icon={Phone} label="Add Phone" onClick={() => addField('phone')} />
-                                <ToolButton icon={Mail} label="Add Email" onClick={() => addField('email')} />
-                                <ToolButton icon={Clock} label="Add Time" onClick={() => addField('time')} />
-                                <ToolButton icon={Camera} label="Add Photo" onClick={() => addField('photo')} />
-                            </div>
+                {!isPreviewing && (
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 z-[70] w-fit">
+                        <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
+                            <TooltipProvider>
+                                {/* 1. Field Creation Group */}
+                                <div className="flex items-center gap-1 px-2 shrink-0">
+                                    <ToolButton icon={Text} label="Add Text" onClick={() => addField('text')} />
+                                    <ToolButton icon={Signature} label="Add Signature" onClick={() => addField('signature')} />
+                                    <ToolButton icon={Calendar} label="Add Date" onClick={() => addField('date')} />
+                                    <ToolButton icon={ChevronDownSquare} label="Add Dropdown" onClick={() => addField('dropdown')} />
+                                    <ToolButton icon={Phone} label="Add Phone" onClick={() => addField('phone')} />
+                                    <ToolButton icon={Mail} label="Add Email" onClick={() => addField('email')} />
+                                    <ToolButton icon={Clock} label="Add Time" onClick={() => addField('time')} />
+                                    <ToolButton icon={Camera} label="Add Photo" onClick={() => addField('photo')} />
+                                </div>
 
-                            <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
+                                <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                            {/* 2. History Group */}
-                            <div className="flex items-center gap-1.5 px-2 shrink-0">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={undo} disabled={!canUndo}>
-                                            <Undo className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Undo (Ctrl+Z)</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={redo} disabled={!canRedo}>
-                                            <Redo className="h-4 w-4" />
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Redo (Ctrl+Y)</TooltipContent>
-                                </Tooltip>
-                            </div>
+                                {/* 2. History Group */}
+                                <div className="flex items-center gap-1.5 px-2 shrink-0">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={undo} disabled={!canUndo}>
+                                                <Undo className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Undo (Ctrl+Z)</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" onClick={redo} disabled={!canRedo}>
+                                                <Redo className="h-4 w-4" />
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Redo (Ctrl+Y)</TooltipContent>
+                                    </Tooltip>
+                                </div>
 
-                            <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
+                                <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
 
-                            {/* 3. Operational Action Group */}
-                            <div className="flex items-center gap-2 px-2 shrink-0">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            variant="outline"
-                                            onClick={onDetect} 
-                                            disabled={isDetecting} 
-                                            className="h-9 px-4 rounded-xl font-bold border-primary/20 hover:bg-primary/5 transition-all text-primary"
-                                        >
-                                            {isDetecting ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Sparkles className="h-4 w-4 sm:mr-2" />}
-                                            <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI Detect'}</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Auto-detect fields with AI</TooltipContent>
-                                </Tooltip>
+                                {/* 3. Operational Action Group */}
+                                <div className="flex items-center gap-2 px-2 shrink-0">
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="outline"
+                                                onClick={onDetect} 
+                                                disabled={isDetecting} 
+                                                className="h-9 px-4 rounded-xl font-bold border-primary/20 hover:bg-primary/5 transition-all text-primary"
+                                            >
+                                                {isDetecting ? <Loader2 className="h-4 w-4 animate-spin sm:mr-2" /> : <Sparkles className="h-4 w-4 sm:mr-2" />}
+                                                <span className="hidden sm:inline">{isDetecting ? 'Analyzing...' : 'AI Detect'}</span>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Auto-detect fields with AI</TooltipContent>
+                                    </Tooltip>
 
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button 
-                                            variant="outline"
-                                            onClick={onPreview} 
-                                            className="h-9 px-4 rounded-xl font-bold border-border/50 gap-2"
-                                        >
-                                            <Eye className="h-4 w-4" />
-                                            <span className="hidden sm:inline">Preview</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="top">Preview as user</TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="outline"
+                                                onClick={() => setViewMode('preview')} 
+                                                className="h-9 px-4 rounded-xl font-bold border-border/50 gap-2"
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                                <span className="hidden sm:inline">Preview</span>
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">Preview as user</TooltipContent>
+                                    </Tooltip>
+
+                                    <Separator orientation="vertical" className="h-8 mx-1 bg-border/50" />
+
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-9 w-9 rounded-xl text-muted-foreground hover:text-primary transition-colors" 
+                                                onClick={() => setIsFullScreen(!isFullScreen)}
+                                            >
+                                                {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                            </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">{isFullScreen ? 'Exit Full Screen' : 'Full Screen Mode'}</TooltipContent>
+                                    </Tooltip>
+                                </div>
+                            </TooltipProvider>
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {/* Preview Mode Exit Button */}
+                {isPreviewing && (
+                    <div className="absolute top-6 right-6 z-[100] animate-in fade-in slide-in-from-top-4">
+                        <Button 
+                            onClick={() => setViewMode('design')}
+                            className="rounded-full shadow-2xl gap-2 h-12 px-6 font-bold"
+                        >
+                            <XCircle className="h-5 w-5" />
+                            Exit Preview
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Properties Sidebar - Purely for field settings now */}
-            <EditorSidebar />
+            {!isPreviewing && <EditorSidebar />}
         </div>
     );
 }
