@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -67,14 +67,22 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
-    const steps = ['Details', 'Builder', 'Publish'];
+    const steps = [
+        { name: 'Details', icon: Settings2 },
+        { name: 'Builder', icon: Layout },
+        { name: 'Publish', icon: Share2 }
+    ];
 
     return (
-        <div className="flex justify-center items-center mb-12">
+        <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
             {steps.map((step, index) => {
                 const stepNum = index + 1;
+                const Icon = step.icon;
+                const isActive = currentStep === stepNum;
+                const isCompleted = currentStep > stepNum;
+
                 return (
-                    <React.Fragment key={step}>
+                    <React.Fragment key={step.name}>
                         <button 
                             type="button"
                             onClick={() => onStepClick(stepNum)}
@@ -83,16 +91,29 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                         >
                             <div
                                 className={cn(
-                                    'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-all group-hover:scale-110',
-                                    currentStep > stepNum ? 'bg-primary border-primary text-primary-foreground' : '',
-                                    currentStep === stepNum ? 'border-primary' : 'border-border',
+                                    'flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm group-hover:scale-110',
+                                    isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
+                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {currentStep > stepNum ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === stepNum ? 'text-primary' : 'text-muted-foreground')}>{stepNum}</span>}
+                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                             </div>
-                            <p className={cn('mt-2 text-[10px] uppercase tracking-wider transition-colors', currentStep >= stepNum ? 'font-bold text-primary' : 'text-muted-foreground font-medium group-hover:text-primary/70')}>{step}</p>
+                            <p className={cn(
+                                'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
+                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
+                            )}>
+                                {step.name}
+                            </p>
                         </button>
-                        {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
+                        {index < steps.length - 1 && (
+                            <div className="flex-1 mx-4 h-[2px] relative overflow-hidden bg-muted rounded-full">
+                                <motion.div 
+                                    initial={false}
+                                    animate={{ width: isCompleted ? '100%' : '0%' }}
+                                    className="absolute left-0 top-0 h-full bg-primary"
+                                />
+                            </div>
+                        )}
                     </React.Fragment>
                 );
             })}
@@ -363,406 +384,459 @@ export default function EditPdfPage() {
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
 
+  const stepTransition = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+    transition: { type: 'spring', damping: 25, stiffness: 200 }
+  };
+
   return (
     <FormProvider {...form}>
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="w-full md:w-[90%] mx-auto">
-                <Button asChild variant="ghost" className="mb-4 -ml-4">
-                    <Link href="/admin/pdfs">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Documents
-                    </Link>
-                </Button>
-                
-                <Stepper currentStep={step} onStepClick={handleStepChange} />
+        <div className="h-full flex flex-col bg-muted/30">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
+                    <div className="mb-8">
+                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
+                            <Link href="/admin/pdfs">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Library
+                            </Link>
+                        </Button>
+                        <h1 className="text-3xl font-black tracking-tight text-foreground">Configure Document</h1>
+                    </div>
+                    
+                    <Stepper currentStep={step} onStepClick={handleStepChange} />
 
-                <form 
-                    onSubmit={form.handleSubmit(onFinalSubmit)} 
-                    className="space-y-8"
-                    onKeyDown={(e) => {
-                        if (e.key === 'Enter' && step < 3) {
-                            const target = e.target as HTMLElement;
-                            if (target.tagName !== 'TEXTAREA') {
-                                e.preventDefault();
+                    <form 
+                        onSubmit={form.handleSubmit(onFinalSubmit)} 
+                        className="pb-32"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && step < 3) {
+                                const target = e.target as HTMLElement;
+                                if (target.tagName !== 'TEXTAREA') {
+                                    e.preventDefault();
+                                }
                             }
-                        }
-                    }}
-                >
-                    <div className={cn(step !== 1 && 'hidden')}>
-                        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                            <Card className="xl:col-span-2">
-                                <CardHeader>
-                                    <CardTitle>Document Details</CardTitle>
-                                    <CardDescription>Internal and public naming for your document.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <Controller
-                                        name="name"
-                                        control={form.control}
-                                        render={({ field }) => (
-                                            <div className="space-y-2">
-                                                <Label>Internal Name (Administrative)</Label>
-                                                <Input {...field} placeholder="e.g. 2024 Enrollment Form" />
-                                                <p className="text-xs text-muted-foreground">Used only within the admin workspace.</p>
-                                            </div>
-                                        )}
-                                    />
-                                    <Controller
-                                        name="publicTitle"
-                                        control={form.control}
-                                        render={({ field }) => (
-                                            <div className="space-y-2">
-                                                <Label>Public Title</Label>
-                                                <Input {...field} placeholder="e.g. School Admission Application" />
-                                                <p className="text-xs text-muted-foreground">This title is visible to users on the signing page.</p>
-                                            </div>
-                                        )}
-                                    />
-                                    <Controller
-                                        name="schoolId"
-                                        control={form.control}
-                                        render={({ field }) => (
-                                            <div className="space-y-2">
-                                                <Label>Associated School / Organization</Label>
-                                                <Select 
-                                                    onValueChange={(val) => {
-                                                        const school = schools?.find(s => s.id === val);
-                                                        field.onChange(val);
-                                                        setValue('schoolName', school ? school.name : 'SmartSapp');
-                                                    }} 
-                                                    value={field.value || 'none'}
-                                                >
-                                                    <SelectTrigger className="h-11">
-                                                        <SelectValue placeholder="Select a school..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        <SelectItem value="none">No School (Default: SmartSapp)</SelectItem>
-                                                        {schools?.map(school => (
-                                                            <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
-                                                <p className="text-xs text-muted-foreground">The school name will appear beneath the title on public pages.</p>
-                                            </div>
-                                        )}
-                                    />
-                                </CardContent>
-                            </Card>
-
-                            <div className="space-y-8">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Appearance</CardTitle>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <Controller
-                                            name="logoUrl"
-                                            control={form.control}
-                                            render={({ field }) => (
-                                                <div className="space-y-2">
-                                                    <Label>Brand Logo</Label>
-                                                    <MediaSelect {...field} filterType="image" />
-                                                </div>
-                                            )}
-                                        />
-                                        <div className="space-y-4">
-                                            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Background Design</Label>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <Controller
-                                                    name="backgroundColor"
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <div className="space-y-1.5">
-                                                            <Label className="text-[10px]">Base Color</Label>
-                                                            <div className="flex gap-2">
-                                                                <Input type="color" {...field} value={field.value || "#F1F5F9"} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
-                                                                <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                />
-                                                <Controller
-                                                    name="patternColor"
-                                                    control={form.control}
-                                                    render={({ field }) => (
-                                                        <div className="space-y-1.5">
-                                                            <Label className="text-[10px]">Pattern Color</Label>
-                                                            <div className="flex gap-2">
-                                                                <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
-                                                                <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                />
-                                            </div>
-                                            <Controller
-                                                name="backgroundPattern"
-                                                control={form.control}
-                                                render={({ field }) => (
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <SelectTrigger className="h-10 text-xs">
-                                                            <SelectValue placeholder="Style..." />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            <SelectItem value="none">Solid Color</SelectItem>
-                                                            <SelectItem value="dots">Dots</SelectItem>
-                                                            <SelectItem value="grid">Grid</SelectItem>
-                                                            <SelectItem value="circuit">Circuit</SelectItem>
-                                                            <SelectItem value="topography">Topography</SelectItem>
-                                                            <SelectItem value="gradient">Gradient</SelectItem>
-                                                        </SelectContent>
-                                                    </Select>
-                                                )}
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className={cn("h-[80vh] border rounded-2xl overflow-hidden", step !== 2 && 'hidden')}>
-                        <FieldMapper
-                            pdf={pdf}
-                            fields={fields}
-                            setFields={setFields}
-                            namingFieldId={namingFieldId}
-                            setNamingFieldId={setNamingFieldId}
-                            onSave={() => performSave(getValues(), false)}
-                            isSaving={isSaving}
-                            onPreview={() => setIsPreviewOpen(true)}
-                            isStatusChanging={isStatusChanging}
-                            onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
-                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
-                            isDetecting={isDetecting}
-                            undo={handleUndo}
-                            redo={handleRedo}
-                            canUndo={canUndo}
-                            canRedo={canRedo}
-                            password={watch('password')}
-                            setPassword={(val) => setValue('password', val, { shouldDirty: true })}
-                            passwordProtected={watch('passwordProtected')}
-                            setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
-                        />
-                    </div>
-
-                    <div className={cn("space-y-8", step !== 3 && 'hidden')}>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                            <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
-                                <CardHeader className="bg-muted/30 border-b pb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary/10 rounded-xl">
-                                            <Globe className="h-5 w-5 text-primary" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg font-black tracking-tight">Finalize & Integrate</CardTitle>
-                                            <CardDescription className="text-xs font-medium">Set the document visibility and external connections.</CardDescription>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-0">
-                                    {/* Primary Access Group */}
-                                    <div className="p-6 bg-background">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <Controller
-                                                name="status"
-                                                control={form.control}
-                                                render={({ field }) => (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
-                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
-                                                                <SelectValue />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
-                                                                <SelectItem value="draft">Draft</SelectItem>
-                                                                <SelectItem value="published">Published</SelectItem>
-                                                                <SelectItem value="archived">Archived</SelectItem>
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </div>
-                                                )}
-                                            />
-                                            <Controller
-                                                name="slug"
-                                                control={form.control}
-                                                render={({ field }) => (
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label>
-                                                        <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all">
-                                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div>
-                                                            <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="px-6 pb-6 space-y-4">
-                                        {/* Security Feature Card */}
-                                        <div className={cn(
-                                            "rounded-2xl border-2 transition-all duration-300",
-                                            watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
-                                        )}>
-                                            <div className="flex items-center justify-between p-4">
+                        }}
+                    >
+                        <AnimatePresence mode="wait">
+                            {/* PHASE 1: DETAILS */}
+                            {step === 1 && (
+                                <motion.div key="step1" {...stepTransition}>
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                        <Card className="xl:col-span-2 shadow-sm border-none ring-1 ring-border">
+                                            <CardHeader className="bg-muted/30 border-b pb-6">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                                        <Lock className="h-4 w-4" />
+                                                    <div className="p-2 bg-primary/10 rounded-xl">
+                                                        <FileText className="h-5 w-5 text-primary" />
                                                     </div>
-                                                    <div className="space-y-0.5">
-                                                        <Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label>
-                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Document Identity</CardTitle>
+                                                        <CardDescription className="text-xs font-medium">Naming and classification details for the form.</CardDescription>
                                                     </div>
                                                 </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-8 bg-background">
                                                 <Controller
-                                                    name="passwordProtected"
+                                                    name="name"
                                                     control={form.control}
-                                                    render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                                    render={({ field }) => (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Title (Administrative)</Label>
+                                                            <Input {...field} placeholder="e.g. 2024 Enrollment Form" className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold text-lg" />
+                                                            <p className="text-[10px] text-muted-foreground italic px-1">Visible only to administrators within the workspace.</p>
+                                                        </div>
+                                                    )}
                                                 />
-                                            </div>
-                                            <AnimatePresence>
-                                                {watch('passwordProtected') && (
-                                                    <motion.div 
-                                                        initial={{ height: 0, opacity: 0 }}
-                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                        exit={{ height: 0, opacity: 0 }}
-                                                        className="overflow-hidden"
-                                                    >
-                                                        <div className="px-4 pb-4 pt-0">
+                                                <Controller
+                                                    name="publicTitle"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">User-Facing Header</Label>
+                                                            <Input {...field} placeholder="e.g. School Admission Application" className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold text-lg" />
+                                                            <p className="text-[10px] text-muted-foreground italic px-1">This title is prominent on the public signing page.</p>
+                                                        </div>
+                                                    )}
+                                                />
+                                                <Controller
+                                                    name="schoolId"
+                                                    control={form.control}
+                                                    render={({ field }) => (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Associated Organization</Label>
+                                                            <Select 
+                                                                onValueChange={(val) => {
+                                                                    const school = schools?.find(s => s.id === val);
+                                                                    field.onChange(val);
+                                                                    setValue('schoolName', school ? school.name : 'SmartSapp');
+                                                                }} 
+                                                                value={field.value || 'none'}
+                                                            >
+                                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                                                                    <SelectValue placeholder="Select a school..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">Independent (No School)</SelectItem>
+                                                                    {schools?.map(school => (
+                                                                        <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
+                                                />
+                                            </CardContent>
+                                        </Card>
+
+                                        <div className="space-y-8">
+                                            <Card className="shadow-sm border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl">
+                                                            <Palette className="h-5 w-5 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-black tracking-tight uppercase">Visual Identity</CardTitle>
+                                                            <CardDescription className="text-xs font-medium">Branding and theme customization.</CardDescription>
+                                                        </div>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-8 bg-background">
+                                                    <Controller
+                                                        name="logoUrl"
+                                                        control={form.control}
+                                                        render={({ field }) => (
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Brand Logo</Label>
+                                                                <MediaSelect {...field} filterType="image" className="rounded-2xl" />
+                                                            </div>
+                                                        )}
+                                                    />
+                                                    <div className="space-y-4 pt-4 border-t border-border/50">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Background Theme</Label>
+                                                        <div className="grid grid-cols-2 gap-4">
                                                             <Controller
-                                                                name="password"
+                                                                name="backgroundColor"
                                                                 control={form.control}
                                                                 render={({ field }) => (
-                                                                    <Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[9px] font-bold uppercase text-muted-foreground/60 ml-1">Base Color</Label>
+                                                                        <div className="flex gap-2 p-1.5 bg-muted/30 rounded-xl border border-border/50 transition-all focus-within:ring-1 focus-within:ring-primary/20">
+                                                                            <Input type="color" {...field} value={field.value || "#F1F5F9"} className="w-8 h-8 p-0 border-none bg-transparent rounded-lg cursor-pointer overflow-hidden" />
+                                                                            <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none focus-visible:ring-0 font-mono text-[10px] uppercase p-0" />
+                                                                        </div>
+                                                                    </div>
                                                                 )}
-                                                            />
+                                                            )}
+                                                            <Controller
+                                                                name="patternColor"
+                                                                control={form.control}
+                                                                render={({ field }) => (
+                                                                    <div className="space-y-1.5">
+                                                                        <Label className="text-[9px] font-bold uppercase text-muted-foreground/60 ml-1">Pattern Tint</Label>
+                                                                        <div className="flex gap-2 p-1.5 bg-muted/30 rounded-xl border border-border/50 transition-all focus-within:ring-1 focus-within:ring-primary/20">
+                                                                            <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-8 h-8 p-0 border-none bg-transparent rounded-lg cursor-pointer overflow-hidden" />
+                                                                            <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none focus-visible:ring-0 font-mono text-[10px] uppercase p-0" />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            )}
                                                         </div>
-                                                    </motion.div>
-                                                )}
-                                            </AnimatePresence>
+                                                        <Controller
+                                                            name="backgroundPattern"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                                                        <SelectValue placeholder="Pattern Style..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="none">Solid Color</SelectItem>
+                                                                        <SelectItem value="dots">Dots</SelectItem>
+                                                                        <SelectItem value="grid">Grid</SelectItem>
+                                                                        <SelectItem value="circuit">Circuit</SelectItem>
+                                                                        <SelectItem value="topography">Topography</SelectItem>
+                                                                        <SelectItem value="cubes">Cubes</SelectItem>
+                                                                        <SelectItem value="gradient">Gradient</SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
                                         </div>
-
-                                        <WebhookManager />
                                     </div>
-                                </CardContent>
-                            </Card>
+                                </motion.div>
+                            )}
 
-                            <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
-                                <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                                            <Send className="h-5 w-5" />
-                                        </div>
-                                        <div>
-                                            <CardTitle className="text-lg font-black tracking-tight">Auto-Confirmation</CardTitle>
-                                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
-                                        </div>
-                                    </div>
-                                </CardHeader>
-                                <CardContent className="p-6 space-y-6">
-                                    <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                                                <Mail className="h-6 w-6" />
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <Label className="text-base font-black uppercase tracking-tight">Confirmation Message</Label>
-                                                <p className="text-xs text-muted-foreground font-medium">Notify the user upon successful submission</p>
-                                            </div>
-                                        </div>
-                                        <Controller
-                                            name="confirmationMessagingEnabled"
-                                            control={form.control}
-                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />}
+                            {/* PHASE 2: BUILDER */}
+                            {step === 2 && (
+                                <motion.div key="step2" {...stepTransition} className="h-full">
+                                    <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
+                                        <FieldMapper
+                                            pdf={pdf}
+                                            fields={fields}
+                                            setFields={setFields}
+                                            namingFieldId={namingFieldId}
+                                            setNamingFieldId={setNamingFieldId}
+                                            onSave={() => performSave(getValues(), false)}
+                                            isSaving={isSaving}
+                                            onPreview={() => setIsPreviewOpen(true)}
+                                            isStatusChanging={isStatusChanging}
+                                            onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
+                                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
+                                            isDetecting={isDetecting}
+                                            undo={handleUndo}
+                                            redo={handleRedo}
+                                            canUndo={canUndo}
+                                            canRedo={canRedo}
+                                            password={watch('password')}
+                                            setPassword={(val) => setValue('password', val, { shouldDirty: true })}
+                                            passwordProtected={watch('passwordProtected')}
+                                            setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
                                         />
                                     </div>
-
-                                    <AnimatePresence>
-                                        {watch('confirmationMessagingEnabled') && (
-                                            <motion.div 
-                                                initial={{ opacity: 0, y: 10 }}
-                                                animate={{ opacity: 1, y: 0 }}
-                                                exit={{ opacity: 0, y: 10 }}
-                                                className="space-y-6"
-                                            >
-                                                <div className="grid gap-4">
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Message Template</Label>
-                                                        <Controller
-                                                            name="confirmationTemplateId"
-                                                            control={form.control}
-                                                            render={({ field }) => (
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 focus:ring-primary/20 font-bold transition-all">
-                                                                        <SelectValue placeholder="Select template..." />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent className="rounded-2xl">
-                                                                        <SelectItem value="none">No Template Selected</SelectItem>
-                                                                        {templates?.filter(t => t.category === 'forms' && t.isActive).map(t => (
-                                                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Sender Identity</Label>
-                                                        <Controller
-                                                            name="confirmationSenderProfileId"
-                                                            control={form.control}
-                                                            render={({ field }) => (
-                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 focus:ring-primary/20 font-bold transition-all">
-                                                                        <SelectValue placeholder="Select sender..." />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent className="rounded-2xl">
-                                                                        <SelectItem value="none">No Sender Selected</SelectItem>
-                                                                        {profiles?.filter(p => p.isActive).map(p => (
-                                                                            <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="p-4 rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 flex gap-3">
-                                                    <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                                                    <div className="space-y-1">
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Automation Note</p>
-                                                        <p className="text-[10px] font-medium text-primary/70 leading-relaxed uppercase tracking-tighter">
-                                                            The system will automatically extract the recipient's contact details from the submitted form data.
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-between items-center mt-12 pb-20">
-                        <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')} className="font-bold text-muted-foreground">Cancel</Button>
-                        <div className="flex items-center gap-4">
-                            {step > 1 && <Button type="button" variant="outline" onClick={() => setStep(s => s - 1)} className="font-bold border-border/50">Previous</Button>}
-                            {step < 3 ? (
-                                <Button type="button" onClick={handleNext} className="gap-2 px-8 font-black shadow-lg">
-                                    Next Phase <ArrowRight className="h-4 w-4" />
-                                </Button>
-                            ) : (
-                                <Button type="submit" disabled={isSaving} className="gap-2 px-12 h-12 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-2xl">
-                                    {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
-                                    Finalize & Save Document
-                                </Button>
+                                </motion.div>
                             )}
-                        </div>
+
+                            {/* PHASE 3: PUBLISH */}
+                            {step === 3 && (
+                                <motion.div key="step3" {...stepTransition}>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                        <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
+                                            <CardHeader className="bg-muted/30 border-b pb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-xl">
+                                                        <Globe className="h-5 w-5 text-primary" />
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Finalize & Integrate</CardTitle>
+                                                        <CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-0">
+                                                <div className="p-6 bg-background">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <Controller
+                                                            name="status"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
+                                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                                                                            <SelectValue />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl">
+                                                                            <SelectItem value="draft">Draft</SelectItem>
+                                                                            <SelectItem value="published">Published</SelectItem>
+                                                                            <SelectItem value="archived">Archived</SelectItem>
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </div>
+                                                            )}
+                                                        />
+                                                        <Controller
+                                                            name="slug"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label>
+                                                                    <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                                                        <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div>
+                                                                        <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="px-6 pb-6 space-y-4">
+                                                    <div className={cn(
+                                                        "rounded-2xl border-2 transition-all duration-300",
+                                                        watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                                                    )}>
+                                                        <div className="flex items-center justify-between p-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                                                    <Lock className="h-4 w-4" />
+                                                                </div>
+                                                                <div className="space-y-0.5">
+                                                                    <Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label>
+                                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p>
+                                                                </div>
+                                                            </div>
+                                                            <Controller
+                                                                name="passwordProtected"
+                                                                control={form.control}
+                                                                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                                            />
+                                                        </div>
+                                                        <AnimatePresence>
+                                                            {watch('passwordProtected') && (
+                                                                <motion.div 
+                                                                    initial={{ height: 0, opacity: 0 }}
+                                                                    animate={{ height: 'auto', opacity: 1 }}
+                                                                    exit={{ height: 0, opacity: 0 }}
+                                                                    className="overflow-hidden"
+                                                                >
+                                                                    <div className="px-4 pb-4 pt-0">
+                                                                        <Controller
+                                                                            name="password"
+                                                                            control={form.control}
+                                                                            render={({ field }) => (
+                                                                                <Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />
+                                                                            )}
+                                                                        />
+                                                                    </div>
+                                                                </motion.div>
+                                                            )}
+                                                        </AnimatePresence>
+                                                    </div>
+
+                                                    <WebhookManager />
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
+                                            <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                                        <Send className="h-5 w-5" />
+                                                    </div>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Auto-Confirmation</CardTitle>
+                                                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-6">
+                                                <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                                            <Mail className="h-6 w-6" />
+                                                        </div>
+                                                        <div className="space-y-0.5">
+                                                            <Label className="text-base font-black uppercase tracking-tight">Confirmation Message</Label>
+                                                            <p className="text-xs text-muted-foreground font-medium">Notify user upon submission</p>
+                                                        </div>
+                                                    </div>
+                                                    <Controller
+                                                        name="confirmationMessagingEnabled"
+                                                        control={form.control}
+                                                        render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />}
+                                                    />
+                                                </div>
+
+                                                <AnimatePresence>
+                                                    {watch('confirmationMessagingEnabled') && (
+                                                        <motion.div 
+                                                            initial={{ opacity: 0, y: 10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, y: 10 }}
+                                                            className="space-y-6"
+                                                        >
+                                                            <div className="grid gap-4">
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Message Template</Label>
+                                                                    <Controller
+                                                                        name="confirmationTemplateId"
+                                                                        control={form.control}
+                                                                        render={({ field }) => (
+                                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                                <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
+                                                                                    <SelectValue placeholder="Select template..." />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent className="rounded-2xl">
+                                                                                    <SelectItem value="none">No Template Selected</SelectItem>
+                                                                                    {templates?.filter(t => t.category === 'forms' && t.isActive).map(t => (
+                                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                                    ))}
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                        )}
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Sender Identity</Label>
+                                                                    <Controller
+                                                                        name="confirmationSenderProfileId"
+                                                                        control={form.control}
+                                                                        render={({ field }) => (
+                                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                                <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
+                                                                                    <SelectValue placeholder="Select sender..." />
+                                                                                </SelectTrigger>
+                                                                                <SelectContent className="rounded-2xl">
+                                                                                    <SelectItem value="none">No Sender Selected</SelectItem>
+                                                                                    {profiles?.filter(p => p.isActive).map(p => (
+                                                                                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
+                                                                                    ))}
+                                                                                </SelectContent>
+                                                                            </Select>
+                                                                        )}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="p-4 rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 flex gap-3">
+                                                                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                                                <div className="space-y-1">
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Automation Note</p>
+                                                                    <p className="text-[10px] font-medium text-primary/70 leading-relaxed uppercase tracking-tighter">
+                                                                        The system will automatically extract the recipient's contact details from the submitted form data.
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </form>
+                </div>
+            </div>
+
+            {/* STICKY ACTION FOOTER */}
+            <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl flex items-center justify-between gap-4">
+                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')} className="font-bold text-muted-foreground hover:bg-muted/50 rounded-xl px-6 h-12">
+                        Cancel
+                    </Button>
+                    <div className="flex items-center gap-4">
+                        {step > 1 && (
+                            <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12">
+                                Previous
+                            </Button>
+                        )}
+                        {step < 3 ? (
+                            <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">
+                                Next Phase 
+                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                            </Button>
+                        ) : (
+                            <Button 
+                                type="submit" 
+                                disabled={isSaving} 
+                                onClick={form.handleSubmit(onFinalSubmit)}
+                                className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg"
+                            >
+                                {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
+                                Finalize & Save
+                            </Button>
+                        )}
                     </div>
-                </form>
+                </div>
             </div>
         </div>
 
@@ -773,7 +847,7 @@ export default function EditPdfPage() {
         />
 
         <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
-            <AlertDialogContent className="sm:max-w-md">
+            <AlertDialogContent className="sm:max-w-md rounded-2xl">
                 <AlertDialogHeader>
                     <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                         <Sparkles className="h-6 w-6 text-primary" />
@@ -784,17 +858,23 @@ export default function EditPdfPage() {
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <div className="grid gap-4 py-4">
-                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left" onClick={() => handleDetectClick('continue')}>
-                        <div className="flex items-center gap-2 font-bold"><Play className="h-4 w-4 text-primary" />Continue Designing</div>
-                        <span className="text-xs text-muted-foreground font-normal">Keep existing work and let AI find missing fields.</span>
+                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}>
+                        <div className="flex items-center gap-2 font-bold group-hover:text-primary transition-colors">
+                            <Play className="h-4 w-4 text-primary" />
+                            Continue Designing
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Keep existing work and find missing fields.</span>
                     </Button>
-                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left border-destructive/20 hover:bg-destructive/5" onClick={() => handleDetectClick('overwrite')}>
-                        <div className="flex items-center gap-2 font-bold text-destructive"><RefreshCcw className="h-4 w-4" />Re-design from Scratch</div>
-                        <span className="text-xs text-muted-foreground font-normal">Wipe the canvas and let AI build the entire form.</span>
+                    <Button variant="outline" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}>
+                        <div className="flex items-center gap-2 font-bold text-destructive">
+                            <RefreshCcw className="h-4 w-4" />
+                            Re-design from Scratch
+                        </div>
+                        <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Wipe the canvas and let AI build the entire form.</span>
                     </Button>
                 </div>
                 <AlertDialogFooter>
-                    <AlertDialogCancel className="w-full">Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="w-full rounded-xl">Cancel</AlertDialogCancel>
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
