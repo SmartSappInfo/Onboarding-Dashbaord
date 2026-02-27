@@ -139,6 +139,9 @@ export default function EditPdfPage() {
   const [isStatusChanging, setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
+  const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+
+  const storageKey = `pdf-autosave-${pdfId}`;
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -195,6 +198,8 @@ export default function EditPdfPage() {
 
   const isProgrammaticChange = React.useRef(false);
   const debouncedFields = useDebounce(fields, 800);
+  const watchedForm = watch();
+  const debouncedForm = useDebounce(watchedForm, 2000);
 
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
@@ -210,7 +215,7 @@ export default function EditPdfPage() {
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       
-      reset({
+      const initialData = {
         name: pdf.name || '',
         publicTitle: pdf.publicTitle || pdf.name || '',
         schoolId: pdf.schoolId || null,
@@ -228,9 +233,59 @@ export default function EditPdfPage() {
         confirmationMessagingEnabled: pdf.confirmationMessagingEnabled || false,
         confirmationTemplateId: pdf.confirmationTemplateId || '',
         confirmationSenderProfileId: pdf.confirmationSenderProfileId || '',
-      });
+      };
+
+      reset(initialData);
+
+      // Check for localStorage recovery
+      const savedData = localStorage.getItem(storageKey);
+      if (savedData) {
+          try {
+              const parsed = JSON.parse(savedData);
+              // Only offer recovery if the content is actually different
+              if (JSON.stringify(parsed.fields) !== JSON.stringify(initialFields) || JSON.stringify(parsed.details) !== JSON.stringify(initialData)) {
+                  toast({
+                      title: "Unsaved Changes Found",
+                      description: "Would you like to restore your last session?",
+                      action: (
+                          <Button variant="default" size="sm" onClick={() => {
+                              setFields(parsed.fields || []);
+                              setNamingFieldId(parsed.namingFieldId || null);
+                              reset(parsed.details);
+                              localStorage.removeItem(storageKey);
+                              toast({ title: "Restored", description: "Your changes have been applied." });
+                          }}>
+                              Restore
+                          </Button>
+                      ),
+                      duration: 8000,
+                  });
+              }
+          } catch (e) {
+              console.error("Autosave parse error:", e);
+          }
+      }
     }
-  }, [pdf, reset, resetHistory]);
+  }, [pdf, reset, resetHistory, pdfId, storageKey, toast]);
+
+  // Handle Autosave to LocalStorage
+  React.useEffect(() => {
+      const currentDetails = getValues();
+      const saveState = {
+          fields,
+          namingFieldId,
+          details: currentDetails,
+          updatedAt: new Date().toISOString()
+      };
+
+      if (fields.length > 0 || form.formState.isDirty) {
+          setAutosaveStatus('saving');
+          localStorage.setItem(storageKey, JSON.stringify(saveState));
+          const timer = setTimeout(() => setAutosaveStatus('saved'), 800);
+          const idleTimer = setTimeout(() => setAutosaveStatus('idle'), 3000);
+          return () => { clearTimeout(timer); clearTimeout(idleTimer); };
+      }
+  }, [debouncedFields, debouncedForm, namingFieldId, storageKey, getValues]);
 
   React.useEffect(() => {
     const urlStep = searchParams.get('step');
@@ -288,6 +343,7 @@ export default function EditPdfPage() {
 
     if (result.success) {
       toast({ title: 'Document Saved' });
+      localStorage.removeItem(storageKey);
       if (redirect) {
         router.push('/admin/pdfs');
       }
@@ -396,14 +452,31 @@ export default function EditPdfPage() {
         <div className="h-full flex flex-col bg-muted/30">
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                    <div className="mb-8">
-                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
-                            <Link href="/admin/pdfs">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Library
-                            </Link>
-                        </Button>
-                        <h1 className="text-3xl font-black tracking-tight text-foreground">Configure Document</h1>
+                    <div className="mb-8 flex justify-between items-end">
+                        <div>
+                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
+                                <Link href="/admin/pdfs">
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Back to Library
+                                </Link>
+                            </Button>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground">Configure Document</h1>
+                        </div>
+                        {step === 2 && (
+                            <div className="flex items-center gap-3 pb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                                {autosaveStatus === 'saving' ? (
+                                    <span className="flex items-center gap-1.5 text-primary animate-pulse">
+                                        <Loader2 className="h-3 w-3 animate-spin" /> Saving Progress...
+                                    </span>
+                                ) : autosaveStatus === 'saved' ? (
+                                    <span className="flex items-center gap-1.5 text-green-600">
+                                        <Check className="h-3 w-3" /> Changes Cached
+                                    </span>
+                                ) : (
+                                    <span className="opacity-40">Local Backup Active</span>
+                                )}
+                            </div>
+                        )}
                     </div>
                     
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
@@ -582,7 +655,7 @@ export default function EditPdfPage() {
                                             setFields={setFields}
                                             namingFieldId={namingFieldId}
                                             setNamingFieldId={setNamingFieldId}
-                                            onSave={() => performSave(getValues(), false)}
+                                            onSave={() => {}} // No auto-saving to DB from builder
                                             isSaving={isSaving}
                                             onPreview={() => setIsPreviewOpen(true)}
                                             isStatusChanging={isStatusChanging}
@@ -852,6 +925,7 @@ export default function EditPdfPage() {
                     <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                         <Sparkles className="h-6 w-6 text-primary" />
                     </div>
+                    <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
                     <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
                     <AlertDialogDescription className="text-center">
                         You already have {fields.length} fields. How should the AI proceed?
