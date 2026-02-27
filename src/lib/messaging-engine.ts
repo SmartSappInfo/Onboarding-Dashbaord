@@ -3,19 +3,21 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog } from './types';
 import { resolveVariables } from './messaging-utils';
+import { logActivity } from './activity-logger';
 
 interface SendMessageInput {
   templateId: string;
   senderProfileId: string;
   recipient: string;
   variables: Record<string, any>;
+  schoolId?: string;
 }
 
 /**
  * Main entry point for sending a single message via the messaging engine.
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables } = input;
+  const { templateId, senderProfileId, recipient, variables, schoolId } = input;
 
   try {
     // 1. Fetch Core Assets
@@ -67,10 +69,21 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       body: resolvedBody,
       status: 'sent',
       sentAt: new Date().toISOString(),
-      variables
+      variables,
+      schoolId: schoolId || variables.schoolId || variables.school_id,
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);
+
+    // 6. Sync with Activity Timeline
+    await logActivity({
+        schoolId: logData.schoolId || '',
+        userId: null, // System-initiated
+        type: 'notification_sent',
+        source: 'system',
+        description: `Sent ${template.channel} "${template.name}" to ${recipient}`,
+        metadata: { logId: logRef.id, channel: template.channel, templateName: template.name }
+    });
 
     return { success: true, logId: logRef.id };
 
@@ -86,7 +99,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             status: 'failed',
             error: error.message,
             sentAt: new Date().toISOString(),
-            variables
+            variables,
+            schoolId: schoolId || variables.schoolId || variables.school_id,
         });
     } catch (logError) {
         console.error(">>> [MESSAGING] Could not record failure log.");

@@ -48,6 +48,7 @@ const formSchema = z.object({
     mode: z.enum(['single', 'bulk']),
     recipient: z.string().optional(), // Used for single
     variables: z.record(z.any()).default({}),
+    schoolId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -73,6 +74,7 @@ export default function ComposerWizard() {
             channel: 'email',
             mode: 'single',
             variables: {},
+            schoolId: '',
         }
     });
 
@@ -86,10 +88,12 @@ export default function ComposerWizard() {
         const tId = searchParams.get('templateId');
         const chan = searchParams.get('channel') as 'email' | 'sms' | null;
         const rec = searchParams.get('recipient');
+        const sId = searchParams.get('schoolId');
         
         if (chan) setValue('channel', chan);
         if (tId) setValue('templateId', tId);
         if (rec) setValue('recipient', rec);
+        if (sId) setValue('schoolId', sId);
 
         // Pre-fill any variable passed as var_X
         searchParams.forEach((value, key) => {
@@ -162,7 +166,8 @@ export default function ComposerWizard() {
                     templateId: data.templateId,
                     senderProfileId: data.senderProfileId,
                     recipient: data.recipient,
-                    variables: data.variables
+                    variables: data.variables,
+                    schoolId: data.schoolId,
                 });
 
                 if (result.success) {
@@ -179,7 +184,7 @@ export default function ComposerWizard() {
                 // Map CSV data to variables required by template
                 const recipients = csvData.map(row => ({
                     recipient: row.recipient || row.phone || row.email,
-                    variables: { ...data.variables, ...row }
+                    variables: { ...data.variables, ...row, schoolId: data.schoolId }
                 }));
 
                 const { jobId: newJobId } = await createBulkMessageJob({
@@ -394,7 +399,10 @@ export default function ComposerWizard() {
                             <div className="space-y-6">
                                 {watchedMode === 'single' ? (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recipient Details</Label>
+                                        <div className="flex justify-between items-center">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recipient Details</Label>
+                                            {getValues('schoolId') && <Badge variant="outline" className="text-[8px]">School ID: {getValues('schoolId')}</Badge>}
+                                        </div>
                                         <Controller
                                             name="recipient"
                                             control={control}

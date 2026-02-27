@@ -11,7 +11,8 @@ import {
     ArrowRight,
     MessageSquareText,
     Mail,
-    Smartphone
+    Smartphone,
+    History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,8 +50,15 @@ export default function MessagingHubPage() {
             icon: Send,
             href: '/admin/messaging/composer',
             color: 'text-green-500',
-            bg: 'bg-green-500/10',
-            disabled: false 
+            bg: 'bg-green-500/10'
+        },
+        {
+            title: 'Message Logs',
+            description: 'Audit trail of all sent communications, status tracking, and error reports.',
+            icon: History,
+            href: '/admin/messaging/logs',
+            color: 'text-slate-500',
+            bg: 'bg-slate-500/10'
         }
     ];
 
@@ -64,7 +72,7 @@ export default function MessagingHubPage() {
                 <p className="text-muted-foreground text-lg">Centralized registry for automated and manual communications.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
                 {modules.map((mod) => (
                     <Card key={mod.title} className="group hover:shadow-xl transition-all duration-300 border-border/50">
                         <CardHeader>
@@ -72,17 +80,16 @@ export default function MessagingHubPage() {
                                 <mod.icon className={cn("h-6 w-6", mod.color)} />
                             </div>
                             <CardTitle className="text-xl font-bold">{mod.title}</CardTitle>
-                            <CardDescription className="min-h-[3rem]">{mod.description}</CardDescription>
+                            <CardDescription className="min-h-[3rem] text-xs">{mod.description}</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Button 
                                 asChild 
                                 variant="ghost" 
                                 className="w-full justify-between group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
-                                disabled={mod.disabled}
                             >
                                 <Link href={mod.href}>
-                                    {mod.disabled ? 'Coming Soon' : 'Manage'}
+                                    Manage
                                     <ArrowRight className="h-4 w-4" />
                                 </Link>
                             </Button>

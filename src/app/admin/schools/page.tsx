@@ -385,7 +385,7 @@ export default function SchoolsPage() {
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                                <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                     <Send className="mr-2 h-4 w-4" />
                                     <span>Send Message</span>
                                 </Link>
@@ -462,7 +462,7 @@ export default function SchoolsPage() {
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
                                             <DropdownMenuItem asChild>
-                                                <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
+                                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                                     <Send className="mr-2 h-4 w-4" />
                                                     <span>Send Message</span>
                                                 </Link>

@@ -385,6 +385,7 @@ export interface MessageLog {
   error?: string;
   sentAt: string;
   variables: Record<string, any>;
+  schoolId?: string; // Link to a school for interaction tracking
 }
 
 export interface MessageJob {
