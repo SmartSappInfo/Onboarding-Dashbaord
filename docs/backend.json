@@ -78,6 +78,26 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "MessageLog": {
+      "title": "Message Log",
+      "description": "Historical record of sent messages for audit and debugging.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "templateId": { "type": "string" },
+        "templateName": { "type": "string" },
+        "senderProfileId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "channel": { "type": "string", "enum": ["sms", "email"] },
+        "recipient": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "status": { "type": "string", "enum": ["sent", "failed"] },
+        "error": { "type": "string" },
+        "variables": { "type": "object" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -103,6 +123,10 @@
     "/message_templates/{templateId}": {
       "schema": "#/entities/MessageTemplate",
       "description": "Reusable message content definitions."
+    },
+    "/message_logs/{logId}": {
+      "schema": "#/entities/MessageLog",
+      "description": "Stateless logs of all messaging activity."
     }
   }
 }

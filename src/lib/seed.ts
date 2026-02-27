@@ -1,9 +1,8 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays } from 'date-fns';
@@ -158,6 +157,85 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedMessaging(firestore: Firestore): Promise<number> {
+  const batch = writeBatch(firestore);
+  
+  // 1. Clear existing
+  await clearCollection(firestore, 'sender_profiles');
+  await clearCollection(firestore, 'message_styles');
+  await clearCollection(firestore, 'message_templates');
+  await clearCollection(firestore, 'message_logs');
+
+  // 2. Sender Profiles
+  const profiles: Omit<SenderProfile, 'id'>[] = [
+    { name: 'SmartSapp Primary SMS', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    { name: 'Onboarding Email', channel: 'email', identifier: 'onboarding@smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  ];
+  
+  const profileRefs: string[] = [];
+  profiles.forEach(p => {
+    const ref = doc(collection(firestore, 'sender_profiles'));
+    batch.set(ref, p);
+    profileRefs.push(ref.id);
+  });
+
+  // 3. Message Style
+  const styleRef = doc(collection(firestore, 'message_styles'));
+  batch.set(styleRef, {
+    name: 'SmartSapp Standard Wrapper',
+    htmlWrapper: `
+      <html>
+        <body style="font-family: sans-serif; background: #f4f4f4; padding: 20px;">
+          <div style="max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; border: 1px solid #ddd;">
+            <div style="background: #3B5FFF; padding: 20px; text-align: center; color: #fff;">
+              <h1 style="margin: 0; font-size: 20px;">SmartSapp Onboarding</h1>
+            </div>
+            <div style="padding: 30px; line-height: 1.6; color: #333;">
+              {{content}}
+            </div>
+            <div style="padding: 20px; background: #fafafa; border-top: 1px solid #eee; text-align: center; font-size: 12px; color: #999;">
+              &copy; 2024 SmartSapp. All rights reserved.
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  });
+
+  // 4. Templates
+  const templates: Omit<MessageTemplate, 'id'>[] = [
+    {
+      name: 'Welcome School (SMS)',
+      category: 'general',
+      channel: 'sms',
+      body: 'Welcome {{school_name}} to SmartSapp! Your onboarding specialist is {{agent_name}}. Let\'s get started!',
+      variables: ['school_name', 'agent_name'],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    {
+      name: 'Meeting Reminder (Email)',
+      category: 'meetings',
+      channel: 'email',
+      subject: 'Reminder: {{meeting_type}} for {{school_name}}',
+      body: '<p>Hi {{contact_name}},</p><p>This is a reminder for your <strong>{{meeting_type}}</strong> scheduled for {{date}} at {{time}}.</p><p>Join link: {{link}}</p>',
+      styleId: styleRef.id,
+      variables: ['meeting_type', 'school_name', 'contact_name', 'date', 'time', 'link'],
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  ];
+
+  templates.forEach(t => batch.set(doc(collection(firestore, 'message_templates')), t));
+
+  await batch.commit();
+  return profiles.length + 1 + templates.length;
+}
 
 export async function seedActivities(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'activities');

@@ -38,6 +38,11 @@ service cloud.firestore {
     match /message_templates/{templateId} {
       allow read, write: if isAuthorized();
     }
+    match /message_logs/{logId} {
+      allow read, list: if isAuthorized();
+      // Logs are created via server actions using admin SDK generally, 
+      // but we allow read for audit UI.
+    }
 
     // --- School Rules ---
     match /schools/{schoolId} {

@@ -361,3 +361,19 @@ export interface MessageTemplate {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface MessageLog {
+  id: string;
+  templateId: string;
+  templateName: string;
+  senderProfileId: string;
+  senderName: string;
+  channel: 'sms' | 'email';
+  recipient: string;
+  subject?: string;
+  body: string;
+  status: 'sent' | 'failed';
+  error?: string;
+  sentAt: string;
+  variables: Record<string, any>;
+}

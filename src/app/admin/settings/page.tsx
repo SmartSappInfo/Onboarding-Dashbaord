@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -6,14 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms } from '@/lib/seed';
-import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History } from 'lucide-react';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging } from '@/lib/seed';
+import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import { Separator } from '@/components/ui/separator';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'pipelinePieChart', 'upcomingMeetings', 
@@ -27,7 +26,7 @@ export default function SettingsPage() {
   const [seedingStatus, setSeedingStatus] = useState<Record<Seeder, SeedingState>>({
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
-    activities: 'idle', pdfs: 'idle',
+    activities: 'idle', pdfs: 'idle', messaging: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -51,6 +50,7 @@ export default function SettingsPage() {
         else if (seeder === 'users') { count = await seedUserAvatars(firestore); name = 'User Avatars'; }
         else if (seeder === 'modules') { count = await seedModules(firestore); name = 'Modules'; }
         else if (seeder === 'pdfs') { count = await seedPdfForms(firestore); name = 'Doc Signing Forms'; }
+        else if (seeder === 'messaging') { count = await seedMessaging(firestore); name = 'Messaging Assets'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -120,6 +120,10 @@ export default function SettingsPage() {
                   <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'}>
                     {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                     Seed Doc Signing
+                  </Button>
+                  <Button onClick={() => handleSeed('messaging')} disabled={seedingStatus.messaging === 'seeding'}>
+                    {seedingStatus.messaging === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
+                    Seed Messaging
                   </Button>
                   <Button onClick={() => handleSeed('activities')} disabled={seedingStatus.activities === 'seeding'}>
                     {seedingStatus.activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
