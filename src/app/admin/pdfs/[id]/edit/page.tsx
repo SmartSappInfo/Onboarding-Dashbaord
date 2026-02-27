@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, Palette, Layout, Link as LinkIcon, Eye, Save
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -37,8 +37,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { MediaSelect } from '../../schools/components/media-select';
-import WebhookManager from '../../surveys/components/webhook-manager';
+import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -71,7 +71,10 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                         <button 
                             type="button"
                             onClick={() => onStepClick(stepNum)}
-                            className="flex flex-col items-center group outline-none"
+                            className={cn(
+                                "flex flex-col items-center group outline-none",
+                                index === steps.length - 1 && "flex-shrink-0"
+                            )}
                         >
                             <div
                                 className={cn(
@@ -128,8 +131,6 @@ export default function EditPdfPage() {
   });
 
   const { reset, watch, setValue, getValues, trigger } = form;
-  const watchedBgColor = watch('backgroundColor');
-  const watchedPattern = watch('backgroundPattern');
 
   // Undo/Redo Logic for Fields
   const {
@@ -166,7 +167,7 @@ export default function EditPdfPage() {
         slug: pdf.slug || pdf.id,
         logoUrl: pdf.logoUrl || '',
         backgroundColor: pdf.backgroundColor || '#F1F5F9',
-        backgroundPattern: pdf.backgroundPattern || 'none',
+        backgroundPattern: (pdf.backgroundPattern as any) || 'none',
         patternColor: pdf.patternColor || '#3B5FFF',
         webhookEnabled: pdf.webhookEnabled || false,
         webhookId: pdf.webhookId || '',
@@ -386,7 +387,7 @@ export default function EditPdfPage() {
                                                         <div className="space-y-1.5">
                                                             <Label className="text-[10px]">Base Color</Label>
                                                             <div className="flex gap-2">
-                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg" />
+                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
                                                                 <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
                                                             </div>
                                                         </div>
@@ -399,7 +400,7 @@ export default function EditPdfPage() {
                                                         <div className="space-y-1.5">
                                                             <Label className="text-[10px]">Pattern Color</Label>
                                                             <div className="flex gap-2">
-                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg" />
+                                                                <Input type="color" {...field} className="w-10 h-10 p-1 rounded-lg shadow-sm" />
                                                                 <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="font-mono text-[10px]" />
                                                             </div>
                                                         </div>
@@ -445,12 +446,16 @@ export default function EditPdfPage() {
                             onPreview={() => setIsPreviewOpen(true)}
                             isStatusChanging={isStatusChanging}
                             onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
-                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleRunDetection('overwrite')}
+                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
                             isDetecting={isDetecting}
                             undo={undoHistory}
                             redo={redoHistory}
                             canUndo={canUndo}
                             canRedo={canRedo}
+                            password={watch('password')}
+                            setPassword={(val) => setValue('password', val, { shouldDirty: true })}
+                            passwordProtected={watch('passwordProtected')}
+                            setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
                         />
                     </div>
 
@@ -559,7 +564,7 @@ export default function EditPdfPage() {
         <PdfPreviewDialog
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
-            pdfForm={{ ...pdf, fields, namingFieldId, ...watch() }}
+            pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm}
         />
 
         <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>

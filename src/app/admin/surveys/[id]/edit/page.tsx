@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
@@ -35,8 +34,8 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MediaSelect } from '../../../schools/components/media-select';
-import WebhookManager from '../../components/webhook-manager';
+import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import Link from 'next/link';
 
 const questionSchema = z.object({
@@ -222,7 +221,6 @@ function EditSurveyContent() {
     const { getValues, setValue, watch, reset } = form;
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
-    const watchedPatternColor = watch('patternColor');
 
     React.useEffect(() => {
         const pattern = getValues('backgroundPattern');
