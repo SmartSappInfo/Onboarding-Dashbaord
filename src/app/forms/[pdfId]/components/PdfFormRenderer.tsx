@@ -10,7 +10,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import type { PDFForm, PDFFormField } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
-import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3, LayoutList } from 'lucide-react';
+import { Loader2, Download, CheckCircle2, Send, ShieldAlert, AlertTriangle, ZoomIn, ZoomOut, AlertCircle, Edit3, LayoutList, X, ChevronDown, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
@@ -32,6 +32,9 @@ import { cn } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -134,6 +137,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -170,7 +174,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     mode: 'onChange',
   });
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors } } = methods;
+  const { register, handleSubmit, watch, setValue, getValues, formState: { isValid, errors }, control } = methods;
 
   const watchedValues = watch();
 
@@ -420,7 +424,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     
     if (field.type === 'signature' || field.type === 'photo') {
         setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
-    } else {
+    } else if (isMobile) {
         setActiveDataFieldId(field.id);
         setIsDataEntryOpen(true);
     }
@@ -450,6 +454,46 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
     const isInteractiveMedia = field.type === 'signature' || field.type === 'photo';
 
+    // Direct Inline Editing for Desktop non-media fields
+    if (!isMobile && !isInteractiveMedia) {
+        return (
+            <div className="w-full h-full group/desktop-field relative">
+                {field.type === 'dropdown' ? (
+                    <Controller
+                        name={field.id}
+                        control={control}
+                        render={({ field: selectField }) => (
+                            <Select onValueChange={selectField.onChange} value={selectField.value}>
+                                <SelectTrigger className="w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium" style={{ fontSize: dynamicFontSize }}>
+                                    <SelectValue placeholder={field.placeholder || field.label} />
+                                    <ChevronDown className="h-3 w-3 opacity-20 group-hover/desktop-field:opacity-60" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    {(field.options || []).map((opt, i) => (
+                                        <SelectItem key={i} value={opt}>{opt}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    />
+                ) : (
+                    <Input
+                        {...register(field.id)}
+                        type={field.type === 'date' ? 'date' : field.type === 'time' ? 'time' : 'text'}
+                        placeholder={field.placeholder || field.label}
+                        className={cn(
+                            "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary font-medium transition-all",
+                            errors[field.id] && "border-destructive/40 bg-destructive/5"
+                        )}
+                        style={{ fontSize: dynamicFontSize }}
+                    />
+                )}
+                {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover/desktop-field:opacity-60" />}
+            </div>
+        );
+    }
+
+    // Modal Trigger for Mobile or Media
     return (
         <button
             type="button"
@@ -568,7 +612,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         </div>
                     )}
 
-                    {/* Animated Chat Bubble Callout */}
                     <AnimatePresence>
                         {showDownloadBubble && (
                             <motion.div
@@ -622,7 +665,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                                     </div>
                                 ))}
                                 
-                                {/* Branding Footer inside ScrollArea */}
                                 <footer className="py-12 text-center text-xs sm:text-sm text-muted-foreground w-full">
                                     <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
                                     <p>&copy; 2026 SmartSapp</p>
