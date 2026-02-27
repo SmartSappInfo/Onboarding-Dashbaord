@@ -27,12 +27,23 @@ import {
     Search,
     Filter,
     LayoutGrid,
-    ListTree
+    ListTree,
+    Eye,
+    Trophy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription 
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { SmartSappIcon } from '@/components/icons';
 
 type GroupByOption = 'none' | 'category' | 'channel';
 
@@ -46,6 +57,7 @@ export default function MessageTemplatesPage() {
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [channelFilter, setChannelFilter] = React.useState<string>('all');
     const [groupBy, setGroupBy] = React.useState<GroupByOption>('none');
+    const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
     // Form State
     const [name, setName] = React.useState('');
@@ -341,13 +353,23 @@ export default function MessageTemplatesPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {groupItems.map((template) => (
                                 <Card key={template.id} className="group relative border-border/50 hover:shadow-md transition-all">
-                                    <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="destructive" size="icon" className="h-8 w-8" onClick={() => handleDelete(template.id)}>
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                    <div className="absolute top-3 right-3 flex items-center gap-3 z-20">
+                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setPreviewTemplate(template)}>
+                                                <Eye className="h-4 w-4" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(template.id)}>
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <Switch 
+                                            checked={template.isActive} 
+                                            onCheckedChange={() => toggleActive(template)}
+                                            className="scale-75"
+                                        />
                                     </div>
                                     <CardHeader className="py-4">
-                                        <div className="flex items-center justify-between">
+                                        <div className="flex items-center justify-between pr-12">
                                             <div className="flex items-center gap-2">
                                                 <div className={cn("p-2 rounded-lg", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500" : "bg-blue-500/10 text-blue-500")}>
                                                     {template.channel === 'sms' ? <Smartphone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}
@@ -357,11 +379,6 @@ export default function MessageTemplatesPage() {
                                                     <CardDescription className="text-[10px] uppercase font-bold tracking-widest">{template.category}</CardDescription>
                                                 </div>
                                             </div>
-                                            <Switch 
-                                                checked={template.isActive} 
-                                                onCheckedChange={() => toggleActive(template)}
-                                                className="scale-75"
-                                            />
                                         </div>
                                     </CardHeader>
                                     <CardContent className="space-y-4">
@@ -390,6 +407,79 @@ export default function MessageTemplatesPage() {
                     </div>
                 )}
             </div>
+
+            {/* Template Preview Dialog */}
+            <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
+                <DialogContent className="max-w-3xl h-[85vh] flex flex-col p-0 overflow-hidden">
+                    <DialogHeader className="p-6 border-b bg-card shrink-0">
+                        <DialogTitle className="flex items-center gap-2 text-xl font-black">
+                            {previewTemplate?.channel === 'email' ? <Mail className="h-5 w-5 text-primary" /> : <Smartphone className="h-5 w-5 text-primary" />}
+                            Preview: {previewTemplate?.name}
+                        </DialogTitle>
+                        <DialogDescription>
+                            Viewing raw template structure. Actual dispatch will resolve placeholders.
+                        </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden relative bg-slate-100 p-4 sm:p-8">
+                        <ScrollArea className="h-full bg-white rounded-2xl shadow-2xl border overflow-hidden">
+                            <div className="min-h-full">
+                                {previewTemplate?.channel === 'email' ? (
+                                    <div className="flex flex-col h-full">
+                                        <div className="p-4 bg-muted/30 border-b space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subject</p>
+                                            <p className="font-bold text-sm">{previewTemplate.subject || '(No Subject)'}</p>
+                                        </div>
+                                        <div className="flex-1">
+                                            {previewTemplate.styleId ? (
+                                                <iframe 
+                                                    srcDoc={(styles?.find(s => s.id === previewTemplate.styleId)?.htmlWrapper || '{{content}}').replace('{{content}}', `<div style="font-family: sans-serif;">${previewTemplate.body}</div>`)}
+                                                    className="w-full min-h-[500px] border-none"
+                                                    title="Email Preview"
+                                                />
+                                            ) : (
+                                                <div className="p-8 prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: previewTemplate.body }} />
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="p-8 flex flex-col items-center justify-center min-h-full bg-slate-900">
+                                        <div className="w-full max-w-xs space-y-4">
+                                            <div className="flex items-center justify-between px-2">
+                                                <SmartSappIcon className="h-6 w-6 text-white opacity-20" />
+                                                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">SMS Preview</p>
+                                            </div>
+                                            <div className="bg-slate-800 rounded-3xl p-5 relative shadow-xl border border-white/5">
+                                                <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-800 border-l border-b border-white/5 rotate-45 rounded-sm" />
+                                                <p className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{previewTemplate?.body}</p>
+                                            </div>
+                                            <div className="pt-2 text-center">
+                                                <p className="text-[9px] font-bold uppercase tracking-tighter text-white/30 italic">
+                                                    ~ {Math.ceil((previewTemplate?.body.length || 0) / 160)} SMS Message(s)
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </ScrollArea>
+                    </div>
+
+                    <div className="p-4 border-t bg-card flex justify-between items-center shrink-0">
+                        <div className="flex items-center gap-4">
+                            <Badge variant="outline" className="text-[10px] uppercase font-black tracking-widest bg-muted/50 h-7">
+                                {previewTemplate?.category}
+                            </Badge>
+                            <Badge className="bg-primary/10 text-primary border-none text-[10px] uppercase font-black tracking-widest h-7 px-3">
+                                {previewTemplate?.channel}
+                            </Badge>
+                        </div>
+                        <Button onClick={() => setPreviewTemplate(null)} className="font-bold rounded-xl px-8 shadow-lg">
+                            Close Preview
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
