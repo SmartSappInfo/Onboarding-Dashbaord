@@ -98,6 +98,37 @@
         "variables": { "type": "object" },
         "sentAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "MessageJob": {
+      "title": "Message Job",
+      "description": "Batch operation tracking for bulk sends.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "templateId": { "type": "string" },
+        "senderProfileId": { "type": "string" },
+        "channel": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "status": { "type": "string", "enum": ["queued", "processing", "completed", "failed"] },
+        "totalRecipients": { "type": "number" },
+        "processed": { "type": "number" },
+        "success": { "type": "number" },
+        "failed": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MessageTask": {
+      "title": "Message Task",
+      "description": "An individual delivery task within a bulk job.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "recipient": { "type": "string" },
+        "variables": { "type": "object" },
+        "status": { "type": "string", "enum": ["pending", "sent", "failed"] },
+        "error": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -127,6 +158,14 @@
     "/message_logs/{logId}": {
       "schema": "#/entities/MessageLog",
       "description": "Stateless logs of all messaging activity."
+    },
+    "/message_jobs/{jobId}": {
+      "schema": "#/entities/MessageJob",
+      "description": "Registry for bulk messaging operations."
+    },
+    "/message_jobs/{jobId}/tasks/{taskId}": {
+      "schema": "#/entities/MessageTask",
+      "description": "Individual recipient tasks within a bulk job."
     }
   }
 }

@@ -377,3 +377,26 @@ export interface MessageLog {
   sentAt: string;
   variables: Record<string, any>;
 }
+
+export interface MessageJob {
+  id: string;
+  templateId: string;
+  senderProfileId: string;
+  channel: 'sms' | 'email';
+  createdBy: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  totalRecipients: number;
+  processed: number;
+  success: number;
+  failed: number;
+  createdAt: string;
+}
+
+export interface MessageTask {
+  id: string;
+  recipient: string;
+  variables: Record<string, any>;
+  status: 'pending' | 'sent' | 'failed';
+  error?: string;
+  sentAt?: string;
+}

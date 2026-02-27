@@ -40,8 +40,13 @@ service cloud.firestore {
     }
     match /message_logs/{logId} {
       allow read, list: if isAuthorized();
-      // Logs are created via server actions using admin SDK generally, 
-      // but we allow read for audit UI.
+    }
+    match /message_jobs/{jobId} {
+      allow read, write: if isAuthorized();
+      
+      match /tasks/{taskId} {
+        allow read, write: if isAuthorized();
+      }
     }
 
     // --- School Rules ---
@@ -96,10 +101,7 @@ service cloud.firestore {
       
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
-        
-        // Allow public to read/list submissions if the admin has explicitly enabled results sharing
         allow read, list: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.resultsShared == true || isAuthorized();
-        
         allow update, delete: if isAuthorized();
       }
     }
