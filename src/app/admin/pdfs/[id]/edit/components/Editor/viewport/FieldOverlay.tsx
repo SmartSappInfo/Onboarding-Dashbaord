@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { useDraggable } from '@nd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
