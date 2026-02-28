@@ -8,7 +8,7 @@ import type { School, OnboardingStage, Module } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,6 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import SchoolDetailsModal from './components/school-details-modal';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -66,7 +65,6 @@ export default function SchoolsPage() {
 
   // State for modals
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
-  const [viewingSchoolIndex, setViewingSchoolIndex] = useState<number | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
@@ -241,16 +239,6 @@ export default function SchoolsPage() {
         </div>
     );
   }
-  
-  const handleNavigate = (direction: 'next' | 'prev') => {
-    if (viewingSchoolIndex === null) return;
-    const newIndex = direction === 'next' ? viewingSchoolIndex + 1 : viewingSchoolIndex - 1;
-    if (newIndex >= 0 && newIndex < sortedSchools.length) {
-        setViewingSchoolIndex(newIndex);
-    }
-  };
-
-  const viewingSchool = viewingSchoolIndex !== null ? sortedSchools[viewingSchoolIndex] : null;
 
   return (
     <TooltipProvider>
@@ -344,7 +332,7 @@ export default function SchoolsPage() {
                   </TableRow>
                 ))
               ) : sortedSchools && sortedSchools.length > 0 ? (
-                sortedSchools.map((school, index) => (
+                sortedSchools.map((school) => (
                   <TableRow key={school.id}>
                     <TableCell>
                       <Avatar>
@@ -353,9 +341,9 @@ export default function SchoolsPage() {
                       </Avatar>
                     </TableCell>
                     <TableCell className="font-medium">
-                      <button onClick={() => setViewingSchoolIndex(index)} className="hover:underline text-left">
+                      <Link href={`/admin/schools/${school.id}`} className="hover:underline text-left">
                         {school.name}
-                      </button>
+                      </Link>
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{school.stage?.name || 'Welcome'}</Badge>
@@ -384,6 +372,12 @@ export default function SchoolsPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/admin/schools/${school.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    <span>View Details</span>
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                                 <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                     <Send className="mr-2 h-4 w-4" />
@@ -436,7 +430,7 @@ export default function SchoolsPage() {
             {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
             ) : sortedSchools && sortedSchools.length > 0 ? (
-                sortedSchools.map((school, index) => (
+                sortedSchools.map((school) => (
                     <Card key={school.id} className="w-full">
                         <CardHeader>
                             <div className="flex items-start justify-between gap-2">
@@ -446,7 +440,9 @@ export default function SchoolsPage() {
                                         <AvatarFallback>{school.initials || getInitials(school.name)}</AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                        <CardTitle className="cursor-pointer hover:underline text-base" onClick={() => setViewingSchoolIndex(index)}>{school.name}</CardTitle>
+                                        <CardTitle className="hover:underline text-base" asChild>
+                                            <Link href={`/admin/schools/${school.id}`}>{school.name}</Link>
+                                        </CardTitle>
                                         <CardDescription>
                                             Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
                                         </CardDescription>
@@ -461,6 +457,12 @@ export default function SchoolsPage() {
                                           </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/admin/schools/${school.id}`}>
+                                                    <Eye className="mr-2 h-4 w-4" />
+                                                    <span>View Details</span>
+                                                </Link>
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem asChild>
                                                 <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                                     <Send className="mr-2 h-4 w-4" />
@@ -562,19 +564,6 @@ export default function SchoolsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <SchoolDetailsModal
-        school={viewingSchool}
-        open={viewingSchoolIndex !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setViewingSchoolIndex(null);
-          }
-        }}
-        onNavigate={handleNavigate}
-        canNavigatePrev={viewingSchoolIndex !== null && viewingSchoolIndex > 0}
-        canNavigateNext={viewingSchoolIndex !== null && viewingSchoolIndex < sortedSchools.length - 1}
-      />
       
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
       
