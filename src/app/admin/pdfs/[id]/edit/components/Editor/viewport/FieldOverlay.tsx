@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useDraggable } from '@nd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
@@ -65,7 +65,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const baseFontSize = field.fontSize || 11;
   const dynamicFontSize = `${Math.round(baseFontSize * zoom)}px`;
   
-  const hAlign = field.alignment || 'left';
+  const hAlign = field.alignment || 'center';
   const vAlign = field.verticalAlignment || 'center';
 
   const handleResizeStart = (e: React.MouseEvent, handle: ResizeHandle) => {
@@ -153,7 +153,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       className={cn(
         "absolute border-2 transition-colors cursor-default select-none",
         isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
-        isMediaField ? "flex items-center justify-center p-0 overflow-hidden" : "p-1"
+        isMediaField ? "flex items-center justify-center p-0" : "p-1"
       )}
       onPointerDown={(e) => { 
         e.stopPropagation(); 
@@ -203,7 +203,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
 
       {isSelected && !isMulti && (
         <>
-          <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
+          <div className="absolute -top-14 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-1 rounded-2xl border bg-background/95 backdrop-blur-sm p-1 shadow-2xl scale-90 sm:scale-100 origin-bottom">
             <TooltipProvider>
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>

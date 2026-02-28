@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -75,11 +74,11 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
   return (
     <div 
       data-page-number={pageNumber}
-      className="relative mx-auto shadow-2xl mb-12 bg-white flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg overflow-hidden"
+      className="relative mx-auto shadow-2xl mb-12 bg-white flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg"
       style={{ width: dimensions.width || 816, height: dimensions.height || 1056 }}
     >
       {isRendering && dimensions.width === 0 && <Skeleton className="absolute inset-0" />}
-      <canvas ref={canvasRef} className="block w-full h-full" />
+      <canvas ref={canvasRef} className="block w-full h-full rounded-lg" />
       
       {dimensions.width > 0 && pageFields.map(field => (
         <FieldOverlay 
