@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
@@ -25,9 +25,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -579,7 +579,8 @@ export default function SubmissionsPage() {
                         <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
                       ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                       
-                      const dynamicFontSize = `${field.fontSize || 11}px`;
+                      // Font size logic matches renderer context
+                      const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                       const verticalAlign = field.verticalAlignment || 'center';
 
                       return (
@@ -1059,7 +1060,8 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                         const value = formData[field.id];
                         if (!value) return null;
                         
-                        const dynamicFontSize = `${field.fontSize || 11}px`;
+                        // Use consistent scaling for silent rendering
+                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
                         return (

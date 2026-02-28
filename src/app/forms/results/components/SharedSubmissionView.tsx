@@ -317,7 +317,8 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
                         
-                        const dynamicFontSize = `${field.fontSize || 11}px`;
+                        // Scale font by the fixed scale (1.5) used for the canvas in this view
+                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
                         return (

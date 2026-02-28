@@ -11,7 +11,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Users, Clock, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
@@ -316,7 +316,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         <div className="flex-grow overflow-auto p-4 sm:p-8 bg-muted/20">
             <div className="max-w-6xl mx-auto space-y-6">
                 
-                {/* Stats Summary - Positioned at top */}
+                {/* Stats Summary */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4">
@@ -344,7 +344,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                     </Card>
                 </div>
 
-                {/* Actions Bar - Aligned Right */}
+                {/* Actions Bar */}
                 {!isLoading && (
                     <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 shrink-0 print:hidden">
                         {selectedIds.length > 0 ? (
@@ -441,7 +441,8 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                             <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
                                         ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         
-                                        const dynamicFontSize = `${field.fontSize || 11}px`;
+                                        // Synchronize font scale with the 1.5x canvas used in previews/downloads
+                                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                                         const verticalAlign = field.verticalAlignment || 'center';
 
                                         return (
@@ -666,7 +667,8 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const val = formData[field.id]; if (!val) return null;
                         
-                        const dynamicFontSize = `${field.fontSize || 11}px`;
+                        // Font scaling synchronized with 1.5x viewport scale
+                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
                         return (

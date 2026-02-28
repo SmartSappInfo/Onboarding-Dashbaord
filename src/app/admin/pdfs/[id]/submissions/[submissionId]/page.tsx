@@ -254,6 +254,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                 }
 
                 const page = await pdf.getPage(pageNumber);
+                // Standard scale for detail view is 1.5
                 const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
                 
                 if (isCancelled) return;
@@ -302,7 +303,8 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                         const value = formData[field.id];
                         if (!value) return null;
 
-                        const dynamicFontSize = `${field.fontSize || 11}px`;
+                        // Font size is synchronized with the 1.5x display scale
+                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
                         return (
@@ -322,7 +324,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
                                 }}
                             >
                                 {field.type === 'signature' ? (
-                                    <img src={value} alt="Signature" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                    <img src={value} alt="Signature" className="w-full h-full object-contain" crossOrigin="anonymous" />
                                 ) : (
                                     <span 
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}

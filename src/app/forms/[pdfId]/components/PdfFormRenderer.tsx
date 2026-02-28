@@ -300,7 +300,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
       if (e.ctrlKey) {
         e.preventDefault();
         const delta = -e.deltaY;
-        // Use exponential scaling for smooth, symmetric zoom
         const factor = Math.exp(delta * 0.005);
         setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
       }
@@ -518,7 +517,8 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    const currentTotalScale = zoom;
+    // Sync font scaling with the canvas scale (baseScale * zoom)
+    const currentTotalScale = baseScale * zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
     
