@@ -47,6 +47,7 @@
         "slug": { "type": "string" },
         "location": { "type": "string" },
         "nominalRoll": { "type": "number" },
+        "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
         "zone": { "$ref": "#/entities/Zone" },
         "focalPersons": { "type": "array", "items": { "$ref": "#/entities/FocalPerson" } },
         "stage": { "type": "object" },

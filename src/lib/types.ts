@@ -9,6 +9,8 @@ export type MeetingType = typeof MEETING_TYPES[number];
 
 export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal';
 
+export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
+
 export interface FocalPerson {
   name: string;
   phone: string;
@@ -54,6 +56,7 @@ export interface School {
   contactPerson?: string; // Kept for legacy/migration support
   email?: string; // Kept for legacy/migration support
   phone?: string; // Kept for legacy/migration support
+  status: SchoolStatus;
   zone?: Zone;
   focalPersons?: FocalPerson[];
   location?: string;

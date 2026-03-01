@@ -1,14 +1,15 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { School, OnboardingStage, Module } from '@/lib/types';
+import type { School, OnboardingStage, Module, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send, Eye } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send, Eye, ShieldCheck, Activity } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,368 +47,195 @@ import ChangeStageModal from './components/ChangeStageModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { Separator } from '@/components/ui/separator';
 
-
-const formatPhoneNumberForLink = (phone?: string) => {
-    if (!phone) return '';
-    return phone.replace(/[\s-()]/g, '');
-};
-
 const getInitials = (name?: string) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
 
+const getStatusBadgeVariant = (status: SchoolStatus) => {
+    switch (status) {
+        case 'Active': return 'default';
+        case 'Inactive': return 'secondary';
+        case 'Archived': return 'outline';
+        default: return 'secondary';
+    }
+}
 
 export default function SchoolsPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
-  // State for modals
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
 
-  // State for filtering & sorting
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
   const [moduleFilter, setModuleFilter] = useState('all');
-  const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
+  const [zoneFilter, setZoneFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
-
-  // Data fetching
   const schoolsCol = useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]);
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
   const modulesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null, [firestore]);
+  const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
-  const { data: stages, isLoading: isLoadingStages } = useCollection<OnboardingStage>(stagesCol);
-  const { data: modules, isLoading: isLoadingModules } = useCollection<Module>(modulesCol);
+  const { data: stages } = useCollection<OnboardingStage>(stagesCol);
+  const { data: modules } = useCollection<Module>(modulesCol);
+  const { data: zones } = useCollection<Zone>(zonesCol);
 
-  const isLoading = isLoadingSchools || isLoadingFilter || isLoadingStages || isLoadingModules;
+  const isLoading = isLoadingSchools || isLoadingFilter;
 
-  // Filtering Logic
   const filteredSchools = useMemo(() => {
     if (!schools) return [];
-    let tempSchools = schools;
-    
-    // Global user filter
-    if (assignedUserId) {
-      if (assignedUserId === 'unassigned') {
-        tempSchools = tempSchools.filter(school => !school.assignedTo?.userId);
-      } else {
-        tempSchools = tempSchools.filter(school => school.assignedTo?.userId === assignedUserId);
-      }
-    }
-
-    // Search term filter
-    if (searchTerm) {
-        tempSchools = tempSchools.filter(school => school.name.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    
-    // Stage filter
-    if (stageFilter !== 'all') {
-        tempSchools = tempSchools.filter(school => school.stage?.id === stageFilter);
-    }
-    
-    // Module filter
-    if (moduleFilter !== 'all') {
-        tempSchools = tempSchools.filter(school => school.modules?.some(m => m.id === moduleFilter));
-    }
-    
-    return tempSchools;
-  }, [schools, assignedUserId, searchTerm, stageFilter, moduleFilter]);
+    let temp = schools;
+    if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
+    if (searchTerm) temp = temp.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    if (stageFilter !== 'all') temp = temp.filter(s => s.stage?.id === stageFilter);
+    if (moduleFilter !== 'all') temp = temp.filter(s => s.modules?.some(m => m.id === moduleFilter));
+    if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
+    if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
+    return temp;
+  }, [schools, assignedUserId, searchTerm, stageFilter, moduleFilter, zoneFilter, statusFilter]);
   
-  // Sorting Logic
   const sortedSchools = useMemo(() => {
-    let sortableSchools = [...filteredSchools];
-    if (sortConfig !== null) {
-      sortableSchools.sort((a, b) => {
-          const key = sortConfig.key;
-          
+    let sortable = [...filteredSchools];
+    if (sortConfig) {
+      sortable.sort((a, b) => {
           const getValue = (obj: any, path: string) => path.split('.').reduce((o, i) => o?.[i], obj);
-
-          const aValue = getValue(a, key);
-          const bValue = getValue(b, key);
-
-          if (aValue === null || aValue === undefined) return 1;
-          if (bValue === null || bValue === undefined) return -1;
-          
-          let comparison = 0;
-          if (typeof aValue === 'string' && typeof bValue === 'string') {
-              comparison = aValue.localeCompare(bValue, undefined, { numeric: true });
-          } else {
-              if (aValue < bValue) {
-                  comparison = -1;
-              } else if (aValue > bValue) {
-                  comparison = 1;
-              }
-          }
-
+          const aV = getValue(a, sortConfig.key);
+          const bV = getValue(b, sortConfig.key);
+          if (aV === null || aV === undefined) return 1;
+          if (bV === null || bV === undefined) return -1;
+          const comparison = typeof aV === 'string' ? aV.localeCompare(bV, undefined, { numeric: true }) : (aV < bV ? -1 : 1);
           return sortConfig.direction === 'asc' ? comparison : -comparison;
       });
     }
-    return sortableSchools;
+    return sortable;
   }, [filteredSchools, sortConfig]);
   
-  const handleSort = (key: keyof School | 'assignedTo.name' | 'stage.name') => {
+  const handleSort = (key: any) => {
       let direction: 'asc' | 'desc' = 'asc';
-      if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-          direction = 'desc';
-      }
+      if (sortConfig?.key === key && sortConfig.direction === 'asc') direction = 'desc';
       setSortConfig({ key, direction });
-  };
-  
-  const renderSortArrow = (key: string) => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0 opacity-30" />;
-    }
-    if (sortConfig.direction === 'asc') {
-      return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />; 
-    }
-    return <ArrowUpDown className="ml-2 h-4 w-4 shrink-0" />;
   };
 
   const handleDeleteSchool = () => {
     if (!firestore || !schoolToDelete) return;
-
     const docRef = doc(firestore, 'schools', schoolToDelete.id);
-    deleteDoc(docRef)
-      .then(() => {
-        toast({
-          title: 'School Deleted',
-          description: `${schoolToDelete.name} has been deleted.`,
-        });
+    deleteDoc(docRef).then(() => {
+        toast({ title: 'School Deleted', description: `${schoolToDelete.name} has been removed.` });
         setSchoolToDelete(null);
-      })
-      .catch((error) => {
-        const permissionError = new FirestorePermissionError({
-          path: docRef.path,
-          operation: 'delete',
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Error deleting school',
-          description: 'You may not have the required permissions.',
-        });
+    }).catch((error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'delete' }));
         setSchoolToDelete(null);
-      });
+    });
   };
-
-  const renderSchoolActions = (school: School) => {
-    const sanitizedPhone = formatPhoneNumberForLink(school.phone);
-    return (
-        <div className="flex items-center gap-1 sm:gap-2">
-            {school.phone && (
-                <>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-                                <a href={`tel:${sanitizedPhone}`} aria-label={`Call ${school.name}`}>
-                                    <Phone className="h-4 w-4" />
-                                </a>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>Call</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-                                <a href={`https://wa.me/${sanitizedPhone}`} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${school.name}`}>
-                                    <MessageSquare className="h-4 w-4" />
-                                </a>
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent><p>WhatsApp</p></TooltipContent>
-                    </Tooltip>
-                </>
-            )}
-            {school.location && (
-                 <Tooltip>
-                    <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" asChild className="h-8 w-8">
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location)}`} target="_blank" rel="noopener noreferrer" aria-label={`View ${school.name} on map`}>
-                                <MapPin className="h-4 w-4" />
-                            </a>
-                        </Button>
-                    </TooltipTrigger>
-                    <TooltipContent><p>View on Map</p></TooltipContent>
-                </Tooltip>
-            )}
-        </div>
-    );
-  }
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex flex-wrap gap-4 items-center justify-between mb-8">
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2 w-full md:w-auto">
-             <Input
-                placeholder="Search schools..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full sm:w-auto sm:max-w-xs"
-            />
-            <Select value={stageFilter} onValueChange={setStageFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by stage..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Stages</SelectItem>
-                {stages?.map(stage => <SelectItem key={stage.id} value={stage.id}>{stage.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-             <Select value={moduleFilter} onValueChange={setModuleFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by module..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Modules</SelectItem>
-                {modules?.map(mod => <SelectItem key={mod.id} value={mod.id}>{mod.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center gap-2">
-              <Button asChild>
-                <Link href="/admin/schools/new">Add New School</Link>
-              </Button>
-          </div>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+        <div className="flex flex-col gap-6 mb-8">
+            <div className="flex justify-between items-center">
+                <h1 className="text-3xl font-black tracking-tight text-foreground">Schools Directory</h1>
+                <Button asChild className="rounded-xl font-bold shadow-lg"><Link href="/admin/schools/new">Add New School</Link></Button>
+            </div>
+            
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                    <div className="flex-1 min-w-[200px]">
+                        <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-[140px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="Active">Active</SelectItem>
+                            <SelectItem value="Inactive">Inactive</SelectItem>
+                            <SelectItem value="Archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={zoneFilter} onValueChange={setZoneFilter}>
+                        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                            <SelectValue placeholder="All Zones" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Zones</SelectItem>
+                            {zones?.map(z => <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                    <Select value={stageFilter} onValueChange={setStageFilter}>
+                        <SelectTrigger className="w-[180px] h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                            <SelectValue placeholder="All Stages" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Stages</SelectItem>
+                            {stages?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
         </div>
         
-        {/* Desktop Table View */}
-        <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
               <TableRow>
                 <TableHead className="w-[80px]"></TableHead>
-                <TableHead className="px-2">
-                  <Button variant="ghost" onClick={() => handleSort('name')} className="px-2">
-                      School Name
-                      {renderSortArrow('name')}
-                  </Button>
-                </TableHead>
-                <TableHead className="px-2">
-                  <Button variant="ghost" onClick={() => handleSort('stage.name')} className="px-2">
-                      Stage
-                      {renderSortArrow('stage.name')}
-                  </Button>
-                </TableHead>
-                <TableHead className="px-2">
-                  <Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="px-2">
-                      Assigned To
-                      {renderSortArrow('assignedTo.name')}
-                  </Button>
-                </TableHead>
-                <TableHead className="text-right px-2">
-                  <Button variant="ghost" onClick={() => handleSort('nominalRoll')} className="px-2">
-                      Students
-                      {renderSortArrow('nominalRoll')}
-                  </Button>
-                </TableHead>
-                <TableHead className="px-2">
-                  <Button variant="ghost" onClick={() => handleSort('implementationDate')} className="px-2">
-                      Go-live Date
-                      {renderSortArrow('implementationDate')}
-                  </Button>
-                </TableHead>
-                <TableHead>Modules</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">School Name <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
+                <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                <TableHead><Button variant="ghost" onClick={() => handleSort('stage.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                <TableHead className="text-right pr-6"><span className="text-[10px] font-bold uppercase tracking-widest">Actions</span></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
-                  </TableRow>
+                  <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                 ))
-              ) : sortedSchools && sortedSchools.length > 0 ? (
+              ) : sortedSchools.length > 0 ? (
                 sortedSchools.map((school) => (
-                  <TableRow key={school.id}>
-                    <TableCell>
-                      <Avatar>
+                  <TableRow key={school.id} className="group hover:bg-muted/30 transition-colors">
+                    <TableCell className="pl-6">
+                      <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
                         <AvatarImage src={school.logoUrl} alt={school.name} />
-                        <AvatarFallback>{school.initials || getInitials(school.name)}</AvatarFallback>
+                        <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
                       </Avatar>
                     </TableCell>
-                    <TableCell className="font-medium">
-                      <Link href={`/admin/schools/${school.id}`} className="hover:underline text-left">
-                        {school.name}
-                      </Link>
+                    <TableCell className="font-black text-sm text-foreground">
+                      <Link href={`/admin/schools/${school.id}`} className="hover:text-primary hover:underline transition-colors">{school.name}</Link>
                     </TableCell>
+                    <TableCell className="text-center">
+                        <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
+                    </TableCell>
+                    <TableCell><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><MapPin className="h-3 w-3" /> {school.zone?.name || 'Unassigned'}</div></TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{school.stage?.name || 'Welcome'}</Badge>
+                      <Badge style={{ backgroundColor: school.stage?.color || '#ccc', color: 'white' }} className="text-[10px] font-bold uppercase border-none h-6">{school.stage?.name || 'Welcome'}</Badge>
                     </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}
+                    <TableCell className="text-xs font-medium text-muted-foreground">
+                      {school.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
                     </TableCell>
-                     <TableCell className="font-medium text-right tabular-nums">{school.nominalRoll?.toLocaleString() || 'N/A'}</TableCell>
-                    <TableCell className="text-muted-foreground">
-                        {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                        <div className="flex flex-wrap gap-1 max-w-xs">
-                            {school.modules?.slice(0, 3).map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || 'N/A'}
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        {renderSchoolActions(school)}
+                    <TableCell className="text-right pr-6">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setChangingStageSchool(school)}><Workflow className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Change Stage</TooltipContent></Tooltip>
+                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAssigningSchool(school)}><UserPlus className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Assign User</TooltipContent></Tooltip>
                         <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <span className="sr-only">Open menu</span>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/admin/schools/${school.id}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    <span>View Details</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
-                                    <Send className="mr-2 h-4 w-4" />
-                                    <span>Send Message</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
-                              <UserPlus className="mr-2 h-4 w-4" />
-                              <span>Assign to User</span>
-                            </DropdownMenuItem>
-                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
-                              <Workflow className="mr-2 h-4 w-4" />
-                              <span>Change Stage</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              <span>Edit School</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
-                              <CalendarPlus className="mr-2 h-4 w-4" />
-                              <span>Schedule Meeting</span>
-                            </DropdownMenuItem>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-48">
+                            <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground px-3">Management</DropdownMenuLabel>
+                            <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                              onClick={() => setSchoolToDelete(school)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              <span>Delete School</span>
-                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setSchoolToDelete(school)}><Trash2 className="mr-2 h-4 w-4" /> Delete School</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -415,160 +243,17 @@ export default function SchoolsPage() {
                   </TableRow>
                 ))
               ) : (
-                <TableRow>
-                  <TableCell colSpan={8} className="h-24 text-center">
-                    No schools found.
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found matching your current filters.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
         </div>
-
-        {/* Mobile Card View */}
-        <div className="grid gap-4 md:hidden">
-            {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-60 w-full" />)
-            ) : sortedSchools && sortedSchools.length > 0 ? (
-                sortedSchools.map((school) => (
-                    <Card key={school.id} className="w-full">
-                        <CardHeader>
-                            <div className="flex items-start justify-between gap-2">
-                                <div className="flex flex-1 items-center gap-3 min-w-0">
-                                    <Avatar>
-                                        <AvatarImage src={school.logoUrl} alt={school.name} />
-                                        <AvatarFallback>{school.initials || getInitials(school.name)}</AvatarFallback>
-                                    </Avatar>
-                                    <div className="min-w-0">
-                                        <CardTitle className="hover:underline text-base" asChild>
-                                            <Link href={`/admin/schools/${school.id}`}>{school.name}</Link>
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Go-live: {school.implementationDate ? format(new Date(school.implementationDate), 'MMM dd, yyyy') : 'N/A'}
-                                        </CardDescription>
-                                    </div>
-                                </div>
-                                <div className="flex-shrink-0">
-                                    <DropdownMenu modal={false}>
-                                        <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" className="h-8 w-8 p-0">
-                                              <span className="sr-only">Open menu</span>
-                                              <MoreHorizontal className="h-4 w-4" />
-                                          </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/admin/schools/${school.id}`}>
-                                                    <Eye className="mr-2 h-4 w-4" />
-                                                    <span>View Details</span>
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
-                                                    <Send className="mr-2 h-4 w-4" />
-                                                    <span>Send Message</span>
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setAssigningSchool(school)}>
-                                              <UserPlus className="mr-2 h-4 w-4" />
-                                              <span>Assign to User</span>
-                                            </DropdownMenuItem>
-                                             <DropdownMenuItem onClick={() => setChangingStageSchool(school)}>
-                                              <Workflow className="mr-2 h-4 w-4" />
-                                              <span>Change Stage</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
-                                              <Edit className="mr-2 h-4 w-4" />
-                                              <span>Edit School</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push(`/admin/meetings/new?schoolId=${school.id}&schoolName=${encodeURIComponent(school.name)}`)}>
-                                              <CalendarPlus className="mr-2 h-4 w-4" />
-                                              <span>Schedule Meeting</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem
-                                              className="text-destructive focus:text-destructive-foreground focus:bg-destructive"
-                                              onClick={() => setSchoolToDelete(school)}
-                                            >
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              <span>Delete School</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-2 gap-x-6 gap-y-4 pt-4">
-                           <div>
-                                <p className="text-xs font-medium text-muted-foreground">Stage</p>
-                                <Badge variant="secondary" className="mt-1">{school.stage?.name || 'Welcome'}</Badge>
-                            </div>
-                             <div className="col-span-2">
-                                <p className="text-xs font-medium text-muted-foreground">Students</p>
-                                <p className="text-sm font-semibold">{school.nominalRoll?.toLocaleString() || 'N/A'}</p>
-                            </div>
-                            <div className="col-span-2">
-                                <p className="text-xs font-medium text-muted-foreground">Assigned To</p>
-                                <p className="text-sm">{school.assignedTo?.userId ? school.assignedTo.name : <span className="italic">Unassigned</span>}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs font-medium text-muted-foreground">Modules</p>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                    {school.modules?.map(mod => <Badge key={mod.id} style={{backgroundColor: mod.color, color: 'hsl(var(--primary-foreground))'}} className="border-transparent">{mod.abbreviation}</Badge>) || <p className="text-sm italic text-muted-foreground">N/A</p>}
-                                </div>
-                            </div>
-                        </CardContent>
-                        <CardFooter className="flex items-center justify-around border-t p-2">
-                           <Button variant="ghost" size="sm" asChild>
-                                <a href={`tel:${formatPhoneNumberForLink(school.phone)}`} className="flex flex-1 items-center justify-center gap-2">
-                                    <Phone className="h-4 w-4" />
-                                    <span>Call</span>
-                                </a>
-                            </Button>
-                            <Separator orientation="vertical" className="h-6" />
-                            <Button variant="ghost" size="sm" asChild>
-                                <a href={`https://wa.me/${formatPhoneNumberForLink(school.phone)}`} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-2">
-                                    <MessageSquare className="h-4 w-4" />
-                                    <span>WhatsApp</span>
-                                </a>
-                            </Button>
-                            <Separator orientation="vertical" className="h-6" />
-                            <Button variant="ghost" size="sm" asChild>
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(school.name)} ${encodeURIComponent(school.location || '')}`} target="_blank" rel="noopener noreferrer" className="flex flex-1 items-center justify-center gap-2">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>Map</span>
-                                </a>
-                            </Button>
-                        </CardFooter>
-                    </Card>
-                ))
-            ) : (
-                <div className="text-center h-24 text-muted-foreground">
-                    No schools found.
-                </div>
-            )}
-        </div>
       </div>
-      
       <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the school <span className="font-bold">{schoolToDelete?.name}</span> and all associated data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSchool}>Continue</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">Delete School?</AlertDialogTitle><AlertDialogDescription>This will permanently remove <span className="font-bold">{schoolToDelete?.name}</span> and all its interaction history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSchool} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Delete Campus</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
-      
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
-      
       <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
-
     </TooltipProvider>
   );
 }
