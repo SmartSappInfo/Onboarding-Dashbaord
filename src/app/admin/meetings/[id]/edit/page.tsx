@@ -68,6 +68,8 @@ export default function EditMeetingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+
   const meetingDocRef = useMemoFirebase(() => {
     if (!firestore || !meetingId) return null;
     return doc(firestore, 'meetings', meetingId);
@@ -100,21 +102,27 @@ export default function EditMeetingPage() {
 
   // Robust synchronization of DB data to form state
   React.useEffect(() => {
-    if (meeting && schools && !form.formState.isDirty) {
+    if (meeting && schools && !hasInitialized) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
-      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || meeting.type;
+      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || 
+                          MEETING_TYPES.find(t => t.slug === (meeting.type as any)?.slug) ||
+                          MEETING_TYPES.find(t => t.id === (meeting as any).type) ||
+                          MEETING_TYPES[0];
 
-      form.reset({
-        school: selectedSchool,
-        schoolSlug: meeting.schoolSlug,
-        meetingTime: new Date(meeting.meetingTime),
-        type: selectedType,
-        meetingLink: meeting.meetingLink,
-        recordingUrl: meeting.recordingUrl || '',
-        brochureUrl: meeting.brochureUrl || '',
-      });
+      if (selectedSchool) {
+          form.reset({
+            school: selectedSchool,
+            schoolSlug: meeting.schoolSlug || selectedSchool.slug,
+            meetingTime: meeting.meetingTime ? new Date(meeting.meetingTime) : new Date(),
+            type: selectedType,
+            meetingLink: meeting.meetingLink || '',
+            recordingUrl: meeting.recordingUrl || '',
+            brochureUrl: meeting.brochureUrl || '',
+          });
+          setHasInitialized(true);
+      }
     }
-  }, [meeting, schools, form]);
+  }, [meeting, schools, form, hasInitialized]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !meetingId || !user) return;
@@ -166,7 +174,7 @@ export default function EditMeetingPage() {
 
   const publicUrl = watchedType && watchedSlug ? `/meetings/${watchedType.slug}/${watchedSlug}` : null;
 
-  const isGlobalLoading = isLoadingMeeting || isLoadingSchools;
+  const isGlobalLoading = isLoadingMeeting || isLoadingSchools || !hasInitialized;
 
   if (isGlobalLoading) {
     return (
@@ -243,7 +251,7 @@ export default function EditMeetingPage() {
                                         form.setValue('schoolSlug', school.slug, { shouldValidate: true });
                                     }
                                 }}
-                                value={field.value?.id}
+                                value={field.value?.id || ""}
                             >
                                 <FormControl>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
@@ -272,7 +280,7 @@ export default function EditMeetingPage() {
                                     const type = MEETING_TYPES.find(t => t.id === typeId);
                                     field.onChange(type);
                                 }}
-                                value={field.value?.id}
+                                value={field.value?.id || ""}
                             >
                                 <FormControl>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
@@ -376,7 +384,7 @@ export default function EditMeetingPage() {
                             <Globe className="h-5 w-5" />
                         </div>
                         <div>
-                            <CardTitle className="text-lg font-black uppercase tracking-tight">Public Addressing</CardTitle>
+                            <CardTitle className="text-lg font-black tracking-tight uppercase">Public Addressing</CardTitle>
                             <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
                         </div>
                     </div>

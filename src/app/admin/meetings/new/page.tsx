@@ -64,6 +64,8 @@ export default function NewMeetingPage() {
   const firestore = useFirestore();
   const { user } = useUser();
 
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'schools');
@@ -84,20 +86,25 @@ export default function NewMeetingPage() {
     },
   });
 
-  const { watch, setValue } = form;
+  const { watch, setValue, reset } = form;
   const watchedType = watch('type');
 
   // Pre-select school if passed via URL (e.g. from school console)
   React.useEffect(() => {
     const schoolIdFromUrl = searchParams.get('schoolId');
-    if (schoolIdFromUrl && schools && !form.formState.isDirty) {
+    if (schoolIdFromUrl && schools && !hasInitialized) {
       const selectedSchool = schools.find(s => s.id === schoolIdFromUrl);
       if (selectedSchool) {
-        form.setValue('school', selectedSchool, { shouldValidate: true });
-        form.setValue('schoolSlug', selectedSchool.slug, { shouldValidate: true });
+        reset({
+            ...form.getValues(),
+            school: selectedSchool,
+            schoolSlug: selectedSchool.slug,
+            type: MEETING_TYPES[0],
+        });
+        setHasInitialized(true);
       }
     }
-  }, [searchParams, schools, form]);
+  }, [searchParams, schools, reset, form, hasInitialized]);
 
 
   const onSubmit = async (data: FormData) => {
@@ -198,7 +205,7 @@ export default function NewMeetingPage() {
                                     setValue('schoolSlug', school.slug, { shouldValidate: true });
                                     }
                                 }}
-                                value={field.value?.id}
+                                value={field.value?.id || ""}
                                 >
                                 <FormControl>
                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
@@ -228,7 +235,7 @@ export default function NewMeetingPage() {
                                 const type = MEETING_TYPES.find(t => t.id === typeId);
                                 field.onChange(type);
                                 }}
-                                value={field.value?.id}
+                                value={field.value?.id || ""}
                             >
                                 <FormControl>
                                 <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
