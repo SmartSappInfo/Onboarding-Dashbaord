@@ -89,6 +89,8 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
     try {
         await logActivity({
             schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
             userId: user.uid,
             type: data.type,
             source: 'manual',
@@ -118,11 +120,11 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="rounded-[2rem]">
         <DialogHeader>
-          <DialogTitle>Log an Activity for {school.name}</DialogTitle>
+          <DialogTitle className="text-xl font-black">Log Activity for {school.name}</DialogTitle>
           <DialogDescription>
-            Record an interaction or add a note. This will be permanently added to the school's timeline.
+            Record an interaction or add a note. This will be added to the school's chronological timeline.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -132,14 +134,14 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
               name="type"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Activity Type</FormLabel>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Event Type</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select an activity type" />
+                      <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                        <SelectValue placeholder="Select type..." />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                       {MANUAL_ACTIVITY_TYPES.map((type) => (
                         <SelectItem key={type} value={type} className="capitalize">
                           {type.replace('_', ' ')}
@@ -156,11 +158,11 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
               name="content"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description / Note</FormLabel>
+                  <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Notes / Description</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g., Called John Smith to discuss onboarding timeline. He mentioned needing training for 5 additional staff members..."
-                      className="min-h-[150px]"
+                      placeholder="e.g., Spoke with the headmaster about the upcoming kickoff meeting. They requested more info on billing."
+                      className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
                       {...field}
                     />
                   </FormControl>
@@ -168,13 +170,13 @@ export default function LogActivityModal({ school, open, onOpenChange }: LogActi
                 </FormItem>
               )}
             />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>
+            <DialogFooter className="gap-2">
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Log Activity
+              <Button type="submit" disabled={isSubmitting} className="rounded-xl px-8 font-black shadow-lg">
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Log
               </Button>
             </DialogFooter>
           </form>

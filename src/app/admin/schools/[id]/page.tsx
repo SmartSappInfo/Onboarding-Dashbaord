@@ -20,7 +20,8 @@ import {
     User, 
     Send,
     History,
-    ShieldCheck
+    ShieldCheck,
+    MessageSquarePlus
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -29,12 +30,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import ActivityTimeline from '../../components/ActivityTimeline';
+import LogActivityModal from '../components/LogActivityModal';
 
 export default function SchoolDetailPage() {
     const params = useParams();
     const router = useRouter();
     const schoolId = params.id as string;
     const firestore = useFirestore();
+    const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -108,6 +112,9 @@ export default function SchoolDetailPage() {
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Schools
                     </Button>
                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <Button variant="outline" size="sm" className="rounded-xl font-bold shadow-sm h-10 px-4" onClick={() => setIsLogModalOpen(true)}>
+                            <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log Interaction
+                        </Button>
                         <Button variant="outline" size="sm" className="rounded-xl font-bold shadow-sm h-10 px-4" asChild>
                             <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                 <Send className="mr-2 h-4 w-4 text-primary" /> Message
@@ -235,7 +242,28 @@ export default function SchoolDetailPage() {
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Campus Activity Timeline */}
+                <div className="bg-card rounded-[2.5rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
+                    <div className="mb-10 flex items-center gap-3">
+                        <div className="flex flex-col">
+                            <Badge variant="outline" className="w-fit bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary mb-1">Campus Activity</Badge>
+                            <h3 className="text-2xl font-black tracking-tight">Audit Trail & Interaction History</h3>
+                        </div>
+                        <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                    </div>
+                    <ActivityTimeline 
+                        schoolId={school.id} 
+                        limit={20}
+                    />
+                </div>
             </div>
+
+            <LogActivityModal 
+                school={school} 
+                open={isLogModalOpen} 
+                onOpenChange={setIsLogModalOpen} 
+            />
         </div>
     );
 }
