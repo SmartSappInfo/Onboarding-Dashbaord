@@ -1,23 +1,22 @@
 'use client';
 
-import type { Activity, UserProfile, School } from '@/lib/types';
+import type { Activity, UserProfile } from '@/lib/types';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
-import { Bot, User as UserIcon } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import { getActivityIcon } from '@/lib/activity-icons';
 
 interface ActivityItemProps {
   activity: Activity;
   user?: UserProfile;
-  school?: School;
   showSchoolName?: boolean;
 }
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
-export default function ActivityItem({ activity, user, school, showSchoolName = false }: ActivityItemProps) {
+export default function ActivityItem({ activity, user, showSchoolName = false }: ActivityItemProps) {
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
@@ -54,8 +53,8 @@ export default function ActivityItem({ activity, user, school, showSchoolName = 
             
             <p className="text-muted-foreground">
                 {activity.description}
-                {showSchoolName && school && (
-                    <> in <Link href={`/admin/schools/${school.id}/edit`} className="font-semibold text-foreground hover:underline">{school.name}</Link></>
+                {showSchoolName && activity.schoolName && (
+                    <> in <Link href={`/admin/schools/${activity.schoolId}`} className="font-semibold text-foreground hover:underline">{activity.schoolName}</Link></>
                 )}
             </p>
             

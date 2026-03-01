@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -86,10 +85,14 @@
       "properties": {
         "id": { "type": "string" },
         "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "schoolSlug": { "type": "string" },
         "userId": { "type": "string" },
         "type": { "type": "string" },
+        "source": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "metadata": { "type": "object" }
       }
     },
     "SenderProfile": {

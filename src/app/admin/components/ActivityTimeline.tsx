@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Activity, UserProfile, School } from '@/lib/types';
+import type { Activity, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
@@ -42,20 +42,17 @@ export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 
   }, [firestore, schoolId, userId, dataLimit]);
 
   const { data: activities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
+  
+  // Note: We no longer fetch the entire schools collection here. 
+  // We rely on denormalized data inside the Activity document for name and slug.
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
-  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]));
 
-  const isLoading = isLoadingActivities || isLoadingUsers || isLoadingSchools;
+  const isLoading = isLoadingActivities || isLoadingUsers;
 
   const usersMap = React.useMemo(() => {
     if (!users) return new Map<string, UserProfile>();
     return new Map(users.map(user => [user.id, user]));
   }, [users]);
-  
-  const schoolsMap = React.useMemo(() => {
-    if (!schools) return new Map<string, School>();
-    return new Map(schools.map(school => [school.id, school]));
-  }, [schools]);
 
   const groupedActivities = React.useMemo(() => {
     if (!activities) return [];
@@ -91,19 +88,15 @@ export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 
       <div className="space-y-8">
         <Skeleton className="h-4 w-24 ml-10 my-4" />
         <div className="space-y-6">
-            <div className="flex gap-4">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-3/4" />
-                    <Skeleton className="h-10 w-full" />
+            {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex gap-4 pl-4">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                        <Skeleton className="h-4 w-3/4" />
+                        <Skeleton className="h-10 w-full" />
+                    </div>
                 </div>
-            </div>
-            <div className="flex gap-4">
-                <Skeleton className="h-8 w-8 rounded-full" />
-                <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-1/2" />
-                </div>
-            </div>
+            ))}
         </div>
       </div>
     );
@@ -130,7 +123,6 @@ export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 
                               key={activity.id}
                               activity={activity}
                               user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                              school={schoolsMap.get(activity.schoolId)}
                               showSchoolName={!schoolId}
                            />
                       ))}

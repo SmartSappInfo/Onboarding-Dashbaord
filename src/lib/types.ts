@@ -266,6 +266,8 @@ export interface Module {
 export interface Activity {
   id: string;
   schoolId: string;
+  schoolName?: string; // Denormalized for timeline performance
+  schoolSlug?: string; // Denormalized for timeline linking
   userId?: string | null;
   type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed';
   source: 'manual' | 'user_action' | 'system' | 'public';
