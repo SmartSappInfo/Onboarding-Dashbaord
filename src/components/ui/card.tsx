@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
+import { Slot as SlotPrimitive } from 'radix-ui';
 
 // Define CardContext
 type CardContextType = {
@@ -87,51 +88,60 @@ const cardFooterVariants = cva('flex items-center px-5 min-h-14', {
 function Card({
   className,
   variant = 'default',
+  asChild = false,
   ...props
-}: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants>) {
+}: React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof cardVariants> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive : 'div';
   return (
     <CardContext.Provider value={{ variant: variant || 'default' }}>
-      <div data-slot="card" className={cn(cardVariants({ variant }), className)} {...props} />
+      <Comp data-slot="card" className={cn(cardVariants({ variant }), className)} {...props} />
     </CardContext.Provider>
   );
 }
 
 // CardHeader Component
-function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardHeader({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
   const { variant } = useCardContext();
-  return <div data-slot="card-header" className={cn(cardHeaderVariants({ variant }), className)} {...props} />;
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-header" className={cn(cardHeaderVariants({ variant }), className)} {...props} />;
 }
 
 // CardContent Component
-function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardContent({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
   const { variant } = useCardContext();
-  return <div data-slot="card-content" className={cn(cardContentVariants({ variant }), className)} {...props} />;
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-content" className={cn(cardContentVariants({ variant }), className)} {...props} />;
 }
 
 // CardTable Component
-function CardTable({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardTable({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
   const { variant } = useCardContext();
-  return <div data-slot="card-table" className={cn(cardTableVariants({ variant }), className)} {...props} />;
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-table" className={cn(cardTableVariants({ variant }), className)} {...props} />;
 }
 
 // CardFooter Component
-function CardFooter({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+function CardFooter({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
   const { variant } = useCardContext();
-  return <div data-slot="card-footer" className={cn(cardFooterVariants({ variant }), className)} {...props} />;
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-footer" className={cn(cardFooterVariants({ variant }), className)} {...props} />;
 }
 
 // Other Components
-function CardHeading({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-heading" className={cn('space-y-1', className)} {...props} />;
+function CardHeading({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-heading" className={cn('space-y-1', className)} {...props} />;
 }
 
-function CardToolbar({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-toolbar" className={cn('flex items-center gap-2.5', className)} {...props} />;
+function CardToolbar({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-toolbar" className={cn('flex items-center gap-2.5', className)} {...props} />;
 }
 
-function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
+function CardTitle({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLHeadingElement> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive : 'h3';
   return (
-    <h3
+    <Comp
       data-slot="card-title"
       className={cn('text-base font-semibold leading-none tracking-tight', className)}
       {...props}
@@ -139,8 +149,9 @@ function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElem
   );
 }
 
-function CardDescription({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div data-slot="card-description" className={cn('text-sm text-muted-foreground', className)} {...props} />;
+function CardDescription({ className, asChild = false, ...props }: React.HTMLAttributes<HTMLDivElement> & { asChild?: boolean }) {
+  const Comp = asChild ? SlotPrimitive : 'div';
+  return <Comp data-slot="card-description" className={cn('text-sm text-muted-foreground', className)} {...props} />;
 }
 
 // Exports
