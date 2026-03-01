@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, limit, type Query } from 'firebase/firestore';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Activity, UserProfile } from '@/lib/types';
+import type { Activity, UserProfile, School } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
@@ -12,6 +13,7 @@ interface ActivityTimelineProps {
   schoolId?: string | null;
   userId?: string | null;
   type?: string | null;
+  zoneId?: string | null;
   limit?: number;
 }
 
@@ -24,16 +26,12 @@ const DateSeparator = ({ date }: { date: string }) => {
     );
 };
 
-export default function ActivityTimeline({ schoolId, userId, type, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
 
   // HIGH PERFORMANCE: Fetch a pool of latest activities once.
-  // This avoids complex composite index requirements for every filter combination.
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    
-    // We fetch a larger pool (up to 200) to ensure we have enough data for local filtering
-    // while maintaining a simple, indexed query.
     return query(
         collection(firestore, 'activities'), 
         orderBy('timestamp', 'desc'), 
@@ -44,13 +42,19 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
   const { data: allActivities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
+  const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]));
 
-  const isLoading = isLoadingActivities || isLoadingUsers;
+  const isLoading = isLoadingActivities || isLoadingUsers || isLoadingSchools;
 
   const usersMap = React.useMemo(() => {
     if (!users) return new Map<string, UserProfile>();
     return new Map(users.map(user => [user.id, user]));
   }, [users]);
+
+  const schoolsInZone = React.useMemo(() => {
+    if (!schools || !zoneId || zoneId === 'all') return null;
+    return new Set(schools.filter(s => s.zone?.id === zoneId).map(s => s.id));
+  }, [schools, zoneId]);
 
   // CLIENT-SIDE FILTERING: Apply filters in memory for instant UX and index-free reliability.
   const filteredActivities = React.useMemo(() => {
@@ -58,6 +62,9 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
 
     let filtered = allActivities;
 
+    if (zoneId && zoneId !== 'all' && schoolsInZone) {
+        filtered = filtered.filter(a => a.schoolId && schoolsInZone.has(a.schoolId));
+    }
     if (schoolId && schoolId !== 'all') {
         filtered = filtered.filter(a => a.schoolId === schoolId);
     }
@@ -68,9 +75,8 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
         filtered = filtered.filter(a => a.type === type);
     }
 
-    // Apply the requested UI limit after filtering
     return filtered.slice(0, dataLimit);
-  }, [allActivities, schoolId, userId, type, dataLimit]);
+  }, [allActivities, schoolId, userId, type, zoneId, schoolsInZone, dataLimit]);
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {

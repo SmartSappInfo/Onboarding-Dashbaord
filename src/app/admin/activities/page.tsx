@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { School, UserProfile, Activity } from '@/lib/types';
-import { Filter, X, History, Building, User, Tag } from 'lucide-react';
+import type { School, UserProfile, Activity, Zone } from '@/lib/types';
+import { Filter, X, History, Building, User, Tag, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
@@ -31,19 +32,23 @@ export default function ActivitiesPage() {
     const [schoolId, setSchoolId] = React.useState<string | null>('all');
     const [userId, setUserId] = React.useState<string | null>('all');
     const [type, setType] = React.useState<string | null>('all');
+    const [zoneId, setZoneId] = React.useState<string | null>('all');
 
     const schoolsCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name')) : null, [firestore]);
     const usersCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), orderBy('name')) : null, [firestore]);
+    const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
 
     const { data: schools } = useCollection<School>(schoolsCol);
     const { data: users } = useCollection<UserProfile>(usersCol);
+    const { data: zones } = useCollection<Zone>(zonesCol);
 
-    const hasActiveFilters = schoolId !== 'all' || userId !== 'all' || type !== 'all';
+    const hasActiveFilters = schoolId !== 'all' || userId !== 'all' || type !== 'all' || zoneId !== 'all';
 
     const clearFilters = () => {
         setSchoolId('all');
         setUserId('all');
         setType('all');
+        setZoneId('all');
     };
 
     return (
@@ -66,7 +71,25 @@ export default function ActivitiesPage() {
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                     <CardContent className="p-4 sm:p-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Zone Filter */}
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 ml-1">
+                                    <MapPin className="h-3 w-3" /> Geographic Zone
+                                </Label>
+                                <Select value={zoneId || 'all'} onValueChange={setZoneId}>
+                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                        <SelectValue placeholder="All Zones" />
+                                    </SelectTrigger>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="all">All Zones</SelectItem>
+                                        {zones?.map(z => (
+                                            <SelectItem key={z.id} value={z.id}>{z.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
                             {/* School Filter */}
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-1.5 ml-1">
@@ -78,7 +101,7 @@ export default function ActivitiesPage() {
                                     </SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         <SelectItem value="all">All Schools</SelectItem>
-                                        {schools?.map(s => (
+                                        {schools?.filter(s => zoneId === 'all' || s.zone?.id === zoneId).map(s => (
                                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                                         ))}
                                     </SelectContent>
@@ -133,6 +156,7 @@ export default function ActivitiesPage() {
                         schoolId={schoolId} 
                         userId={userId} 
                         type={type} 
+                        zoneId={zoneId}
                     />
                 </div>
             </div>
