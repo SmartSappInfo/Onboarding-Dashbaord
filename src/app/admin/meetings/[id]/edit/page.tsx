@@ -96,14 +96,18 @@ export default function EditMeetingPage() {
   const watchedType = form.watch('type');
 
   // Robust synchronization of DB data to form state
+  // This ensures the Target School and Category are selected on load
   React.useEffect(() => {
     if (meeting && schools && !form.formState.isDirty) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
+      // Ensure we find the exactly typed meeting from our constants for reference stability
+      const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || meeting.type;
+
       form.reset({
         school: selectedSchool,
         schoolSlug: meeting.schoolSlug,
         meetingTime: new Date(meeting.meetingTime),
-        type: meeting.type,
+        type: selectedType,
         meetingLink: meeting.meetingLink,
         recordingUrl: meeting.recordingUrl || '',
         brochureUrl: meeting.brochureUrl || '',

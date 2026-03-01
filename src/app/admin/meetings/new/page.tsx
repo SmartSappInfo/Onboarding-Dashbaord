@@ -152,7 +152,7 @@ export default function NewMeetingPage() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-3xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
-            <Button asChild variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground font-bold">
+            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
                 <Link href="/admin/meetings">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Directory
@@ -340,7 +340,7 @@ export default function NewMeetingPage() {
                       <FormItem>
                           <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
                           <div className="flex flex-col sm:flex-row group transition-all">
-                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px) font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
                                     /meetings/{watchedType?.slug || 'parent-engagement'}/
                                 </div>
                                 <FormControl>
