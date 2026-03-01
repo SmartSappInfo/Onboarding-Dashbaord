@@ -80,19 +80,20 @@ export default function NewMeetingPage() {
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
-      type: MEETING_TYPES[0],
+      type: MEETING_TYPES[0], // Default to Parent Engagement
     },
   });
 
   const { watch, setValue } = form;
   const watchedType = watch('type');
 
+  // Pre-select school if passed via URL (e.g. from school console)
   React.useEffect(() => {
-    const schoolId = searchParams.get('schoolId');
-    if (schoolId && schools) {
-      const selectedSchool = schools.find(s => s.id === schoolId);
+    const schoolIdFromUrl = searchParams.get('schoolId');
+    if (schoolIdFromUrl && schools && !form.formState.isDirty) {
+      const selectedSchool = schools.find(s => s.id === schoolIdFromUrl);
       if (selectedSchool) {
-        form.setValue('school', selectedSchool);
+        form.setValue('school', selectedSchool, { shouldValidate: true });
         form.setValue('schoolSlug', selectedSchool.slug, { shouldValidate: true });
       }
     }
@@ -339,7 +340,7 @@ export default function NewMeetingPage() {
                       <FormItem>
                           <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
                           <div className="flex flex-col sm:flex-row group transition-all">
-                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px) font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
                                     /meetings/{watchedType?.slug || 'parent-engagement'}/
                                 </div>
                                 <FormControl>

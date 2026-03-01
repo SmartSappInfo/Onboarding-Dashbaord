@@ -37,7 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { DateTimePicker } from '../../components/brochure-select'; // Corrected import path
 import { BrochureSelect } from '../../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
@@ -95,6 +95,7 @@ export default function EditMeetingPage() {
 
   const watchedType = form.watch('type');
 
+  // Robust synchronization of DB data to form state
   React.useEffect(() => {
     if (meeting && schools && !form.formState.isDirty) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
@@ -102,7 +103,7 @@ export default function EditMeetingPage() {
         school: selectedSchool,
         schoolSlug: meeting.schoolSlug,
         meetingTime: new Date(meeting.meetingTime),
-        type: meeting.type || MEETING_TYPES[0],
+        type: meeting.type,
         meetingLink: meeting.meetingLink,
         recordingUrl: meeting.recordingUrl || '',
         brochureUrl: meeting.brochureUrl || '',
@@ -183,7 +184,7 @@ export default function EditMeetingPage() {
             <Button asChild variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground font-bold">
                 <Link href="/admin/meetings">
                     <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Sessions
+                    Back to Directory
                 </Link>
             </Button>
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
@@ -204,7 +205,7 @@ export default function EditMeetingPage() {
                     </div>
                     <div>
                         <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
-                        <CardDescription className="text-xs font-medium">Internal details, logistics, and supporting assets.</CardDescription>
+                        <CardDescription className="text-xs font-medium">Core institutional setup, logistics, and supporting assets.</CardDescription>
                     </div>
                 </div>
               </CardHeader>
