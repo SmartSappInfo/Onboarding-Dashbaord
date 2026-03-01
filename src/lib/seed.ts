@@ -111,12 +111,16 @@ const pdfFormData: Omit<PDFForm, 'id' | 'createdAt' | 'updatedAt' | 'fields' | '
     originalFileName: 'enrollment.pdf',
     storagePath: 'seed/enrollment.pdf',
     downloadUrl: 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf',
+    publicTitle: 'Sample Enrollment Form',
+    slug: 'sample-enrollment',
   },
   {
     name: 'Medical Release Waiver',
     originalFileName: 'medical.pdf',
     storagePath: 'seed/medical.pdf',
     downloadUrl: 'https://www.antennahouse.com/hubfs/xsl-fo-sample/pdf/basic-link-1.pdf',
+    publicTitle: 'Medical Release Waiver',
+    slug: 'medical-release',
   },
 ];
 
@@ -336,6 +340,8 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
     // 1. School Created
     batch.set(doc(activitiesCollection), {
       schoolId: school.id,
+      schoolName: school.name,
+      schoolSlug: school.slug,
       userId: creationUser.id,
       type: 'school_created',
       source: 'user_action',
@@ -354,6 +360,8 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
           const activityDate = addDays(creationDate, (i + 1) * 2);
           batch.set(doc(activitiesCollection), {
             schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
             userId: users[(schoolIndex + i) % users.length].id,
             type: 'pipeline_stage_changed',
             source: 'user_action',
@@ -370,6 +378,8 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
     if (schoolIndex % 2 === 0) {
         batch.set(doc(activitiesCollection), {
             schoolId: school.id,
+            schoolName: school.name,
+            schoolSlug: school.slug,
             userId: creationUser.id,
             type: 'call',
             source: 'manual',
