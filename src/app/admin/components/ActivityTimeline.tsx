@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, type Query } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Activity, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,8 +9,9 @@ import { format, isSameDay } from 'date-fns';
 import ActivityItem from './ActivityItem';
 
 interface ActivityTimelineProps {
-  schoolId?: string;
-  userId?: string;
+  schoolId?: string | null;
+  userId?: string | null;
+  type?: string | null;
   limit?: number;
 }
 
@@ -23,28 +24,31 @@ const DateSeparator = ({ date }: { date: string }) => {
     );
 };
 
-export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 50 }: ActivityTimelineProps) {
+export default function ActivityTimeline({ schoolId, userId, type, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
 
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     
-    let q = query(collection(firestore, 'activities'), orderBy('timestamp', 'desc'), limit(dataLimit));
+    let q: Query = collection(firestore, 'activities');
     
-    if (schoolId) {
+    if (schoolId && schoolId !== 'all') {
       q = query(q, where('schoolId', '==', schoolId));
     }
-    if (userId) {
+    if (userId && userId !== 'all') {
       q = query(q, where('userId', '==', userId));
     }
+    if (type && type !== 'all') {
+      q = query(q, where('type', '==', type));
+    }
 
-    return q;
-  }, [firestore, schoolId, userId, dataLimit]);
+    // Note: Firestore requires a composite index for multiple where + orderBy.
+    // We order by timestamp descending for the timeline.
+    return query(q, orderBy('timestamp', 'desc'), limit(dataLimit));
+  }, [firestore, schoolId, userId, type, dataLimit]);
 
   const { data: activities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
-  // Note: We no longer fetch the entire schools collection here. 
-  // We rely on denormalized data inside the Activity document for name and slug.
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
 
   const isLoading = isLoadingActivities || isLoadingUsers;
@@ -104,8 +108,8 @@ export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 
   
   if (!activities || activities.length === 0) {
       return (
-          <div className="text-center py-16">
-              <p className="text-muted-foreground">No activities recorded yet.</p>
+          <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
+              <p className="text-muted-foreground font-medium">No activities found matching your criteria.</p>
           </div>
       );
   }
@@ -123,7 +127,7 @@ export default function ActivityTimeline({ schoolId, userId, limit: dataLimit = 
                               key={activity.id}
                               activity={activity}
                               user={activity.userId ? usersMap.get(activity.userId) : undefined}
-                              showSchoolName={!schoolId}
+                              showSchoolName={!schoolId || schoolId === 'all'}
                            />
                       ))}
                     </div>
