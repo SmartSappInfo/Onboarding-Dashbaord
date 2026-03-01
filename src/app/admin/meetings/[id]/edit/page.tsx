@@ -37,7 +37,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { DateTimePicker } from '../../components/brochure-select'; // Corrected import path
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
