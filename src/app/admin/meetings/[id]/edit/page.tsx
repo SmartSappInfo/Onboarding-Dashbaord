@@ -16,7 +16,9 @@ import {
     Calendar,
     Building, 
     Link as LinkIcon,
-    Video
+    Video,
+    Eye,
+    ExternalLink
 } from 'lucide-react';
 
 import type { School, Meeting, MeetingType } from '@/lib/types';
@@ -94,13 +96,12 @@ export default function EditMeetingPage() {
   });
 
   const watchedType = form.watch('type');
+  const watchedSlug = form.watch('schoolSlug');
 
   // Robust synchronization of DB data to form state
-  // This ensures the Target School and Category are selected on load
   React.useEffect(() => {
     if (meeting && schools && !form.formState.isDirty) {
       const selectedSchool = schools.find(s => s.id === meeting.schoolId);
-      // Ensure we find the exactly typed meeting from our constants for reference stability
       const selectedType = MEETING_TYPES.find(t => t.id === meeting.type?.id) || meeting.type;
 
       form.reset({
@@ -163,6 +164,8 @@ export default function EditMeetingPage() {
     });
   };
 
+  const publicUrl = watchedType && watchedSlug ? `/meetings/${watchedType.slug}/${watchedSlug}` : null;
+
   const isGlobalLoading = isLoadingMeeting || isLoadingSchools;
 
   if (isGlobalLoading) {
@@ -191,9 +194,19 @@ export default function EditMeetingPage() {
                     Back to Directory
                 </Link>
             </Button>
-            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
-                <Settings2 className="h-3 w-3" />
-                Configuration Mode
+            <div className="flex items-center gap-2">
+                {publicUrl && (
+                    <Button asChild variant="outline" size="sm" className="h-8 rounded-xl font-bold gap-2">
+                        <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-3.5 w-3.5" />
+                            Preview Live Page
+                        </a>
+                    </Button>
+                )}
+                <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
+                    <Settings2 className="h-3 w-3" />
+                    Configuration Mode
+                </div>
             </div>
         </div>
 
@@ -357,14 +370,24 @@ export default function EditMeetingPage() {
 
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
               <CardHeader className="bg-primary/10 border-b pb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                        <Globe className="h-5 w-5" />
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                            <Globe className="h-5 w-5" />
+                        </div>
+                        <div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Public Addressing</CardTitle>
+                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                        </div>
                     </div>
-                    <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Public Addressing</CardTitle>
-                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
-                    </div>
+                    {publicUrl && (
+                        <Button asChild variant="link" size="sm" className="text-primary font-black text-[10px] uppercase tracking-widest">
+                            <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="h-3 w-3 mr-1.5" />
+                                View Portal
+                            </a>
+                        </Button>
+                    )}
                 </div>
               </CardHeader>
               <CardContent className="p-6">
