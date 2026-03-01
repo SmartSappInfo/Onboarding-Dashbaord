@@ -314,9 +314,11 @@ export async function seedMessaging(firestore: Firestore): Promise<number> {
 }
 
 export async function seedActivities(firestore: Firestore): Promise<number> {
-  await clearCollection(firestore, 'activities');
-  const batch = writeBatch(firestore);
   const activitiesCollection = collection(firestore, 'activities');
+  
+  // 1. Fetch Existing Data to Preserve
+  const existingActivitiesSnapshot = await getDocs(activitiesCollection);
+  const existingActivities = existingActivitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
 
   const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
   const usersSnapshot = await getDocs(collection(firestore, 'users'));
@@ -326,73 +328,81 @@ export async function seedActivities(firestore: Firestore): Promise<number> {
   const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
   const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
 
-  if (schools.length === 0 || users.length === 0) {
-    console.warn("Cannot seed activities without schools and users.");
-    return 0;
-  }
+  const schoolsMap = new Map(schools.map(s => [s.id, s]));
 
-  let activitiesCount = 0;
-
-  schools.forEach((school, schoolIndex) => {
-    const creationUser = users[schoolIndex % users.length];
-    const creationDate = new Date(school.createdAt);
-
-    // 1. School Created
-    batch.set(doc(activitiesCollection), {
-      schoolId: school.id,
-      schoolName: school.name,
-      schoolSlug: school.slug,
-      userId: creationUser.id,
-      type: 'school_created',
-      source: 'user_action',
-      timestamp: creationDate.toISOString(),
-      description: `${creationUser.name} created school "${school.name}".`,
-    });
-    activitiesCount++;
-
-    // 2. Stage Changes (Simulate progress)
-    if (stages.length > 1 && school.stage) {
-      const currentStageIndex = stages.findIndex(s => s.id === school.stage!.id);
-      if (currentStageIndex > 0) {
-        for (let i = 0; i < Math.min(currentStageIndex, 3); i++) {
-          const fromStage = stages[i];
-          const toStage = stages[i+1];
-          const activityDate = addDays(creationDate, (i + 1) * 2);
-          batch.set(doc(activitiesCollection), {
-            schoolId: school.id,
-            schoolName: school.name,
-            schoolSlug: school.slug,
-            userId: users[(schoolIndex + i) % users.length].id,
-            type: 'pipeline_stage_changed',
-            source: 'user_action',
-            timestamp: activityDate.toISOString(),
-            description: `${users[(schoolIndex + i) % users.length].name} moved school "${school.name}" from "${fromStage.name}" to "${toStage.name}".`,
-            metadata: { from: fromStage.name, to: toStage.name },
-          });
-          activitiesCount++;
-        }
-      }
+  // 2. Enrich existing activities with denormalized school data
+  const enrichedExisting = existingActivities.map(activity => {
+    if (activity.schoolId && schoolsMap.has(activity.schoolId)) {
+      const school = schoolsMap.get(activity.schoolId)!;
+      return {
+        ...activity,
+        schoolName: school.name,
+        schoolSlug: school.slug
+      };
     }
+    return activity;
+  });
 
-    // 3. Interaction Log (Call/Visit)
-    if (schoolIndex % 2 === 0) {
-        batch.set(doc(activitiesCollection), {
+  // 3. Clear existing collection
+  await clearCollection(firestore, 'activities');
+
+  const allActivities: Omit<Activity, 'id'>[] = [];
+
+  // Add enriched existing data
+  enrichedExisting.forEach(a => {
+      const { id, ...data } = a;
+      allActivities.push(data);
+  });
+
+  // 4. Generate Additional Dummy Data (If needed)
+  if (schools.length > 0 && users.length > 0 && enrichedExisting.length < 10) {
+    schools.forEach((school, schoolIndex) => {
+        const creationUser = users[schoolIndex % users.length];
+        const creationDate = new Date(school.createdAt);
+
+        // School Created
+        allActivities.push({
             schoolId: school.id,
             schoolName: school.name,
             schoolSlug: school.slug,
             userId: creationUser.id,
-            type: 'call',
-            source: 'manual',
-            timestamp: addDays(creationDate, 1).toISOString(),
-            description: `${creationUser.name} called the school.`,
-            metadata: { content: `Spoke with ${school.contactPerson}. They are ready to begin data collection.`}
+            type: 'school_created',
+            source: 'user_action',
+            timestamp: creationDate.toISOString(),
+            description: `${creationUser.name} created school "${school.name}".`,
         });
-        activitiesCount++;
-    }
-  });
 
-  await batch.commit();
-  return activitiesCount;
+        // Interactions
+        if (schoolIndex % 2 === 0) {
+            allActivities.push({
+                schoolId: school.id,
+                schoolName: school.name,
+                schoolSlug: school.slug,
+                userId: creationUser.id,
+                type: 'call',
+                source: 'manual',
+                timestamp: addDays(creationDate, 1).toISOString(),
+                description: `${creationUser.name} called the school.`,
+                metadata: { content: `Spoke with ${school.contactPerson}. They are ready to begin data collection.`}
+            });
+        }
+    });
+  }
+
+  // 5. Atomic Batch Restoration (Handling 500 ops limit)
+  let count = 0;
+  const CHUNK_SIZE = 450;
+  for (let i = 0; i < allActivities.length; i += CHUNK_SIZE) {
+      const batch = writeBatch(firestore);
+      const chunk = allActivities.slice(i, i + CHUNK_SIZE);
+      chunk.forEach(activity => {
+          batch.set(doc(activitiesCollection), activity);
+          count++;
+      });
+      await batch.commit();
+  }
+
+  return count;
 }
 
 export async function seedPdfForms(firestore: Firestore): Promise<number> {
