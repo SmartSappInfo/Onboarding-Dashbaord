@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy, limit, type Query } from 'firebase/firestore';
+import { collection, query, orderBy, limit, type Query } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Activity, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,27 +27,21 @@ const DateSeparator = ({ date }: { date: string }) => {
 export default function ActivityTimeline({ schoolId, userId, type, limit: dataLimit = 50 }: ActivityTimelineProps) {
   const firestore = useFirestore();
 
+  // HIGH PERFORMANCE: Fetch a pool of latest activities once.
+  // This avoids complex composite index requirements for every filter combination.
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     
-    let q: Query = collection(firestore, 'activities');
-    
-    if (schoolId && schoolId !== 'all') {
-      q = query(q, where('schoolId', '==', schoolId));
-    }
-    if (userId && userId !== 'all') {
-      q = query(q, where('userId', '==', userId));
-    }
-    if (type && type !== 'all') {
-      q = query(q, where('type', '==', type));
-    }
+    // We fetch a larger pool (up to 200) to ensure we have enough data for local filtering
+    // while maintaining a simple, indexed query.
+    return query(
+        collection(firestore, 'activities'), 
+        orderBy('timestamp', 'desc'), 
+        limit(200)
+    );
+  }, [firestore]);
 
-    // Note: Firestore requires a composite index for multiple where + orderBy.
-    // We order by timestamp descending for the timeline.
-    return query(q, orderBy('timestamp', 'desc'), limit(dataLimit));
-  }, [firestore, schoolId, userId, type, dataLimit]);
-
-  const { data: activities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
+  const { data: allActivities, isLoading: isLoadingActivities } = useCollection<Activity>(activitiesQuery);
   
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]));
 
@@ -58,10 +52,28 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
     return new Map(users.map(user => [user.id, user]));
   }, [users]);
 
-  const groupedActivities = React.useMemo(() => {
-    if (!activities) return [];
+  // CLIENT-SIDE FILTERING: Apply filters in memory for instant UX and index-free reliability.
+  const filteredActivities = React.useMemo(() => {
+    if (!allActivities) return [];
 
-    const grouped = activities.reduce((acc, activity) => {
+    let filtered = allActivities;
+
+    if (schoolId && schoolId !== 'all') {
+        filtered = filtered.filter(a => a.schoolId === schoolId);
+    }
+    if (userId && userId !== 'all') {
+        filtered = filtered.filter(a => a.userId === userId);
+    }
+    if (type && type !== 'all') {
+        filtered = filtered.filter(a => a.type === type);
+    }
+
+    // Apply the requested UI limit after filtering
+    return filtered.slice(0, dataLimit);
+  }, [allActivities, schoolId, userId, type, dataLimit]);
+
+  const groupedActivities = React.useMemo(() => {
+    const grouped = filteredActivities.reduce((acc, activity) => {
         const activityDate = new Date(activity.timestamp);
         let dateLabel: string;
         const today = new Date();
@@ -73,7 +85,7 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
         } else if (isSameDay(activityDate, yesterday)) {
           dateLabel = 'Yesterday';
         } else {
-          dateLabel = format(activityDate, 'PPP'); // e.g., Jun 12, 2024
+          dateLabel = format(activityDate, 'PPP');
         }
     
         if (!acc[dateLabel]) {
@@ -85,7 +97,7 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
     
       return Object.entries(grouped).map(([date, activities]) => ({ date, activities }));
 
-  }, [activities]);
+  }, [filteredActivities]);
 
   if (isLoading) {
     return (
@@ -106,7 +118,7 @@ export default function ActivityTimeline({ schoolId, userId, type, limit: dataLi
     );
   }
   
-  if (!activities || activities.length === 0) {
+  if (filteredActivities.length === 0) {
       return (
           <div className="text-center py-16 border-2 border-dashed rounded-2xl bg-muted/20">
               <p className="text-muted-foreground font-medium">No activities found matching your criteria.</p>
