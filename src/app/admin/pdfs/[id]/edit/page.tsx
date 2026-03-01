@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, doc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -215,6 +215,11 @@ export default function EditPdfPage() {
       setNamingFieldId(pdf.namingFieldId || null);
       resetHistory(initialFields);
       
+      const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
+      const pattern = pdf.backgroundPattern && VALID_PATTERNS.includes(pdf.backgroundPattern) 
+          ? pdf.backgroundPattern 
+          : 'none';
+
       const initialData = {
         name: pdf.name || '',
         publicTitle: pdf.publicTitle || pdf.name || '',
@@ -224,7 +229,7 @@ export default function EditPdfPage() {
         slug: pdf.slug || pdf.id,
         logoUrl: pdf.logoUrl || '',
         backgroundColor: pdf.backgroundColor || '#F1F5F9',
-        backgroundPattern: (pdf.backgroundPattern as any) || 'none',
+        backgroundPattern: pattern as any,
         patternColor: pdf.patternColor || '#3B5FFF',
         webhookEnabled: pdf.webhookEnabled || false,
         webhookId: pdf.webhookId || '',
@@ -492,7 +497,7 @@ export default function EditPdfPage() {
                             }
                         }}
                     >
-                        <AnimatePresence mode="wait">
+                        <AnimatePresence>
                             {/* PHASE 1: DETAILS */}
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
