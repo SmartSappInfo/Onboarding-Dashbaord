@@ -4,11 +4,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { School, OnboardingStage, Module, Zone, SchoolStatus } from '@/lib/types';
+import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +43,7 @@ import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { cn } from '@/lib/utils';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
