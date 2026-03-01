@@ -1,24 +1,19 @@
-'use client';
-import { useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
 
-// This page now acts as a redirect for backward compatibility.
-export default function OldSchoolMeetingPage() {
-  const params = useParams();
-  const router = useRouter();
-  const slug = params.slug as string;
+import { redirect } from 'next/navigation';
 
-  useEffect(() => {
-    if (slug) {
-      // Redirect to the new "parent-engagement" meeting type URL
-      router.replace(`/meetings/parent-engagement/${slug}`);
-    }
-  }, [slug, router]);
+/**
+ * Legacy Redirector (Server Component)
+ * Handles old-style /meetings/school-slug URLs by redirecting to the default parent-engagement type.
+ */
+export default async function OldSchoolMeetingPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
 
-  // Render a simple loading state while redirecting
-  return (
-    <div className="flex h-screen items-center justify-center bg-background">
-      <p className="text-muted-foreground">Redirecting...</p>
-    </div>
-  );
+  // Prevent redirect loops for nested static segments
+  const reservedPaths = ['parent-engagement', 'kickoff', 'training'];
+  if (reservedPaths.includes(slug)) {
+    return null;
+  }
+
+  // Redirect to the new structured URL
+  redirect(`/meetings/parent-engagement/${slug}`);
 }

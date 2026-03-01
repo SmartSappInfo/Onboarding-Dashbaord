@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -110,15 +111,8 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
     const meetingType = MEETING_TYPES.find(t => t.slug === typeSlug);
 
     useEffect(() => {
-        if (school && meetingType) {
-          document.title = `${meetingType.name}: ${school.name} | Onboarding Meeting`;
-        }
-    }, [school, meetingType]);
-
-    useEffect(() => {
         if (!firestore || !schoolSlug || !typeSlug) {
             setIsLoading(false);
-            setError("Required information is missing.");
             return;
         };
 
@@ -157,11 +151,14 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
 
-            // 3. Filter and sort on the client-side
             const allMeetings = allMeetingsSnapshot.docs
               .map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
             
-            const meetingsForType = allMeetings.filter(m => m.type.slug === typeSlug);
+            // Match by slug or ID for backward compatibility
+            const meetingsForType = allMeetings.filter(m => 
+                m.type.slug === typeSlug || 
+                (typeSlug === 'parent-engagement' && m.type.id === 'parent')
+            );
 
             if (meetingsForType.length === 0) {
                 setError(`No ${meetingType?.name || 'meeting'} found for this school.`);
@@ -169,7 +166,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
             
-            // 4. Find the best meeting: latest upcoming, or latest past if none are upcoming.
+            // 4. Find the best meeting
             const now = new Date();
             const upcomingMeetings = meetingsForType
                 .filter(m => new Date(m.meetingTime) >= now)
@@ -189,7 +186,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
 
           } catch (e: any) {
             console.error(e);
-            setError("Failed to load school or meeting data. Please try again later.");
+            setError("Failed to load school or meeting data.");
           } finally {
             setIsLoading(false);
           }
@@ -200,26 +197,18 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
       
     if (isLoading) {
         return (
-            <section className="w-full bg-background">
+            <section className="w-full bg-background min-h-screen flex items-center justify-center">
                 <MeetingPageSkeleton />
             </section>
         );
     }
 
-    if (error) {
+    if (error || !school || !meeting) {
         return (
-            <div className="container py-20">
+            <div className="container py-20 min-h-screen flex flex-col items-center justify-center">
                 <MeetingNotFound />
             </div>
         );
-    }
-
-    if (!school || !meeting) {
-        return (
-            <div className="container py-20">
-                <MeetingNotFound />
-            </div>
-        )
     }
 
     switch(typeSlug) {
