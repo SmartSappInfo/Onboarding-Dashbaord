@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
 import type { School, Meeting } from '@/lib/types';
@@ -108,92 +108,92 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
     const [meeting, setMeeting] = useState<Meeting | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const meetingType = MEETING_TYPES.find(t => t.slug === typeSlug);
 
     useEffect(() => {
         if (!firestore || !schoolSlug || !typeSlug) {
-            setIsLoading(false);
             return;
         };
 
-        const fetchSchoolAndMeeting = async () => {
+        const fetchData = async () => {
           setIsLoading(true);
           setSchool(null);
           setMeeting(null);
           setError(null);
 
           try {
-            // 1. Fetch the school by slug
-            const schoolsCollection = collection(firestore, 'schools');
-            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
-            const schoolSnapshot = await getDocs(schoolQuery);
-
-            if (schoolSnapshot.empty) {
-              setError("School not found.");
-              setIsLoading(false);
-              return;
-            }
-            
-            const foundSchool = { ...schoolSnapshot.docs[0].data(), id: schoolSnapshot.docs[0].id } as School;
-            setSchool(foundSchool);
-
-            // 2. Fetch all meetings for that school
-            const meetingsCollection = collection(firestore, 'meetings');
-            const allMeetingsForSchoolQuery = query(
-              meetingsCollection,
-              where('schoolId', '==', foundSchool.id)
+            // 1. Find the meeting directly using the schoolSlug and type from the URL
+            // This is safer than finding the school first, as the URL identifies the specific session.
+            const meetingsCol = collection(firestore, 'meetings');
+            const meetingQuery = query(
+                meetingsCol, 
+                where('schoolSlug', '==', schoolSlug.toLowerCase())
             );
-            const allMeetingsSnapshot = await getDocs(allMeetingsForSchoolQuery);
+            const meetingSnapshot = await getDocs(meetingQuery);
 
-            if (allMeetingsSnapshot.empty) {
-                setError(`No meetings found for this school.`);
+            if (meetingSnapshot.empty) {
+                setError(`Meeting not found for slug: ${schoolSlug}`);
                 setIsLoading(false);
                 return;
             }
 
-            const allMeetings = allMeetingsSnapshot.docs
-              .map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
-            
-            // Match by slug or ID for backward compatibility with optional chaining
-            const meetingsForType = allMeetings.filter(m => 
-                m.type?.slug === typeSlug || 
-                (typeSlug === 'parent-engagement' && m.type?.id === 'parent')
-            );
+            // 2. Filter by meeting type on the client to avoid complex index requirements
+            const allMeetings = meetingSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
+            const meetingsForType = allMeetings.filter(m => {
+                const mTypeSlug = m.type?.slug || '';
+                return mTypeSlug === typeSlug || (typeSlug === 'parent-engagement' && m.type?.id === 'parent');
+            });
 
             if (meetingsForType.length === 0) {
-                setError(`No ${meetingType?.name || 'meeting'} scheduled for this school.`);
+                setError(`No ${typeSlug} session found for this school.`);
                 setIsLoading(false);
                 return;
             }
-            
-            // 4. Find the best meeting (Upcoming first, then most recent past)
+
+            // 3. Find the most relevant meeting (upcoming or most recent past)
             const now = new Date();
-            const upcomingMeetings = meetingsForType
-                .filter(m => m.meetingTime && new Date(m.meetingTime) >= now)
-                .sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
-            
-            const pastMeetings = meetingsForType
-                .filter(m => m.meetingTime && new Date(m.meetingTime) < now)
-                .sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime());
+            const sorted = meetingsForType.sort((a, b) => {
+                const dateA = new Date(a.meetingTime).getTime();
+                const dateB = new Date(b.meetingTime).getTime();
+                // Prioritize upcoming sessions
+                const isAUpcoming = dateA >= now.getTime();
+                const isBUpcoming = dateB >= now.getTime();
+                if (isAUpcoming && !isBUpcoming) return -1;
+                if (!isAUpcoming && isBUpcoming) return 1;
+                // If both are in same category, sort by proximity to now
+                return Math.abs(dateA - now.getTime()) - Math.abs(dateB - now.getTime());
+            });
 
-            const bestMeeting = upcomingMeetings[0] || pastMeetings[0];
+            const bestMeeting = sorted[0];
+            setMeeting(bestMeeting);
 
-            if (bestMeeting) {
-              setMeeting(bestMeeting);
+            // 4. Fetch the school details using the ID from the meeting document
+            const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
+            const schoolSnap = await getDoc(schoolRef);
+
+            if (schoolSnap.exists()) {
+                setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
             } else {
-              setError(`No suitable meeting could be identified.`);
+                // Fallback: search for school by slug if ID lookup fails
+                const schoolsCol = collection(firestore, 'schools');
+                const schoolQuery = query(schoolsCol, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
+                const schoolSnapshot = await getDocs(schoolQuery);
+                if (!schoolSnapshot.empty) {
+                    setSchool({ id: schoolSnapshot.docs[0].id, ...schoolSnapshot.docs[0].data() } as School);
+                } else {
+                    setError("School document could not be resolved.");
+                }
             }
 
           } catch (e: any) {
-            console.error("SchoolMeetingLoader: Error fetching data", e);
-            setError("Failed to load school or meeting data.");
+            console.error("SchoolMeetingLoader: Critical error", e);
+            setError("Communication failure with database.");
           } finally {
             setIsLoading(false);
           }
         };
 
-        fetchSchoolAndMeeting();
-    }, [firestore, schoolSlug, typeSlug, meetingType]);
+        fetchData();
+    }, [firestore, schoolSlug, typeSlug]);
       
     if (isLoading) {
         return (
@@ -219,6 +219,6 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
       case 'training':
         return <TrainingLayout school={school} meeting={meeting} />;
       default:
-        return <div className="container py-20 text-center text-destructive font-bold uppercase tracking-widest">Invalid meeting type.</div>;
+        return <div className="container py-20 text-center text-destructive font-black uppercase tracking-widest">Unsupported Protocol.</div>;
     }
 }

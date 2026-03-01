@@ -1,5 +1,5 @@
 
-import { redirect } from 'next/navigation';
+import { redirect, notFound } from 'next/navigation';
 
 /**
  * Legacy Redirector (Server Component)
@@ -11,7 +11,7 @@ export default async function OldSchoolMeetingPage({ params }: { params: Promise
   // Prevent redirect loops for nested static segments
   const reservedPaths = ['parent-engagement', 'kickoff', 'training'];
   if (reservedPaths.includes(slug)) {
-    return null;
+    notFound();
   }
 
   // Redirect to the new structured URL
