@@ -2,12 +2,25 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
+import { 
+    ArrowLeft, 
+    Calendar, 
+    Link as LinkIcon, 
+    Loader2, 
+    Plus, 
+    Globe, 
+    Clock, 
+    Building, 
+    Video, 
+    FileText,
+    Zap
+} from 'lucide-react';
 
 import type { School, MeetingType } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -15,26 +28,28 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
-import { ArrowLeft } from 'lucide-react';
 import { logActivity } from '@/lib/activity-logger';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
-  schoolSlug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
+  schoolSlug: z.string()
+    .min(3, 'Slug must be at least 3 characters.')
+    .regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
   meetingTime: z.date({
     required_error: "A meeting time is required.",
   }),
@@ -69,9 +84,12 @@ export default function NewMeetingPage() {
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
-      type: MEETING_TYPES[0], // Default to Parent Engagement
+      type: MEETING_TYPES[0],
     },
   });
+
+  const { watch, setValue } = form;
+  const watchedType = watch('type');
 
   React.useEffect(() => {
     const schoolId = searchParams.get('schoolId');
@@ -79,7 +97,7 @@ export default function NewMeetingPage() {
       const selectedSchool = schools.find(s => s.id === schoolId);
       if (selectedSchool) {
         form.setValue('school', selectedSchool);
-        form.setValue('schoolSlug', selectedSchool.slug);
+        form.setValue('schoolSlug', selectedSchool.slug, { shouldValidate: true });
       }
     }
   }, [searchParams, schools, form]);
@@ -87,11 +105,7 @@ export default function NewMeetingPage() {
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "You must be logged in to create a meeting.",
-      });
+      toast({ variant: "destructive", title: "Error", description: "Authentication failed." });
       return;
     }
 
@@ -101,8 +115,8 @@ export default function NewMeetingPage() {
     const querySnapshot = await getDocs(q);
     
     if (!querySnapshot.empty) {
-        form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type. Please choose another.' });
-        toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique slug for this meeting type.' });
+        form.setError('schoolSlug', { type: 'manual', message: 'This slug is already in use for this meeting type.' });
+        toast({ variant: 'destructive', title: 'Slug already exists', description: 'Please choose a unique URL backhalf.' });
         return;
     }
     
@@ -118,86 +132,87 @@ export default function NewMeetingPage() {
     };
 
     const meetingsCollection = collection(firestore, 'meetings');
-    form.control.disabled = true;
 
     addDoc(meetingsCollection, meetingData)
       .then((docRef) => {
-        toast({
-          title: 'Meeting Created',
-          description: `Meeting for ${data.school.name} has been scheduled.`,
+        toast({ title: 'Meeting Scheduled', description: `Session for ${data.school.name} created.` });
+        logActivity({
+            schoolId: data.school.id,
+            userId: user.uid,
+            type: 'meeting_created',
+            source: 'user_action',
+            description: `scheduled a ${data.type.name} session for "${data.school.name}".`,
+            metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
         });
-        if (user) {
-            logActivity({
-                schoolId: data.school.id,
-                userId: user.uid,
-                type: 'meeting_created',
-                source: 'user_action',
-                description: `scheduled a ${data.type.name} meeting for "${data.school.name}".`,
-                metadata: { meetingId: docRef.id, meetingTime: data.meetingTime.toISOString() }
-            });
-        }
         router.push('/admin/meetings');
       })
       .catch((error) => {
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: meetingsCollection.path,
             operation: 'create',
             requestResourceData: meetingData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Uh oh! Something went wrong.',
-          description: 'There was a problem saving the meeting.',
-        });
-      }).finally(() => {
-        form.control.disabled = false;
+        }));
       });
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-      <Button asChild variant="ghost" className="mb-4 -ml-4">
-        <Link href="/admin/meetings">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Meetings
-        </Link>
-      </Button>
-      <h1 className="text-4xl font-bold tracking-tight mb-8">Add New Meeting</h1>
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>Meeting Details</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+      <div className="max-w-3xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+            <Button asChild variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground font-bold">
+                <Link href="/admin/meetings">
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Back to Directory
+                </Link>
+            </Button>
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
+                <Zap className="h-3 w-3 text-primary" />
+                Draft Mode
+            </div>
+        </div>
+
+        <h1 className="text-4xl font-black tracking-tight text-foreground uppercase">Schedule Session</h1>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                        <Building className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Identity & Classification</CardTitle>
+                        <CardDescription className="text-xs font-medium">Establish session context.</CardDescription>
+                    </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
                 <FormField
                   control={form.control}
                   name="school"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>School</FormLabel>
-                       {isLoadingSchools ? <Skeleton className="h-10 w-full" /> : (
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Target School</FormLabel>
+                       {isLoadingSchools ? <Skeleton className="h-12 w-full rounded-xl" /> : (
                         <Select
                           onValueChange={(schoolId: string) => {
                             const school = schools?.find((s) => s.id === schoolId);
                             field.onChange(school);
                             if (school) {
-                              form.setValue('schoolSlug', school.slug, { shouldValidate: true });
+                              setValue('schoolSlug', school.slug, { shouldValidate: true });
                             }
                           }}
                           value={field.value?.id}
                         >
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a school" />
+                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                              <SelectValue placeholder="Select an institution..." />
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent>
+                          <SelectContent className="rounded-xl">
                             {schools?.map((school) => (
-                              <SelectItem key={school.id} value={school.id}>
-                                {school.name}
-                              </SelectItem>
+                              <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -209,27 +224,10 @@ export default function NewMeetingPage() {
 
                 <FormField
                   control={form.control}
-                  name="schoolSlug"
-                  render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Meeting Page Slug</FormLabel>
-                          <FormControl>
-                              <Input placeholder="e.g., ghana-international-school" {...field} />
-                          </FormControl>
-                          <FormDescription>
-                              The unique slug for this meeting's public page URL.
-                          </FormDescription>
-                          <FormMessage />
-                      </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
                   name="type"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Meeting Type</FormLabel>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Category</FormLabel>
                       <Select
                         onValueChange={(typeId: string) => {
                           const type = MEETING_TYPES.find(t => t.id === typeId);
@@ -238,15 +236,13 @@ export default function NewMeetingPage() {
                         value={field.value?.id}
                       >
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a meeting type" />
+                          <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                            <SelectValue placeholder="Select type..." />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="rounded-xl">
                           {MEETING_TYPES.map((type) => (
-                            <SelectItem key={type.id} value={type.id}>
-                              {type.name}
-                            </SelectItem>
+                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -254,13 +250,28 @@ export default function NewMeetingPage() {
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
 
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                        <Clock className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Scheduling & Logistics</CardTitle>
+                        <CardDescription className="text-xs font-medium">When and where the session happens.</CardDescription>
+                    </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
                 <FormField
                   control={form.control}
                   name="meetingTime"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Meeting Time</FormLabel>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Time</FormLabel>
                       <FormControl>
                         <DateTimePicker
                             value={field.value}
@@ -277,52 +288,104 @@ export default function NewMeetingPage() {
                   name="meetingLink"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Meeting Link (Google Meet)</FormLabel>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Meeting Link (Google Meet)</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://meet.google.com/abc-xyz-pqr" {...field} />
+                        <Input placeholder="https://meet.google.com/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-mono text-sm" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="recordingUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Recording URL (YouTube)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="https://youtu.be/..." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+              <CardHeader className="bg-muted/30 border-b pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-xl">
+                        <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Supporting Materials</CardTitle>
+                        <CardDescription className="text-xs font-medium">Resources for participants.</CardDescription>
+                    </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
                 <FormField
                   control={form.control}
                   name="brochureUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Brochure URL</FormLabel>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Event Brochure</FormLabel>
                       <FormControl>
-                        <BrochureSelect {...field} />
+                        <BrochureSelect {...field} className="rounded-xl overflow-hidden bg-muted/20 border-none" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              <div className="flex justify-end gap-4">
-                <Button type="button" variant="outline" onClick={() => router.push('/admin/meetings')}>
-                  Cancel
+              </CardContent>
+            </Card>
+
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
+              <CardHeader className="bg-primary/10 border-b pb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                        <Globe className="h-5 w-5" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Public Presence</CardTitle>
+                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                    </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                <FormField
+                  control={form.control}
+                  name="schoolSlug"
+                  render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
+                          <div className="flex flex-col sm:flex-row group transition-all">
+                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+                                    /meetings/{watchedType?.slug || 'parent-engagement'}/
+                                </div>
+                                <FormControl>
+                                    <Input 
+                                        {...field} 
+                                        placeholder="e.g. school-slug" 
+                                        className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4" 
+                                    />
+                                </FormControl>
+                            </div>
+                          <FormDescription className="text-[10px] uppercase font-black text-muted-foreground/40 mt-2 ml-1">
+                              MUST MATCH THE OFFICIAL SCHOOL SLUG FOR AUTOMATIC ROUTING.
+                          </FormDescription>
+                          <FormMessage />
+                      </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-4 pt-8">
+                <Button 
+                    type="submit" 
+                    size="lg" 
+                    disabled={form.formState.isSubmitting}
+                    className="h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95"
+                >
+                    {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
+                    Initialize Session
                 </Button>
-                <Button type="submit" disabled={form.formState.isSubmitting}>
-                  {form.formState.isSubmitting ? 'Creating...' : 'Create Meeting'}
+                <Button type="button" variant="ghost" className="font-bold text-muted-foreground" onClick={() => router.push('/admin/meetings')}>
+                    Cancel and Discard
                 </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }
