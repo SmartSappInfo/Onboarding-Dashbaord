@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,6 @@ import {
     PenSquare, 
     Workflow, 
     User, 
-    MessageSquarePlus, 
     Send,
     History,
     ShieldCheck
@@ -29,8 +28,6 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import NotesSection from '../../components/NotesSection';
-import LogActivityModal from '../components/LogActivityModal';
 import { cn } from '@/lib/utils';
 
 export default function SchoolDetailPage() {
@@ -38,8 +35,6 @@ export default function SchoolDetailPage() {
     const router = useRouter();
     const schoolId = params.id as string;
     const firestore = useFirestore();
-    const { user } = useUser();
-    const [isLogActivityModalOpen, setIsLogActivityModalOpen] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -113,9 +108,6 @@ export default function SchoolDetailPage() {
                         <ArrowLeft className="mr-2 h-4 w-4" /> Back to Schools
                     </Button>
                     <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold shadow-sm h-10 px-4" onClick={() => setIsLogActivityModalOpen(true)}>
-                            <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log
-                        </Button>
                         <Button variant="outline" size="sm" className="rounded-xl font-bold shadow-sm h-10 px-4" asChild>
                             <Link href={`/admin/messaging/composer?recipient=${school.email || ''}&var_school_name=${encodeURIComponent(school.name)}&var_contact_name=${encodeURIComponent(school.contactPerson || '')}`}>
                                 <Send className="mr-2 h-4 w-4 text-primary" /> Message
@@ -243,14 +235,7 @@ export default function SchoolDetailPage() {
                         </CardContent>
                     </Card>
                 </div>
-
-                {/* Timeline & Interactions Section */}
-                <div className="pt-4">
-                    <NotesSection schoolId={school.id} />
-                </div>
             </div>
-
-            <LogActivityModal school={school} open={isLogActivityModalOpen} onOpenChange={setIsLogActivityModalOpen} />
         </div>
     );
 }
