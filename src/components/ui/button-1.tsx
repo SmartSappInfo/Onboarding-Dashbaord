@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { ChevronDown, LucideIcon } from 'lucide-react';
-import { Slot as SlotPrimitive } from 'radix-ui';
+import { Slot } from '@radix-ui/react-slot';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
@@ -251,7 +251,7 @@ const buttonVariants = cva(
         mode: 'link',
         underlined: 'dashed',
         className:
-          'font-medium text-inherit [&_svg:not([role=img]):not([class*=text-])]:opacity-60 underline underline-offset-4 decoration-dashed decoration-1',
+          'font-medium text-inherit [&_svg]:opacity-60 underline underline-offset-4 decoration-dashed decoration-1',
       },
 
       {
@@ -280,7 +280,7 @@ const buttonVariants = cva(
         mode: 'link',
         underlined: 'dashed',
         className:
-          'font-medium text-foreground [&_svg:not([role=img]):not([class*=text-])]:opacity-60 underline underline-offset-4 decoration-dashed decoration-1',
+          'font-medium text-foreground [&_svg]:opacity-60 underline underline-offset-4 decoration-dashed decoration-1',
       },
 
       // Ghost
@@ -376,7 +376,7 @@ function Button({
     selected?: boolean;
     asChild?: boolean;
   }) {
-  const Comp = asChild ? SlotPrimitive.Slot : 'button';
+  const Comp = asChild ? Slot : 'button';
   return (
     <Comp
       data-slot="button"
