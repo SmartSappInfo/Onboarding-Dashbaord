@@ -125,7 +125,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
           try {
             // 1. Fetch the school by slug
             const schoolsCollection = collection(firestore, 'schools');
-            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug), limit(1));
+            const schoolQuery = query(schoolsCollection, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
             const schoolSnapshot = await getDocs(schoolQuery);
 
             if (schoolSnapshot.empty) {
@@ -154,26 +154,26 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             const allMeetings = allMeetingsSnapshot.docs
               .map(doc => ({ id: doc.id, ...doc.data() } as Meeting));
             
-            // Match by slug or ID for backward compatibility
+            // Match by slug or ID for backward compatibility with optional chaining
             const meetingsForType = allMeetings.filter(m => 
-                m.type.slug === typeSlug || 
-                (typeSlug === 'parent-engagement' && m.type.id === 'parent')
+                m.type?.slug === typeSlug || 
+                (typeSlug === 'parent-engagement' && m.type?.id === 'parent')
             );
 
             if (meetingsForType.length === 0) {
-                setError(`No ${meetingType?.name || 'meeting'} found for this school.`);
+                setError(`No ${meetingType?.name || 'meeting'} scheduled for this school.`);
                 setIsLoading(false);
                 return;
             }
             
-            // 4. Find the best meeting
+            // 4. Find the best meeting (Upcoming first, then most recent past)
             const now = new Date();
             const upcomingMeetings = meetingsForType
-                .filter(m => new Date(m.meetingTime) >= now)
+                .filter(m => m.meetingTime && new Date(m.meetingTime) >= now)
                 .sort((a,b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime());
             
             const pastMeetings = meetingsForType
-                .filter(m => new Date(m.meetingTime) < now)
+                .filter(m => m.meetingTime && new Date(m.meetingTime) < now)
                 .sort((a,b) => new Date(b.meetingTime).getTime() - new Date(a.meetingTime).getTime());
 
             const bestMeeting = upcomingMeetings[0] || pastMeetings[0];
@@ -185,7 +185,7 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
             }
 
           } catch (e: any) {
-            console.error(e);
+            console.error("SchoolMeetingLoader: Error fetching data", e);
             setError("Failed to load school or meeting data.");
           } finally {
             setIsLoading(false);
@@ -219,6 +219,6 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
       case 'training':
         return <TrainingLayout school={school} meeting={meeting} />;
       default:
-        return <div className="container py-20 text-center text-destructive">Invalid meeting type.</div>;
+        return <div className="container py-20 text-center text-destructive font-bold uppercase tracking-widest">Invalid meeting type.</div>;
     }
 }

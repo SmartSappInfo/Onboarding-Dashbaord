@@ -1,3 +1,4 @@
+
 import type { SVGProps } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -59,7 +60,7 @@ export const SmartSappIcon = ({ className, variant, ...props }: { className?: st
     }
     
     return (
-        <div className={cn("relative", className)} {...props}>
+        <div className={cn("relative h-full aspect-square", className)} {...props}>
             <Image src={logoUrl} alt="SmartSapp Icon" fill sizes="32px" className={cn(imageClassName)} />
         </div>
     )
@@ -69,7 +70,7 @@ const minexLogoUrl = "https://firebasestorage.googleapis.com/v0/b/studio-9220106
 
 export const MinexLogo = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className={cn("relative w-32", className)} {...props}>
+    <div className={cn("relative w-32 aspect-[3/1]", className)} {...props}>
         <Image 
             src={minexLogoUrl} 
             alt="Minex 360 Logo" 

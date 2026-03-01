@@ -1,9 +1,10 @@
+
 'use client';
 
 import Link from 'next/link';
 import { useRive } from '@rive-app/react-canvas';
 import { Button } from './ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Ghost } from 'lucide-react';
 
 export default function MeetingNotFound() {
   const { RiveComponent } = useRive({
@@ -12,17 +13,17 @@ export default function MeetingNotFound() {
   });
 
   return (
-    <div className="flex flex-col items-center justify-center text-center py-20">
-      <div className="w-64 h-64">
-        <RiveComponent />
+    <div className="flex flex-col items-center justify-center text-center py-20 px-4">
+      <div className="w-64 h-64 flex items-center justify-center">
+        {RiveComponent ? <RiveComponent /> : <Ghost className="h-20 w-20 text-muted-foreground/20 animate-pulse" />}
       </div>
-      <h1 className="mt-8 text-3xl font-bold tracking-tight">
+      <h1 className="mt-8 text-3xl font-black tracking-tighter sm:text-4xl">
         Sorry! We can't find your meeting!
       </h1>
-      <p className="mt-2 text-lg text-muted-foreground">
-        Check the link and try again.
+      <p className="mt-4 text-lg text-muted-foreground font-medium max-w-md mx-auto leading-relaxed">
+        The meeting link might have expired or is incorrect. Please check the URL and try again.
       </p>
-      <Button asChild className="mt-8">
+      <Button asChild size="lg" className="mt-10 rounded-xl font-bold shadow-lg">
         <Link href="/">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Go to Homepage

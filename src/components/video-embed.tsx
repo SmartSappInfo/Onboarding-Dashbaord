@@ -1,11 +1,13 @@
-function extractYouTubeID(url: string): string | null {
+
+function extractYouTubeID(url?: string): string | null {
+  if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
   const match = url.match(regExp);
   return match && match[2].length === 11 ? match[2] : null;
 }
 
 interface VideoEmbedProps {
-  url: string;
+  url?: string;
   className?: string;
 }
 
@@ -13,11 +15,15 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
   const videoId = extractYouTubeID(url);
 
   if (!videoId) {
-    return <p>Invalid YouTube URL provided.</p>;
+    return (
+        <div className={cn("aspect-video w-full rounded-xl bg-muted flex items-center justify-center text-center p-8", className)}>
+            <p className="text-muted-foreground font-medium italic">Video content unavailable.</p>
+        </div>
+    );
   }
 
   return (
-    <div className={`aspect-video w-full rounded-lg overflow-hidden shadow-2xl ${className}`}>
+    <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
       <iframe
         width="100%"
         height="100%"
@@ -32,3 +38,4 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
 };
 
 export default VideoEmbed;
+import { cn } from '@/lib/utils';
