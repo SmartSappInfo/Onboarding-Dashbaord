@@ -2,12 +2,24 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
 
 // --- SEED DATA ---
+
+const initialZones = [
+  'Kasoa Zone',
+  'Dansoman Zone',
+  'Tema Zone',
+  'Spintex/Lashibi/Teshie Zone',
+  'Airport / Legon Zone',
+  'North Legon/Adenta/Madina/Dodowa Zone',
+  'Pokuase Zone',
+  'Eastern / Ashanti / Brong Ahafo',
+  'External Zone (Other Regions)',
+];
 
 const mediaData: Omit<MediaAsset, 'id'>[] = [
   {
@@ -51,7 +63,7 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
   },
 ];
 
-const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules'>[] = [
+const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons'>[] = [
   { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
   { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
   { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
@@ -66,6 +78,7 @@ const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'cre
 
 const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
   {
+    internalName: 'Comprehensive Feedback Survey',
     title: 'Comprehensive Feedback Survey',
     description: 'Please provide your valuable feedback to help us improve our services. This survey includes examples of all available question and layout types.',
     status: 'published',
@@ -90,6 +103,7 @@ const surveyData: Omit<Survey, 'id' | 'createdAt' | 'updatedAt' | 'slug'>[] = [
     ],
   },
   {
+    internalName: 'Staff Onboarding Feedback',
     title: 'Staff Onboarding Feedback',
     description: 'We want to know how your first week went. Your feedback helps us improve the process for future team members.',
     status: 'published',
@@ -161,6 +175,17 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedZones(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'zones');
+  const batch = writeBatch(firestore);
+  const zonesCol = collection(firestore, 'zones');
+  initialZones.forEach(name => {
+    batch.set(doc(zonesCol), { name });
+  });
+  await batch.commit();
+  return initialZones.length;
+}
 
 export async function seedMessaging(firestore: Firestore): Promise<number> {
   const batch = writeBatch(firestore);
@@ -486,7 +511,12 @@ export async function seedMedia(firestore: Firestore): Promise<number> {
 export async function seedSchools(firestore: Firestore): Promise<number> {
     const schoolsCollection = collection(firestore, 'schools');
     const usersCollection = collection(firestore, 'users');
+    const zonesCollection = collection(firestore, 'zones');
     
+    // FETCH EXISTING TO ENRICH
+    const existingSchoolsSnap = await getDocs(schoolsCollection);
+    const existingSchools = existingSchoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
     await clearCollection(firestore, 'schools');
     const batch = writeBatch(firestore);
 
@@ -501,12 +531,30 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
     const modulesSnapshot = await getDocs(query(collection(firestore, 'modules'), orderBy('order')));
     const allModules = modulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Module));
 
-    baseSchoolData.forEach((schoolBase, index) => {
-        const docRef = doc(schoolsCollection);
-        const slug = schoolBase.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const zonesSnapshot = await getDocs(zonesCollection);
+    const allZones = zonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
+    const defaultZone = allZones.find(z => z.name.includes('External')) || (allZones.length > 0 ? allZones[0] : { id: 'ext', name: 'External Zone' });
 
-        const schoolModulesForSchool: Module[] = [];
-        if (allModules.length > 0) {
+    const dataToSeed = existingSchools.length > 0 ? existingSchools : baseSchoolData;
+
+    dataToSeed.forEach((schoolSource: any, index: number) => {
+        const docRef = doc(schoolsCollection);
+        const name = schoolSource.name || schoolSource.organization || 'Untitled School';
+        const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+        // MODERNIZATION: focalPersons Migration
+        let focalPersons: FocalPerson[] = schoolSource.focalPersons || [];
+        if (focalPersons.length === 0 && (schoolSource.contactPerson || schoolSource.email)) {
+            focalPersons.push({
+                name: schoolSource.contactPerson || 'Primary Contact',
+                email: schoolSource.email || '',
+                phone: schoolSource.phone || '',
+                type: 'Administrator'
+            });
+        }
+
+        const schoolModulesForSchool: Module[] = schoolSource.modules || [];
+        if (schoolModulesForSchool.length === 0 && allModules.length > 0) {
             const moduleCount = (index % 3) + 1;
             for (let i = 0; i < moduleCount; i++) {
                 const moduleIndex = (index + i * 2) % allModules.length;
@@ -517,27 +565,30 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
         }
         
         const school: Omit<School, 'id'> = {
-            ...schoolBase,
+            ...schoolSource,
+            name,
             slug,
-            logoUrl: `https://logo.clearbit.com/${slug}.com`,
-            heroImageUrl: `https://picsum.photos/seed/${slug}/1200/800`,
-            stage: stages.length > 0 ? stages[index % stages.length] : undefined,
-            assignedTo: authorizedUsers.length > 0 
+            logoUrl: schoolSource.logoUrl || `https://logo.clearbit.com/${slug}.com`,
+            heroImageUrl: schoolSource.heroImageUrl || `https://picsum.photos/seed/${slug}/1200/800`,
+            stage: schoolSource.stage || (stages.length > 0 ? stages[index % stages.length] : undefined),
+            assignedTo: schoolSource.assignedTo || (authorizedUsers.length > 0 
                 ? {
                     userId: authorizedUsers[index % authorizedUsers.length].id,
                     name: authorizedUsers[index % authorizedUsers.length].name,
                     email: authorizedUsers[index % authorizedUsers.length].email,
                   }
-                : { userId: null, name: null, email: null },
-            createdAt: subDays(new Date(), index * 3).toISOString(),
-            implementationDate: addDays(new Date(), (index + 1) * 7).toISOString(),
+                : { userId: null, name: null, email: null }),
+            createdAt: schoolSource.createdAt || subDays(new Date(), index * 3).toISOString(),
+            implementationDate: schoolSource.implementationDate || addDays(new Date(), (index + 1) * 7).toISOString(),
             modules: schoolModulesForSchool.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
+            zone: schoolSource.zone || (allZones.length > 0 ? allZones[index % allZones.length] : defaultZone),
+            focalPersons: focalPersons,
         };
         batch.set(docRef, school);
     });
     
     await batch.commit();
-    return baseSchoolData.length;
+    return dataToSeed.length;
 }
 
 export async function seedMeetings(firestore: Firestore): Promise<number> {
