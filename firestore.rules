@@ -77,9 +77,13 @@ service cloud.firestore {
     
     // --- User Management Rules ---
     match /users/{userId} {
-      allow list, write: if isAuthorized();
-      allow create: if isSignedIn() && request.auth.uid == userId;
-      allow get: (isSignedIn() && request.auth.uid == userId) || isAuthorized();
+      // Allow users to get and create their own document
+      allow get, create: if isSignedIn() && request.auth.uid == userId;
+      // Allow users to update their own document (necessary for dev seeder to set isAuthorized)
+      // or if the performer is an authorized admin
+      allow update: if (isSignedIn() && request.auth.uid == userId) || isAuthorized();
+      // Only authorized admins can list or delete users
+      allow list, delete: if isAuthorized();
     }
     
     // --- Survey Rules ---
