@@ -6,15 +6,14 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { Calendar as CalendarIcon, ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User } from 'lucide-react';
+import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -23,18 +22,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
-import { MediaSelect } from '../components/media-select';
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { ZoneSelect } from '../components/ZoneSelect';
 import { FocalPersonManager } from '../components/FocalPersonManager';
 import { logActivity } from '@/lib/activity-logger';
+import { type UserProfile } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -53,7 +48,7 @@ const formSchema = z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.'),
     phone: z.string().min(10, 'Invalid phone.'),
-    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal']),
+    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']),
   })).min(1, 'At least one focal person is required.'),
   modules: z.array(z.object({
     id: z.string(),
@@ -64,6 +59,7 @@ const formSchema = z.object({
   implementationDate: z.date().optional(),
   referee: z.string().optional(),
   includeDroneFootage: z.boolean().default(false),
+  assignedToId: z.string().min(1, 'Please select an account manager.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -73,6 +69,12 @@ export default function NewSchoolPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+  }, [firestore]);
+  const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -87,6 +89,7 @@ export default function NewSchoolPage() {
       modules: [],
       referee: '',
       includeDroneFootage: false,
+      assignedToId: user?.uid || '',
     },
   });
 
@@ -99,15 +102,29 @@ export default function NewSchoolPage() {
     }
   }, [watchName, methods]);
 
+  React.useEffect(() => {
+      if (user && !methods.getValues('assignedToId')) {
+          methods.setValue('assignedToId', user.uid);
+      }
+  }, [user, methods]);
+
   const onSubmit = async (data: FormData) => {
-    if (!firestore || !user) return;
+    if (!firestore || !user || !users) return;
+
+    const selectedManager = users.find(u => u.id === data.assignedToId);
+    const assignedTo = selectedManager 
+        ? { userId: selectedManager.id, name: selectedManager.name, email: selectedManager.email }
+        : { userId: null, name: 'Unassigned', email: null };
+
     const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    
+    const { assignedToId, ...rest } = data;
     const schoolData = {
-      ...data,
+      ...rest,
       slug,
+      assignedTo,
       implementationDate: data.implementationDate?.toISOString() || null,
       stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
-      assignedTo: { userId: user.uid, name: user.displayName || 'Admin', email: user.email },
       createdAt: new Date().toISOString(),
     };
 
@@ -166,6 +183,39 @@ export default function NewSchoolPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl"><UserCheck className="h-5 w-5 text-primary" /></div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Account Assignment</CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <FormField control={methods.control} name="assignedToId" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assign Account Manager</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                            <SelectValue placeholder="Select manager..." />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                                        {isUsersLoading ? (
+                                            <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                                        ) : users?.map(u => (
+                                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                    </CardContent>
+                </Card>
+
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Contact Directory</CardTitle></div></CardHeader><CardContent className="p-6"><FocalPersonManager /></CardContent></Card>
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><CheckCircle2 className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Functional Selection</CardTitle></div></CardHeader><CardContent className="p-6"><FormField control={methods.control} name="modules" render={({ field }) => (<FormItem><FormControl><ModuleSelect {...field} /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
               </div>

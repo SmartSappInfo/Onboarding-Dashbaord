@@ -34,7 +34,7 @@
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
-        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal"] }
+        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal", "School Owner"] }
       }
     },
     "School": {

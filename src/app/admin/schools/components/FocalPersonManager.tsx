@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,7 +11,7 @@ import { Trash2, Plus, User, Mail, Phone, ShieldCheck } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
-const FOCAL_PERSON_TYPES = ['Champion', 'Accountant', 'Administrator', 'Principal'] as const;
+const FOCAL_PERSON_TYPES = ['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner'] as const;
 
 export function FocalPersonManager() {
   const { control, register, formState: { errors } } = useFormContext();

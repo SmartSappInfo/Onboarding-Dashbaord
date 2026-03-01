@@ -7,7 +7,7 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
-export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal';
+export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner';
 
 export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 

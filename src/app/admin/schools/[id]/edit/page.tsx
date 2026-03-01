@@ -5,13 +5,12 @@ import * as React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, ArrowLeft, Loader2, Building, MapPin, ImageIcon, User, Plus, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Building, MapPin, User, Plus, ShieldCheck, UserCheck } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 
-import type { School } from '@/lib/types';
+import type { School, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -23,15 +22,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useCollection } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MediaSelect } from '../../components/media-select';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
 import { FocalPersonManager } from '../../components/FocalPersonManager';
@@ -54,7 +48,7 @@ const formSchema = z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.'),
     phone: z.string().min(10, 'Invalid phone.'),
-    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal']),
+    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']),
   })).min(1, 'At least one focal person is required.'),
   modules: z.array(z.object({
     id: z.string(),
@@ -65,6 +59,7 @@ const formSchema = z.object({
   implementationDate: z.date().optional().nullable(),
   referee: z.string().optional(),
   includeDroneFootage: z.boolean().default(false),
+  assignedToId: z.string().min(1, 'Please select an account manager.'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -80,14 +75,20 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
     return doc(firestore, 'schools', schoolId);
   }, [firestore, schoolId]);
 
-  const { data: school, isLoading } = useDoc<School>(schoolDocRef);
+  const { data: school, isLoading: isSchoolLoading } = useDoc<School>(schoolDocRef);
+
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+  }, [firestore]);
+  const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
 
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '', initials: '', slogan: '', status: 'Active',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
-      referee: '', includeDroneFootage: false,
+      referee: '', includeDroneFootage: false, assignedToId: '',
     }
   });
 
@@ -103,18 +104,31 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
         zone: school.zone || undefined,
         location: school.location || '',
         nominalRoll: school.nominalRoll || 0,
-        focalPersons: school.focalPersons || [],
+        focalPersons: (school.focalPersons as any) || [],
         modules: school.modules || [],
         implementationDate: school.implementationDate ? new Date(school.implementationDate) : null,
         referee: school.referee || '',
         includeDroneFootage: school.includeDroneFootage || false,
+        assignedToId: school.assignedTo?.userId || 'unassigned',
       });
     }
   }, [school, methods]);
 
   const onSubmit = (data: FormData) => {
-    if (!firestore || !user) return;
-    const schoolData = { ...data, implementationDate: data.implementationDate?.toISOString() || null };
+    if (!firestore || !user || !users) return;
+
+    const selectedManager = users.find(u => u.id === data.assignedToId);
+    const assignedTo = selectedManager 
+        ? { userId: selectedManager.id, name: selectedManager.name, email: selectedManager.email }
+        : { userId: null, name: 'Unassigned', email: null };
+
+    const { assignedToId, ...rest } = data;
+    const schoolData = { 
+        ...rest, 
+        assignedTo, 
+        implementationDate: data.implementationDate?.toISOString() || null 
+    };
+
     const docRef = doc(firestore, 'schools', schoolId);
     updateDoc(docRef, schoolData).then(() => {
         toast({ title: 'Profile Updated', description: `Changes to ${data.name} saved.` });
@@ -124,6 +138,8 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({ path: docRef.path, operation: 'update', requestResourceData: schoolData }));
     });
   };
+
+  const isLoading = isSchoolLoading || isUsersLoading;
 
   if (isLoading) return <div className="space-y-8"><Skeleton className="h-64 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
 
@@ -162,6 +178,37 @@ function EditSchoolForm({ schoolId }: { schoolId: string }) {
                 </div>
               </CardContent>
             </Card>
+            
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b pb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl"><UserCheck className="h-5 w-5 text-primary" /></div>
+                        <CardTitle className="text-lg font-black uppercase tracking-tight">Account Assignment</CardTitle>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                    <FormField control={methods.control} name="assignedToId" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Account Manager</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                        <SelectValue placeholder="Select manager..." />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                                    {users?.map(u => (
+                                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </CardContent>
+            </Card>
+
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Staff focal persons</CardTitle></div></CardHeader><CardContent className="p-6"><FocalPersonManager /></CardContent></Card>
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Plus className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Requested Modules</CardTitle></div></CardHeader><CardContent className="p-6"><FormField control={methods.control} name="modules" render={({ field }) => (<FormItem><FormControl><ModuleSelect {...field} /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
           </div>
