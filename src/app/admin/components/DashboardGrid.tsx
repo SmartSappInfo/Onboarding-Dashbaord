@@ -23,6 +23,7 @@ import {
     MonthlySchoolsChart,
     ModuleRadarChart,
     RecentActivity,
+    ZoneDistribution,
 } from "@/components/dashboard";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout } from '@/lib/types';
@@ -38,6 +39,7 @@ const componentMap: Record<string, React.FC<any>> = {
   monthlySchoolsChart: MonthlySchoolsChart,
   moduleRadarChart: ModuleRadarChart,
   recentActivity: RecentActivity,
+  zoneDistribution: ZoneDistribution,
 };
 
 const componentPropsMap = (data: any) => ({
@@ -48,6 +50,7 @@ const componentPropsMap = (data: any) => ({
   monthlySchoolsChart: { data: data.monthlySchools },
   moduleRadarChart: { data: data.moduleImplementations },
   recentActivity: { activities: data.activities, users: data.allUsers, schools: data.allSchools },
+  zoneDistribution: { data: data.zoneDistribution },
 });
 
 const componentGridConfig: Record<string, string> = {
@@ -58,6 +61,7 @@ const componentGridConfig: Record<string, string> = {
   latestSurveys: 'lg:col-span-2',
   monthlySchoolsChart: 'md:col-span-4',
   recentActivity: 'md:col-span-4 lg:col-span-2 lg:row-span-2',
+  zoneDistribution: 'lg:col-span-2',
 };
 
 const DEFAULT_LAYOUT = [
@@ -65,6 +69,7 @@ const DEFAULT_LAYOUT = [
     'pipelinePieChart',
     'upcomingMeetings',
     'recentActivity',
+    'zoneDistribution',
     'moduleRadarChart',
     'latestSurveys',
     'monthlySchoolsChart',
@@ -87,9 +92,7 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
     useEffect(() => {
         if (!isLayoutLoading) {
             if (layoutData?.componentIds) {
-                // Filter out any IDs that are no longer valid components
                 const validIds = layoutData.componentIds.filter(id => DEFAULT_LAYOUT.includes(id));
-                // Add any new components that aren't in the saved layout
                 const newIds = DEFAULT_LAYOUT.filter(id => !validIds.includes(id));
                 setOrderedComponents([...validIds, ...newIds]);
             } else {
@@ -113,7 +116,6 @@ export default function DashboardGrid({ initialData }: { initialData: any }) {
                 const newIndex = items.indexOf(over.id as string);
                 const newOrder = arrayMove(items, oldIndex, newIndex);
                 
-                // Persist to Firestore
                 if (user && firestore) {
                     setDoc(doc(firestore, 'dashboardLayouts', user.uid), { componentIds: newOrder });
                 }

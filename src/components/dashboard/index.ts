@@ -8,3 +8,4 @@ export * from './UserAssignments';
 export * from './MonthlySchoolsChart';
 export * from './ModuleRadarChart';
 export * from './RecentActivity';
+export * from './ZoneDistribution';

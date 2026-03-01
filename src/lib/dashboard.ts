@@ -2,7 +2,7 @@
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity } from '@/lib/types';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone } from '@/lib/types';
 import { format, isAfter, startOfToday } from 'date-fns';
 
 function getDb() {
@@ -23,6 +23,7 @@ export async function getDashboardData() {
     usersSnapshot,
     modulesSnapshot,
     activitiesSnapshot,
+    zonesSnapshot,
   ] = await Promise.all([
     getDocs(collection(db, 'schools')),
     getDocs(collection(db, 'meetings')),
@@ -31,16 +32,14 @@ export async function getDashboardData() {
     getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
     getDocs(query(collection(db, 'modules'))),
     getDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
+    getDocs(collection(db, 'zones')),
   ].map(p => p.catch(e => {
     console.error("Dashboard data fetching error:", e);
-    // In case of an error with one fetch, return it to be handled below
     return e;
   }))); 
 
-  // Gracefully handle cases where one of the fetches might fail
-  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error) {
+  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error || zonesSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
-      // Return a default, empty state for the dashboard
       return {
           metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0, totalStudents: 0 },
           latestSurveys: [],
@@ -52,11 +51,12 @@ export async function getDashboardData() {
           activities: [],
           allUsers: [],
           allSchools: [],
+          zoneDistribution: [],
       };
   }
 
-
   const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
+  const zones = zonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
   const now = startOfToday();
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
@@ -135,7 +135,6 @@ export async function getDashboardData() {
       };
   });
   
-  // Account for unassigned schools
   const unassignedSchools = schools.filter(s => !s.assignedTo?.userId);
   const totalUnassigned = unassignedSchools.length;
   if (totalUnassigned > 0) {
@@ -152,14 +151,11 @@ export async function getDashboardData() {
     if (school.implementationDate) {
         try {
             const date = new Date(school.implementationDate);
-            // Check if the date is valid
             if (!isNaN(date.getTime())) {
                 const month = format(date, 'MMM');
                 acc[month] = (acc[month] || 0) + 1;
             }
-        } catch (e) {
-            // Ignore schools with invalid implementationDate
-        }
+        } catch (e) {}
     }
     return acc;
   }, {} as Record<string, number>);
@@ -185,6 +181,16 @@ export async function getDashboardData() {
   const moduleImplementationData = Object.values(moduleCounts);
 
   const activities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+
+  // Zone Distribution Calculation
+  const zoneDistribution = zones.map(zone => {
+    const schoolsInZone = schools.filter(s => s.zone?.id === zone.id);
+    return {
+      name: zone.name,
+      schoolCount: schoolsInZone.length,
+      studentCount: schoolsInZone.reduce((sum, s) => sum + (s.nominalRoll || 0), 0)
+    };
+  });
   
   return {
     metrics,
@@ -197,5 +203,6 @@ export async function getDashboardData() {
     activities,
     allUsers: users,
     allSchools: schools,
+    zoneDistribution,
   };
 }

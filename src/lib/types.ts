@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -6,6 +7,19 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
+export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal';
+
+export interface FocalPerson {
+  name: string;
+  phone: string;
+  email: string;
+  type: FocalPersonType;
+}
+
+export interface Zone {
+  id: string;
+  name: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -37,11 +51,11 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  contactPerson?: string;
-  email?: string;
-  phone?: string;
-  additionalEmails?: string[];
-  additionalPhones?: string[];
+  contactPerson?: string; // Kept for legacy/migration support
+  email?: string; // Kept for legacy/migration support
+  phone?: string; // Kept for legacy/migration support
+  zone?: Zone;
+  focalPersons?: FocalPerson[];
   location?: string;
   nominalRoll?: number;
   modules?: {
@@ -50,7 +64,6 @@ export interface School {
     abbreviation: string;
     color: string;
   }[];
-  moduleRequestNotes?: string;
   implementationDate?: string; // ISO string
   referee?: string;
   includeDroneFootage?: boolean;
@@ -124,16 +137,16 @@ export interface SurveyQuestion {
 export interface SurveyLayoutBlock {
   id: string;
   type: 'heading' | 'description' | 'divider' | 'image' | 'video' | 'audio' | 'document' | 'embed' | 'section';
-  title?: string; // For heading and section
-  description?: string; // For section
-  stepperTitle?: string; // For section progress tracking
-  text?: string; // For description
-  url?: string; // For media types
-  html?: string; // For embed
+  title?: string;
+  description?: string;
+  stepperTitle?: string;
+  text?: string;
+  url?: string;
+  html?: string;
   hidden?: boolean;
   renderAsPage?: boolean;
-  validateBeforeNext?: boolean; // New: determines if page-level validation is active
-  variant?: 'h1' | 'h2' | 'h3'; // For headings
+  validateBeforeNext?: boolean;
+  variant?: 'h1' | 'h2' | 'h3';
   style?: {
     textAlign?: 'left' | 'center' | 'right';
   };
@@ -141,8 +154,8 @@ export interface SurveyLayoutBlock {
 
 export interface SurveyLogicAction {
   type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
-  targetElementId?: string; // For 'jump'
-  targetElementIds?: string[]; // For 'require', 'show', 'hide'
+  targetElementId?: string;
+  targetElementIds?: string[];
 }
 
 export interface SurveyLogicBlock {
@@ -162,11 +175,11 @@ export interface SurveyResultBlock {
     id: string;
     type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card';
     title?: string;
-    content?: string; // Rich text / HTML
+    content?: string;
     url?: string;
     link?: string;
     openInNewTab?: boolean;
-    variant?: 'h1' | 'h2' | 'h3'; // Added for headings
+    variant?: 'h1' | 'h2' | 'h3';
     style?: {
         textAlign?: 'left' | 'center' | 'right';
         variant?: 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost' | 'link';
@@ -207,8 +220,8 @@ export interface Survey {
   patternColor?: string;
   status: 'draft' | 'published' | 'archived';
   elements: SurveyElement[];
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  createdAt: string;
+  updatedAt: string;
   thankYouTitle?: string;
   thankYouDescription?: string;
   scoringEnabled?: boolean;
@@ -217,10 +230,8 @@ export interface Survey {
   startButtonText?: string;
   showCoverPage?: boolean;
   showSurveyTitles?: boolean;
-  webhookUrl?: string; // Legacy
-  webhookId?: string; // Reference to a reusable webhook
+  webhookId?: string;
   webhookEnabled?: boolean;
-  // Messaging Automations
   automationMessagingEnabled?: boolean;
   automationTemplateId?: string;
   automationSenderProfileId?: string;
@@ -230,18 +241,18 @@ export interface Survey {
 export interface SurveyResponse {
   id:string;
   surveyId: string;
-  submittedAt: string; // ISO string
+  submittedAt: string;
   score?: number;
   answers: {
     questionId: string;
-    value: any; // Can be string, string[], number, or object for checkboxes with 'other'
+    value: any;
   }[];
 }
 
 export interface SurveySummary {
   id: string;
   summary: string;
-  createdAt: string; // ISO string
+  createdAt: string;
   prompt?: string;
 }
     
@@ -266,12 +277,12 @@ export interface Module {
 export interface Activity {
   id: string;
   schoolId: string;
-  schoolName?: string; // Denormalized for timeline performance
-  schoolSlug?: string; // Denormalized for timeline linking
+  schoolName?: string;
+  schoolSlug?: string;
   userId?: string | null;
   type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed';
   source: 'manual' | 'user_action' | 'system' | 'public';
-  timestamp: string; // ISO string
+  timestamp: string;
   description: string;
   metadata?: {
     from?: string;
@@ -303,16 +314,16 @@ export interface PDFFormField {
     
 export interface PDFForm {
     id: string;
-    name: string; // Internal name
-    publicTitle: string; // New: Publicly visible title
+    name: string;
+    publicTitle: string;
     slug: string;
     originalFileName: string;
     storagePath: string;
     downloadUrl: string;
     status: 'draft' | 'published' | 'archived';
     createdBy: string;
-    createdAt: string; // ISO String
-    updatedAt: string; // ISO String
+    createdAt: string;
+    updatedAt: string;
     fields: PDFFormField[];
     namingFieldId?: string | null;
     displayFieldIds?: string[];
@@ -320,17 +331,14 @@ export interface PDFForm {
     passwordProtected?: boolean;
     resultsShared?: boolean;
     resultsPassword?: string;
-    // Branding & Appearance
     schoolId?: string | null;
     schoolName?: string | null;
     logoUrl?: string;
     backgroundColor?: string;
     backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
     patternColor?: string;
-    // Integrations
     webhookId?: string;
     webhookEnabled?: boolean;
-    // Messaging Automations
     confirmationMessagingEnabled?: boolean;
     confirmationTemplateId?: string;
     confirmationSenderProfileId?: string;
@@ -339,17 +347,15 @@ export interface PDFForm {
 export interface Submission {
   id: string;
   pdfId: string;
-  submittedAt: string; // ISO String
+  submittedAt: string;
   formData: { [key: string]: any };
 }
-
-// --- MESSAGING SYSTEM TYPES ---
 
 export interface SenderProfile {
   id: string;
   name: string;
   channel: 'sms' | 'email';
-  identifier: string; // Sender ID for SMS or From Email Address
+  identifier: string;
   isDefault: boolean;
   isActive: boolean;
   createdAt: string;
@@ -359,7 +365,7 @@ export interface SenderProfile {
 export interface MessageStyle {
   id: string;
   name: string;
-  htmlWrapper: string; // Must include {{content}}
+  htmlWrapper: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -369,10 +375,10 @@ export interface MessageTemplate {
   name: string;
   category: 'forms' | 'surveys' | 'meetings' | 'general';
   channel: 'sms' | 'email';
-  subject?: string; // Email only
-  body: string; // Handles {{var}} syntax
-  styleId?: string; // Link to MessageStyle (Email only)
-  variables: string[]; // List of required variable names
+  subject?: string;
+  body: string;
+  styleId?: string;
+  variables: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -392,7 +398,7 @@ export interface MessageLog {
   error?: string;
   sentAt: string;
   variables: Record<string, any>;
-  schoolId?: string; // Link to a school for interaction tracking
+  schoolId?: string;
 }
 
 export interface MessageJob {

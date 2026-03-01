@@ -16,6 +16,27 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "Zone": {
+      "title": "Zone",
+      "description": "Geographic or organizational area for grouping schools.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "FocalPerson": {
+      "title": "Focal Person",
+      "description": "Contact person within a school with a specific role.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal"] }
+      }
+    },
     "School": {
       "title": "School",
       "description": "Details about an onboarding school.",
@@ -26,9 +47,8 @@
         "slug": { "type": "string" },
         "location": { "type": "string" },
         "nominalRoll": { "type": "number" },
-        "contactPerson": { "type": "string" },
-        "email": { "type": "string" },
-        "phone": { "type": "string" },
+        "zone": { "$ref": "#/entities/Zone" },
+        "focalPersons": { "type": "array", "items": { "$ref": "#/entities/FocalPerson" } },
         "stage": { "type": "object" },
         "assignedTo": { "type": "object" },
         "modules": { "type": "array" },
@@ -95,78 +115,6 @@
         "description": { "type": "string" },
         "metadata": { "type": "object" }
       }
-    },
-    "SenderProfile": {
-      "title": "Sender Profile",
-      "description": "Configured identity for sending SMS or Emails.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "channel": { "type": "string", "enum": ["sms", "email"] },
-        "identifier": { "type": "string" },
-        "isDefault": { "type": "boolean" },
-        "isActive": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MessageStyle": {
-      "title": "Message Style",
-      "description": "Visual HTML wrappers for branded emails.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "htmlWrapper": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MessageTemplate": {
-      "title": "Message Template",
-      "description": "Dynamic content definitions for communications.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "category": { "type": "string", "enum": ["forms", "surveys", "meetings", "general"] },
-        "channel": { "type": "string", "enum": ["sms", "email"] },
-        "subject": { "type": "string" },
-        "body": { "type": "string" },
-        "styleId": { "type": "string" },
-        "variables": { "type": "array", "items": { "type": "string" } },
-        "isActive": { "type": "boolean" },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MessageLog": {
-      "title": "Message Log",
-      "description": "Historical record of sent messages for audit and debugging.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "templateId": { "type": "string" },
-        "templateName": { "type": "string" },
-        "senderProfileId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "channel": { "type": "string", "enum": ["sms", "email"] },
-        "recipient": { "type": "string" },
-        "status": { "type": "string", "enum": ["sent", "failed"] },
-        "sentAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MessageJob": {
-      "title": "Message Job",
-      "description": "Batch operation tracking for bulk sends.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "status": { "type": "string", "enum": ["queued", "processing", "completed", "failed"] },
-        "totalRecipients": { "type": "number" },
-        "processed": { "type": "number" }
-      }
     }
   },
   "auth": {
@@ -177,6 +125,10 @@
       "schema": "#/entities/UserProfile",
       "description": "User profiles managed by admins."
     },
+    "/zones/{zoneId}": {
+      "schema": "#/entities/Zone",
+      "description": "Organizational geographic zones."
+    },
     "/schools/{schoolId}": {
       "schema": "#/entities/School",
       "description": "Schools in the onboarding pipeline."
@@ -185,69 +137,29 @@
       "schema": "#/entities/Meeting",
       "description": "Meeting records."
     },
-    "/meetings/{meetingId}/attendees/{attendeeId}": {
-      "schema": "object",
-      "description": "Meeting attendance logs."
-    },
     "/surveys/{surveyId}": {
       "schema": "#/entities/Survey",
       "description": "Survey definitions."
     },
-    "/surveys/{surveyId}/responses/{responseId}": {
-      "schema": "object",
-      "description": "Survey responses."
-    },
-    "/surveys/{surveyId}/summaries/{summaryId}": {
-      "schema": "object",
-      "description": "AI generated survey summaries."
-    },
     "/pdfs/{pdfId}": {
       "schema": "#/entities/PDFForm",
       "description": "Doc signing templates."
-    },
-    "/pdfs/{pdfId}/submissions/{submissionId}": {
-      "schema": "object",
-      "description": "Signed document submissions."
     },
     "/activities/{activityId}": {
       "schema": "#/entities/Activity",
       "description": "Audit logs and interaction notes."
     },
     "/sender_profiles/{profileId}": {
-      "schema": "#/entities/SenderProfile",
+      "schema": "object",
       "description": "Authorized sender identities."
     },
     "/message_styles/{styleId}": {
-      "schema": "#/entities/MessageStyle",
+      "schema": "object",
       "description": "Branded HTML email wrappers."
     },
     "/message_templates/{templateId}": {
-      "schema": "#/entities/MessageTemplate",
+      "schema": "object",
       "description": "Reusable message content definitions."
-    },
-    "/message_logs/{logId}": {
-      "schema": "#/entities/MessageLog",
-      "description": "Stateless logs of all messaging activity."
-    },
-    "/message_jobs/{jobId}": {
-      "schema": "#/entities/MessageJob",
-      "description": "Registry for bulk messaging operations."
-    },
-    "/onboardingStages/{stageId}": {
-      "schema": "object",
-      "description": "Configuration for pipeline stages."
-    },
-    "/modules/{moduleId}": {
-      "schema": "object",
-      "description": "Configuration for SmartSapp modules."
-    },
-    "/dashboardLayouts/{userId}": {
-      "schema": "object",
-      "description": "User specific dashboard widget ordering."
-    },
-    "/webhooks/{webhookId}": {
-      "schema": "object",
-      "description": "Library of reusable external automation endpoints."
     }
   }
 }
