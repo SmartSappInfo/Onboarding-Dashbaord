@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -29,9 +30,30 @@ import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import Image from 'next/image';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
-import ActivityTimeline from '../../components/ActivityTimeline';
-import LogActivityModal from '../components/LogActivityModal';
+
+// Lazy load heavy components
+const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
+    loading: () => (
+        <div className="space-y-6 pt-4">
+            <Skeleton className="h-4 w-32 mb-8" />
+            <div className="space-y-8">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                        <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+                        <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-1/4" />
+                            <Skeleton className="h-12 w-full" />
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    ),
+});
+
+const LogActivityModal = dynamic(() => import('../components/LogActivityModal'), {
+    ssr: false
+});
 
 export default function SchoolDetailPage() {
     const params = useParams();
