@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -50,6 +49,8 @@ const getStatusBadgeVariant = (status: School['status']) => {
     }
 }
 
+const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+
 export default function SchoolDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -64,7 +65,7 @@ export default function SchoolDetailPage() {
 
     const { data: school, isLoading } = useDoc<School>(schoolDocRef);
 
-    if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2rem]"/><Skeleton className="h-96 w-full rounded-[2rem]"/></div>;
+    if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
     if (!school) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/schools')}>Back to List</Button></div>;
 
     const DetailItem = ({ icon: Icon, label, value, href, children }: { icon: any, label: string, value?: any, href?: string, children?: any }) => (
