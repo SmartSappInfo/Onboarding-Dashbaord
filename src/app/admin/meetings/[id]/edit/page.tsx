@@ -1,8 +1,7 @@
-
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
@@ -10,15 +9,12 @@ import Link from 'next/link';
 import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
     ArrowLeft, 
-    Calendar, 
-    Link as LinkIcon, 
     Loader2, 
     Save, 
     Settings2, 
     Globe, 
     Clock, 
     Building, 
-    Video, 
     FileText 
 } from 'lucide-react';
 
@@ -43,7 +39,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
-import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -96,8 +91,7 @@ export default function EditMeetingPage() {
     },
   });
 
-  const { watch, setValue } = form;
-  const watchedType = watch('type');
+  const watchedType = form.watch('type');
 
   React.useEffect(() => {
     if (meeting && schools && !form.formState.isDirty) {
@@ -228,7 +222,7 @@ export default function EditMeetingPage() {
                                 const school = schools?.find((s) => s.id === schoolId);
                                 field.onChange(school);
                                 if (school && !form.getValues('schoolSlug')) {
-                                    setValue('schoolSlug', school.slug, { shouldValidate: true });
+                                    form.setValue('schoolSlug', school.slug, { shouldValidate: true });
                                 }
                             }}
                             value={field.value?.id}
@@ -428,12 +422,8 @@ export default function EditMeetingPage() {
                 </Button>
             </div>
           </form>
-        </RefinedForm>
+        </Form>
       </div>
     </div>
   )
-}
-
-function RefinedForm({ children, ...props }: { children: React.ReactNode } & any) {
-    return <Form {...props}>{children}</Form>
 }
