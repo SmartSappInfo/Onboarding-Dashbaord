@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import * as z from 'zod';
 import { ArrowLeft, Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, orderBy } from 'firebase/firestore';
 
 import type { School, UserProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -80,9 +81,10 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
   const { data: school, isLoading: isSchoolLoading } = useDoc<School>(schoolDocRef);
 
+  // Fetch all authorized users to ensure the selection list is comprehensive
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'users'), where('isAuthorized', '==', true));
+    return query(collection(firestore, 'users'), orderBy('name', 'asc'));
   }, [firestore]);
   const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
 
