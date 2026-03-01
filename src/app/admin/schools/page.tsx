@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -9,7 +8,7 @@ import type { School, OnboardingStage, Module, Zone, SchoolStatus } from '@/lib/
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, Phone, MessageSquare, UserPlus, Workflow, ArrowUpDown, Send, Eye, ShieldCheck, Activity } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, ShieldCheck } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +36,6 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -45,7 +43,6 @@ import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { Separator } from '@/components/ui/separator';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -73,19 +70,16 @@ export default function SchoolsPage() {
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
   const [stageFilter, setStageFilter] = useState('all');
-  const [moduleFilter, setModuleFilter] = useState('all');
   const [zoneFilter, setZoneFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortConfig, setSortConfig] = useState<{ key: keyof School | 'assignedTo.name' | 'stage.name' | 'zone.name'; direction: 'asc' | 'desc' } | null>({ key: 'createdAt', direction: 'desc' });
 
   const schoolsCol = useMemoFirebase(() => firestore ? collection(firestore, 'schools') : null, [firestore]);
   const stagesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'onboardingStages'), orderBy('order')) : null, [firestore]);
-  const modulesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules'), orderBy('order')) : null, [firestore]);
   const zonesCol = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
   
   const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
   const { data: stages } = useCollection<OnboardingStage>(stagesCol);
-  const { data: modules } = useCollection<Module>(modulesCol);
   const { data: zones } = useCollection<Zone>(zonesCol);
 
   const isLoading = isLoadingSchools || isLoadingFilter;
@@ -96,11 +90,10 @@ export default function SchoolsPage() {
     if (assignedUserId) temp = assignedUserId === 'unassigned' ? temp.filter(s => !s.assignedTo?.userId) : temp.filter(s => s.assignedTo?.userId === assignedUserId);
     if (searchTerm) temp = temp.filter(s => s.name.toLowerCase().includes(searchTerm.toLowerCase()));
     if (stageFilter !== 'all') temp = temp.filter(s => s.stage?.id === stageFilter);
-    if (moduleFilter !== 'all') temp = temp.filter(s => s.modules?.some(m => m.id === moduleFilter));
     if (zoneFilter !== 'all') temp = temp.filter(s => s.zone?.id === zoneFilter);
     if (statusFilter !== 'all') temp = temp.filter(s => s.status === statusFilter);
     return temp;
-  }, [schools, assignedUserId, searchTerm, stageFilter, moduleFilter, zoneFilter, statusFilter]);
+  }, [schools, assignedUserId, searchTerm, stageFilter, zoneFilter, statusFilter]);
   
   const sortedSchools = useMemo(() => {
     let sortable = [...filteredSchools];
@@ -203,7 +196,7 @@ export default function SchoolsPage() {
                 ))
               ) : sortedSchools.length > 0 ? (
                 sortedSchools.map((school) => (
-                  <TableRow key={school.id} className="group hover:bg-muted/30 transition-colors">
+                  <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
                     <TableCell className="pl-6">
                       <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
                         <AvatarImage src={school.logoUrl} alt={school.name} />
@@ -224,11 +217,29 @@ export default function SchoolsPage() {
                       {school.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setChangingStageSchool(school)}><Workflow className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Change Stage</TooltipContent></Tooltip>
-                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAssigningSchool(school)}><UserPlus className="h-4 w-4" /></Button></TooltipTrigger><TooltipContent>Assign User</TooltipContent></Tooltip>
+                      <div className="flex items-center justify-end gap-1 transition-opacity">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageSchool(school)}>
+                                    <Workflow className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Change Stage</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningSchool(school)}>
+                                    <UserPlus className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Assign User</TooltipContent>
+                        </Tooltip>
                         <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" className="h-8 w-8 p-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl w-48">
                             <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground px-3">Management</DropdownMenuLabel>
                             <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
