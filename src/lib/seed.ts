@@ -1,7 +1,7 @@
 
 'use client';
 
-import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
@@ -172,7 +172,6 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
     return dataToSeed.length;
 }
 
-// ... rest of seed logic ...
 async function clearCollection(firestore: Firestore, collectionPath: string) {
   const collectionRef = collection(firestore, collectionPath);
   const querySnapshot = await getDocs(collectionRef);
@@ -292,6 +291,155 @@ export async function seedModules(firestore: Firestore): Promise<number> {
   });
   await batch.commit();
   return defaultModules.length;
+}
+
+export async function seedActivities(firestore: Firestore): Promise<number> {
+  // 1. Fetch existing activities to preserve them
+  const activitiesSnapshot = await getDocs(collection(firestore, 'activities'));
+  const existingActivities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+
+  // 2. Fetch schools for enrichment (lookup map)
+  const schoolsSnapshot = await getDocs(collection(firestore, 'schools'));
+  const schoolsMap = new Map(schoolsSnapshot.docs.map(doc => {
+    const data = doc.data();
+    return [doc.id, { name: data.name, slug: data.slug }];
+  }));
+
+  // 3. Fetch authorized users for context
+  const usersSnapshot = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true)));
+  const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+
+  // 4. Clear existing collection
+  await clearCollection(firestore, 'activities');
+
+  // 5. Enrich existing data with denormalized fields
+  const enrichedExisting = existingActivities.map(activity => {
+    const schoolData = activity.schoolId ? schoolsMap.get(activity.schoolId) : null;
+    return {
+      ...activity,
+      schoolName: schoolData?.name || activity.schoolName,
+      schoolSlug: schoolData?.slug || activity.schoolSlug,
+    };
+  });
+
+  // 6. Generate fresh dummy activities if needed
+  const dummyActivities: Omit<Activity, 'id'>[] = [];
+  if (schoolsSnapshot.docs.length > 0) {
+      const schools = schoolsSnapshot.docs.map(d => ({id: d.id, ...d.data()} as School));
+      schools.forEach((school, i) => {
+          dummyActivities.push({
+              schoolId: school.id,
+              schoolName: school.name,
+              schoolSlug: school.slug,
+              userId: users.length > 0 ? users[i % users.length].id : null,
+              type: 'note',
+              source: 'manual',
+              timestamp: subHours(new Date(), i * 2).toISOString(),
+              description: `added a follow-up note for ${school.name}`,
+              metadata: { content: 'School is interested in drone footage for the primary campus.' }
+          });
+      });
+  }
+
+  // 7. Write back in chunks (max 500 per batch)
+  const allActivities = [...enrichedExisting, ...dummyActivities];
+  const chunkSize = 450;
+  for (let i = 0; i < allActivities.length; i += chunkSize) {
+      const chunk = allActivities.slice(i, i + chunkSize);
+      const batch = writeBatch(firestore);
+      chunk.forEach(act => {
+          const docRef = ('id' in act) ? doc(firestore, 'activities', (act as any).id) : doc(collection(firestore, 'activities'));
+          batch.set(docRef, act);
+      });
+      await batch.commit();
+  }
+
+  return allActivities.length;
+}
+
+export async function seedPdfForms(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'pdfs');
+    const batch = writeBatch(firestore);
+    const pdfsCol = collection(firestore, 'pdfs');
+    
+    const samplePdfs: Omit<PDFForm, 'id'>[] = [
+        {
+            name: 'Enrollment Agreement 2024',
+            publicTitle: 'GIS Enrollment Agreement',
+            slug: 'gis-enrollment-2024',
+            originalFileName: 'enrollment.pdf',
+            storagePath: 'seed/enrollment.pdf',
+            downloadUrl: 'https://smartsapp.com/downloads/enrollment.pdf',
+            status: 'published',
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            backgroundPattern: 'none',
+            backgroundColor: '#F1F5F9',
+            patternColor: '#3B5FFF',
+            fields: [
+                { id: 'fld_name', type: 'text', label: 'Student Full Name', pageNumber: 1, position: { x: 10, y: 20 }, dimensions: { width: 40, height: 4 }, fontSize: 12, required: true },
+                { id: 'fld_sig', type: 'signature', label: 'Parent Signature', pageNumber: 1, position: { x: 60, y: 80 }, dimensions: { width: 30, height: 10 }, required: true }
+            ],
+            namingFieldId: 'fld_name',
+            displayFieldIds: ['fld_name']
+        }
+    ];
+
+    samplePdfs.forEach(pdf => {
+        batch.set(doc(pdfsCol), pdf);
+    });
+
+    await batch.commit();
+    return samplePdfs.length;
+}
+
+export async function seedMessaging(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'sender_profiles');
+    await clearCollection(firestore, 'message_styles');
+    await clearCollection(firestore, 'message_templates');
+
+    const batch = writeBatch(firestore);
+
+    // 1. Sender Profiles
+    const profilesCol = collection(firestore, 'sender_profiles');
+    const profiles = [
+        { name: 'Default SMS', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { name: 'Official Email', channel: 'email', identifier: 'onboarding@smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+    ];
+    profiles.forEach(p => batch.set(doc(profilesCol), p));
+
+    // 2. Message Styles
+    const stylesCol = collection(firestore, 'message_styles');
+    const styleData = {
+        name: 'Classic Branded',
+        htmlWrapper: '<html><body style="font-family: sans-serif; padding: 40px; background: #f8fafc;"><div style="max-width: 600px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; border: 1px solid #e2e8f0;">{{content}}</div></body></html>',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    };
+    const styleRef = doc(stylesCol);
+    batch.set(styleRef, styleData);
+
+    // 3. Templates
+    const templatesCol = collection(firestore, 'message_templates');
+    const templates = [
+        {
+            name: 'Meeting Invitation',
+            category: 'meetings',
+            channel: 'email',
+            subject: 'Join our upcoming {{meeting_type}} session',
+            body: '<h1>Hello!</h1><p>You are invited to the {{meeting_type}} for {{school_name}}.</p><p>Date: {{date}} at {{time}}</p><p>Link: {{link}}</p>',
+            styleId: styleRef.id,
+            variables: ['meeting_type', 'school_name', 'date', 'time', 'link'],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        }
+    ];
+    templates.forEach(t => batch.set(doc(templatesCol), t));
+
+    await batch.commit();
+    return profiles.length + 1 + templates.length;
 }
 
 const surveyData = [
