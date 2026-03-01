@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -32,6 +33,63 @@
         "assignedTo": { "type": "object" },
         "modules": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Meeting": {
+      "title": "Meeting",
+      "description": "Onboarding session or parent engagement meeting.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "schoolSlug": { "type": "string" },
+        "meetingTime": { "type": "string", "format": "date-time" },
+        "meetingLink": { "type": "string" },
+        "type": { "type": "object" },
+        "recordingUrl": { "type": "string" },
+        "brochureUrl": { "type": "string" }
+      }
+    },
+    "Survey": {
+      "title": "Survey",
+      "description": "Intelligent, scored feedback form.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "slug": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "elements": { "type": "array" },
+        "scoringEnabled": { "type": "boolean" },
+        "maxScore": { "type": "number" }
+      }
+    },
+    "PDFForm": {
+      "title": "PDF Form",
+      "description": "Interactive document mapping for digital signing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "publicTitle": { "type": "string" },
+        "slug": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "published", "archived"] },
+        "fields": { "type": "array" }
+      }
+    },
+    "Activity": {
+      "title": "Activity",
+      "description": "Logged event in the activity timeline.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "description": { "type": "string" }
       }
     },
     "SenderProfile": {
@@ -91,11 +149,7 @@
         "senderName": { "type": "string" },
         "channel": { "type": "string", "enum": ["sms", "email"] },
         "recipient": { "type": "string" },
-        "subject": { "type": "string" },
-        "body": { "type": "string" },
         "status": { "type": "string", "enum": ["sent", "failed"] },
-        "error": { "type": "string" },
-        "variables": { "type": "object" },
         "sentAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -105,29 +159,9 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "templateId": { "type": "string" },
-        "senderProfileId": { "type": "string" },
-        "channel": { "type": "string" },
-        "createdBy": { "type": "string" },
         "status": { "type": "string", "enum": ["queued", "processing", "completed", "failed"] },
         "totalRecipients": { "type": "number" },
-        "processed": { "type": "number" },
-        "success": { "type": "number" },
-        "failed": { "type": "number" },
-        "createdAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "MessageTask": {
-      "title": "Message Task",
-      "description": "An individual delivery task within a bulk job.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "recipient": { "type": "string" },
-        "variables": { "type": "object" },
-        "status": { "type": "string", "enum": ["pending", "sent", "failed"] },
-        "error": { "type": "string" },
-        "sentAt": { "type": "string", "format": "date-time" }
+        "processed": { "type": "number" }
       }
     }
   },
@@ -142,6 +176,38 @@
     "/schools/{schoolId}": {
       "schema": "#/entities/School",
       "description": "Schools in the onboarding pipeline."
+    },
+    "/meetings/{meetingId}": {
+      "schema": "#/entities/Meeting",
+      "description": "Meeting records."
+    },
+    "/meetings/{meetingId}/attendees/{attendeeId}": {
+      "schema": "object",
+      "description": "Meeting attendance logs."
+    },
+    "/surveys/{surveyId}": {
+      "schema": "#/entities/Survey",
+      "description": "Survey definitions."
+    },
+    "/surveys/{surveyId}/responses/{responseId}": {
+      "schema": "object",
+      "description": "Survey responses."
+    },
+    "/surveys/{surveyId}/summaries/{summaryId}": {
+      "schema": "object",
+      "description": "AI generated survey summaries."
+    },
+    "/pdfs/{pdfId}": {
+      "schema": "#/entities/PDFForm",
+      "description": "Doc signing templates."
+    },
+    "/pdfs/{pdfId}/submissions/{submissionId}": {
+      "schema": "object",
+      "description": "Signed document submissions."
+    },
+    "/activities/{activityId}": {
+      "schema": "#/entities/Activity",
+      "description": "Audit logs and interaction notes."
     },
     "/sender_profiles/{profileId}": {
       "schema": "#/entities/SenderProfile",
@@ -163,9 +229,21 @@
       "schema": "#/entities/MessageJob",
       "description": "Registry for bulk messaging operations."
     },
-    "/message_jobs/{jobId}/tasks/{taskId}": {
-      "schema": "#/entities/MessageTask",
-      "description": "Individual recipient tasks within a bulk job."
+    "/onboardingStages/{stageId}": {
+      "schema": "object",
+      "description": "Configuration for pipeline stages."
+    },
+    "/modules/{moduleId}": {
+      "schema": "object",
+      "description": "Configuration for SmartSapp modules."
+    },
+    "/dashboardLayouts/{userId}": {
+      "schema": "object",
+      "description": "User specific dashboard widget ordering."
+    },
+    "/webhooks/{webhookId}": {
+      "schema": "object",
+      "description": "Library of reusable external automation endpoints."
     }
   }
 }

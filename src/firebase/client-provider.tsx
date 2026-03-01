@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useEffect, type ReactNode } from 'react';
@@ -9,7 +10,7 @@ import {
     setPersistence,
     browserLocalPersistence
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { usePathname } from 'next/navigation';
 
 
@@ -35,26 +36,41 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
       
       const { auth, firestore } = firebaseServices;
 
-      // Don't run if a user is already logged in
-      if (auth.currentUser) {
-        return;
-      }
-
       const email = 'admin@smartsapp.com';
       const password = 'SecurePassword123!';
 
       try {
-        // Set persistence to ensure the dev user stays logged in
         await setPersistence(auth, browserLocalPersistence);
-        // Attempt to sign in
-        await signInWithEmailAndPassword(auth, email, password);
+        
+        let user;
+        if (auth.currentUser) {
+            user = auth.currentUser;
+        } else {
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            user = userCredential.user;
+        }
+
+        // Ensure Firestore document exists and is authorized
+        const userDocRef = doc(firestore, 'users', user.uid);
+        const userSnap = await getDoc(userDocRef);
+        
+        if (!userSnap.exists() || !userSnap.data().isAuthorized) {
+            await setDoc(userDocRef, {
+                name: 'Default Admin',
+                email: user.email,
+                phone: '000-000-0000',
+                isAuthorized: true,
+                createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
+            }, { merge: true });
+            console.log("Default admin Firestore record ensured.");
+        }
+
       } catch (error: any) {
         if (error.code === 'auth/network-request-failed') {
             console.warn("Dev Seeder: Network request failed. Skipping admin user seed.");
             return;
         }
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
-          // If user doesn't exist, create them
           try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
@@ -67,12 +83,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               isAuthorized: true,
               createdAt: new Date().toISOString(),
             });
-            console.log("Default admin user created, authorized, and signed in.");
+            console.log("Default admin user created and authorized.");
           } catch (creationError) {
             console.error("Failed to create default admin user:", creationError);
           }
-        } else {
-          // Other sign-in errors can be ignored in this dev script
         }
       }
     };
