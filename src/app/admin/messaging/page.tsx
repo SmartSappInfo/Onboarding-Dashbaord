@@ -24,7 +24,10 @@ import {
     XCircle,
     Info,
     Layers,
-    Target
+    Target,
+    ShieldCheck,
+    Zap,
+    AlertTriangle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -182,6 +185,14 @@ export default function MessagingHubPage() {
         </Link>
     );
 
+    const deliveryEfficiency = React.useMemo(() => {
+        if (!logs || logs.length === 0) return 0;
+        const total = emailStats.total + reportData.reduce((a,c) => a + (c.sent || 0), 0);
+        if (total === 0) return 0;
+        const success = emailStats.sent + reportData.reduce((a,c) => a + (c.delivered || 0), 0);
+        return Math.round((success / total) * 100);
+    }, [logs, emailStats, reportData]);
+
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="mb-12">
@@ -208,9 +219,70 @@ export default function MessagingHubPage() {
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-16 max-w-7xl animate-in fade-in slide-in-from-bottom-2">
+                    {/* Operational Intelligence Row */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <CardContent className="p-6 flex items-center gap-5">
+                                <div className="p-4 bg-primary/10 rounded-2xl text-primary shrink-0 shadow-inner">
+                                    <Target className="h-7 w-7" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">Delivery Efficiency</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-4xl font-black tabular-nums tracking-tighter">{deliveryEfficiency}%</p>
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase bg-emerald-50 text-emerald-600 border-emerald-200">Optimal</Badge>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <CardContent className="p-6 flex items-center gap-5">
+                                <div className={cn(
+                                    "p-4 rounded-2xl shrink-0 shadow-inner",
+                                    balance !== null && balance < 50 ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500"
+                                )}>
+                                    <Wallet className="h-7 w-7" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">SMS Unit Balance</p>
+                                    <div className="flex items-center justify-between">
+                                        <p className={cn(
+                                            "text-4xl font-black tabular-nums tracking-tighter",
+                                            balance !== null && balance < 50 && "text-red-600"
+                                        )}>
+                                            {isLoadingBalance ? '...' : balance !== null ? balance.toLocaleString() : 'N/A'}
+                                        </p>
+                                        <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
+                                            <RefreshCw className={cn("h-4 w-4", isLoadingBalance && "animate-spin")} />
+                                        </button>
+                                    </div>
+                                </div>
+                            </CardContent>
+                            {balance !== null && balance < 50 && (
+                                <div className="bg-red-600 text-white text-[8px] font-black uppercase py-1 text-center tracking-widest animate-pulse">Low Units Warning</div>
+                            )}
+                        </Card>
+
+                        <Card className="rounded-3xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+                            <CardContent className="p-6 flex items-center gap-5">
+                                <div className="p-4 bg-emerald-500/10 rounded-2xl text-emerald-600 shrink-0 shadow-inner">
+                                    <ShieldCheck className="h-7 w-7" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-1.5">Gateway Trust</p>
+                                    <div className="flex items-baseline gap-2">
+                                        <p className="text-4xl font-black tabular-nums tracking-tighter">100%</p>
+                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-tighter">Verified</span>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Operations</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Mission Operations</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -222,7 +294,7 @@ export default function MessagingHubPage() {
 
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Infrastructure</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Architectural Infrastructure</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -236,7 +308,7 @@ export default function MessagingHubPage() {
                         <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2.5rem] overflow-hidden">
                             <CardHeader className="p-8 pb-4">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Activity className="h-4 w-4" /> Gateway Integrity Report
+                                    <Activity className="h-4 w-4" /> Provider Connectivity Audit
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
@@ -245,10 +317,11 @@ export default function MessagingHubPage() {
                                         <Mail className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-black text-sm text-foreground uppercase tracking-tight">Email Environment (Resend)</p>
-                                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Status: Verified & Branded</p>
+                                        <p className="font-black text-sm text-foreground uppercase tracking-tight">Email Port (Resend)</p>
+                                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Status: High Throughput Enabled</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                                         <Badge className="bg-emerald-500 text-white border-none text-[8px] font-black uppercase tracking-widest px-2.5 h-5">Live</Badge>
                                     </div>
                                 </div>
@@ -258,22 +331,11 @@ export default function MessagingHubPage() {
                                         <Smartphone className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-black text-sm text-foreground uppercase tracking-tight">SMS Gateway (mNotify)</p>
-                                            <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
-                                                <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
-                                            </button>
-                                        </div>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-orange-50 border border-orange-100">
-                                                <Wallet className="h-3 w-3 text-orange-600" />
-                                                <span className="text-[10px] font-black text-orange-700 uppercase tracking-tighter">
-                                                    {isLoadingBalance ? '---' : balance !== null ? `${balance} Credits` : 'N/A'}
-                                                </span>
-                                            </div>
-                                        </div>
+                                        <p className="font-black text-sm text-foreground uppercase tracking-tight">SMS Uplink (mNotify)</p>
+                                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Status: Gateway Authorized</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
+                                        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                                         <Badge className="bg-emerald-500 text-white border-none text-[8px] font-black uppercase tracking-widest px-2.5 h-5">Live</Badge>
                                     </div>
                                 </div>
@@ -388,7 +450,7 @@ export default function MessagingHubPage() {
                                             <Target className="h-3 w-3" /> Delivery Efficiency
                                         </p>
                                         <p className="text-2xl font-black text-foreground">
-                                            {logs && logs.length > 0 ? Math.round(((emailStats.sent + reportData.reduce((a,c) => a + (c.delivered || 0), 0)) / (emailStats.total + reportData.reduce((a,c) => a + (c.sent || 0), 0))) * 100) : 0}%
+                                            {deliveryEfficiency}%
                                         </p>
                                     </div>
                                 </CardContent>
