@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { 
@@ -23,7 +21,8 @@ import {
     ChevronDown, Layout, Trophy as TrophyIcon, Zap, Filter,
     MonitorPlay,
     Bug,
-    ShieldCheck
+    ShieldCheck,
+    Wand2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -43,6 +42,7 @@ import { MediaSelect } from '../../schools/components/media-select';
 import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/messaging-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fetchContextualData } from '@/lib/messaging-actions';
+import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -470,6 +470,11 @@ export default function MessageTemplatesPage() {
     const [groupBy, setGroupBy] = React.useState<GroupByOption>('none');
     const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
+    // AI Generation State
+    const [isAiArchitectOpen, setIsAiArchitectOpen] = React.useState(false);
+    const [aiPromptText, setAiPromptText] = React.useState('');
+    const [isAiGenerating, setIsAiGenerating] = React.useState(false);
+
     // Template State
     const [name, setName] = React.useState('');
     const [category, setCategory] = React.useState<MessageTemplate['category']>('general');
@@ -526,6 +531,32 @@ export default function MessageTemplatesPage() {
         filtered.forEach(v => uniqueMap.set(v.key, v));
         return Array.from(uniqueMap.values());
     }, [variables, category, editingTemplate]);
+
+    const handleAiGenerate = async () => {
+        if (!aiPromptText.trim()) return;
+        setIsAiGenerating(true);
+        try {
+            const result = await generateEmailTemplate({
+                prompt: aiPromptText,
+                channel,
+                availableVariables: contextVariables.map(v => v.key)
+            });
+
+            setName(result.name);
+            setSubject(result.subject || '');
+            setBody(result.body);
+            if (result.blocks) setBlocks(result.blocks as any);
+            
+            setIsAiArchitectOpen(false);
+            setAiPromptText('');
+            setIsAdding(true);
+            toast({ title: 'Template Architected', description: result.explanation });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Architect Failed', description: e.message });
+        } finally {
+            setIsAiGenerating(false);
+        }
+    };
 
     // Handle Simulation Resolution
     React.useEffect(() => {
@@ -735,6 +766,9 @@ export default function MessageTemplatesPage() {
                     <p className="text-muted-foreground font-medium">Build structural communication assets with institutional data.</p>
                 </div>
                 <div className="flex items-center gap-2">
+                    <RainbowButton onClick={() => setIsAiArchitectOpen(true)} className="h-10 px-6 gap-2 font-bold shadow-xl">
+                        <Sparkles className="h-4 w-4" /> AI Architect
+                    </RainbowButton>
                     <Button onClick={() => { setIsAdding(!isAdding); if(!isAdding) resetForm(); }} variant={isAdding ? "ghost" : "default"} className="font-bold rounded-xl h-10 px-6 shadow-xl">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {isAdding ? 'Cancel' : 'New Template'}
@@ -1072,6 +1106,52 @@ export default function MessageTemplatesPage() {
                     </div>
                 </>
             )}
+
+            {/* AI Architect Dialog */}
+            <Dialog open={isAiArchitectOpen} onOpenChange={setIsAiArchitectOpen}>
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] overflow-hidden p-0 border-none shadow-2xl">
+                    <DialogHeader className="p-8 pb-4 bg-primary text-white shrink-0">
+                        <div className="flex items-center gap-4 mb-2">
+                            <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-xl"><Wand2 className="h-8 w-8" /></div>
+                            <div>
+                                <DialogTitle className="text-3xl font-black uppercase tracking-tight">AI Template Architect</DialogTitle>
+                                <DialogDescription className="text-white/70 font-bold uppercase tracking-widest text-[10px]">Multi-Block High Fidelity Generation</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-8 space-y-8">
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Describe your communication objective</Label>
+                            <Textarea 
+                                value={aiPromptText}
+                                onChange={e => setAiPromptText(e.target.value)}
+                                placeholder="e.g. A formal admission offer for the 2024 academic year. Include sections for financial aid, orientation dates, and a primary CTA to sign the agreement."
+                                className="min-h-[180px] rounded-[1.5rem] bg-muted/20 border-none shadow-inner p-6 text-base leading-relaxed resize-none"
+                            />
+                        </div>
+                        <div className="p-6 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4 shadow-inner">
+                            <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Structural Awareness</p>
+                                <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
+                                    The AI will generate modular content blocks (Headings, Text, Buttons) that you can refine manually in the Template Studio.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="p-6 bg-muted/30 border-t flex flex-col sm:flex-row gap-4">
+                        <Button variant="ghost" onClick={() => setIsAiArchitectOpen(false)} disabled={isAiGenerating} className="font-bold flex-1">Discard</Button>
+                        <Button 
+                            onClick={handleAiGenerate} 
+                            disabled={isAiGenerating || !aiPromptText.trim()}
+                            className="flex-[2] h-14 rounded-2xl font-black shadow-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95 text-lg uppercase tracking-widest"
+                        >
+                            {isAiGenerating ? <Loader2 className="mr-2 h-6 w-6 animate-spin" /> : <Sparkles className="mr-2 h-6 w-6" />}
+                            {isAiGenerating ? 'Architecting...' : 'Build Template'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Template Preview Dialog */}
             <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>

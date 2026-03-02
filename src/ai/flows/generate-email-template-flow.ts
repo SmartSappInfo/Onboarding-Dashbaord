@@ -1,10 +1,26 @@
 'use server';
 /**
- * @fileOverview An AI flow to generate dynamic email templates based on institutional context and available variables.
+ * @fileOverview An AI flow to generate dynamic, structured message templates.
+ * Upgraded to produce modular blocks for the new Template Studio.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+
+const BlockSchema = z.object({
+  id: z.string(),
+  type: z.enum(['heading', 'text', 'image', 'button', 'quote', 'divider', 'list', 'logo', 'header', 'footer']),
+  title: z.string().optional(),
+  content: z.string().optional(),
+  url: z.string().optional(),
+  link: z.string().optional(),
+  variant: z.enum(['h1', 'h2', 'h3']).optional(),
+  items: z.array(z.string()).optional(),
+  listStyle: z.enum(['ordered', 'unordered']).optional(),
+  style: z.object({
+    textAlign: z.enum(['left', 'center', 'right']).optional(),
+  }).optional(),
+});
 
 const GenerateEmailTemplateInputSchema = z.object({
   prompt: z.string().describe('Instructions or description of what the email should convey.'),
@@ -17,8 +33,9 @@ export type GenerateEmailTemplateInput = z.infer<typeof GenerateEmailTemplateInp
 const GenerateEmailTemplateOutputSchema = z.object({
   name: z.string().describe('A professional name for the template.'),
   subject: z.string().optional().describe('A compelling subject line (for email).'),
-  body: z.string().describe('The message content. Use {{variable_name}} for dynamic data.'),
-  variables: z.array(z.string()).describe('A list of all dynamic variables used in the body.'),
+  body: z.string().describe('The plain text version or SMS content.'),
+  blocks: z.array(BlockSchema).optional().describe('A structured list of content blocks for high-fidelity Email layouts.'),
+  variables: z.array(z.string()).describe('A list of all dynamic variables used.'),
   explanation: z.string().describe('Brief summary of the design choices.'),
 });
 export type GenerateEmailTemplateOutput = z.infer<typeof GenerateEmailTemplateOutputSchema>;
@@ -27,29 +44,38 @@ const templatePrompt = ai.definePrompt({
   name: 'generateEmailTemplatePrompt',
   input: { schema: GenerateEmailTemplateInputSchema },
   output: { schema: GenerateEmailTemplateOutputSchema },
-  prompt: `You are an expert Copywriter and Communication Strategist for SmartSapp, an educational technology platform.
+  prompt: `You are an expert Copywriter and Email Design Architect for SmartSapp.
 
 ### MISSION:
-Generate a high-converting, professional message template for the {{channel}} channel based on the user's instructions.
+Generate a high-converting, professional message template for the {{channel}} channel.
+
+### ARCHITECTURE (FOR EMAIL):
+If the channel is **Email**, you MUST return a structured 'blocks' array. 
+- Use 'header' and 'footer' for the frame.
+- Use 'heading' (variants h1, h2, h3) for titles.
+- Use 'text' for paragraphs.
+- Use 'button' for calls-to-action (links can use variables).
+- Use 'list' for bullet points.
+- Use 'logo' at the top (defaults to {{'{{school_logo}}'}}).
+- Use 'divider' for visual separation.
 
 ### LOGIC & VARIABLES:
+You MUST use these variables where appropriate:
 {{#if availableVariables}}
-You MUST use the following variables where appropriate to make the message dynamic. Use the exact syntax: {{'{{variable_name}}'}}.
-Available Tags:
-{{#each availableVariables}}
-- {{this}}
+{{#each availableVariables}}- {{this}}
 {{/each}}
-{{else}}
-Use {{'{{variable_name}}'}} syntax for all dynamic data. Common variables include {{'{{name}}'}}, {{'{{school_name}}'}}, {{'{{date}}'}}.
+{{else}}- school_name
+- contact_name
+- date
 {{/if}}
+Use the exact syntax: {{'{{variable_name}}'}}.
 
 ### RULES:
-1. **Dynamic Logic (CRITICAL)**: Use {{'{{variable_name}}'}} syntax for all dynamic data.
+1. **Dynamic Intelligence**: Always prefer using variables for institutional data.
 2. **Channel Constraints**:
-   - For **Email**: Use HTML for structure. Include a clear subject line.
-   - For **SMS**: Keep it concise, professional, and text-only (no HTML).
-3. **Tone**: Modern, trustworthy, and supportive. Use the provided school context to adjust the "voice" (e.g., prestigious, community-focused).
-4. **Output**: Return a JSON object matching the schema.
+   - **SMS**: Plain text only in the 'body' field. No blocks.
+   - **Email**: Detailed 'blocks' array. Branded, professional, and mobile-responsive.
+3. **Tone**: Modern, trustworthy, and supportive.
 
 User Instructions:
 {{{prompt}}}
