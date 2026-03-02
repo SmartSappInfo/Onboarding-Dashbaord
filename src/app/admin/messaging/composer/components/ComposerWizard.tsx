@@ -1,12 +1,13 @@
+
 'use client';
 
 import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, MessageStyle, Activity } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, MessageStyle } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
@@ -16,10 +17,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { 
     Check, 
     ChevronRight, 
@@ -34,21 +36,24 @@ import {
     X,
     AlertCircle,
     Info,
-    FileText
+    CalendarClock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
+import { format } from 'date-fns';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
     templateId: z.string().min(1, "Please select a template."),
     senderProfileId: z.string().min(1, "Please select a sender profile."),
     mode: z.enum(['single', 'bulk']),
-    recipient: z.string().optional(), // Used for single
+    recipient: z.string().optional(),
     variables: z.record(z.any()).default({}),
     schoolId: z.string().optional(),
+    isScheduled: z.boolean().default(false),
+    scheduledAt: z.date().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -61,7 +66,6 @@ export default function ComposerWizard() {
     const [step, setStep] = React.useState(1);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     
-    // Bulk state
     const [csvData, setCsvData] = React.useState<any[]>([]);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
     const [jobId, setJobId] = React.useState<string | null>(null);
@@ -75,6 +79,7 @@ export default function ComposerWizard() {
             mode: 'single',
             variables: {},
             schoolId: '',
+            isScheduled: false,
         }
     });
 
@@ -82,8 +87,8 @@ export default function ComposerWizard() {
     const watchedChannel = watch('channel');
     const watchedTemplateId = watch('templateId');
     const watchedMode = watch('mode');
+    const watchedIsScheduled = watch('isScheduled');
 
-    // Handle deep linking from other modules
     React.useEffect(() => {
         const tId = searchParams.get('templateId');
         const chan = searchParams.get('channel') as 'email' | 'sms' | null;
@@ -95,7 +100,6 @@ export default function ComposerWizard() {
         if (rec) setValue('recipient', rec);
         if (sId) setValue('schoolId', sId);
 
-        // Pre-fill any variable passed as var_X
         searchParams.forEach((value, key) => {
             if (key.startsWith('var_')) {
                 const varName = key.replace('var_', '');
@@ -104,7 +108,6 @@ export default function ComposerWizard() {
         });
     }, [searchParams, setValue]);
 
-    // Data fetching
     const templatesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('channel', '==', watchedChannel));
@@ -158,6 +161,8 @@ export default function ComposerWizard() {
         if (!user) return;
         setIsSubmitting(true);
 
+        const scheduledAt = data.isScheduled ? data.scheduledAt?.toISOString() : undefined;
+
         try {
             if (data.mode === 'single') {
                 if (!data.recipient) throw new Error("Recipient is required for single send.");
@@ -168,20 +173,19 @@ export default function ComposerWizard() {
                     recipient: data.recipient,
                     variables: data.variables,
                     schoolId: data.schoolId,
+                    scheduledAt
                 });
 
                 if (result.success) {
-                    toast({ title: 'Message Sent', description: 'Communication dispatched successfully.' });
+                    toast({ title: data.isScheduled ? 'Message Scheduled' : 'Message Sent', description: 'Communication processed successfully.' });
                     setStep(1);
                     form.reset();
                 } else {
                     throw new Error(result.error);
                 }
             } else {
-                // Bulk Send
                 if (csvData.length === 0) throw new Error("No recipient data found.");
                 
-                // Map CSV data to variables required by template
                 const recipients = csvData.map(row => ({
                     recipient: row.recipient || row.phone || row.email,
                     variables: { ...data.variables, ...row, schoolId: data.schoolId }
@@ -195,11 +199,11 @@ export default function ComposerWizard() {
                 });
 
                 setJobId(newJobId);
-                setStep(4); // Move to monitor step
+                setStep(4);
                 startJobProcessing(newJobId);
             }
         } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Send Failed', description: e.message });
+            toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -216,7 +220,6 @@ export default function ComposerWizard() {
                 if (result.status === 'completed' || result.status === 'failed') {
                     finished = true;
                 }
-                // Small delay to prevent hammering
                 await new Promise(r => setTimeout(r, 500));
             } catch (e) {
                 setJobStatus('failed');
@@ -251,7 +254,6 @@ export default function ComposerWizard() {
             </div>
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                {/* STEP 1: TEMPLATE & CHANNEL */}
                 {step === 1 && (
                     <Card className="shadow-xl">
                         <CardHeader>
@@ -328,19 +330,18 @@ export default function ComposerWizard() {
                             )}
                         </CardContent>
                         <CardFooter className="justify-end bg-muted/30 pt-6">
-                            <Button type="button" onClick={handleNext} disabled={!watchedTemplateId} className="px-8 font-bold">
+                            <Button type="button" variant="outline" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-10 rounded-xl font-bold border-2">
                                 Next Step <ChevronRight className="ml-2 h-4 w-4" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
-                {/* STEP 2: RECIPIENTS & SENDER */}
                 {step === 2 && (
                     <Card className="shadow-xl">
                         <CardHeader>
-                            <CardTitle>Recipients & Identity</CardTitle>
-                            <CardDescription>Configure who receives the message and who it comes from.</CardDescription>
+                            <CardTitle>Recipients & Timing</CardTitle>
+                            <CardDescription>Configure who receives the message and when it should be delivered.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-8">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -396,13 +397,55 @@ export default function ComposerWizard() {
 
                             <Separator />
 
+                            <div className="p-6 rounded-2xl border-2 border-primary/10 bg-primary/5 space-y-4 transition-all">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className={cn("p-2 rounded-xl transition-colors", watchedIsScheduled ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                            <CalendarClock className="h-5 w-5" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-black uppercase tracking-tight">Schedule for Later</Label>
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Queue message for future delivery</p>
+                                        </div>
+                                    </div>
+                                    <Controller
+                                        name="isScheduled"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Switch 
+                                                checked={field.value} 
+                                                onCheckedChange={field.onChange} 
+                                                className="scale-110"
+                                            />
+                                        )}
+                                    />
+                                </div>
+                                
+                                {watchedIsScheduled && (
+                                    <div className="pt-4 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
+                                        <Controller
+                                            name="scheduledAt"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <DateTimePicker 
+                                                    value={field.value} 
+                                                    onChange={field.onChange} 
+                                                />
+                                            )}
+                                        />
+                                        <p className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-3 text-center">
+                                            Recipient will receive this on {getValues('scheduledAt') ? format(getValues('scheduledAt')!, 'PPPP p') : 'selected date'}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <Separator />
+
                             <div className="space-y-6">
                                 {watchedMode === 'single' ? (
                                     <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                        <div className="flex justify-between items-center">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Recipient Details</Label>
-                                            {getValues('schoolId') && <Badge variant="outline" className="text-[8px]">School ID: {getValues('schoolId')}</Badge>}
-                                        </div>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recipient Identity</Label>
                                         <Controller
                                             name="recipient"
                                             control={control}
@@ -410,7 +453,7 @@ export default function ComposerWizard() {
                                                 <Input 
                                                     {...field} 
                                                     placeholder={watchedChannel === 'email' ? 'parent@example.com' : '+233 XX XXX XXXX'} 
-                                                    className="h-12 rounded-xl"
+                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                                                 />
                                             )}
                                         />
@@ -418,12 +461,12 @@ export default function ComposerWizard() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                                             {selectedTemplate?.variables.map(v => (
                                                 <div key={v} className="space-y-1.5">
-                                                    <Label className="text-[10px] font-bold uppercase ml-1">{v.replace('_', ' ')}</Label>
+                                                    <Label className="text-[10px] font-bold uppercase ml-1 text-muted-foreground">{v.replace(/_/g, ' ')}</Label>
                                                     <Controller
                                                         name={`variables.${v}`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder={`Value for ${v}...`} className="bg-muted/30 border-none h-10 rounded-lg" />
+                                                            <Input {...field} value={field.value || ''} placeholder={`Enter ${v.replace(/_/g, ' ')}...`} className="bg-muted/30 border-none h-10 rounded-lg shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20" />
                                                         )}
                                                     />
                                                 </div>
@@ -432,24 +475,24 @@ export default function ComposerWizard() {
                                     </div>
                                 ) : (
                                     <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-                                        <div className="p-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-center gap-4 bg-muted/20">
-                                            <div className="p-4 bg-primary/10 rounded-full text-primary">
+                                        <div className="p-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-center gap-4 bg-muted/20 border-border/50 hover:border-primary/30 transition-colors">
+                                            <div className="p-4 bg-primary/10 rounded-full text-primary shadow-xl">
                                                 <Upload className="h-8 w-8" />
                                             </div>
                                             <div>
-                                                <p className="font-bold">Upload Recipient List (CSV)</p>
-                                                <p className="text-xs text-muted-foreground">Columns must include "recipient" or "email"/"phone".</p>
+                                                <p className="font-bold text-lg">Upload Recipient List (CSV)</p>
+                                                <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">Map your spreadsheet columns directly to template variables.</p>
                                             </div>
                                             <Input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
-                                            <Button asChild variant="outline" className="rounded-xl border-2 font-bold h-11">
-                                                <label htmlFor="csv-upload">Browse Files</label>
+                                            <Button asChild variant="outline" className="rounded-xl border-2 font-bold h-11 px-8 hover:bg-background">
+                                                <label htmlFor="csv-upload">Select File</label>
                                             </Button>
                                         </div>
 
                                         {csvData.length > 0 && (
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">File Data Preview (Top 3)</Label>
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Data Audit (Top 3 Records)</Label>
                                                     <Button variant="ghost" size="sm" onClick={() => setCsvData([])} className="h-7 text-[10px] text-destructive uppercase font-bold">Clear List</Button>
                                                 </div>
                                                 <div className="rounded-xl border bg-background overflow-hidden overflow-x-auto shadow-sm">
@@ -468,7 +511,7 @@ export default function ComposerWizard() {
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <p className="text-[10px] italic text-muted-foreground text-center">+ {csvData.length - 3} more records identified.</p>
+                                                <p className="text-[10px] italic text-muted-foreground text-center">+ {csvData.length - 3} more records successfully identified.</p>
                                             </div>
                                         )}
                                     </div>
@@ -476,15 +519,14 @@ export default function ComposerWizard() {
                             </div>
                         </CardContent>
                         <CardFooter className="justify-between bg-muted/30 pt-6">
-                            <Button type="button" variant="ghost" onClick={handlePrev}>Previous</Button>
-                            <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : csvData.length === 0)} className="px-8 font-bold">
+                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-bold">Previous</Button>
+                            <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : csvData.length === 0)} className="px-10 rounded-xl font-bold border-2">
                                 Review & Preview <ChevronRight className="ml-2 h-4 w-4" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
-                {/* STEP 3: PREVIEW & DISPATCH */}
                 {step === 3 && (
                     <Card className="shadow-xl">
                         <CardHeader>
@@ -500,10 +542,10 @@ export default function ComposerWizard() {
                                             <p className="font-bold">{profiles?.find(p => p.id === getValues('senderProfileId'))?.name}</p>
                                         </div>
                                         <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Channel</Label>
-                                            <p className="font-bold flex items-center gap-2 capitalize">
-                                                {watchedChannel === 'email' ? <Mail className="h-3 w-3" /> : <Smartphone className="h-3 w-3" />}
-                                                {watchedChannel}
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Timing</Label>
+                                            <p className={cn("font-bold capitalize", watchedIsScheduled && "text-primary flex items-center gap-1.5")}>
+                                                {watchedIsScheduled ? <CalendarClock className="h-3 w-3" /> : null}
+                                                {watchedIsScheduled ? 'Scheduled' : 'Immediate'}
                                             </p>
                                         </div>
                                     </div>
@@ -516,12 +558,12 @@ export default function ComposerWizard() {
                                             {watchedMode === 'single' && <span className="text-xs font-mono text-muted-foreground">{getValues('recipient')}</span>}
                                         </div>
                                     </div>
-                                    <div className="p-4 rounded-xl border bg-yellow-50/50 border-yellow-200 flex items-start gap-3">
-                                        <AlertCircle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                                    <div className="p-4 rounded-xl border bg-blue-50/50 border-blue-200 flex items-start gap-3">
+                                        <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
-                                            <p className="text-xs font-bold text-yellow-800">Operational Disclaimer</p>
-                                            <p className="text-[10px] text-yellow-700 leading-relaxed">
-                                                Ensure all recipients have opted in to receive communications. SmartSapp logs all transactions for compliance auditing.
+                                            <p className="text-xs font-bold text-blue-800 uppercase tracking-tighter">System Compliance</p>
+                                            <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
+                                                SmartSapp audit logs will capture this dispatch. Ensure all recipients have explicitly opted in to receive {watchedChannel} communications.
                                             </p>
                                         </div>
                                     </div>
@@ -540,16 +582,15 @@ export default function ComposerWizard() {
                             </div>
                         </CardContent>
                         <CardFooter className="justify-between bg-muted/30 pt-6">
-                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting}>Previous</Button>
-                            <Button type="submit" size="lg" disabled={isSubmitting} className="px-12 font-black shadow-xl h-14 gap-3 bg-primary text-white hover:bg-primary/90">
+                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-bold">Previous</Button>
+                            <Button type="submit" size="lg" disabled={isSubmitting} className="px-12 font-black shadow-xl h-14 gap-3 bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all active:scale-95">
                                 {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                                {watchedMode === 'single' ? 'Send Message' : `Start Bulk Dispatch`}
+                                {watchedMode === 'single' ? (watchedIsScheduled ? 'Schedule Message' : 'Send Message Now') : `Start Bulk Dispatch`}
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
-                {/* STEP 4: MONITOR (FOR BULK) */}
                 {step === 4 && (
                     <Card className="shadow-2xl border-primary/20">
                         <CardHeader className="text-center pb-8 border-b bg-muted/30">
@@ -635,8 +676,8 @@ function MessagePreviewer({ template, variables, sampleRow }: { template: Messag
                         <SmartSappIcon className="h-6 w-6 text-white opacity-20" />
                         <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">SMS Preview</p>
                     </div>
-                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl relative">
-                        <div className="absolute -left-2 top-4 w-4 h-4 bg-white/5 border-l border-b border-white/10 rotate-45 rounded-sm" />
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl relative shadow-inner">
+                        <div className="absolute -left-2 top-4 w-4 h-4 bg-[#1a243a] border-l border-b border-white/10 rotate-45 rounded-sm" />
                         <p className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{resolvedBody}</p>
                     </div>
                     <div className="pt-2 flex justify-between items-center text-[9px] font-bold uppercase tracking-tighter text-white/30">

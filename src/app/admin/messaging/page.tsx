@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -15,16 +16,36 @@ import {
     History,
     Activity,
     RefreshCw,
-    Wallet
+    Wallet,
+    CalendarClock,
+    BarChart3,
+    TrendingUp,
+    CheckCircle2,
+    XCircle,
+    Info
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
+import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-actions';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
+import { subDays, format } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+
+const chartConfig = {
+  sent: {
+    label: "Sent",
+    color: "hsl(var(--primary))",
+  },
+} satisfies ChartConfig;
 
 export default function MessagingHubPage() {
     const [balance, setBalance] = React.useState<number | null>(null);
     const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
+    const [reportData, setReportData] = React.useState<any[]>([]);
+    const [isLoadingReport, setIsLoadingReport] = React.useState(false);
 
     const loadBalance = React.useCallback(async () => {
         setIsLoadingBalance(true);
@@ -35,9 +56,22 @@ export default function MessagingHubPage() {
         setIsLoadingBalance(false);
     }, []);
 
+    const loadReports = React.useCallback(async () => {
+        setIsLoadingReport(true);
+        const to = format(new Date(), 'yyyy-MM-dd');
+        const from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+        const result = await fetchSmsReportsAction(from, to);
+        if (result.success && result.report) {
+            // Transform mNotify report data if needed, or use as is
+            setReportData(result.report.slice(0, 7).reverse()); // Just show last 7 active records
+        }
+        setIsLoadingReport(false);
+    }, []);
+
     React.useEffect(() => {
         loadBalance();
-    }, [loadBalance]);
+        loadReports();
+    }, [loadBalance, loadReports]);
 
     const operations = [
         {
@@ -48,6 +82,15 @@ export default function MessagingHubPage() {
             color: 'text-emerald-500',
             bg: 'bg-emerald-500/10',
             border: 'hover:border-emerald-500/50'
+        },
+        {
+            title: 'Scheduled Messages',
+            description: 'Review and manage communications queued for future delivery.',
+            icon: CalendarClock,
+            href: '/admin/messaging/scheduled',
+            color: 'text-blue-600',
+            bg: 'bg-blue-600/10',
+            border: 'hover:border-blue-600/50'
         },
         {
             title: 'Message Logs',
@@ -129,95 +172,183 @@ export default function MessagingHubPage() {
                 <p className="text-muted-foreground text-lg font-medium">Centralized control for automated and manual school communications.</p>
             </div>
 
-            <div className="space-y-16 max-w-7xl">
-                {/* Section 1: Operations */}
-                <section>
-                    <div className="flex items-center gap-3 mb-8">
-                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Daily Operations</Badge>
-                        <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:max-w-4xl">
-                        {operations.map((mod) => (
-                            <ModuleCard key={mod.title} mod={mod} />
-                        ))}
-                    </div>
-                </section>
+            <Tabs defaultValue="overview" className="space-y-12">
+                <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
+                    <TabsTrigger value="overview" className="rounded-lg font-bold px-6">Hub Overview</TabsTrigger>
+                    <TabsTrigger value="analytics" className="rounded-lg font-bold px-6 gap-2">
+                        <BarChart3 className="h-4 w-4" /> Performance Analytics
+                    </TabsTrigger>
+                </TabsList>
 
-                {/* Section 2: Infrastructure */}
-                <section>
-                    <div className="flex items-center gap-3 mb-8">
-                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Configuration & Assets</Badge>
-                        <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {infrastructure.map((mod) => (
-                            <ModuleCard key={mod.title} mod={mod} />
-                        ))}
-                    </div>
-                </section>
+                <TabsContent value="overview" className="space-y-16 max-w-7xl animate-in fade-in slide-in-from-bottom-2">
+                    {/* Section 1: Operations */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-8">
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Daily Operations</Badge>
+                            <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {operations.map((mod) => (
+                                <ModuleCard key={mod.title} mod={mod} />
+                            ))}
+                        </div>
+                    </section>
 
-                {/* Section 3: System Channels */}
-                <section className="pt-8">
-                    <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2rem] overflow-hidden">
-                        <CardHeader className="p-8 pb-4">
-                            <CardTitle className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                <Activity className="h-4 w-4" /> System Health & Channels
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
-                            <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
-                                <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0">
-                                    <Mail className="h-6 w-6" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-black text-sm text-foreground">Email Channel</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">Stateless SMTP Gateway</p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <div className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    {/* Section 2: Infrastructure */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-8">
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Configuration & Assets</Badge>
+                            <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {infrastructure.map((mod) => (
+                                <ModuleCard key={mod.title} mod={mod} />
+                            ))}
+                        </div>
+                    </section>
+
+                    {/* Section 3: System Channels */}
+                    <section className="pt-8">
+                        <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2rem] overflow-hidden">
+                            <CardHeader className="p-8 pb-4">
+                                <CardTitle className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                    <Activity className="h-4 w-4" /> System Health & Channels
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
+                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                    <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0">
+                                        <Mail className="h-6 w-6" />
                                     </div>
-                                    <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
-                                <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0">
-                                    <Smartphone className="h-6 w-6" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <p className="font-black text-sm text-foreground">SMS Channel</p>
-                                        <button 
-                                            onClick={loadBalance} 
-                                            disabled={isLoadingBalance}
-                                            className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
-                                        >
-                                            <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
-                                        </button>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-black text-sm text-foreground">Email Channel</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">Stateless SMTP Gateway</p>
                                     </div>
-                                    <div className="mt-1 flex items-center gap-2">
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-orange-50 border border-orange-100">
-                                            <Wallet className="h-3 w-3 text-orange-600" />
-                                            <span className="text-[10px] font-black text-orange-700 uppercase tracking-tighter">
-                                                {isLoadingBalance ? '---' : balance !== null ? `${balance} Credits` : 'N/A'}
-                                            </span>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <div className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                        </div>
+                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                    <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0">
+                                        <Smartphone className="h-6 w-6" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-black text-sm text-foreground">SMS Channel</p>
+                                            <button 
+                                                onClick={loadBalance} 
+                                                disabled={isLoadingBalance}
+                                                className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                                            >
+                                                <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
+                                            </button>
+                                        </div>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-orange-50 border border-orange-100">
+                                                <Wallet className="h-3 w-3 text-orange-600" />
+                                                <span className="text-[10px] font-black text-orange-700 uppercase tracking-tighter">
+                                                    {isLoadingBalance ? '---' : balance !== null ? `${balance} Credits` : 'N/A'}
+                                                </span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <div className="relative flex h-2 w-2">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <div className="relative flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                        </div>
+                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
                                     </div>
-                                    <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
                                 </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </section>
-            </div>
+                            </CardContent>
+                        </Card>
+                    </section>
+                </TabsContent>
+
+                <TabsContent value="analytics" className="max-w-7xl animate-in fade-in slide-in-from-bottom-2">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <Card className="lg:col-span-2">
+                            <CardHeader>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
+                                    <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends
+                                </CardTitle>
+                                <CardDescription>SMS volume and success rates for the last 30 days.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="h-[350px]">
+                                {isLoadingReport ? (
+                                    <Skeleton className="w-full h-full rounded-xl" />
+                                ) : reportData.length > 0 ? (
+                                    <ChartContainer config={chartConfig} className="h-full w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={reportData}>
+                                                <CartesianGrid vertical={false} strokeDasharray="3 3" strokeOpacity={0.1} />
+                                                <XAxis 
+                                                    dataKey="date" 
+                                                    tickLine={false} 
+                                                    axisLine={false} 
+                                                    fontSize={10} 
+                                                    tickFormatter={(val) => format(new Date(val), 'MMM d')}
+                                                />
+                                                <YAxis axisLine={false} tickLine={false} fontSize={10} />
+                                                <ChartTooltip content={<ChartTooltipContent />} />
+                                                <Bar dataKey="sent" fill="var(--color-sent)" radius={4}>
+                                                    {reportData.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={`hsl(var(--primary) / ${0.4 + (index / reportData.length) * 0.6})`} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </ChartContainer>
+                                ) : (
+                                    <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/10">
+                                        <Info className="h-10 w-10 mb-4 opacity-20" />
+                                        <p className="font-bold">No Delivery Data Found</p>
+                                        <p className="text-xs uppercase tracking-tighter">Initiate communications to see real-time performance analytics.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <div className="space-y-6">
+                            <Card className="bg-emerald-50 border-emerald-100">
+                                <CardContent className="p-6 flex items-center gap-4">
+                                    <div className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-200">
+                                        <CheckCircle2 className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 leading-none mb-1">Delivered Successfully</p>
+                                        <p className="text-3xl font-black text-emerald-900">{reportData.reduce((acc, curr) => acc + (curr.delivered || 0), 0)}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-rose-50 border-rose-100">
+                                <CardContent className="p-6 flex items-center gap-4">
+                                    <div className="p-3 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-200">
+                                        <XCircle className="h-6 w-6" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-rose-700 leading-none mb-1">Failed / Bounced</p>
+                                        <p className="text-3xl font-black text-rose-900">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                            <Card className="bg-muted/30 border-none shadow-none">
+                                <CardHeader className="p-6 pb-2">
+                                    <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Reporting Guidance</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 pt-0 text-xs leading-relaxed text-muted-foreground font-medium">
+                                    Metrics are synchronized from mNotify BMS reports. High failure rates may indicate stale contact lists or Sender ID issues.
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </TabsContent>
+            </Tabs>
         </div>
     );
 }

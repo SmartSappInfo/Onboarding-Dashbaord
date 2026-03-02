@@ -127,6 +127,13 @@ export async function updateScheduledSms(id: string, message: string, scheduleDa
 }
 
 /**
+ * Deletes a scheduled SMS message.
+ */
+export async function deleteScheduledSms(id: string) {
+    return mNotifyRequest(`/scheduled/${id}`, 'DELETE');
+}
+
+/**
  * Retrieves SMS account metrics for a given date range.
  */
 export async function getSmsMetrics(from: string, to: string) {

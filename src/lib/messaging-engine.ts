@@ -13,6 +13,7 @@ interface SendMessageInput {
   recipient: string;
   variables: Record<string, any>;
   schoolId?: string;
+  scheduledAt?: string; // ISO string
 }
 
 /**
@@ -20,7 +21,7 @@ interface SendMessageInput {
  * Decouples the application logic from the underlying gateway (mNotify).
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, schoolId } = input;
+  const { templateId, senderProfileId, recipient, variables, schoolId, scheduledAt } = input;
 
   try {
     // 1. Fetch Core Assets
@@ -56,12 +57,14 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     // 4. Perform Actual Delivery
     let providerResponse = null;
+    const scheduleDate = scheduledAt ? new Date(scheduledAt) : undefined;
     
     if (template.channel === 'sms') {
         providerResponse = await sendSms({
             recipient,
             message: resolvedBody,
-            sender: sender.identifier
+            sender: sender.identifier,
+            scheduleDate
         });
     } else {
         // Email placeholder for next phase
@@ -78,8 +81,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       recipient,
       subject: resolvedSubject,
       body: resolvedBody,
-      status: 'sent',
-      sentAt: new Date().toISOString(),
+      status: scheduledAt ? 'scheduled' : 'sent',
+      sentAt: scheduledAt || new Date().toISOString(),
       variables,
       schoolId: schoolId || variables.schoolId || variables.school_id,
     };
@@ -92,12 +95,13 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         userId: null, 
         type: 'notification_sent',
         source: 'system',
-        description: `Sent ${template.channel} "${template.name}" to ${recipient}`,
+        description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${template.name}" to ${recipient}`,
         metadata: { 
             logId: logRef.id, 
             channel: template.channel, 
             templateName: template.name,
-            mNotifyStatus: providerResponse?.status 
+            mNotifyStatus: providerResponse?.status,
+            scheduledAt: scheduledAt
         }
     });
 
