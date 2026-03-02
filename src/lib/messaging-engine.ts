@@ -1,9 +1,11 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog } from './types';
 import { resolveVariables } from './messaging-utils';
 import { logActivity } from './activity-logger';
+import { sendSms } from './mnotify-service';
 
 interface SendMessageInput {
   templateId: string;
@@ -52,10 +54,19 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // 4. Perform Actual Delivery (Integration Point)
-    // NOTE: In a production environment, this is where you call SendGrid, Twilio, etc.
-    // For now, we simulate success and log the outcome.
-    console.log(`>>> [MESSAGING] Dispatching via ${sender.identifier} (${sender.channel}) to ${recipient}`);
-    console.log(`>>> [BODY]: ${resolvedBody.substring(0, 100)}...`);
+    let mNotifyResponse = null;
+    
+    if (template.channel === 'sms') {
+        console.log(`>>> [MESSAGING] Dispatching via mNotify: ${sender.identifier} to ${recipient}`);
+        mNotifyResponse = await sendSms({
+            recipient,
+            message: resolvedBody,
+            sender: sender.identifier
+        });
+    } else {
+        // Email placeholder
+        console.log(`>>> [MESSAGING] Email dispatch simulation: ${sender.identifier} to ${recipient}`);
+    }
 
     // 5. Create Audit Log
     const logData: Omit<MessageLog, 'id'> = {
@@ -82,7 +93,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         type: 'notification_sent',
         source: 'system',
         description: `Sent ${template.channel} "${template.name}" to ${recipient}`,
-        metadata: { logId: logRef.id, channel: template.channel, templateName: template.name }
+        metadata: { 
+            logId: logRef.id, 
+            channel: template.channel, 
+            templateName: template.name,
+            providerResponse: mNotifyResponse 
+        }
     });
 
     return { success: true, logId: logRef.id };
