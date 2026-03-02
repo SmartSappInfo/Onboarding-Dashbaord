@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,14 +5,14 @@ import { useFormContext, Controller } from 'react-hook-form';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { UserProfile, MessageTemplate } from '@/lib/types';
-import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Bell, UserCheck, Users, Mail, Smartphone, Info, ShieldCheck } from 'lucide-react';
+import { Bell, UserCheck, Users, Mail, Smartphone, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MultiSelect } from '@/components/ui/multi-select'; // Assuming this exists or using a shim
+import { MultiSelect } from '@/components/ui/multi-select';
+import { Separator } from '@/components/ui/separator';
 
 /**
  * Reusable configuration component for Internal Team Notifications.
@@ -25,7 +24,6 @@ export default function InternalNotificationConfig({ prefix = "adminAlert" }: { 
 
     const enabled = watch(`${prefix}sEnabled`);
     const channel = watch(`${prefix}Channel`);
-    const notifyManager = watch(`${prefix}NotifyManager`);
 
     const usersQuery = useMemoFirebase(() => {
         if (!firestore) return null;
