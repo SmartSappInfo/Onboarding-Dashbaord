@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -48,7 +49,7 @@ const generateSchema = (elements: SurveyElement[]) => {
     const baseSchemaObject = questions.reduce((acc, q) => {
         let schema: z.ZodTypeAny = z.any();
         
-        if (q.type === 'text' || q.type === 'long-text') {
+        if (q.type === 'text' || q.type === 'long-text' || q.type === 'email' || q.type === 'phone') {
             let textSchema = z.string();
             if (q.minLength !== undefined) {
                 textSchema = textSchema.min(q.minLength, { message: `Must be at least ${q.minLength} characters.` });
@@ -57,10 +58,6 @@ const generateSchema = (elements: SurveyElement[]) => {
                 textSchema = textSchema.max(q.maxLength, { message: `Cannot exceed ${q.maxLength} characters.` });
             }
             schema = textSchema;
-        } else if (q.type === 'email') {
-            schema = z.string().email("Please enter a valid email address.").or(z.literal(''));
-        } else if (q.type === 'phone') {
-            schema = z.string().regex(/^\+?[\d\s\-()]{10,}$/, "Please enter a valid phone number (at least 10 digits).").or(z.literal(''));
         }
 
         if (q.type === 'file-upload') {
@@ -869,26 +866,57 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         try {
             const docRef = await addDoc(responsesCollection, responseData);
             
-            // Automation Messaging
-            if (survey.automationMessagingEnabled && survey.automationTemplateId && survey.automationSenderProfileId) {
-                const recipient = survey.automationRecipient || survey.elements.filter(isQuestion).find(q => q.type === 'email' || q.type === 'phone')?.id ? serializedData[survey.elements.filter(isQuestion).find(q => q.type === 'email' || q.type === 'phone')!.id] : null;
-                
-                if (recipient) {
+            // Resolve outcome for respondent messaging
+            const outcome = resolveOutcome(score);
+
+            // 1. Respondent Automation (from Logic Rules)
+            if (outcome) {
+                const respondentEmail = survey.elements.filter(isQuestion).find(q => q.type === 'email')?.id ? serializedData[survey.elements.filter(isQuestion).find(q => q.type === 'email')!.id] : null;
+                const respondentPhone = survey.elements.filter(isQuestion).find(q => q.type === 'phone')?.id ? serializedData[survey.elements.filter(isQuestion).find(q => q.type === 'phone')!.id] : null;
+
+                if (respondentEmail && outcome.emailTemplateId && outcome.emailTemplateId !== 'none') {
                     sendMessage({
-                        templateId: survey.automationTemplateId,
-                        senderProfileId: survey.automationSenderProfileId,
-                        recipient: String(recipient),
+                        templateId: outcome.emailTemplateId,
+                        senderProfileId: outcome.emailSenderProfileId || 'default',
+                        recipient: String(respondentEmail),
                         variables
-                    }).catch(e => console.error("Survey Automation Messaging failed:", e));
+                    }).catch(e => console.error("Respondent Email Automation failed:", e));
+                }
+
+                if (respondentPhone && outcome.smsTemplateId && outcome.smsTemplateId !== 'none') {
+                    sendMessage({
+                        templateId: outcome.smsTemplateId,
+                        senderProfileId: outcome.smsSenderProfileId || 'default',
+                        recipient: String(respondentPhone),
+                        variables
+                    }).catch(e => console.error("Respondent SMS Automation failed:", e));
                 }
             }
 
-            // Webhook Execution
+            // 2. Admin Automation (from Publish Step)
+            if (survey.adminEmailNotificationEnabled && survey.adminEmailTemplateId && survey.adminEmailRecipient) {
+                sendMessage({
+                    templateId: survey.adminEmailTemplateId,
+                    senderProfileId: survey.adminEmailSenderProfileId || 'default',
+                    recipient: survey.adminEmailRecipient,
+                    variables: { ...variables, admin_note: 'A new survey response has been received.' }
+                }).catch(e => console.error("Admin Email Automation failed:", e));
+            }
+
+            if (survey.adminSmsNotificationEnabled && survey.adminSmsTemplateId && survey.adminSmsRecipient) {
+                sendMessage({
+                    templateId: survey.adminSmsTemplateId,
+                    senderProfileId: survey.adminSmsSenderProfileId || 'default',
+                    recipient: survey.adminSmsRecipient,
+                    variables: { ...variables, admin_note: 'New survey response received.' }
+                }).catch(e => console.error("Admin SMS Automation failed:", e));
+            }
+
+            // 3. Webhook Execution
             if (survey.webhookEnabled && survey.webhookId) {
                 const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId));
                 if (webhookDoc.exists()) {
                     const webhookData = webhookDoc.data() as Webhook;
-                    const outcome = resolveOutcome(score);
                     const webhookPayload: Record<string, any> = {
                         survey_title: survey.title,
                         survey_id: survey.id,
@@ -916,7 +944,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             }
             
             await new Promise(resolve => setTimeout(resolve, 800));
-            if (survey.scoringEnabled && resolveOutcome(score)) { router.push(`/surveys/${survey.slug}/result/${docRef.id}`); return; }
+            if (survey.scoringEnabled && outcome) { router.push(`/surveys/${survey.slug}/result/${docRef.id}`); return; }
             onSubmitted();
         } catch (error) {
             errorEmitter.emit('permission-error', new FirestorePermissionError({ path: responsesCollection.path, operation: 'create', requestResourceData: responseData }));

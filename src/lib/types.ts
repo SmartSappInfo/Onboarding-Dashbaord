@@ -118,7 +118,7 @@ export interface MediaAsset {
 export interface SurveyQuestion {
   id: string;
   title: string;
-  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload';
+  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone';
   options?: string[];
   allowOther?: boolean;
   isRequired: boolean;
@@ -208,6 +208,11 @@ export interface SurveyResultRule {
     maxScore: number;
     priority: number;
     pageId: string;
+    // Respondent Messaging
+    emailTemplateId?: string;
+    smsTemplateId?: string;
+    emailSenderProfileId?: string;
+    smsSenderProfileId?: string;
 }
 
 export interface Survey {
@@ -235,6 +240,16 @@ export interface Survey {
   showSurveyTitles?: boolean;
   webhookId?: string;
   webhookEnabled?: boolean;
+  // Admin Notifications
+  adminSmsNotificationEnabled?: boolean;
+  adminSmsTemplateId?: string;
+  adminSmsSenderProfileId?: string;
+  adminSmsRecipient?: string;
+  adminEmailNotificationEnabled?: boolean;
+  adminEmailTemplateId?: string;
+  adminEmailSenderProfileId?: string;
+  adminEmailRecipient?: string;
+  // Legacy (preserved for stability)
   automationMessagingEnabled?: boolean;
   automationTemplateId?: string;
   automationSenderProfileId?: string;

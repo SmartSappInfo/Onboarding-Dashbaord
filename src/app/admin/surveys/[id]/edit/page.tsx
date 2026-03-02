@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send, Smartphone, Globe, ShieldCheck, Zap
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type MessageTemplate, type SenderProfile } from '@/lib/types';
@@ -37,11 +38,12 @@ import {
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import Link from 'next/link';
+import { AnimatePresence, motion } from 'framer-motion';
 
 const questionSchema = z.object({
   id: z.string(),
   title: z.string().min(1, 'Question title is required.'),
-  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload']),
+  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload', 'email', 'phone']),
   options: z.array(z.string().min(1, 'Option cannot be empty')).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
@@ -132,11 +134,17 @@ const formSchema = z.object({
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
   showSurveyTitles: z.boolean().default(true),
-  // Messaging
+  // Admin Notifications
+  adminSmsNotificationEnabled: z.boolean().default(false),
+  adminSmsTemplateId: z.string().optional(),
+  adminSmsSenderProfileId: z.string().optional(),
+  adminSmsRecipient: z.string().optional(),
+  adminEmailNotificationEnabled: z.boolean().default(false),
+  adminEmailTemplateId: z.string().optional(),
+  adminEmailSenderProfileId: z.string().optional(),
+  adminEmailRecipient: z.string().optional(),
+  // Legacy
   automationMessagingEnabled: z.boolean().default(false),
-  automationTemplateId: z.string().optional(),
-  automationSenderProfileId: z.string().optional(),
-  automationRecipient: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -145,9 +153,12 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = ['Details', 'Builder', 'Results', 'Publish'];
 
     return (
-        <div className="flex justify-center items-center mb-12">
+        <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
             {steps.map((step, index) => {
                 const stepNum = index + 1;
+                const isCompleted = currentStep > stepNum;
+                const isActive = currentStep === stepNum;
+
                 return (
                     <React.Fragment key={step}>
                         <button 
@@ -157,16 +168,29 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                         >
                             <div
                                 className={cn(
-                                    'flex items-center justify-center w-6 h-6 rounded-full border-2 transition-all group-hover:scale-110',
-                                    currentStep > stepNum ? 'bg-primary border-primary text-primary-foreground' : '',
-                                    currentStep === stepNum ? 'border-primary' : 'border-border',
+                                    'flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all group-hover:scale-110',
+                                    isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
+                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {currentStep > stepNum ? <Check className="w-3 h-3" /> : <span className={cn('text-[10px] font-bold', currentStep === stepNum ? 'text-primary' : 'text-muted-foreground')}>{stepNum}</span>}
+                                {isCompleted ? <Check className="w-4 h-4" /> : <span className="text-[10px] font-black">{stepNum}</span>}
                             </div>
-                            <p className={cn('mt-2 text-[10px] uppercase tracking-wider transition-colors', currentStep >= stepNum ? 'font-bold text-primary' : 'text-muted-foreground font-medium group-hover:text-primary/70')}>{step}</p>
+                            <p className={cn(
+                                'mt-2 text-[10px] font-black uppercase tracking-widest transition-colors', 
+                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
+                            )}>
+                                {step}
+                            </p>
                         </button>
-                        {index < steps.length - 1 && <div className="flex-1 h-[1px] bg-border mx-4"></div>}
+                        {index < steps.length - 1 && (
+                            <div className="flex-1 mx-4 h-[1px] bg-border relative overflow-hidden">
+                                <motion.div 
+                                    initial={false}
+                                    animate={{ width: isCompleted ? '100%' : '0%' }}
+                                    className="absolute left-0 top-0 h-full bg-primary"
+                                />
+                            </div>
+                        )}
                     </React.Fragment>
                 );
             })}
@@ -202,7 +226,7 @@ function EditSurveyContent() {
 
     const profilesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, 'sender_profiles'), orderBy('name', 'asc'));
+        return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
     }, [firestore]);
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
@@ -232,34 +256,21 @@ function EditSurveyContent() {
             startButtonText: 'Let\'s Start',
             showCoverPage: true,
             showSurveyTitles: true,
+            adminSmsNotificationEnabled: false,
+            adminSmsTemplateId: '',
+            adminSmsSenderProfileId: '',
+            adminSmsRecipient: '',
+            adminEmailNotificationEnabled: false,
+            adminEmailTemplateId: '',
+            adminEmailSenderProfileId: '',
+            adminEmailRecipient: '',
             automationMessagingEnabled: false,
-            automationTemplateId: '',
-            automationSenderProfileId: '',
-            automationRecipient: '',
         }
     });
 
     const { getValues, setValue, watch, reset } = form;
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
-
-    React.useEffect(() => {
-        const pattern = getValues('backgroundPattern');
-        const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
-        if (!pattern || !VALID_PATTERNS.includes(pattern)) {
-            setValue('backgroundPattern', 'none', { shouldDirty: false, shouldValidate: true });
-        }
-    }, [watchedPattern, getValues, setValue]);
-
-    React.useEffect(() => {
-        const urlStep = searchParams.get('step');
-        if (urlStep) {
-            const parsed = parseInt(urlStep, 10);
-            if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) {
-                setStep(parsed);
-            }
-        }
-    }, [searchParams]);
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
@@ -292,10 +303,15 @@ function EditSurveyContent() {
                 startButtonText: survey.startButtonText || 'Let\'s Start',
                 showCoverPage: survey.showCoverPage ?? true,
                 showSurveyTitles: survey.showSurveyTitles ?? true,
+                adminSmsNotificationEnabled: survey.adminSmsNotificationEnabled || false,
+                adminSmsTemplateId: survey.adminSmsTemplateId || '',
+                adminSmsSenderProfileId: survey.adminSmsSenderProfileId || '',
+                adminSmsRecipient: survey.adminSmsRecipient || '',
+                adminEmailNotificationEnabled: survey.adminEmailNotificationEnabled || false,
+                adminEmailTemplateId: survey.adminEmailTemplateId || '',
+                adminEmailSenderProfileId: survey.adminEmailSenderProfileId || '',
+                adminEmailRecipient: survey.adminEmailRecipient || '',
                 automationMessagingEnabled: survey.automationMessagingEnabled || false,
-                automationTemplateId: survey.automationTemplateId || '',
-                automationSenderProfileId: survey.automationSenderProfileId || '',
-                automationRecipient: survey.automationRecipient || '',
             });
 
             if (firestore) {
@@ -412,7 +428,6 @@ function EditSurveyContent() {
         let targetStep = 4;
         if (errors.internalName || errors.title || errors.description) targetStep = 1;
         else if (errors.thankYouTitle || errors.thankYouDescription) targetStep = 3;
-        else if (errors.backgroundPattern) targetStep = 1;
         
         setStep(targetStep);
 
@@ -463,8 +478,6 @@ function EditSurveyContent() {
 
     const handleStepChange = async (targetStep: number) => {
         if (targetStep === step) return;
-        
-        // If moving forward, validate current step fields first
         if (targetStep > step) {
             let fieldsToValidate: any[] = [];
             if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
@@ -477,455 +490,215 @@ function EditSurveyContent() {
                 return;
             }
         }
-
         setStep(targetStep);
         router.push(`${pathname}?step=${targetStep}`, { scroll: false });
     }
 
-    if (isLoading) {
-        return (
-            <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-        )
-    }
+    if (isLoading) return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+
+    const stepTransition = {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -20 },
+        transition: { type: 'spring', damping: 25, stiffness: 200 }
+    };
 
     return (
         <FormProvider {...form}>
-            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-                <div className="w-full md:w-[90%] mx-auto">
-                    <Button asChild variant="ghost" className="mb-4 -ml-4">
-                        <Link href="/admin/surveys">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back to Surveys
-                        </Link>
-                    </Button>
+            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
+                    <div className="mb-8">
+                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
+                            <Link href="/admin/surveys">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back to Directory
+                            </Link>
+                        </Button>
+                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Configure Survey</h1>
+                    </div>
+
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
-                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-                        
-                        <div className={cn(step !== 1 && 'hidden')}>
-                            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                                <Card className="xl:col-span-2">
-                                    <CardHeader>
-                                        <CardTitle>Survey Details</CardTitle>
-                                        <CardDescription>Basic information and structural settings.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
+
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-32">
+                        <AnimatePresence mode="wait">
+                            {step === 1 && (
+                                <motion.div key="step1" {...stepTransition}>
+                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                                        <Card className="xl:col-span-2 shadow-sm border-none ring-1 ring-border">
+                                            <CardHeader className="bg-muted/30 border-b pb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Survey Identity</CardTitle>
+                                                        <CardDescription className="text-xs font-medium">Core naming and classification.</CardDescription>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-8 bg-background">
+                                                <FormField control={form.control} name="internalName" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Internal Name</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="title" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Public Header</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                                <FormField control={form.control} name="description" render={({ field }) => (
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Introduction / Sub-header</FormLabel><FormControl><Textarea placeholder="Share your honest feedback..." {...field} className="min-h-[120px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" /></FormControl><FormMessage /></FormItem>
+                                                )} />
+                                            </CardContent>
+                                        </Card>
+
                                         <div className="space-y-8">
-                                            <FormField
-                                                control={form.control}
-                                                name="internalName"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Internal Name (Administrative)</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g., Parent Feedback 2024 - Draft" {...field} />
-                                                        </FormControl>
-                                                        <FormDescription>Used only within the admin dashboard to identify this survey.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="title"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Public Survey Title</FormLabel>
-                                                        <FormControl>
-                                                            <Input placeholder="e.g., Parents Feedback on School Events" {...field} />
-                                                        </FormControl>
-                                                        <FormDescription>The title displayed to respondents on the public survey page.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="description"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description / Instructions</FormLabel>
-                                                        <FormControl>
-                                                            <Textarea placeholder="Please provide your honest feedback..." {...field} />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <Separator />
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                                <FormField
-                                                    control={form.control}
-                                                    name="startButtonText"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Start Button Text</FormLabel>
-                                                            <FormControl>
-                                                                <Input placeholder="e.g., Let's Start" {...field} />
-                                                            </FormControl>
-                                                            <FormDescription>The label for the button on the cover page.</FormDescription>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <div className="space-y-4 pt-2">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="showCoverPage"
-                                                        render={({ field }) => (
-                                                            <div className="flex items-center gap-3">
-                                                                <Switch 
-                                                                    id="show-cover-page-edit" 
-                                                                    checked={field.value} 
-                                                                    onCheckedChange={field.onChange} 
-                                                                />
-                                                                <Label htmlFor="show-cover-page-edit" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                                                    <Layout className="h-3 w-3 text-primary" /> Use Cover Page
-                                                                </Label>
-                                                            </div>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="showSurveyTitles"
-                                                        render={({ field }) => (
-                                                            <div className="flex items-center gap-3">
-                                                                <Switch 
-                                                                    id="show-survey-titles-edit" 
-                                                                    checked={field.value} 
-                                                                    onCheckedChange={field.onChange} 
-                                                                />
-                                                                <Label htmlFor="show-survey-titles-edit" className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                                                    <Eye className="h-3 w-3 text-primary" /> Show Survey Titles
-                                                                </Label>
-                                                            </div>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                <div className="space-y-8">
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2"><Palette className="h-5 w-5" /> Branding</CardTitle>
-                                            <CardDescription>Logo and hero imagery.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-6">
-                                            <FormField
-                                                control={form.control}
-                                                name="logoUrl"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Brand Logo</FormLabel>
-                                                        <FormControl>
-                                                            <MediaSelect {...field} filterType="image" />
-                                                        </FormControl>
-                                                        <FormDescription>Leave empty to use SmartSapp default logo.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="bannerImageUrl"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Cover / Banner Image</FormLabel>
-                                                        <FormControl>
-                                                            <MediaSelect {...field} filterType="image" />
-                                                        </FormControl>
-                                                        <FormDescription>High-fidelity banner for the introduction.</FormDescription>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </CardContent>
-                                    </Card>
-
-                                    <Card>
-                                        <CardHeader>
-                                            <CardTitle className="flex items-center gap-2"><Layout className="h-5 w-5" /> Appearance</CardTitle>
-                                            <CardDescription>Colors and background patterns.</CardDescription>
-                                        </CardHeader>
-                                        <CardContent className="space-y-6">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-                                                <div className="space-y-6">
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="backgroundColor"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Background Color</FormLabel>
-                                                                <div className="flex items-center gap-2">
-                                                                    <FormControl>
-                                                                        <Input type="color" {...field} value={field.value || "#F1F5F9"} className="w-12 h-10 p-1 cursor-pointer" />
-                                                                    </FormControl>
-                                                                    <Input 
-                                                                        value={field.value} 
-                                                                        onChange={e => field.onChange(e.target.value)} 
-                                                                        className="flex-1 font-mono uppercase" 
-                                                                    />
-                                                                </div>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="patternColor"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Pattern Color</FormLabel>
-                                                                <div className="flex items-center gap-2">
-                                                                    <FormControl>
-                                                                        <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-12 h-10 p-1 cursor-pointer" />
-                                                                    </FormControl>
-                                                                    <Input 
-                                                                        value={field.value} 
-                                                                        onChange={e => field.onChange(e.target.value)} 
-                                                                        className="flex-1 font-mono uppercase" 
-                                                                    />
-                                                                </div>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="backgroundPattern"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Background Style</FormLabel>
-                                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                                    <FormControl>
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select a style" />
-                                                                        </SelectTrigger>
-                                                                    </FormControl>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="none">None (Solid)</SelectItem>
-                                                                        <SelectItem value="gradient">Linear Gradient</SelectItem>
-                                                                        <SelectItem value="dots">Dots</SelectItem>
-                                                                        <SelectItem value="grid">Grid</SelectItem>
-                                                                        <SelectItem value="circuit">Circuit</SelectItem>
-                                                                        <SelectItem value="topography">Topography</SelectItem>
-                                                                        <SelectItem value="cubes">Cubes</SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-xs uppercase tracking-widest font-bold text-muted-foreground">Design Preview</Label>
-                                                    <div 
-                                                        className="aspect-square w-full rounded-xl border-2 border-dashed flex items-center justify-center relative overflow-hidden"
-                                                        style={{ backgroundColor: watchedBgColor || "#F1F5F9" }}
-                                                    >
-                                                        <span className="relative z-10 text-[10px] font-bold uppercase tracking-tighter opacity-20">Live Preview Area</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </CardContent>
-                                    </Card>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className={cn(step !== 2 && 'hidden')}>
-                            <SurveyFormBuilder />
-                        </div>
-                        
-                        <div className={cn(step !== 3 && 'hidden')}>
-                            <ResultsStep />
-                        </div>
-
-                        <div className={cn("space-y-8", step !== 4 && 'hidden')}>
-                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle>Finalize & Integrate</CardTitle>
-                                        <CardDescription>Set the survey status and connect external automations.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-8">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <FormField
-                                                control={form.control}
-                                                name="status"
-                                                render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Status</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                        <SelectValue placeholder="Select survey status" />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>
-                                                        <SelectItem value="draft">Draft</SelectItem>
-                                                        <SelectItem value="published">Published</SelectItem>
-                                                        <SelectItem value="archived">Archived</SelectItem>
-                                                    </SelectContent>
-                                                    </Select>
-                                                    <FormMessage />
-                                                </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name="slug"
-                                                render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Survey URL</FormLabel>
-                                                    <div className="flex flex-col sm:flex-row group transition-all">
-                                                        <div 
-                                                            className="flex h-10 items-center bg-muted px-3 border border-b-0 sm:border-b sm:border-r-0 rounded-t-md sm:rounded-l-md sm:rounded-tr-none text-[10px] font-mono text-muted-foreground overflow-hidden shrink-0"
-                                                            title={typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                        >
-                                                            <span className="truncate max-w-[200px]">
-                                                                {typeof window !== 'undefined' ? `${window.location.origin}/surveys/` : '/surveys/'}
-                                                            </span>
+                                            <Card className="shadow-sm border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Theme</CardTitle>
+                                                            <CardDescription className="text-xs font-medium">Branding and styling.</CardDescription>
                                                         </div>
-                                                        <FormControl>
-                                                            <Input 
-                                                                {...field} 
-                                                                className="rounded-t-none sm:rounded-l-none rounded-b-md sm:rounded-r-md focus-visible:ring-1 focus-visible:ring-primary h-10" 
-                                                            />
-                                                        </FormControl>
                                                     </div>
-                                                    <FormDescription className="text-[10px] mt-1">This is the unique last part of your survey URL.</FormDescription>
-                                                    <FormMessage className="text-xs font-bold" />
-                                                </FormItem>
-                                                )}
-                                            />
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-6">
+                                                    <FormField control={form.control} name="logoUrl" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Brand Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-2xl" /></FormControl></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="bannerImageUrl" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Cover Image</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-2xl" /></FormControl></FormItem>
+                                                    )} />
+                                                </CardContent>
+                                            </Card>
                                         </div>
-
-                                        <Separator />
-
-                                        <WebhookManager />
-                                    </CardContent>
-                                </Card>
-
-                                <Card className="border-primary/20 bg-primary/5">
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2"><Send className="h-5 w-5 text-primary" /> Messaging Automation</CardTitle>
-                                        <CardDescription>Automatically notify an administrator or the respondent upon completion.</CardDescription>
-                                    </CardHeader>
-                                    <CardContent className="space-y-6">
-                                        <div className="flex items-center justify-between p-4 bg-white border rounded-2xl shadow-sm">
-                                            <div className="space-y-0.5">
-                                                <Label className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
-                                                    <Mail className="h-4 w-4 text-primary" />
-                                                    Completion Message
-                                                </Label>
-                                                <p className="text-xs text-muted-foreground font-medium">Trigger an automated dispatch on each response.</p>
-                                            </div>
-                                            <FormField
-                                                control={form.control}
-                                                name="automationMessagingEnabled"
-                                                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
-                                            />
-                                        </div>
-
-                                        {watch('automationMessagingEnabled') && (
-                                            <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Message Template</Label>
-                                                    <Controller
-                                                        name="automationTemplateId"
-                                                        control={form.control}
-                                                        render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                <SelectTrigger className="h-11 bg-white rounded-xl shadow-sm border-border/50">
-                                                                    <SelectValue placeholder="Select a template..." />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
-                                                                    <SelectItem value="none">No Template Selected</SelectItem>
-                                                                    {templates?.filter(t => t.category === 'surveys' && t.isActive).map(t => (
-                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Sender Profile</Label>
-                                                    <Controller
-                                                        name="automationSenderProfileId"
-                                                        control={form.control}
-                                                        render={({ field }) => (
-                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                <SelectTrigger className="h-11 bg-white rounded-xl shadow-sm border-border/50">
-                                                                    <SelectValue placeholder="Select a sender..." />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
-                                                                    <SelectItem value="none">No Sender Selected</SelectItem>
-                                                                    {profiles?.filter(p => p.isActive).map(p => (
-                                                                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recipient Overwrite</Label>
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="automationRecipient"
-                                                        render={({ field }) => (
-                                                            <Input 
-                                                                {...field} 
-                                                                placeholder="e.g. admin@school.edu.gh" 
-                                                                className="h-11 bg-white"
-                                                            />
-                                                        )}
-                                                    />
-                                                    <p className="text-[10px] text-muted-foreground italic px-1">
-                                                        Leave empty to use the respondent's contact info from the survey (if email/phone fields are present).
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </div>
-                        </div>
-
-                        <div className="flex justify-between items-center mt-12">
-                            <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')}>Cancel</Button>
-                            <div className="flex items-center gap-4">
-                                {step > 1 && <Button type="button" variant="outline" onClick={handlePrev}>Previous</Button>}
-                                {step < 4 ? (
-                                    <Button type="button" onClick={handleNext}>
-                                        Next
-                                    </Button>
-                                ) : (
-                                    <div className="flex items-center gap-4">
-                                        <SurveyPreviewButton />
-                                        <Button type="submit" disabled={isSaving}>
-                                            {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</> : 'Save Changes'}
-                                        </Button>
                                     </div>
-                                )}
-                            </div>
-                        </div>
-                    </form>
+                                </motion.div>
+                            )}
 
-                    <ValidationErrorModal
-                        open={isErrorModalOpen}
-                        onOpenChange={setIsErrorModalOpen}
-                        errors={validationErrors}
-                        onFix={scrollToError}
-                    />
+                            {step === 2 && (
+                                <motion.div key="step2" {...stepTransition} className="min-h-[60vh]">
+                                    <SurveyFormBuilder />
+                                </motion.div>
+                            )}
+
+                            {step === 3 && (
+                                <motion.div key="step3" {...stepTransition} className="min-h-[60vh]">
+                                    <ResultsStep />
+                                </motion.div>
+                            )}
+
+                            {step === 4 && (
+                                <motion.div key="step4" {...stepTransition}>
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                        <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
+                                            <CardHeader className="bg-muted/30 border-b pb-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Publish Settings</CardTitle>
+                                                        <CardDescription className="text-xs font-medium">Visibility and identifiers.</CardDescription>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-8">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <FormField control={form.control} name="status" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Visibility Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="slug" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Identifier</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
+                                                    )} />
+                                                </div>
+                                                <Separator />
+                                                <WebhookManager />
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
+                                            <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Send className="h-5 w-5" /></div>
+                                                    <div>
+                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Admin Alerts</CardTitle>
+                                                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Internal notifications on response.</CardDescription>
+                                                    </div>
+                                                </div>
+                                            </CardHeader>
+                                            <CardContent className="p-6 space-y-8">
+                                                {/* Email Admin Alert */}
+                                                <div className={cn("p-5 rounded-2xl border-2 transition-all", watch('adminEmailNotificationEnabled') ? "bg-white border-primary/20 shadow-sm" : "bg-muted/20 border-transparent")}>
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("p-2 rounded-lg", watch('adminEmailNotificationEnabled') ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground")}><Mail className="h-4 w-4" /></div>
+                                                            <Label className="text-sm font-black uppercase tracking-tight">Email Notifications</Label>
+                                                        </div>
+                                                        <Controller name="adminEmailNotificationEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
+                                                    </div>
+                                                    {watch('adminEmailNotificationEnabled') && (
+                                                        <div className="space-y-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Template</Label>
+                                                                <Controller name="adminEmailTemplateId" control={form.control} render={({ field }) => (
+                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Choose template..." /></SelectTrigger><SelectContent>{templates?.filter(t => t.channel === 'email').map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
+                                                                )} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Recipient Address</Label>
+                                                                <Controller name="adminEmailRecipient" control={form.control} render={({ field }) => <Input {...field} placeholder="e.g. admin@school.edu" className="h-9 rounded-lg" />} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* SMS Admin Alert */}
+                                                <div className={cn("p-5 rounded-2xl border-2 transition-all", watch('adminSmsNotificationEnabled') ? "bg-white border-primary/20 shadow-sm" : "bg-muted/20 border-transparent")}>
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("p-2 rounded-lg", watch('adminSmsNotificationEnabled') ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground")}><Smartphone className="h-4 w-4" /></div>
+                                                            <Label className="text-sm font-black uppercase tracking-tight">SMS Alerts</Label>
+                                                        </div>
+                                                        <Controller name="adminSmsNotificationEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
+                                                    </div>
+                                                    {watch('adminSmsNotificationEnabled') && (
+                                                        <div className="space-y-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Template</Label>
+                                                                <Controller name="adminSmsTemplateId" control={form.control} render={({ field }) => (
+                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Choose template..." /></SelectTrigger><SelectContent>{templates?.filter(t => t.channel === 'sms').map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
+                                                                )} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Recipient Phone</Label>
+                                                                <Controller name="adminSmsRecipient" control={form.control} render={({ field }) => <Input {...field} placeholder="e.g. 024XXXXXXX" className="h-9 rounded-lg" />} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+                    </form>
                 </div>
             </div>
+
+            <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl flex items-center justify-between gap-4">
+                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground hover:bg-muted/50 rounded-xl px-6 h-12">Cancel</Button>
+                    <div className="flex items-center gap-4">
+                        {step > 1 && <Button type="button" variant="outline" onClick={handlePrev} className="font-bold border-border/50 rounded-xl px-6 h-12">Previous</Button>}
+                        {step < 4 ? (
+                            <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Button>
+                        ) : (
+                            <div className="flex items-center gap-4">
+                                <SurveyPreviewButton variant="outline" className="h-14 px-8 rounded-xl font-bold border-2" />
+                                <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit, onInvalid)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">{isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} Finalize & Save</Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={scrollToError} />
         </FormProvider>
     );
 }
