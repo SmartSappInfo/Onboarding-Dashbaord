@@ -50,7 +50,7 @@ async function mNotifyRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT' |
   const data = await response.json();
 
   // mNotify returns status: 'success' or HTTP-like codes in the JSON
-  if (data.status !== 'success' && data.status !== 200) {
+  if (data.status !== 'success' && data.status !== 200 && data.code !== 'success') {
     throw new Error(data.message || 'mNotify API Request Failed');
   }
 
@@ -138,4 +138,11 @@ export async function deleteScheduledSms(id: string) {
  */
 export async function getSmsMetrics(from: string, to: string) {
   return mNotifyRequest(`/report?from=${from}&to=${to}`, 'GET');
+}
+
+/**
+ * Retrieves the delivery status of a single SMS.
+ */
+export async function getSmsStatus(providerId: string) {
+  return mNotifyRequest(`/status/${providerId}`, 'GET');
 }

@@ -39,7 +39,9 @@ import {
     Info,
     CalendarClock,
     Building,
-    Wallet
+    Wallet,
+    Trophy,
+    TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -93,6 +95,7 @@ export default function ComposerWizard() {
     const watchedMode = watch('mode');
     const watchedIsScheduled = watch('isScheduled');
     const watchedSchoolId = watch('schoolId');
+    const watchedVariables = watch('variables');
 
     React.useEffect(() => {
         const fetchBalance = async () => {
@@ -143,6 +146,22 @@ export default function ComposerWizard() {
     const selectedTemplate = React.useMemo(() => 
         templates?.find(t => t.id === watchedTemplateId), 
     [templates, watchedTemplateId]);
+
+    // Credit Estimation Logic
+    const creditEstimation = React.useMemo(() => {
+        if (watchedChannel !== 'sms' || !selectedTemplate) return null;
+        
+        const resolvedBody = resolveVariables(selectedTemplate.body, watchedVariables);
+        const charsPerSms = 160;
+        const segmentsPerMsg = Math.ceil(resolvedBody.length / charsPerSms);
+        const recipientCount = watchedMode === 'bulk' ? csvData.length : 1;
+        
+        return {
+            segments: segmentsPerMsg,
+            totalCredits: segmentsPerMsg * recipientCount,
+            recipientCount
+        };
+    }, [watchedChannel, selectedTemplate, watchedVariables, watchedMode, csvData]);
 
     // Auto-populate variables based on selected school
     React.useEffect(() => {
@@ -283,8 +302,8 @@ export default function ComposerWizard() {
             step >= num ? "text-primary" : "text-muted-foreground opacity-40"
         )}>
             <div className={cn(
-                "w-6 h-6 rounded-full border-2 flex items-center justify-center",
-                step > num ? "bg-primary border-primary text-white" : step === num ? "border-primary text-primary" : "border-muted-foreground"
+                "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all",
+                step > num ? "bg-primary border-primary text-white" : step === num ? "border-primary text-primary shadow-lg shadow-primary/20 scale-110" : "border-muted-foreground"
             )}>
                 {step > num ? <Check className="w-3 h-3" /> : num}
             </div>
@@ -292,7 +311,7 @@ export default function ComposerWizard() {
         </div>
     );
 
-    const isOutOfCredits = watchedChannel === 'sms' && smsBalance !== null && smsBalance <= 0;
+    const isOutOfCredits = watchedChannel === 'sms' && smsBalance !== null && creditEstimation && smsBalance < creditEstimation.totalCredits;
 
     return (
         <div className="space-y-8">
@@ -306,38 +325,44 @@ export default function ComposerWizard() {
 
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 {step === 1 && (
-                    <Card className="shadow-xl">
-                        <CardHeader>
-                            <CardTitle>Select Template</CardTitle>
-                            <CardDescription>Choose the channel and the pre-defined message structure.</CardDescription>
+                    <Card className="shadow-xl border-none ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/30 border-b pb-6">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">Select Template</CardTitle>
+                            <CardDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">Choose the channel and the pre-defined message structure.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <CardContent className="space-y-10 p-6 pt-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">1. Choose Channel</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Choose Communication Medium</Label>
                                     <div className="grid grid-cols-2 gap-4">
                                         <Button 
                                             type="button" 
                                             variant={watchedChannel === 'email' ? 'default' : 'outline'} 
-                                            className="h-20 flex-col gap-2 rounded-2xl"
+                                            className={cn(
+                                                "h-24 flex-col gap-2 rounded-2xl border-2 transition-all",
+                                                watchedChannel === 'email' ? "shadow-xl scale-105 border-primary" : "border-muted-foreground/10"
+                                            )}
                                             onClick={() => setValue('channel', 'email')}
                                         >
-                                            <Mail className="h-6 w-6" />
-                                            <span>Email</span>
+                                            <Mail className={cn("h-7 w-7", watchedChannel === 'email' ? "text-white" : "text-blue-500")} />
+                                            <span className="font-black uppercase text-xs tracking-widest">Email</span>
                                         </Button>
                                         <Button 
                                             type="button" 
                                             variant={watchedChannel === 'sms' ? 'default' : 'outline'} 
-                                            className="h-20 flex-col gap-2 rounded-2xl"
+                                            className={cn(
+                                                "h-24 flex-col gap-2 rounded-2xl border-2 transition-all",
+                                                watchedChannel === 'sms' ? "shadow-xl scale-105 border-primary" : "border-muted-foreground/10"
+                                            )}
                                             onClick={() => setValue('channel', 'sms')}
                                         >
-                                            <Smartphone className="h-6 w-6" />
-                                            <span>SMS</span>
+                                            <Smartphone className={cn("h-7 w-7", watchedChannel === 'sms' ? "text-white" : "text-orange-500")} />
+                                            <span className="font-black uppercase text-xs tracking-widest">SMS</span>
                                         </Button>
                                     </div>
                                     {watchedChannel === 'sms' && (
-                                        <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-tighter">
-                                            <span className="text-muted-foreground">Current Balance</span>
+                                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-orange-50 border border-orange-100 text-[10px] font-black uppercase tracking-tighter">
+                                            <span className="text-orange-700/60">Current mNotify Balance</span>
                                             <span className={cn("flex items-center gap-1.5", smsBalance !== null && smsBalance < 10 ? "text-red-500 animate-pulse" : "text-emerald-600")}>
                                                 <Wallet className="h-3 w-3" />
                                                 {smsBalance !== null ? `${smsBalance} Credits` : 'Loading...'}
@@ -347,23 +372,23 @@ export default function ComposerWizard() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">2. Select Template</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">2. Select Message Architecture</Label>
                                     <Controller
                                         name="templateId"
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="h-12 rounded-xl">
+                                                <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-lg">
                                                     <SelectValue placeholder="Choose a template..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
+                                                <SelectContent className="rounded-2xl">
                                                     {isLoadingTemplates ? (
-                                                        <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                                                        <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>
                                                     ) : templates?.map(t => (
-                                                        <SelectItem key={t.id} value={t.id}>
-                                                            <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="text-[8px] uppercase">{t.category}</Badge>
-                                                                {t.name}
+                                                        <SelectItem key={t.id} value={t.id} className="rounded-xl my-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">{t.category}</Badge>
+                                                                <span className="font-bold">{t.name}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -371,58 +396,64 @@ export default function ComposerWizard() {
                                             </Select>
                                         )}
                                     />
+                                    <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                        <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                                        <p className="text-[10px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                            Templates provide standardized branding and ensure compliance across all school communications.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
 
                             {selectedTemplate && (
-                                <div className="p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-2">
+                                <div className="p-6 rounded-[2rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-4 animate-in fade-in zoom-in-95">
                                     <div className="flex justify-between items-center">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Template Variables Detected</Label>
-                                        <Badge className="bg-primary text-white border-none text-[8px] uppercase">{selectedTemplate.variables.length} Required</Badge>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Dynamic Logic Points Detected</Label>
+                                        <Badge className="bg-primary text-white border-none text-[8px] font-black uppercase tracking-widest px-3 h-6">{selectedTemplate.variables.length} Variables</Badge>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {selectedTemplate.variables.map(v => (
-                                            <code key={v} className="bg-white px-2 py-1 rounded border text-[10px] font-bold text-primary">{"{{" + v + "}}"}</code>
+                                            <code key={v} className="bg-white px-3 py-1.5 rounded-xl border border-primary/10 text-[10px] font-black text-primary shadow-sm uppercase tracking-tighter">{"{{" + v + "}}"}</code>
                                         ))}
-                                        {selectedTemplate.variables.length === 0 && <p className="text-xs italic text-muted-foreground">No variables in this template.</p>}
+                                        {selectedTemplate.variables.length === 0 && <p className="text-xs italic text-muted-foreground">This is a static announcement with no variables.</p>}
                                     </div>
                                 </div>
                             )}
                         </CardContent>
-                        <CardFooter className="justify-end bg-muted/30 pt-6">
-                            <Button type="button" variant="outline" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-10 rounded-xl font-bold border-2">
-                                Next Step <ChevronRight className="ml-2 h-4 w-4" />
+                        <CardFooter className="justify-end bg-muted/30 p-6 border-t">
+                            <Button type="button" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-12 rounded-2xl font-black shadow-xl shadow-primary/20 h-14 uppercase tracking-widest active:scale-95 transition-all">
+                                Next Step <ChevronRight className="ml-2 h-5 w-5" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
                 {step === 2 && (
-                    <Card className="shadow-xl">
-                        <CardHeader>
-                            <CardTitle>Recipients & Timing</CardTitle>
-                            <CardDescription>Configure who receives the message and when it should be delivered.</CardDescription>
+                    <Card className="shadow-xl border-none ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/30 border-b pb-6">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">Recipients & Optimization</CardTitle>
+                            <CardDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">Configure delivery mode and timing.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <CardContent className="space-y-10 p-6 pt-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">3. Sender Profile</Label>
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">3. Official Sender Identity</Label>
                                     <Controller
                                         name="senderProfileId"
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value}>
-                                                <SelectTrigger className="h-12 rounded-xl">
+                                                <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-lg transition-all">
                                                     <SelectValue placeholder="Choose sender..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
+                                                <SelectContent className="rounded-2xl">
                                                     {isLoadingProfiles ? (
-                                                        <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
+                                                        <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin text-primary" /></div>
                                                     ) : profiles?.map(p => (
-                                                        <SelectItem key={p.id} value={p.id}>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-bold">{p.name}</span>
-                                                                <span className="text-[10px] text-muted-foreground">({p.identifier})</span>
+                                                        <SelectItem key={p.id} value={p.id} className="rounded-xl my-1">
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-black">{p.name}</span>
+                                                                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-0.5 rounded">ID: {p.identifier}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
@@ -433,12 +464,12 @@ export default function ComposerWizard() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">4. Delivery Mode</Label>
-                                    <div className="grid grid-cols-2 gap-2 bg-muted p-1 rounded-xl">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">4. Dispatch Mode</Label>
+                                    <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border border-border/50">
                                         <Button 
                                             type="button" 
                                             variant={watchedMode === 'single' ? 'secondary' : 'ghost'} 
-                                            className={cn("h-10 rounded-lg", watchedMode === 'single' && "bg-background shadow-sm")}
+                                            className={cn("h-11 rounded-xl font-bold uppercase text-[10px] tracking-widest", watchedMode === 'single' && "bg-white shadow-lg text-primary")}
                                             onClick={() => setValue('mode', 'single')}
                                         >
                                             <User className="mr-2 h-4 w-4" /> Single
@@ -446,27 +477,30 @@ export default function ComposerWizard() {
                                         <Button 
                                             type="button" 
                                             variant={watchedMode === 'bulk' ? 'secondary' : 'ghost'} 
-                                            className={cn("h-10 rounded-lg", watchedMode === 'bulk' && "bg-background shadow-sm")}
+                                            className={cn("h-11 rounded-xl font-bold uppercase text-[10px] tracking-widest", watchedMode === 'bulk' && "bg-white shadow-lg text-primary")}
                                             onClick={() => setValue('mode', 'bulk')}
                                         >
-                                            <Users className="mr-2 h-4 w-4" /> Bulk
+                                            <Users className="mr-2 h-4 w-4" /> Bulk Upload
                                         </Button>
                                     </div>
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Separator className="bg-border/50" />
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="p-6 rounded-2xl border-2 border-primary/10 bg-primary/5 space-y-4 transition-all">
+                                <div className={cn(
+                                    "p-6 rounded-[2rem] border-2 transition-all duration-500",
+                                    watchedIsScheduled ? "bg-primary/5 border-primary shadow-xl shadow-primary/5" : "bg-muted/10 border-border/50"
+                                )}>
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className={cn("p-2 rounded-xl transition-colors", watchedIsScheduled ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                                <CalendarClock className="h-5 w-5" />
+                                        <div className="flex items-center gap-4">
+                                            <div className={cn("p-3 rounded-2xl transition-all duration-500", watchedIsScheduled ? "bg-primary text-white shadow-xl shadow-primary/20 rotate-3" : "bg-muted text-muted-foreground")}>
+                                                <CalendarClock className="h-6 w-6" />
                                             </div>
                                             <div className="space-y-0.5">
-                                                <Label className="text-sm font-black uppercase tracking-tight">Schedule for Later</Label>
-                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Queue for future delivery</p>
+                                                <Label className="text-base font-black uppercase tracking-tight">Deferred Dispatch</Label>
+                                                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">Queue for future execution</p>
                                             </div>
                                         </div>
                                         <Controller
@@ -476,14 +510,14 @@ export default function ComposerWizard() {
                                                 <Switch 
                                                     checked={field.value} 
                                                     onCheckedChange={field.onChange} 
-                                                    className="scale-110"
+                                                    className="scale-125"
                                                 />
                                             )}
                                         />
                                     </div>
                                     
                                     {watchedIsScheduled && (
-                                        <div className="pt-4 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
+                                        <div className="pt-6 mt-6 border-t border-primary/10 animate-in fade-in slide-in-from-top-4 duration-500">
                                             <Controller
                                                 name="scheduledAt"
                                                 control={control}
@@ -498,14 +532,14 @@ export default function ComposerWizard() {
                                     )}
                                 </div>
 
-                                <div className="p-6 rounded-2xl border-2 border-muted bg-muted/10 space-y-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-xl bg-muted text-muted-foreground">
-                                            <Building className="h-5 w-5" />
+                                <div className="p-6 rounded-[2rem] border-2 border-muted bg-muted/10 space-y-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 rounded-2xl bg-muted text-muted-foreground shadow-inner">
+                                            <Building className="h-6 w-6" />
                                         </div>
                                         <div className="space-y-0.5">
-                                            <Label className="text-sm font-black uppercase tracking-tight">School Context</Label>
-                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Auto-fill variables from school data</p>
+                                            <Label className="text-base font-black uppercase tracking-tight">School Context</Label>
+                                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">Smart variables from DB</p>
                                         </div>
                                     </div>
                                     <Controller
@@ -513,12 +547,12 @@ export default function ComposerWizard() {
                                         control={control}
                                         render={({ field }) => (
                                             <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                <SelectTrigger className="h-11 rounded-xl bg-background">
+                                                <SelectTrigger className="h-12 rounded-2xl bg-white border-none shadow-sm font-bold">
                                                     <SelectValue placeholder="Select a school..." />
                                                 </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none">No School Context</SelectItem>
-                                                    {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                <SelectContent className="rounded-2xl">
+                                                    <SelectItem value="none" className="rounded-xl italic">No School Context</SelectItem>
+                                                    {schools?.map(s => <SelectItem key={s.id} value={s.id} className="rounded-xl">{s.name}</SelectItem>)}
                                                 </SelectContent>
                                             </Select>
                                         )}
@@ -526,33 +560,35 @@ export default function ComposerWizard() {
                                 </div>
                             </div>
 
-                            <Separator />
+                            <Separator className="bg-border/50" />
 
                             <div className="space-y-6">
                                 {watchedMode === 'single' ? (
-                                    <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Recipient Identity</Label>
-                                        <Controller
-                                            name="recipient"
-                                            control={control}
-                                            render={({ field }) => (
-                                                <Input 
-                                                    {...field} 
-                                                    placeholder={watchedChannel === 'email' ? 'parent@example.com' : '+233 XX XXX XXXX'} 
-                                                    className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                                />
-                                            )}
-                                        />
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Recipient Identity</Label>
+                                            <Controller
+                                                name="recipient"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Input 
+                                                        {...field} 
+                                                        placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} 
+                                                        className="h-14 rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-xl px-6"
+                                                    />
+                                                )}
+                                            />
+                                        </div>
                                         
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                                             {selectedTemplate?.variables.map(v => (
-                                                <div key={v} className="space-y-1.5">
-                                                    <Label className="text-[10px] font-bold uppercase ml-1 text-muted-foreground">{v.replace(/_/g, ' ')}</Label>
+                                                <div key={v} className="space-y-2 group">
+                                                    <Label className="text-[9px] font-black uppercase ml-1 text-muted-foreground group-focus-within:text-primary transition-colors">{v.replace(/_/g, ' ')}</Label>
                                                     <Controller
                                                         name={`variables.${v}`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder={`Enter ${v.replace(/_/g, ' ')}...`} className="bg-muted/30 border-none h-10 rounded-lg shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20" />
+                                                            <Input {...field} value={field.value || ''} placeholder={`Enter value...`} className="bg-muted/30 border-none h-11 rounded-xl shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />
                                                         )}
                                                     />
                                                 </div>
@@ -560,117 +596,146 @@ export default function ComposerWizard() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-                                        <div className="p-8 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center text-center gap-4 bg-muted/20 border-border/50 hover:border-primary/30 transition-colors">
-                                            <div className="p-4 bg-primary/10 rounded-full text-primary shadow-xl">
-                                                <Upload className="h-8 w-8" />
+                                    <div className="space-y-8 animate-in fade-in slide-in-from-top-4 duration-500">
+                                        <div className="p-12 border-4 border-dashed rounded-[3rem] flex flex-col items-center justify-center text-center gap-6 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 hover:bg-primary/5 transition-all duration-500 group">
+                                            <div className="p-6 bg-white rounded-full text-primary shadow-2xl group-hover:scale-110 transition-transform">
+                                                <Upload className="h-10 w-10" />
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-lg">Upload Recipient List (CSV)</p>
-                                                <p className="text-xs text-muted-foreground max-w-[200px] mx-auto">Map your spreadsheet columns directly to template variables.</p>
+                                            <div className="space-y-2">
+                                                <p className="font-black text-2xl tracking-tight">Upload Recipient List (CSV)</p>
+                                                <p className="text-xs text-muted-foreground max-w-[280px] mx-auto font-medium uppercase tracking-widest leading-relaxed">Map your spreadsheet columns directly to template variables.</p>
                                             </div>
                                             <Input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
-                                            <Button asChild variant="outline" className="rounded-xl border-2 font-bold h-11 px-8 hover:bg-background">
-                                                <label htmlFor="csv-upload">Select File</label>
+                                            <Button asChild variant="outline" className="rounded-2xl border-2 font-black h-14 px-12 hover:bg-white shadow-lg active:scale-95 transition-all uppercase tracking-widest">
+                                                <label htmlFor="csv-upload" className="cursor-pointer">Select File</label>
                                             </Button>
                                         </div>
 
                                         {csvData.length > 0 && (
-                                            <div className="space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Data Audit (Top 3 Records)</Label>
-                                                    <Button variant="ghost" size="sm" onClick={() => setCsvData([])} className="h-7 text-[10px] text-destructive uppercase font-bold">Clear List</Button>
+                                            <div className="space-y-4 animate-in zoom-in-95 duration-500">
+                                                <div className="flex items-center justify-between px-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge className="bg-primary h-6 font-black uppercase text-[10px] tracking-widest px-3">{csvData.length} Records</Badge>
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Data Integrity Audit</Label>
+                                                    </div>
+                                                    <Button variant="ghost" size="sm" onClick={() => setCsvData([])} className="h-8 text-[10px] text-destructive uppercase font-black tracking-widest hover:bg-destructive/5 rounded-xl">Clear List</Button>
                                                 </div>
-                                                <div className="rounded-xl border bg-background overflow-hidden overflow-x-auto shadow-sm">
-                                                    <table className="w-full text-xs">
-                                                        <thead className="bg-muted/50 border-b">
-                                                            <tr>
-                                                                {csvHeaders.slice(0, 5).map(h => <th key={h} className="p-3 text-left font-black uppercase text-[9px] tracking-tighter">{h}</th>)}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {csvData.slice(0, 3).map((row, i) => (
-                                                                <tr key={i} className="border-b last:border-0">
-                                                                    {csvHeaders.slice(0, 5).map(h => <td key={h} className="p-3 font-medium text-muted-foreground truncate max-w-[150px]">{row[h]}</td>)}
+                                                <div className="rounded-2xl border bg-white overflow-hidden shadow-2xl">
+                                                    <ScrollArea className="w-full">
+                                                        <table className="w-full text-xs">
+                                                            <thead className="bg-muted/50 border-b">
+                                                                <tr>
+                                                                    {csvHeaders.slice(0, 5).map(h => <th key={h} className="p-4 text-left font-black uppercase text-[9px] tracking-tighter text-muted-foreground">{h}</th>)}
                                                                 </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-muted/50">
+                                                                {csvData.slice(0, 3).map((row, i) => (
+                                                                    <tr key={i} className="hover:bg-muted/20 transition-colors">
+                                                                        {csvHeaders.slice(0, 5).map(h => <td key={h} className="p-4 font-bold text-foreground truncate max-w-[150px]">{row[h]}</td>)}
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                        <ScrollBar orientation="horizontal" />
+                                                    </ScrollArea>
                                                 </div>
-                                                <p className="text-[10px] italic text-muted-foreground text-center">+ {csvData.length - 3} more records successfully identified.</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40 text-center">+ {csvData.length - 3} additional records identified.</p>
                                             </div>
                                         )}
                                     </div>
                                 )}
                             </div>
                         </CardContent>
-                        <CardFooter className="justify-between bg-muted/30 pt-6">
-                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-bold">Previous</Button>
-                            <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : csvData.length === 0)} className="px-10 rounded-xl font-bold border-2">
-                                Review & Preview <ChevronRight className="ml-2 h-4 w-4" />
+                        <CardFooter className="justify-between bg-muted/30 p-6 border-t">
+                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-bold rounded-xl uppercase tracking-widest text-xs">Previous</Button>
+                            <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : csvData.length === 0)} className="px-12 rounded-2xl font-black shadow-xl shadow-primary/20 h-14 uppercase tracking-widest active:scale-95 transition-all">
+                                Review & Preview <ChevronRight className="ml-2 h-5 w-5" />
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
                 {step === 3 && (
-                    <Card className="shadow-xl">
-                        <CardHeader>
-                            <CardTitle>Final Review</CardTitle>
-                            <CardDescription>Preview your message and confirm delivery details.</CardDescription>
+                    <Card className="shadow-2xl border-none ring-1 ring-border rounded-[2rem] overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/30 border-b pb-6">
+                            <CardTitle className="text-xl font-black uppercase tracking-tight">Final Verification</CardTitle>
+                            <CardDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground/60">Preview your message and confirm operational cost.</CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-8">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">From</Label>
-                                            <p className="font-bold">{profiles?.find(p => p.id === getValues('senderProfileId'))?.name}</p>
+                        <CardContent className="space-y-10 p-6 pt-8">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                <div className="space-y-8">
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div className="space-y-1.5 p-4 rounded-2xl bg-muted/20 border border-border/50">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Sender Identity</Label>
+                                            <p className="font-black text-primary uppercase">{profiles?.find(p => p.id === getValues('senderProfileId'))?.name}</p>
                                         </div>
-                                        <div className="space-y-1">
-                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Timing</Label>
-                                            <p className={cn("font-bold capitalize", watchedIsScheduled && "text-primary flex items-center gap-1.5")}>
-                                                {watchedIsScheduled ? <CalendarClock className="h-3 w-3" /> : null}
+                                        <div className="space-y-1.5 p-4 rounded-2xl bg-muted/20 border border-border/50">
+                                            <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Timeline</Label>
+                                            <p className={cn("font-black uppercase text-xs flex items-center gap-2", watchedIsScheduled ? "text-primary" : "text-emerald-600")}>
+                                                {watchedIsScheduled ? <CalendarClock className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
                                                 {watchedIsScheduled ? 'Scheduled' : 'Immediate'}
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground">Recipients</Label>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="outline" className="font-bold bg-background">
-                                                {watchedMode === 'single' ? '1 Recipient' : `${csvData.length} Recipients`}
-                                            </Badge>
-                                            {watchedMode === 'single' && <span className="text-xs font-mono text-muted-foreground">{getValues('recipient')}</span>}
-                                        </div>
-                                    </div>
-                                    
-                                    {isOutOfCredits && (
-                                        <div className="p-4 rounded-xl border-2 border-destructive/20 bg-destructive/5 flex items-start gap-3">
-                                            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-                                            <div className="space-y-1">
-                                                <p className="text-xs font-black uppercase tracking-widest text-destructive">Insufficient Balance</p>
-                                                <p className="text-[10px] text-destructive/80 leading-relaxed font-medium">
-                                                    Your SMS credit balance is zero. Please top up your mNotify account to continue sending communications.
-                                                </p>
-                                            </div>
-                                        </div>
+
+                                    {/* Cost Analytics */}
+                                    {watchedChannel === 'sms' && creditEstimation && (
+                                        <Card className="bg-orange-50 border-orange-200 overflow-hidden rounded-2xl">
+                                            <CardHeader className="pb-3 border-b border-orange-100 bg-orange-100/50">
+                                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-orange-800 flex items-center gap-2">
+                                                    <TrendingUp className="h-3.5 w-3.5" /> Credit Usage Estimate
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent className="p-5 space-y-4">
+                                                <div className="grid grid-cols-3 gap-4">
+                                                    <div className="text-center space-y-1">
+                                                        <p className="text-[8px] font-black uppercase text-orange-700/60 leading-none">Recipients</p>
+                                                        <p className="text-2xl font-black text-orange-900 tabular-nums">{creditEstimation.recipientCount}</p>
+                                                    </div>
+                                                    <div className="text-center space-y-1 border-x border-orange-200">
+                                                        <p className="text-[8px] font-black uppercase text-orange-700/60 leading-none">Segments</p>
+                                                        <p className="text-2xl font-black text-orange-900 tabular-nums">{creditEstimation.segments}</p>
+                                                    </div>
+                                                    <div className="text-center space-y-1">
+                                                        <p className="text-[8px] font-black uppercase text-orange-700/60 leading-none">Total Cost</p>
+                                                        <p className="text-2xl font-black text-orange-900 tabular-nums">{creditEstimation.totalCredits}</p>
+                                                    </div>
+                                                </div>
+                                                
+                                                {isOutOfCredits ? (
+                                                    <div className="p-3 rounded-xl bg-red-100 border border-red-200 flex items-start gap-3 animate-in shake-1">
+                                                        <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                                                        <div className="space-y-1">
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-red-800">Insufficient Credits</p>
+                                                            <p className="text-[9px] text-red-700 leading-relaxed font-bold uppercase tracking-tighter">
+                                                                Dispatch requires {creditEstimation.totalCredits} but balance is {smsBalance}. Top up mNotify to proceed.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center justify-between px-2 pt-2 border-t border-orange-200">
+                                                        <span className="text-[10px] font-bold text-orange-800 uppercase">Available Credits</span>
+                                                        <Badge className="bg-emerald-500 text-white border-none text-[10px] font-black tabular-nums">{smsBalance}</Badge>
+                                                    </div>
+                                                )}
+                                            </CardContent>
+                                        </Card>
                                     )}
 
-                                    <div className="p-4 rounded-xl border bg-blue-50/50 border-blue-200 flex items-start gap-3">
-                                        <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                                    <div className="p-5 rounded-2xl border bg-blue-50/50 border-blue-200 flex items-start gap-4">
+                                        <AlertCircle className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
-                                            <p className="text-xs font-bold text-blue-800 uppercase tracking-tighter">System Compliance</p>
-                                            <p className="text-[10px] text-blue-700 leading-relaxed font-medium">
-                                                SmartSapp audit logs will capture this dispatch. Ensure all recipients have explicitly opted in to receive {watchedChannel} communications.
+                                            <p className="text-sm font-black text-blue-800 uppercase tracking-tighter leading-none mb-1">Operational Compliance</p>
+                                            <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
+                                                All dispatches are audited. By initiating this job, you confirm that recipients have consented to receive {watchedChannel} communications.
                                             </p>
                                         </div>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                        <Eye className="h-3 w-3" /> Live Message Preview
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2 ml-1">
+                                        <Eye className="h-3.5 w-3.5" /> Visual Message Validation
                                     </Label>
                                     <MessagePreviewer 
                                         template={selectedTemplate!} 
@@ -680,55 +745,68 @@ export default function ComposerWizard() {
                                 </div>
                             </div>
                         </CardContent>
-                        <CardFooter className="justify-between bg-muted/30 pt-6">
-                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-bold">Previous</Button>
-                            <Button type="submit" size="lg" disabled={isSubmitting || isOutOfCredits} className="px-12 font-black shadow-xl h-14 gap-3 bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all active:scale-95">
-                                {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                                {watchedMode === 'single' ? (watchedIsScheduled ? 'Schedule Message' : 'Send Message Now') : `Start Bulk Dispatch`}
+                        <CardFooter className="justify-between bg-muted/30 p-8 border-t">
+                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-bold rounded-xl uppercase tracking-widest text-xs">Edit Details</Button>
+                            <Button type="submit" size="lg" disabled={isSubmitting || isOutOfCredits} className="px-16 font-black shadow-2xl h-16 gap-4 bg-primary text-white hover:bg-primary/90 rounded-[1.5rem] transition-all active:scale-95 text-lg uppercase tracking-[0.1em]">
+                                {isSubmitting ? <Loader2 className="h-7 w-7 animate-spin" /> : <Sparkles className="h-7 w-7" />}
+                                {watchedMode === 'single' ? (watchedIsScheduled ? 'Schedule Message' : 'Initiate Dispatch') : `Launch Bulk Job`}
                             </Button>
                         </CardFooter>
                     </Card>
                 )}
 
                 {step === 4 && (
-                    <Card className="shadow-2xl border-primary/20">
-                        <CardHeader className="text-center pb-8 border-b bg-muted/30">
-                            <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                                {jobStatus === 'processing' ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <Check className="h-8 w-8 text-green-600" />}
+                    <Card className="shadow-2xl border-none ring-1 ring-primary/20 rounded-[3rem] overflow-hidden bg-white">
+                        <CardHeader className="text-center pb-10 pt-12 border-b bg-muted/30">
+                            <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-6 shadow-xl shadow-primary/10 rotate-3">
+                                {jobStatus === 'processing' ? <Loader2 className="h-10 w-10 animate-spin text-primary" /> : <Trophy className="h-10 w-10 text-emerald-600" />}
                             </div>
-                            <CardTitle className="text-2xl font-black tracking-tight">Bulk Dispatch In Progress</CardTitle>
-                            <CardDescription>Communicating with {csvData.length} recipients. Stay on this page.</CardDescription>
+                            <CardTitle className="text-3xl font-black tracking-tight text-foreground uppercase">Bulk Job Execution</CardTitle>
+                            <CardDescription className="text-sm font-bold uppercase tracking-widest text-muted-foreground mt-2">Connecting with {csvData.length} recipients via mNotify Gateway.</CardDescription>
                         </CardHeader>
-                        <CardContent className="py-12 space-y-10">
-                            <div className="space-y-4 max-w-lg mx-auto">
+                        <CardContent className="py-16 space-y-12">
+                            <div className="space-y-6 max-w-xl mx-auto px-4">
                                 <div className="flex justify-between items-end mb-2">
-                                    <p className="text-sm font-black uppercase tracking-widest text-muted-foreground">Overall Progress</p>
-                                    <p className="text-2xl font-black tabular-nums">{jobProgress}%</p>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Gateway Throughput</p>
+                                    <p className="text-4xl font-black tabular-nums tracking-tighter text-primary">{jobProgress}%</p>
                                 </div>
-                                <Progress value={jobProgress} className="h-4 rounded-full" />
+                                <div className="h-4 w-full bg-muted/30 rounded-full overflow-hidden border p-1">
+                                    <motion.div 
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${jobProgress}%` }}
+                                        className="h-full bg-primary rounded-full shadow-[0_0_15px_rgba(59,95,255,0.5)]"
+                                    />
+                                </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6 max-w-sm mx-auto">
-                                <div className="p-6 rounded-2xl bg-slate-50 border text-center space-y-1 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-2">Processed</p>
-                                    <p className="text-3xl font-black">{Math.round((jobProgress/100) * csvData.length)}</p>
+                            <div className="grid grid-cols-2 gap-8 max-w-md mx-auto">
+                                <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-slate-100 text-center space-y-1 shadow-inner group hover:border-primary/20 transition-all">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-3">Successfully Sent</p>
+                                    <p className="text-5xl font-black tabular-nums text-foreground group-hover:scale-110 transition-transform">{Math.round((jobProgress/100) * csvData.length)}</p>
                                 </div>
-                                <div className="p-6 rounded-2xl bg-slate-50 border text-center space-y-1 shadow-sm">
-                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-2">Total</p>
-                                    <p className="text-3xl font-black">{csvData.length}</p>
+                                <div className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-slate-100 text-center space-y-1 shadow-inner group hover:border-primary/20 transition-all">
+                                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest leading-none mb-3">Total Target</p>
+                                    <p className="text-5xl font-black tabular-nums text-foreground">{csvData.length}</p>
                                 </div>
                             </div>
 
                             {jobStatus === 'completed' && (
-                                <div className="max-w-md mx-auto animate-in zoom-in-95 duration-500">
-                                    <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-center gap-4">
-                                        <div className="bg-green-600 text-white p-2 rounded-lg"><Check className="h-5 w-5" /></div>
-                                        <p className="text-sm font-bold text-green-800">Job Finished Successfully!</p>
-                                        <Button asChild size="sm" variant="outline" className="ml-auto bg-white border-green-200">
-                                            <Link href="/admin/messaging">Done</Link>
+                                <motion.div 
+                                    initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    className="max-w-md mx-auto"
+                                >
+                                    <div className="p-6 rounded-[2rem] bg-emerald-50 border-2 border-emerald-100 flex items-center gap-6 shadow-xl shadow-emerald-500/10">
+                                        <div className="bg-emerald-600 text-white p-4 rounded-2xl shadow-lg"><Check className="h-6 w-6" /></div>
+                                        <div className="flex-1">
+                                            <p className="font-black text-emerald-900 uppercase tracking-tight">Job Finalized</p>
+                                            <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-widest opacity-80">Audit logs have been generated.</p>
+                                        </div>
+                                        <Button asChild className="rounded-xl font-black px-6 shadow-lg bg-emerald-600 hover:bg-emerald-700">
+                                            <Link href="/admin/messaging">Dismiss</Link>
                                         </Button>
                                     </div>
-                                </div>
+                                </motion.div>
                             )}
                         </CardContent>
                     </Card>
@@ -753,35 +831,39 @@ function MessagePreviewer({ template, variables, sampleRow }: { template: Messag
 
     return (
         <div className={cn(
-            "rounded-2xl border-2 overflow-hidden shadow-2xl transition-all",
-            template.channel === 'email' ? "bg-white" : "bg-[#0A1427] max-w-sm mx-auto"
+            "rounded-[2rem] border-2 overflow-hidden shadow-2xl transition-all duration-500",
+            template.channel === 'email' ? "bg-white border-blue-50" : "bg-[#0A1427] border-slate-800 max-w-sm mx-auto"
         )}>
             {template.channel === 'email' ? (
-                <div className="flex flex-col h-96">
-                    <div className="p-4 border-b bg-muted/20 space-y-1.5 shrink-0">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Subject Preview</p>
-                        <p className="font-bold text-sm truncate">{resolvedSubject || '(No Subject)'}</p>
+                <div className="flex flex-col h-[450px]">
+                    <div className="p-5 border-b bg-muted/20 space-y-1.5 shrink-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Recipient Inbox Subject</p>
+                        <p className="font-black text-base truncate text-foreground">{resolvedSubject || '(No Subject)'}</p>
                     </div>
-                    <div className="flex-1 overflow-auto p-6 bg-white relative">
-                        <div className="prose prose-sm max-w-none italic text-muted-foreground/60 mb-4 text-[10px] text-center border-b pb-2">
-                            Visual Style wrapper applied during dispatch.
+                    <div className="flex-1 overflow-auto p-8 bg-white relative">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-purple-500 opacity-20" />
+                        <div className="prose prose-sm max-w-none italic text-muted-foreground/40 mb-6 text-[9px] font-bold uppercase tracking-widest text-center border-b pb-3">
+                            Branded HTML Layout applied during delivery
                         </div>
-                        <div className="whitespace-pre-wrap font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: resolvedBody }} />
+                        <div className="whitespace-pre-wrap font-medium leading-relaxed text-slate-700" dangerouslySetInnerHTML={{ __html: resolvedBody }} />
                     </div>
                 </div>
             ) : (
-                <div className="p-6 space-y-4">
+                <div className="p-8 space-y-6">
                     <div className="flex items-center justify-between">
-                        <SmartSappIcon className="h-6 w-6 text-white opacity-20" />
-                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">SMS Preview</p>
+                        <SmartSappIcon className="h-7 w-7 text-white opacity-20" />
+                        <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">Handset SMS Preview</p>
                     </div>
-                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl relative shadow-inner">
-                        <div className="absolute -left-2 top-4 w-4 h-4 bg-[#1a243a] border-l border-b border-white/10 rotate-45 rounded-sm" />
+                    <div className="p-5 bg-white/5 border border-white/10 rounded-[1.5rem] relative shadow-inner group hover:bg-white/10 transition-colors">
+                        <div className="absolute -left-2 top-6 w-4 h-4 bg-[#1a243a] border-l border-b border-white/10 rotate-45 rounded-sm" />
                         <p className="text-sm text-white/90 leading-relaxed font-medium whitespace-pre-wrap">{resolvedBody}</p>
                     </div>
-                    <div className="pt-2 flex justify-between items-center text-[9px] font-bold uppercase tracking-tighter text-white/30">
-                        <span>Characters: {resolvedBody.length}</span>
-                        <span>Estimated: {Math.ceil(resolvedBody.length / 160)} SMS</span>
+                    <div className="pt-4 flex justify-between items-center text-[10px] font-black uppercase tracking-tighter text-white/30 border-t border-white/5">
+                        <div className="flex flex-col gap-0.5">
+                            <span>Chars: {resolvedBody.length}</span>
+                            <span>Segments: {Math.ceil(resolvedBody.length / 160)}</span>
+                        </div>
+                        <Badge variant="outline" className="text-white/40 border-white/10 text-[8px] h-5">GSM-7 Compliant</Badge>
                     </div>
                 </div>
             )}

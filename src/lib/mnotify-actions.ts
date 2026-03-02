@@ -1,7 +1,16 @@
 
 'use server';
 
-import { getSmsBalance, getSenderIdStatus, registerSenderId, getScheduledMessages, updateScheduledSms, deleteScheduledSms, getSmsMetrics } from './mnotify-service';
+import { 
+    getSmsBalance, 
+    getSenderIdStatus, 
+    registerSenderId, 
+    getScheduledMessages, 
+    updateScheduledSms, 
+    deleteScheduledSms, 
+    getSmsMetrics,
+    getSmsStatus 
+} from './mnotify-service';
 
 /**
  * Server Action to fetch current SMS credit balance.
@@ -89,6 +98,18 @@ export async function fetchSmsReportsAction(from: string, to: string) {
     try {
         const data = await getSmsMetrics(from, to);
         return { success: true, report: data.report || [] };
+    } catch (error: any) {
+        return { success: false, error: error.message };
+    }
+}
+
+/**
+ * Server Action to fetch the live status of an SMS from the gateway.
+ */
+export async function fetchSmsStatusAction(providerId: string) {
+    try {
+        const data = await getSmsStatus(providerId);
+        return { success: true, data };
     } catch (error: any) {
         return { success: false, error: error.message };
     }
