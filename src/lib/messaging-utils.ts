@@ -1,4 +1,5 @@
-import type { MessageBlock } from './types';
+
+import type { MessageBlock, MessageBlockRule } from './types';
 
 /**
  * Resolves variables in a text string using {{variable_name}} syntax.
@@ -13,13 +14,53 @@ export function resolveVariables(text: string, variables: Record<string, any>): 
 }
 
 /**
+ * Evaluates block-level visibility logic against provided variables.
+ */
+export function shouldShowBlock(block: MessageBlock, variables: Record<string, any>): boolean {
+  if (!block.visibilityLogic || !block.visibilityLogic.rules || block.visibilityLogic.rules.length === 0) {
+    return true;
+  }
+
+  const { rules, matchType } = block.visibilityLogic;
+
+  const evaluateRule = (rule: MessageBlockRule): boolean => {
+    const value = variables[rule.variableKey];
+    const strValue = String(value ?? '').trim();
+    const target = rule.value.trim();
+
+    switch (rule.operator) {
+      case 'isEqualTo': return strValue === target;
+      case 'isNotEqualTo': return strValue !== target;
+      case 'contains': return strValue.toLowerCase().includes(target.toLowerCase());
+      case 'doesNotContain': return !strValue.toLowerCase().includes(target.toLowerCase());
+      case 'isGreaterThan': return Number(strValue) > Number(target);
+      case 'isLessThan': return Number(strValue) < Number(target);
+      case 'isEmpty': return strValue === '';
+      case 'isNotEmpty': return strValue !== '';
+      default: return true;
+    }
+  };
+
+  if (matchType === 'any') {
+    return rules.some(evaluateRule);
+  }
+  return rules.every(evaluateRule);
+}
+
+/**
  * Renders an array of MessageBlocks into a clean, high-compatibility HTML string.
  * Optimized for Outlook, Gmail, and Mobile clients using table-based layouts.
+ * Includes block-level visibility filtering.
  */
 export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<string, any>): string {
   if (!blocks || blocks.length === 0) return '';
 
   const renderBlock = (block: MessageBlock): string => {
+    // VISIBILITY CHECK
+    if (!shouldShowBlock(block, variables)) {
+      return '';
+    }
+
     const align = block.style?.textAlign || 'left';
     const alignStyle = `text-align: ${align};`;
     const bgColor = block.style?.backgroundColor ? `background-color: ${block.style.backgroundColor};` : '';
@@ -85,7 +126,8 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
       case 'columns': {
         const cols = (block.columns || []).map(col => {
           const colWidth = 100 / (block.columns?.length || 1);
-          return `<td style="vertical-align: top; width: ${colWidth}%; padding: 0 10px;">${col.blocks.map(renderBlock).join('')}</td>`;
+          const innerHtml = col.blocks.map(renderBlock).join('');
+          return `<td style="vertical-align: top; width: ${colWidth}%; padding: 0 10px;">${innerHtml}</td>`;
         }).join('');
         return `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;"><tr>${cols}</tr></table>`;
       }

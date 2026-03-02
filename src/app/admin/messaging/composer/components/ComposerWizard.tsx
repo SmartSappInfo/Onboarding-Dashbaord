@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -8,7 +9,7 @@ import { collection, query, where, orderBy, doc, getDoc, limit } from 'firebase/
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson, MessageLog, Meeting, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
-import { resolveVariables } from '@/lib/messaging-utils';
+import { resolveVariables, renderBlocksToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { fetchContextualData } from '@/lib/messaging-actions';
@@ -475,6 +476,7 @@ export default function ComposerWizard() {
                                 <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                                     <Sparkles className="h-6 w-6" />
                                 </div>
+                                inverse:
                                 <div>
                                     <CardTitle className="text-2xl font-black uppercase tracking-tight">Channel & Logic</CardTitle>
                                     <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Identify the communication protocol.</CardDescription>
@@ -1097,7 +1099,9 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
         );
     }
 
-    const resolvedBody = resolveVariables(template.body, combinedVars);
+    const resolvedBody = template.blocks?.length 
+        ? renderBlocksToHtml(template.blocks, combinedVars)
+        : resolveVariables(template.body, combinedVars);
 
     return (
         <div className={cn(

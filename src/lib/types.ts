@@ -409,6 +409,12 @@ export interface MessageStyle {
   updatedAt: string;
 }
 
+export interface MessageBlockRule {
+  variableKey: string;
+  operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty';
+  value: string;
+}
+
 export interface MessageBlock {
   id: string;
   type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'columns' | 'header' | 'footer' | 'logo';
@@ -421,6 +427,10 @@ export interface MessageBlock {
   items?: string[];
   listStyle?: 'ordered' | 'unordered';
   columns?: { blocks: MessageBlock[] }[];
+  visibilityLogic?: {
+    rules: MessageBlockRule[];
+    matchType: 'all' | 'any';
+  };
   style?: {
     textAlign?: 'left' | 'center' | 'right';
     variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';

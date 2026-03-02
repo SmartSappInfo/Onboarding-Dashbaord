@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock } from '@/lib/types';
+import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock, MessageBlockRule } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import {
     Type, Image as ImageIcon, Video, MousePointer2, Quote, Square, 
     PlusCircle, ArrowUp, ArrowDown, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Layers,
-    ChevronDown, Layout, Trophy as TrophyIcon
+    ChevronDown, Layout, Trophy as TrophyIcon, Zap, Filter
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -37,6 +38,7 @@ import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 import { MediaSelect } from '../../schools/components/media-select';
 import { renderBlocksToHtml } from '@/lib/messaging-utils';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -58,187 +60,331 @@ type GroupByOption = 'none' | 'category' | 'channel';
 
 // --- SUB-COMPONENTS ---
 
-function BlockInspector({ block, onChange }: { block: MessageBlock, onChange: (props: Partial<MessageBlock>) => void }) {
-    const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
+function BlockLogicEditor({ 
+    block, 
+    variables, 
+    onChange 
+}: { 
+    block: MessageBlock, 
+    variables: VariableDefinition[], 
+    onChange: (logic: MessageBlock['visibilityLogic']) => void 
+}) {
+    const logic = block.visibilityLogic || { rules: [], matchType: 'all' };
+
+    const addRule = () => {
+        const newRule: MessageBlockRule = { variableKey: variables[0]?.key || '', operator: 'isEqualTo', value: '' };
+        onChange({ ...logic, rules: [...logic.rules, newRule] });
+    };
+
+    const removeRule = (idx: number) => {
+        const newRules = logic.rules.filter((_, i) => i !== idx);
+        onChange({ ...logic, rules: newRules });
+    };
+
+    const updateRule = (idx: number, props: Partial<MessageBlockRule>) => {
+        const newRules = [...logic.rules];
+        newRules[idx] = { ...newRules[idx], ...props };
+        onChange({ ...logic, rules: newRules });
+    };
 
     return (
-        <div className="space-y-6 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="grid gap-4">
-                {block.type === 'heading' && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Heading Title</Label>
-                        <Input 
-                            value={block.title || ''} 
-                            onChange={e => onChange({ title: e.target.value })} 
-                            className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" 
-                        />
-                        <div className="flex gap-2">
-                            {(['h1', 'h2', 'h3'] as const).map(v => (
-                                <Button 
-                                    key={v}
-                                    type="button"
-                                    size="sm"
-                                    variant={block.variant === v ? 'secondary' : 'ghost'}
-                                    className="h-7 text-[10px] uppercase font-black"
-                                    onClick={() => onChange({ variant: v })}
-                                >
-                                    {v}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {(block.type === 'text' || block.type === 'quote') && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
-                        <Textarea 
-                            value={block.content || ''} 
-                            onChange={e => onChange({ content: e.target.value })}
-                            className={cn(
-                                "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
-                                block.type === 'quote' && "italic"
-                            )} 
-                        />
-                    </div>
-                )}
-
-                {(block.type === 'header' || block.type === 'footer') && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{block.type} Content</Label>
-                        <Input 
-                            value={block.content || ''} 
-                            onChange={e => onChange({ content: e.target.value })} 
-                            className="font-bold" 
-                        />
-                    </div>
-                )}
-
-                {block.type === 'logo' && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Logo Source</Label>
-                        <Input 
-                            value={block.url || '{{school_logo}}'} 
-                            onChange={e => onChange({ url: e.target.value })} 
-                            className="font-mono text-xs" 
-                        />
-                        <p className="text-[9px] text-muted-foreground italic px-1">Defaults to School Registry logo variable.</p>
-                    </div>
-                )}
-
-                {['image', 'video'].includes(block.type) && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Asset URL</Label>
-                        <MediaSelect 
-                            value={block.url} 
-                            onValueChange={(val) => onChange({ url: val })}
-                            filterType={block.type as any}
-                        />
-                    </div>
-                )}
-
-                {block.type === 'button' && (
-                    <div className="space-y-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Label</Label>
-                            <Input value={block.title || ''} onChange={e => onChange({ title: e.target.value })} placeholder="Click Me" />
-                        </div>
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action Link</Label>
-                            <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
-                        </div>
-                    </div>
-                )}
-
-                {block.type === 'list' && (
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
-                            <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
-                                <Button 
-                                    type="button" 
-                                    variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
-                                    size="sm" 
-                                    className="h-7 rounded-md px-2"
-                                    onClick={() => onChange({ listStyle: 'unordered' })}
-                                >
-                                    <List className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button 
-                                    type="button" 
-                                    variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
-                                    size="sm" 
-                                    className="h-7 rounded-md px-2"
-                                    onClick={() => onChange({ listStyle: 'ordered' })}
-                                >
-                                    <ListOrdered className="h-3.5 w-3.5" />
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            {block.items?.map((item, idx) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                    <Input 
-                                        value={item} 
-                                        onChange={e => {
-                                            const newItems = [...(block.items || [])];
-                                            newItems[idx] = e.target.value;
-                                            onChange({ items: newItems });
-                                        }}
-                                        className="h-9"
-                                    />
-                                    <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-destructive"
-                                        onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            ))}
-                            <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm" 
-                                className="w-full border-dashed"
-                                onClick={() => onChange({ items: [...(block.items || []), 'New item'] })}
-                            >
-                                <Plus className="h-3 w-3 mr-2" /> Add Item
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {isTextType && (
-                    <div className="pt-4 border-t border-dashed">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Alignment</Label>
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl w-fit border shadow-inner">
-                            {(['left', 'center', 'right'] as const).map(a => (
-                                <Button 
-                                    key={a}
-                                    type="button" 
-                                    variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg" 
-                                    onClick={() => onChange({ style: { ...block.style, textAlign: a } })}
-                                >
-                                    {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
-                                </Button>
-                            ))}
-                        </div>
-                    </div>
+        <div className="space-y-4 pt-2">
+            <div className="flex items-center justify-between mb-2 px-1">
+                <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 px-2 font-black uppercase">Block Logic</Badge>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Define conditional visibility</p>
+                </div>
+                {logic.rules.length > 1 && (
+                    <Select value={logic.matchType} onValueChange={(v: any) => onChange({ ...logic, matchType: v })}>
+                        <SelectTrigger className="h-6 w-20 text-[8px] font-black uppercase bg-muted/50 border-none">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Match All</SelectItem>
+                            <SelectItem value="any">Match Any</SelectItem>
+                        </SelectContent>
+                    </Select>
                 )}
             </div>
+
+            {logic.rules.length > 0 ? (
+                <div className="space-y-3">
+                    {logic.rules.map((rule, idx) => (
+                        <div key={idx} className="p-3 rounded-xl bg-muted/20 border border-border/50 relative group/rule">
+                            <div className="grid grid-cols-1 gap-2">
+                                <div className="flex items-center gap-2">
+                                    <Select value={rule.variableKey} onValueChange={(v) => updateRule(idx, { variableKey: v })}>
+                                        <SelectTrigger className="h-8 text-[10px] font-bold bg-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {variables.map(v => <SelectItem key={v.id} value={v.key}>{v.label}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={rule.operator} onValueChange={(v: any) => updateRule(idx, { operator: v })}>
+                                        <SelectTrigger className="h-8 text-[10px] font-bold bg-white w-28">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="isEqualTo">Is</SelectItem>
+                                            <SelectItem value="isNotEqualTo">Is not</SelectItem>
+                                            <SelectItem value="contains">Contains</SelectItem>
+                                            <SelectItem value="isGreaterThan">&gt;</SelectItem>
+                                            <SelectItem value="isLessThan">&lt;</SelectItem>
+                                            <SelectItem value="isEmpty">Empty</SelectItem>
+                                            <SelectItem value="isNotEmpty">Not Empty</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                {rule.operator !== 'isEmpty' && rule.operator !== 'isNotEmpty' && (
+                                    <Input 
+                                        value={rule.value} 
+                                        onChange={e => updateRule(idx, { value: e.target.value })} 
+                                        placeholder="Compare to value..." 
+                                        className="h-8 text-[10px] bg-white"
+                                    />
+                                )}
+                            </div>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border opacity-0 group-hover/rule:opacity-100 transition-opacity"
+                                onClick={() => removeRule(idx)}
+                            >
+                                <X className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                <div className="py-6 text-center border-2 border-dashed rounded-xl bg-muted/10">
+                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mb-3">No active logic</p>
+                    <Button type="button" variant="outline" size="sm" onClick={addRule} className="h-7 text-[9px] font-black uppercase rounded-lg gap-1.5">
+                        <Plus className="h-3 w-3" /> Add Logic Condition
+                    </Button>
+                </div>
+            )}
+            
+            {logic.rules.length > 0 && (
+                <Button type="button" variant="ghost" size="sm" onClick={addRule} className="w-full h-8 text-[9px] font-black uppercase text-primary hover:bg-primary/5">
+                    <Plus className="h-3 w-3 mr-1.5" /> Add Another Condition
+                </Button>
+            )}
         </div>
     );
 }
 
-function SortableBlockItem({ 
-    id, index, block, onUpdate, onRemove, onDuplicate, onMoveUp, onMoveDown, onInsertVariable 
+function BlockInspector({ 
+    block, 
+    variables, 
+    onChange 
 }: { 
-    id: string, index: number, block: MessageBlock, onUpdate: (p: Partial<MessageBlock>) => void, 
+    block: MessageBlock, 
+    variables: VariableDefinition[], 
+    onChange: (props: Partial<MessageBlock>) => void 
+}) {
+    const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
+
+    return (
+        <Tabs defaultValue="content" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-8 bg-muted/50 p-1 mb-4">
+                <TabsTrigger value="content" className="text-[9px] font-black uppercase tracking-widest">Content</TabsTrigger>
+                <TabsTrigger value="logic" className="text-[9px] font-black uppercase tracking-widest gap-1.5">
+                    <Zap className={cn("h-3 w-3", block.visibilityLogic?.rules?.length ? "text-primary fill-primary/20" : "text-muted-foreground")} />
+                    Logic
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="content" className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 m-0">
+                <div className="grid gap-4">
+                    {block.type === 'heading' && (
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Heading Title</Label>
+                            <Input 
+                                value={block.title || ''} 
+                                onChange={e => onChange({ title: e.target.value })} 
+                                className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" 
+                            />
+                            <div className="flex gap-2">
+                                {(['h1', 'h2', 'h3'] as const).map(v => (
+                                    <Button 
+                                        key={v}
+                                        type="button"
+                                        size="sm"
+                                        variant={block.variant === v ? 'secondary' : 'ghost'}
+                                        className="h-7 text-[10px] uppercase font-black"
+                                        onClick={() => onChange({ variant: v })}
+                                    >
+                                        {v}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {(block.type === 'text' || block.type === 'quote') && (
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
+                            <Textarea 
+                                value={block.content || ''} 
+                                onChange={e => onChange({ content: e.target.value })}
+                                className={cn(
+                                    "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
+                                    block.type === 'quote' && "italic"
+                                )} 
+                            />
+                        </div>
+                    )}
+
+                    {(block.type === 'header' || block.type === 'footer') && (
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type} Content</Label>
+                            <Input 
+                                value={block.content || ''} 
+                                onChange={e => onChange({ content: e.target.value })} 
+                                className="font-bold" 
+                            />
+                        </div>
+                    )}
+
+                    {block.type === 'logo' && (
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Logo Source</Label>
+                            <Input 
+                                value={block.url || '{{school_logo}}'} 
+                                onChange={e => onChange({ url: e.target.value })} 
+                                className="font-mono text-xs" 
+                            />
+                            <p className="text-[9px] text-muted-foreground italic px-1">Defaults to School Registry logo variable.</p>
+                        </div>
+                    )}
+
+                    {['image', 'video'].includes(block.type) && (
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Asset URL</Label>
+                            <MediaSelect 
+                                value={block.url} 
+                                onValueChange={(val) => onChange({ url: val })}
+                                filterType={block.type as any}
+                            />
+                        </div>
+                    )}
+
+                    {block.type === 'button' && (
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                                <Input value={block.title || ''} onChange={e => onChange({ title: e.target.value })} placeholder="Click Me" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Action Link</Label>
+                                <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
+                            </div>
+                        </div>
+                    )}
+
+                    {block.type === 'list' && (
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
+                                <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
+                                    <Button 
+                                        type="button" 
+                                        variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
+                                        size="sm" 
+                                        className="h-7 rounded-md px-2"
+                                        onClick={() => onChange({ listStyle: 'unordered' })}
+                                    >
+                                        <List className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button 
+                                        type="button" 
+                                        variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
+                                        size="sm" 
+                                        className="h-7 rounded-md px-2"
+                                        onClick={() => onChange({ listStyle: 'ordered' })}
+                                    >
+                                        <ListOrdered className="h-3.5 w-3.5" />
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items</Label>
+                                <div className="space-y-2">
+                                    {block.items?.map((item, idx) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                            <Input 
+                                                value={item} 
+                                                onChange={e => {
+                                                    const newItems = [...(block.items || [])];
+                                                    newItems[idx] = e.target.value;
+                                                    onChange({ items: newItems });
+                                                }}
+                                                className="h-9"
+                                            />
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8 text-destructive"
+                                                onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
+                                            >
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="w-full border-dashed"
+                                        onClick={() => onChange({ items: [...(block.items || []), 'New item'] })}
+                                    >
+                                        <Plus className="h-3 w-3 mr-2" /> Add Item
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isTextType && (
+                        <div className="pt-4 border-t border-dashed">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Alignment</Label>
+                            <div className="flex gap-1 bg-muted/30 p-1 rounded-xl w-fit border shadow-inner">
+                                {(['left', 'center', 'right'] as const).map(a => (
+                                    <Button 
+                                        key={a}
+                                        type="button" 
+                                        variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
+                                        size="icon" 
+                                        className="h-8 w-8 rounded-lg" 
+                                        onClick={() => onChange({ style: { ...block.style, textAlign: a } })}
+                                    >
+                                        {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
+                                    </Button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </TabsContent>
+
+            <TabsContent value="logic" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
+                <BlockLogicEditor 
+                    block={block} 
+                    variables={variables} 
+                    onChange={(logic) => onChange({ visibilityLogic: logic })} 
+                />
+            </TabsContent>
+        </Tabs>
+    );
+}
+
+function SortableBlockItem({ 
+    id, index, block, variables, onUpdate, onRemove, onDuplicate, onMoveUp, onMoveDown, onInsertVariable 
+}: { 
+    id: string, index: number, block: MessageBlock, variables: VariableDefinition[], onUpdate: (p: Partial<MessageBlock>) => void, 
     onRemove: () => void, onDuplicate: () => void, onMoveUp: () => void, onMoveDown: () => void,
     onInsertVariable: (key: string) => void
 }) {
@@ -250,6 +396,8 @@ function SortableBlockItem({
         transition,
     };
 
+    const hasLogic = block.visibilityLogic?.rules?.length && block.visibilityLogic.rules.length > 0;
+
     return (
         <div ref={setNodeRef} style={style} className="relative group/block">
             <div
@@ -260,13 +408,21 @@ function SortableBlockItem({
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
             
-            <Card className="bg-card shadow-none border hover:border-primary/40 transition-all rounded-2xl overflow-hidden">
+            <Card className={cn(
+                "bg-card shadow-none border transition-all rounded-2xl overflow-hidden",
+                hasLogic ? "border-primary/40 ring-1 ring-primary/5" : "hover:border-primary/40"
+            )}>
                 <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
                     <div className="flex items-center gap-3">
                         <div className="p-1.5 bg-primary/10 rounded-lg">
                             <Icon className="h-3.5 w-3.5 text-primary" />
                         </div>
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">{block.type}</span>
+                        {hasLogic && (
+                            <Badge variant="secondary" className="h-4 bg-primary text-white border-none text-[7px] px-1 font-black uppercase flex items-center gap-1">
+                                <Zap className="h-2 w-2 fill-white" /> Logic Active
+                            </Badge>
+                        )}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-all">
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveUp} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
@@ -276,7 +432,7 @@ function SortableBlockItem({
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                    <BlockInspector block={block} onChange={onUpdate} />
+                    <BlockInspector block={block} variables={variables} onChange={onUpdate} />
                 </CardContent>
             </Card>
         </div>
@@ -289,13 +445,11 @@ export default function MessageTemplatesPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isAdding, setIsAdding] = React.useState(false);
-    const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
     
     // View State
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
-    const [channelFilter, setChannelFilter] = React.useState<string>('all');
     const [groupBy, setGroupBy] = React.useState<GroupByOption>('none');
     const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
 
@@ -451,6 +605,19 @@ export default function MessageTemplatesPage() {
         setIsAdding(true);
     };
 
+    const filteredTemplates = React.useMemo(() => {
+        if (!templates) return [];
+        let t = templates;
+        if (searchTerm) {
+            const s = searchTerm.toLowerCase();
+            t = t.filter(x => x.name.toLowerCase().includes(s) || x.body.toLowerCase().includes(s));
+        }
+        if (categoryFilter !== 'all') {
+            t = t.filter(x => x.category === categoryFilter);
+        }
+        return t;
+    }, [templates, searchTerm, categoryFilter]);
+
     const groupedTemplates = React.useMemo(() => {
         if (groupBy === 'none') return { 'All Templates': filteredTemplates };
         return filteredTemplates.reduce((acc, t) => {
@@ -551,6 +718,7 @@ export default function MessageTemplatesPage() {
                                                                 id={block.id} 
                                                                 index={idx} 
                                                                 block={block}
+                                                                variables={contextVariables}
                                                                 onUpdate={(u) => handleUpdateBlock(block.id, u)}
                                                                 onRemove={() => handleRemoveBlock(block.id)}
                                                                 onDuplicate={() => handleDuplicateBlock(block.id)}
