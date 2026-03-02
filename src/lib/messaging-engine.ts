@@ -6,6 +6,7 @@ import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog } from '.
 import { resolveVariables } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
+import { sendEmail } from './resend-service';
 
 interface SendMessageInput {
   templateId: string;
@@ -18,7 +19,7 @@ interface SendMessageInput {
 
 /**
  * Main entry point for sending a single message via the messaging engine.
- * Decouples the application logic from the underlying gateway (mNotify).
+ * Decouples the application logic from the underlying gateways (mNotify & Resend).
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, schoolId, scheduledAt } = input;
@@ -41,7 +42,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
     // 2. Resolve Subject & Body
-    // FIXED: Ensure resolvedSubject is null instead of undefined for SMS to avoid Firestore crashes
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', variables) : null;
     let resolvedBody = resolveVariables(template.body, variables);
 
@@ -57,23 +57,30 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // 4. Perform Actual Delivery
-    let providerResponse = null;
-    const scheduleDate = scheduledAt ? new Date(scheduledAt) : undefined;
-    
+    let providerId = null;
+    let providerStatus = null;
+
     if (template.channel === 'sms') {
-        providerResponse = await sendSms({
+        const providerResponse = await sendSms({
             recipient,
             message: resolvedBody,
             sender: sender.identifier,
-            scheduleDate
+            scheduleDate: scheduledAt ? new Date(scheduledAt) : undefined
         });
+        providerId = providerResponse?.summary?._id;
+        providerStatus = providerResponse?.status;
     } else {
-        // Email placeholder for next phase
-        console.log(`>>> [MESSAGING] Email dispatch simulation: ${sender.identifier} to ${recipient}`);
+        const providerResponse = await sendEmail({
+            from: sender.identifier, // This should be a verified email like "Name <noreply@enroll.smartsapp.com>"
+            to: recipient,
+            subject: resolvedSubject || 'Notification',
+            html: resolvedBody,
+            scheduledAt: scheduledAt
+        });
+        providerId = providerResponse?.id;
     }
 
     // 5. Create Audit Log
-    // Clean variables to remove any 'undefined' values which Firestore rejects
     const cleanedVariables = JSON.parse(JSON.stringify(variables));
 
     const logData: Omit<MessageLog, 'id'> = {
@@ -89,7 +96,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables: cleanedVariables,
       schoolId: schoolId || variables.schoolId || variables.school_id || null,
-      providerId: providerResponse?.summary?._id || null, // Store mNotify ID if available
+      providerId: providerId || null,
+      providerStatus: providerStatus || null,
     };
 
     // Robust sanitization: remove any key that is explicitly undefined
@@ -110,7 +118,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             logId: logRef.id, 
             channel: template.channel, 
             templateName: template.name,
-            mNotifyStatus: providerResponse?.status,
+            providerId: providerId,
             scheduledAt: scheduledAt
         }
     });
@@ -119,7 +127,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
   } catch (error: any) {
     console.error(">>> [MESSAGING] DISPATCH ERROR:", error.message);
-    
     return { success: false, error: error.message };
   }
 }
