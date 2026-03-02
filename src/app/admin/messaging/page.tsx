@@ -329,7 +329,7 @@ export default function MessagingHubPage() {
                                         <p className="text-3xl font-black text-rose-900">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</p>
                                     </div>
                                 </CardContent>
-                            </div>
+                            </Card>
                         </div>
                     </div>
                 </TabsContent>
