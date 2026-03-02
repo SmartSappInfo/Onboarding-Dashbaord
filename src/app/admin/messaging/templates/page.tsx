@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -32,7 +33,8 @@ import {
     Database,
     Tag,
     Library,
-    Save
+    Save,
+    ShieldAlert
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -103,6 +105,8 @@ export default function MessageTemplatesPage() {
     const { data: templates, isLoading } = useCollection<MessageTemplate>(templatesQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+
+    const registryKeys = React.useMemo(() => new Set(variables?.map(v => v.key) || []), [variables]);
 
     const filteredTemplates = React.useMemo(() => {
         if (!templates) return [];
@@ -418,9 +422,22 @@ export default function MessageTemplatesPage() {
                 <div className="p-4 rounded-2xl bg-primary/5 border border-primary/10 space-y-3 shadow-inner">
                     <p className="text-[10px] font-black uppercase tracking-widest text-primary">Required Context</p>
                     <div className="flex flex-wrap gap-1.5">
-                        {extractVariables(`${subject} ${body}`).map(v => (
-                            <Badge key={v} variant="outline" className="text-[8px] bg-white border-primary/20 text-primary uppercase font-black">{v}</Badge>
-                        ))}
+                        {extractVariables(`${subject} ${body}`).map(v => {
+                            const isMissing = !registryKeys.has(v);
+                            return (
+                                <Badge 
+                                    key={v} 
+                                    variant={isMissing ? "destructive" : "outline"} 
+                                    className={cn(
+                                        "text-[8px] h-5 uppercase font-black px-2",
+                                        !isMissing && "bg-white border-primary/20 text-primary"
+                                    )}
+                                >
+                                    {isMissing && <ShieldAlert className="h-2.5 w-2.5 mr-1" />}
+                                    {v}
+                                </Badge>
+                            );
+                        })}
                         {extractVariables(`${subject} ${body}`).length === 0 && <span className="text-[9px] text-muted-foreground/40 italic font-medium">None detected.</span>}
                     </div>
                 </div>
@@ -582,79 +599,108 @@ export default function MessageTemplatesPage() {
                             </div>
                         )}
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {groupItems.map((template) => (
-                                <Card key={template.id} className="group relative border-border/50 hover:shadow-[0_32px_64px_-12px_rgba(0,0,0,0.1)] transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card">
-                                    <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
-                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                                            <TooltipProvider>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => setPreviewTemplate(template)}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>Preview Rendering</TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}>
-                                                            <Pencil className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>Modify Logic</TooltipContent>
-                                                </Tooltip>
-                                                <Tooltip>
-                                                    <TooltipTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(template.id)}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>Purge Template</TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                        </div>
-                                        <Switch 
-                                            checked={template.isActive} 
-                                            onCheckedChange={() => toggleActive(template)}
-                                            className="scale-90"
-                                        />
-                                    </div>
-                                    <CardHeader className="p-6 pb-4">
-                                        <div className="flex items-center gap-4">
-                                            <div className={cn(
-                                                "p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", 
-                                                template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100"
-                                            )}>
-                                                {template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
+                            {groupItems.map((template) => {
+                                const usedVars = extractVariables(`${template.subject || ''} ${template.body}`);
+                                const isBroken = usedVars.some(v => !registryKeys.has(v));
+
+                                return (
+                                    <Card key={template.id} className={cn(
+                                        "group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl",
+                                        isBroken ? "border-rose-200" : "border-border/50"
+                                    )}>
+                                        <div className="absolute top-4 right-4 flex items-center gap-3 z-20">
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => setPreviewTemplate(template)}>
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Preview Rendering</TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Modify Logic</TooltipContent>
+                                                    </Tooltip>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={() => handleDelete(template.id)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>Purge Template</TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
-                                            <div className="min-w-0">
-                                                <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
+                                            <Switch 
+                                                checked={template.isActive} 
+                                                onCheckedChange={() => toggleActive(template)}
+                                                className="scale-90"
+                                            />
+                                        </div>
+                                        <CardHeader className="p-6 pb-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", 
+                                                    template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100"
+                                                )}>
+                                                    {template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
+                                                    <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
+                                                </div>
                                             </div>
+                                        </CardHeader>
+                                        <CardContent className="px-6 pb-6 space-y-6">
+                                            <div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">
+                                                &ldquo;{template.body.replace(/<[^>]*>?/gm, '')}&rdquo;
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {usedVars.map(v => {
+                                                    const missing = !registryKeys.has(v);
+                                                    return (
+                                                        <Badge 
+                                                            key={v} 
+                                                            variant={missing ? "destructive" : "outline"} 
+                                                            className={cn(
+                                                                "text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm",
+                                                                !missing && "bg-white border-primary/10 text-primary"
+                                                            )}
+                                                        >
+                                                            {missing && <ShieldAlert className="h-2.5 w-2.5 mr-1" />}
+                                                            &#123;&#123;{v}&#125;&#125;
+                                                        </Badge>
+                                                    );
+                                                })}
+                                                {usedVars.length === 0 && <span className="text-[10px] text-muted-foreground/30 italic px-1 font-medium">Static Content Only</span>}
+                                            </div>
+                                        </CardContent>
+                                        <div className={cn(
+                                            "p-3 px-6 border-t flex justify-between items-center group-hover:bg-muted/5 transition-colors",
+                                            isBroken ? "bg-rose-50/50" : "bg-muted/30"
+                                        )}>
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-40">{template.channel === 'email' ? 'HTML Ready' : 'Text Compliant'}</span>
+                                            {isBroken ? (
+                                                <div className="flex items-center gap-1.5 text-rose-600 animate-pulse">
+                                                    <ShieldAlert className="h-3 w-3" />
+                                                    <span className="text-[9px] font-black uppercase tracking-tighter">Broken Context</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="h-1.5 w-1.5 rounded-full bg-primary/20" />
+                                                    <span className="text-[9px] font-black uppercase text-primary/60 tracking-tighter">{usedVars.length} Tags Attached</span>
+                                                </div>
+                                            )}
                                         </div>
-                                    </CardHeader>
-                                    <CardContent className="px-6 pb-6 space-y-6">
-                                        <div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">
-                                            &ldquo;{template.body.replace(/<[^>]*>?/gm, '')}&rdquo;
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {template.variables.map(v => (
-                                                <Badge key={v} variant="outline" className="text-[9px] h-6 bg-white border-primary/10 text-primary font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm">
-                                                    &#123;&#123;{v}&#125;&#125;
-                                                </Badge>
-                                            ))}
-                                            {template.variables.length === 0 && <span className="text-[10px] text-muted-foreground/30 italic px-1 font-medium">Static Content Only</span>}
-                                        </div>
-                                    </CardContent>
-                                    <div className="bg-muted/30 p-3 px-6 border-t flex justify-between items-center group-hover:bg-primary/5 transition-colors">
-                                        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground opacity-40">{template.channel === 'email' ? 'HTML Ready' : 'Text Compliant'}</span>
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="h-1.5 w-1.5 rounded-full bg-primary/20" />
-                                            <span className="text-[9px] font-black uppercase text-primary/60 tracking-tighter">{template.variables.length} Tags Attached</span>
-                                        </div>
-                                    </div>
-                                </Card>
-                            ))}
+                                    </Card>
+                                );
+                            })}
                         </div>
                     </div>
                 ))}

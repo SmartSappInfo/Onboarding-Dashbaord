@@ -5,7 +5,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { VariableDefinition } from '@/lib/types';
+import type { VariableDefinition, MessageTemplate } from '@/lib/types';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -25,12 +25,17 @@ import {
     Database,
     Zap,
     Tag,
-    ListFilter
+    ListFilter,
+    ShieldAlert,
+    BarChart2,
+    Link as LinkIcon,
+    Loader2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function VariableRegistryPage() {
     const firestore = useFirestore();
@@ -43,7 +48,33 @@ export default function VariableRegistryPage() {
         return query(collection(firestore, 'messaging_variables'), orderBy('category', 'asc'));
     }, [firestore]);
 
-    const { data: variables, isLoading } = useCollection<VariableDefinition>(varsQuery);
+    const templatesQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'message_templates'));
+    }, [firestore]);
+
+    const { data: variables, isLoading: isVarsLoading } = useCollection<VariableDefinition>(varsQuery);
+    const { data: templates, isLoading: isTemplatesLoading } = useCollection<MessageTemplate>(templatesQuery);
+
+    const isLoading = isVarsLoading || isTemplatesLoading;
+
+    // Calculate usage across all templates
+    const usageMap = React.useMemo(() => {
+        const map = new Map<string, number>();
+        if (!templates) return map;
+
+        templates.forEach(t => {
+            const combinedContent = `${t.subject || ''} ${t.body}`;
+            const matches = combinedContent.match(/\{\{(.*?)\}\}/g);
+            if (matches) {
+                matches.forEach(match => {
+                    const key = match.replace(/\{\{|\}\}/g, '').trim();
+                    map.set(key, (map.get(key) || 0) + 1);
+                });
+            }
+        });
+        return map;
+    }, [templates]);
 
     const handleSync = async () => {
         setIsSyncing(true);
@@ -80,41 +111,81 @@ export default function VariableRegistryPage() {
 
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((v) => (
-                    <Card key={v.id} className="group border-border/50 hover:shadow-lg transition-all rounded-2xl bg-card overflow-hidden">
-                        <div className="p-4 space-y-3">
-                            <div className="flex items-start justify-between">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">{v.sourceName || 'Core Schema'}</p>
-                                    <p className="font-bold text-sm text-foreground line-clamp-1">{v.label}</p>
+                {items.map((v) => {
+                    const usageCount = usageMap.get(v.key) || 0;
+                    return (
+                        <Card key={v.id} className="group border-border/50 hover:shadow-xl transition-all rounded-2xl bg-card overflow-hidden">
+                            <div className="p-4 space-y-3">
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">{v.sourceName || 'Core Schema'}</p>
+                                        <p className="font-bold text-sm text-foreground line-clamp-1">{v.label}</p>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter bg-muted/50 font-black">{v.type}</Badge>
+                                        {usageCount > 0 && (
+                                            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] h-4 px-1 font-black uppercase tracking-tighter">
+                                                Used in {usageCount}
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
-                                <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter bg-muted/50 font-black">{v.type}</Badge>
+                                
+                                <div className="relative group/copy">
+                                    <code className="block p-3 bg-muted/30 rounded-xl font-mono text-[11px] text-foreground/80 border border-transparent group-hover/copy:border-primary/20 transition-all select-all">
+                                        {"{{" + v.key + "}}"}
+                                    </code>
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(`{{${v.key}}}`);
+                                                        toast({ title: 'Tag Copied', description: `{{${v.key}}} ready to paste.` });
+                                                    }}
+                                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white shadow-sm border opacity-0 group-hover/copy:opacity-100 transition-opacity hover:text-primary"
+                                                >
+                                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Copy Variable Tag</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                </div>
                             </div>
-                            
-                            <div className="relative group/copy">
-                                <code className="block p-3 bg-muted/30 rounded-xl font-mono text-[11px] text-foreground/80 border border-transparent group-hover/copy:border-primary/20 transition-all select-all">
-                                    {"{{" + v.key + "}}"}
-                                </code>
-                                <button 
-                                    onClick={() => {
-                                        navigator.clipboard.writeText(`{{${v.key}}}`);
-                                        toast({ title: 'Tag Copied', description: `{{${v.key}}} ready to paste.` });
-                                    }}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg bg-white shadow-sm border opacity-0 group-hover/copy:opacity-100 transition-opacity hover:text-primary"
-                                >
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                </button>
+                            <div className="bg-muted/30 px-4 py-2 border-t flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">
+                                <span className="truncate max-w-[150px]">Path: {v.path}</span>
+                                <span className="opacity-40 shrink-0">{v.source}</span>
                             </div>
-                        </div>
-                        <div className="bg-muted/30 px-4 py-2 border-t flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">
-                            <span>Path: {v.path}</span>
-                            <span className="opacity-40">{v.source}</span>
-                        </div>
-                    </Card>
-                ))}
+                        </Card>
+                    );
+                })}
             </div>
         );
     };
+
+    const healthMetrics = React.useMemo(() => {
+        if (!variables || !templates) return { used: 0, unused: 0, broken: 0 };
+        
+        const usedKeys = new Set(usageMap.keys());
+        const registryKeys = new Set(variables.map(v => v.key));
+        
+        let broken = 0;
+        templates.forEach(t => {
+            const combinedContent = `${t.subject || ''} ${t.body}`;
+            const matches = combinedContent.match(/\{\{(.*?)\}\}/g);
+            if (matches) {
+                const hasMissing = matches.some(match => !registryKeys.has(match.replace(/\{\{|\}\}/g, '').trim()));
+                if (hasMissing) broken++;
+            }
+        });
+
+        return {
+            used: usedKeys.size,
+            unused: variables.length - usedKeys.size,
+            broken: broken
+        };
+    }, [variables, templates, usageMap]);
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
@@ -130,15 +201,15 @@ export default function VariableRegistryPage() {
                             <Database className="h-8 w-8 text-primary" />
                             Variable Registry
                         </h1>
-                        <p className="text-muted-foreground font-medium">Map platform entities to dynamic message placeholders.</p>
+                        <p className="text-muted-foreground font-medium">Manage and audit institutional data points available for messaging.</p>
                     </div>
                     <Button 
                         onClick={handleSync} 
                         disabled={isSyncing || isLoading}
-                        className="rounded-xl font-black h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8"
+                        className="rounded-xl font-black h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8 transition-all active:scale-95"
                     >
                         {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
-                        Sync Schema Hub
+                        Sync Data Hub
                     </Button>
                 </div>
 
@@ -148,30 +219,46 @@ export default function VariableRegistryPage() {
                         <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b pb-4">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Zap className="h-3 w-3" /> Registry Audit
+                                    <Zap className="h-3 w-3" /> Operational Audit
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-6 space-y-6">
                                 <div className="space-y-4">
                                     <div className="flex justify-between items-end border-b pb-3">
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Total Tags</span>
+                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Total Registry</span>
                                         <span className="text-2xl font-black tabular-nums">{variables?.length || 0}</span>
                                     </div>
+                                    <div className="flex justify-between items-end border-b pb-3">
+                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Active Usage</span>
+                                        <span className="text-2xl font-black tabular-nums text-emerald-600">{healthMetrics.used}</span>
+                                    </div>
                                     <div className="flex justify-between items-end">
-                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Sources Active</span>
-                                        <span className="text-2xl font-black tabular-nums">4</span>
+                                        <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Broken Contexts</span>
+                                        <span className={cn("text-2xl font-black tabular-nums", healthMetrics.broken > 0 ? "text-rose-600 animate-pulse" : "text-slate-300")}>
+                                            {healthMetrics.broken}
+                                        </span>
                                     </div>
                                 </div>
+                                
+                                {healthMetrics.broken > 0 && (
+                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3">
+                                        <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
+                                        <p className="text-[9px] font-bold text-rose-800 leading-relaxed uppercase tracking-tighter">
+                                            Warning: {healthMetrics.broken} template(s) contain tags that no longer exist in the registry. Review templates to fix broken logic.
+                                        </p>
+                                    </div>
+                                )}
+
                                 <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3">
                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                     <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                                        Dynamic variables are harvested from published surveys and PDF forms. Re-sync whenever you publish a new template.
+                                        The sync tool automatically purges variables from archived sources to maintain platform schema integrity.
                                     </p>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <div className="space-y-2">
+                        <div className="space-y-2 px-1">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search Registry</Label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -190,16 +277,16 @@ export default function VariableRegistryPage() {
                         <Tabs defaultValue="general" className="space-y-8">
                             <div className="bg-white p-1 rounded-2xl border shadow-sm ring-1 ring-border w-fit max-w-full overflow-x-auto no-scrollbar">
                                 <TabsList className="bg-transparent h-10 gap-1">
-                                    <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2">
+                                    <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Building className="h-3 w-3" /> Schools
                                     </TabsTrigger>
-                                    <TabsTrigger value="meetings" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2">
+                                    <TabsTrigger value="meetings" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Calendar className="h-3 w-3" /> Meetings
                                     </TabsTrigger>
-                                    <TabsTrigger value="surveys" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2">
+                                    <TabsTrigger value="surveys" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <ClipboardList className="h-3 w-3" /> Surveys
                                     </TabsTrigger>
-                                    <TabsTrigger value="forms" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2">
+                                    <TabsTrigger value="forms" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <FileText className="h-3 w-3" /> Doc Signing
                                     </TabsTrigger>
                                 </TabsList>

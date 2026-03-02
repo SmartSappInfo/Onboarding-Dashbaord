@@ -7,14 +7,23 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Synchronizes the Variable Registry by scanning Schools, Meetings, Surveys, and PDFs.
- * This is the central logic for Phase 1 of Variable Management.
+ * Includes a cleanup phase to remove orphaned dynamic variables.
  */
 export async function syncVariableRegistry() {
   try {
     const variablesCol = adminDb.collection('messaging_variables');
+    
+    // 1. CLEANUP PHASE: Fetch all dynamic variables first
+    const existingDynamicSnap = await variablesCol
+      .where('source', 'in', ['survey', 'pdf'])
+      .get();
+    
+    const existingVarIds = new Set(existingDynamicSnap.docs.map(d => d.id));
+    const varsToKeep = new Set<string>();
+
     const batch = adminDb.batch();
 
-    // 1. Static Core Variables (School & Meeting)
+    // 2. STATIC CORE VARIABLES (Always Sync/Update)
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
       { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
       { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
@@ -31,7 +40,7 @@ export async function syncVariableRegistry() {
       batch.set(ref, v);
     });
 
-    // 2. Dynamic Survey Variables
+    // 3. DYNAMIC SURVEY HARVESTING
     const surveysSnap = await adminDb.collection('surveys').where('status', '==', 'published').get();
     surveysSnap.forEach(doc => {
       const survey = doc.data() as Survey;
@@ -39,6 +48,7 @@ export async function syncVariableRegistry() {
       
       questions.forEach(q => {
         const varId = `survey_${doc.id}_${q.id}`;
+        varsToKeep.add(varId);
         const ref = variablesCol.doc(varId);
         batch.set(ref, {
           key: q.id,
@@ -54,7 +64,7 @@ export async function syncVariableRegistry() {
       });
     });
 
-    // 3. Dynamic PDF Form Variables
+    // 4. DYNAMIC PDF FORM HARVESTING
     const pdfsSnap = await adminDb.collection('pdfs').where('status', '==', 'published').get();
     pdfsSnap.forEach(doc => {
       const pdf = doc.data() as PDFForm;
@@ -64,6 +74,7 @@ export async function syncVariableRegistry() {
         if (f.type === 'signature' || f.type === 'photo') return;
         
         const varId = `pdf_${doc.id}_${f.id}`;
+        varsToKeep.add(varId);
         const ref = variablesCol.doc(varId);
         batch.set(ref, {
           key: f.id,
@@ -77,6 +88,13 @@ export async function syncVariableRegistry() {
           type: 'string'
         } as Omit<VariableDefinition, 'id'>);
       });
+    });
+
+    // 5. PURGE ORPHANS: Delete variables that are no longer in the "keep" set
+    existingVarIds.forEach(id => {
+      if (!varsToKeep.has(id)) {
+        batch.delete(variablesCol.doc(id));
+      }
     });
 
     await batch.commit();
