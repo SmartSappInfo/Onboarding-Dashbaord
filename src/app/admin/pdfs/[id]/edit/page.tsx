@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -44,6 +43,7 @@ import InternalNotificationConfig from '@/app/admin/components/internal-notifica
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { syncVariableRegistry } from '@/lib/messaging-actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -366,6 +366,12 @@ export default function EditPdfPage() {
 
     if (result.success) {
       toast({ title: 'Document Saved' });
+      
+      // Trigger Variable Registry sync if published
+      if (data.status === 'published') {
+          syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
+      }
+
       localStorage.removeItem(storageKey);
       if (redirect) {
         router.push('/admin/pdfs');
@@ -634,7 +640,7 @@ export default function EditPdfPage() {
                                                                         <Label className="text-[9px] font-bold uppercase text-muted-foreground/60 ml-1">Pattern Tint</Label>
                                                                         <div className="flex gap-2 p-1.5 bg-muted/30 rounded-xl border border-border/50 transition-all focus-within:ring-1 focus-within:ring-primary/20">
                                                                             <Input type="color" {...field} value={field.value || "#3B5FFF"} className="w-8 h-8 p-0 border-none bg-transparent rounded-lg cursor-pointer overflow-hidden" />
-                                                                            <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none focus-visible:ring-0 font-mono text-[10px] uppercase p-0" />
+                                                                            <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" />
                                                                         </div>
                                                                     </div>
                                                                 )}

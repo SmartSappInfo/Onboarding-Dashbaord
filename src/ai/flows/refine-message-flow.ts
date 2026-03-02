@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview An AI flow to refine and rephrase message content while preserving variables.
+ * @fileOverview An AI flow to refine and rephrase message content while strictly preserving dynamic tags.
  */
 
 import { ai } from '@/ai/genkit';
@@ -29,7 +29,7 @@ const refinePrompt = ai.definePrompt({
 Refine the provided message to match the requested **{{tone}}** tone for the **{{channel}}** channel.
 
 ### RULES:
-1. **VARIABLES (CRITICAL)**: You MUST preserve all {{variable_name}} tags exactly as they are. Do not translate or change them.
+1. **VARIABLES (STRICT)**: You MUST preserve all dynamic tags like {{'{{variable_name}}'}} exactly as they appear in the source. Do not rephrase, translate, or remove them.
 2. **CHANNEL CONSTRAINTS**:
    - For **SMS**: Keep the message extremely concise and avoid HTML.
    - For **Email**: Use clear structure and professional phrasing.

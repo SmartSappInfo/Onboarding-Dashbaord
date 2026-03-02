@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -32,7 +31,8 @@ import {
     Pencil,
     Database,
     Tag,
-    Library
+    Library,
+    Save
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -260,9 +260,13 @@ export default function MessageTemplatesPage() {
         if (!aiPrompt.trim()) return;
         setIsAiProcessing(true);
         try {
+            // Pass available variables to AI for intelligent injection
+            const availableTags = contextVariables.map(v => v.key);
+
             const result = await generateEmailTemplate({
                 prompt: aiPrompt,
                 channel: channel,
+                availableVariables: availableTags,
                 schoolContext: "General SmartSapp partner school context."
             });
 
@@ -337,7 +341,7 @@ export default function MessageTemplatesPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
-                        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome Message" className="h-11 rounded-xl bg-muted/20 border-none font-bold" required />
+                        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Welcome Message" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" required />
                     </div>
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Category</Label>
@@ -372,7 +376,7 @@ export default function MessageTemplatesPage() {
                                 value={subject} 
                                 onChange={e => setSubject(e.target.value)} 
                                 placeholder="Subject line..." 
-                                className="h-11 rounded-xl bg-muted/20 border-none font-bold" 
+                                className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" 
                                 required 
                             />
                         </div>

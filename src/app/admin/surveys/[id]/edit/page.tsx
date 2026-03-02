@@ -41,6 +41,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../../components/ai-chat-editor';
+import { syncVariableRegistry } from '@/lib/messaging-actions';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -376,6 +377,11 @@ export default function EditSurveyPage() {
                 await setDoc(doc(pagesCol, page.id), page);
             }
 
+            // Trigger Variable Registry sync if published
+            if (data.status === 'published') {
+                syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
+            }
+
             localStorage.removeItem(`survey-autosave-${surveyId}`);
             return true;
         } catch (error) {
@@ -540,7 +546,7 @@ export default function EditSurveyPage() {
 
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
 
-                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="pb-32">
+                    <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8 pb-32">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>

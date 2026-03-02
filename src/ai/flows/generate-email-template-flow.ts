@@ -1,7 +1,6 @@
-
 'use server';
 /**
- * @fileOverview An AI flow to generate dynamic email templates based on institutional context.
+ * @fileOverview An AI flow to generate dynamic email templates based on institutional context and available variables.
  */
 
 import { ai } from '@/ai/genkit';
@@ -11,6 +10,7 @@ const GenerateEmailTemplateInputSchema = z.object({
   prompt: z.string().describe('Instructions or description of what the email should convey.'),
   channel: z.enum(['email', 'sms']).describe('The communication channel.'),
   schoolContext: z.string().optional().describe('Details about the school to personalize the tone.'),
+  availableVariables: z.array(z.string()).optional().describe('A list of dynamic variables available for this specific context.'),
 });
 export type GenerateEmailTemplateInput = z.infer<typeof GenerateEmailTemplateInputSchema>;
 
@@ -32,8 +32,19 @@ const templatePrompt = ai.definePrompt({
 ### MISSION:
 Generate a high-converting, professional message template for the {{channel}} channel based on the user's instructions.
 
+### LOGIC & VARIABLES:
+{{#if availableVariables}}
+You MUST use the following variables where appropriate to make the message dynamic. Use the exact syntax: {{'{{variable_name}}'}}.
+Available Tags:
+{{#each availableVariables}}
+- {{this}}
+{{/each}}
+{{else}}
+Use {{'{{variable_name}}'}} syntax for all dynamic data. Common variables include {{'{{name}}'}}, {{'{{school_name}}'}}, {{'{{date}}'}}.
+{{/if}}
+
 ### RULES:
-1. **Dynamic Logic (CRITICAL)**: Use {{variable_name}} syntax for all dynamic data. Common variables include {{name}}, {{school_name}}, {{date}}, {{time}}, {{link}}.
+1. **Dynamic Logic (CRITICAL)**: Use {{'{{variable_name}}'}} syntax for all dynamic data.
 2. **Channel Constraints**:
    - For **Email**: Use HTML for structure. Include a clear subject line.
    - For **SMS**: Keep it concise, professional, and text-only (no HTML).
