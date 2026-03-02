@@ -27,7 +27,8 @@ import {
     Target,
     ShieldCheck,
     Zap,
-    AlertTriangle
+    AlertTriangle,
+    Database
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -132,22 +133,13 @@ export default function MessagingHubPage() {
 
     const infrastructure = [
         {
-            title: 'Sender Profiles',
-            description: 'Manage verified identities for SMS Sender IDs and Email addresses.',
-            icon: Fingerprint,
-            href: '/admin/messaging/profiles',
-            color: 'text-blue-500',
-            bg: 'bg-blue-500/10',
-            border: 'hover:border-blue-500/50'
-        },
-        {
-            title: 'Visual Styles',
-            description: 'Design HTML wrappers and branded layouts for your email communications.',
-            icon: Palette,
-            href: '/admin/messaging/styles',
-            color: 'text-purple-500',
-            bg: 'bg-purple-500/10',
-            border: 'hover:border-purple-500/50'
+            title: 'Variable Registry',
+            description: 'Map School, Meeting, and Survey fields to dynamic message tags.',
+            icon: Database,
+            href: '/admin/messaging/variables',
+            color: 'text-primary',
+            bg: 'bg-primary/10',
+            border: 'hover:border-primary/50'
         },
         {
             title: 'Message Templates',
@@ -157,6 +149,15 @@ export default function MessagingHubPage() {
             color: 'text-orange-500',
             bg: 'bg-orange-500/10',
             border: 'hover:border-orange-500/50'
+        },
+        {
+            title: 'Visual Styles',
+            description: 'Design HTML wrappers and branded layouts for your email communications.',
+            icon: Palette,
+            href: '/admin/messaging/styles',
+            color: 'text-purple-500',
+            bg: 'bg-purple-500/10',
+            border: 'hover:border-purple-500/50'
         }
     ];
 

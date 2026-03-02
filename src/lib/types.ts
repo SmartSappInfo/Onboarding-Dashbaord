@@ -469,3 +469,16 @@ export interface MessageTask {
   error?: string;
   sentAt?: string;
 }
+
+export interface VariableDefinition {
+  id: string;
+  key: string;
+  label: string;
+  category: 'general' | 'meetings' | 'surveys' | 'forms';
+  source: 'static' | 'survey' | 'pdf';
+  sourceId?: string; // ID of the specific Survey or PDF Form
+  sourceName?: string; // Friendly name of the source
+  entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission';
+  path: string; // The dot-notation path to the data
+  type: 'string' | 'number' | 'boolean' | 'date';
+}
