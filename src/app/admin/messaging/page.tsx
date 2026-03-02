@@ -23,7 +23,8 @@ import {
     CheckCircle2,
     XCircle,
     Info,
-    Layers
+    Layers,
+    Target
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -31,10 +32,13 @@ import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-acti
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell, Pie, PieChart, Legend } from 'recharts';
 import { subDays, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageJobsView from './jobs/page';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import type { MessageLog } from '@/lib/types';
 
 const chartConfig = {
   sent: {
@@ -44,10 +48,29 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 export default function MessagingHubPage() {
+    const firestore = useFirestore();
     const [balance, setBalance] = React.useState<number | null>(null);
     const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
     const [reportData, setReportData] = React.useState<any[]>([]);
     const [isLoadingReport, setIsLoadingReport] = React.useState(false);
+
+    // Fetch logs for analytics
+    const logsCol = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'message_logs'));
+    }, [firestore]);
+    const { data: logs } = useCollection<MessageLog>(logsCol);
+
+    const emailStats = React.useMemo(() => {
+        if (!logs) return { total: 0, sent: 0, failed: 0, scheduled: 0 };
+        const emails = logs.filter(l => l.channel === 'email');
+        return {
+            total: emails.length,
+            sent: emails.filter(e => e.status === 'sent').length,
+            failed: emails.filter(e => e.status === 'failed').length,
+            scheduled: emails.filter(e => e.status === 'scheduled').length
+        };
+    }, [logs]);
 
     const loadBalance = React.useCallback(async () => {
         setIsLoadingBalance(true);
@@ -137,20 +160,20 @@ export default function MessagingHubPage() {
     const ModuleCard = ({ mod }: { mod: any }) => (
         <Link href={mod.href} className="group block h-full outline-none">
             <Card className={cn(
-                "h-full transition-all duration-300 border-border/50 group-hover:shadow-xl group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden",
+                "h-full transition-all duration-300 border-border/50 group-hover:shadow-xl group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-primary relative overflow-hidden rounded-[1.5rem]",
                 mod.border
             )}>
                 <CardHeader className="p-6 space-y-4">
                     <div className="flex items-center gap-4">
-                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shrink-0", mod.bg)}>
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-300 group-hover:scale-110 shrink-0 shadow-sm border", mod.bg)}>
                             <mod.icon className={cn("h-6 w-6", mod.color)} />
                         </div>
-                        <CardTitle className="text-xl font-bold tracking-tight flex items-center justify-between flex-1">
+                        <CardTitle className="text-xl font-black tracking-tight flex items-center justify-between flex-1 uppercase">
                             {mod.title}
                             <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
                         </CardTitle>
                     </div>
-                    <CardDescription className="text-sm leading-relaxed font-medium text-muted-foreground/80">
+                    <CardDescription className="text-xs leading-relaxed font-bold uppercase tracking-widest text-muted-foreground opacity-70">
                         {mod.description}
                     </CardDescription>
                 </CardHeader>
@@ -163,10 +186,10 @@ export default function MessagingHubPage() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="mb-12">
                 <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-primary/10 rounded-xl">
-                        <MessageSquareText className="h-6 w-6 text-primary" />
+                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                        <MessageSquareText className="h-6 w-6" />
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase tracking-tighter">
+                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">
                         Messaging Engine
                     </h1>
                 </div>
@@ -175,11 +198,11 @@ export default function MessagingHubPage() {
 
             <Tabs defaultValue="overview" className="space-y-12">
                 <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
-                    <TabsTrigger value="overview" className="rounded-lg font-bold px-6">Hub Overview</TabsTrigger>
-                    <TabsTrigger value="jobs" className="rounded-lg font-bold px-6 gap-2">
+                    <TabsTrigger value="overview" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6">Hub Overview</TabsTrigger>
+                    <TabsTrigger value="jobs" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6 gap-2">
                         <Layers className="h-4 w-4" /> Bulk Jobs
                     </TabsTrigger>
-                    <TabsTrigger value="analytics" className="rounded-lg font-bold px-6 gap-2">
+                    <TabsTrigger value="analytics" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6 gap-2">
                         <BarChart3 className="h-4 w-4" /> Analytics
                     </TabsTrigger>
                 </TabsList>
@@ -210,33 +233,33 @@ export default function MessagingHubPage() {
                     </section>
 
                     <section className="pt-8">
-                        <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2rem] overflow-hidden">
+                        <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2.5rem] overflow-hidden">
                             <CardHeader className="p-8 pb-4">
-                                <CardTitle className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Activity className="h-4 w-4" /> Gateway Performance
+                                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                    <Activity className="h-4 w-4" /> Gateway Integrity Report
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
-                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
-                                    <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0">
+                                <div className="flex items-center gap-5 p-6 rounded-3xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                    <div className="p-4 bg-blue-500/10 rounded-2xl text-blue-500 shrink-0 shadow-sm border border-blue-100">
                                         <Mail className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-black text-sm text-foreground">Email Service</p>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">High-Fidelity Branded Delivery</p>
+                                        <p className="font-black text-sm text-foreground uppercase tracking-tight">Email Environment (Resend)</p>
+                                        <p className="text-[9px] text-muted-foreground uppercase font-black tracking-tight mt-1 opacity-60">Status: Verified & Branded</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Operational</Badge>
+                                        <Badge className="bg-emerald-500 text-white border-none text-[8px] font-black uppercase tracking-widest px-2.5 h-5">Live</Badge>
                                     </div>
                                 </div>
                                 
-                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
-                                    <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0">
+                                <div className="flex items-center gap-5 p-6 rounded-3xl bg-background border border-border/50 shadow-sm transition-all hover:shadow-md">
+                                    <div className="p-4 bg-orange-500/10 rounded-2xl text-orange-500 shrink-0 shadow-sm border border-orange-100">
                                         <Smartphone className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <p className="font-black text-sm text-foreground">SMS Gateway</p>
+                                            <p className="font-black text-sm text-foreground uppercase tracking-tight">SMS Gateway (mNotify)</p>
                                             <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
                                                 <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
                                             </button>
@@ -251,7 +274,7 @@ export default function MessagingHubPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Operational</Badge>
+                                        <Badge className="bg-emerald-500 text-white border-none text-[8px] font-black uppercase tracking-widest px-2.5 h-5">Live</Badge>
                                     </div>
                                 </div>
                             </CardContent>
@@ -265,14 +288,14 @@ export default function MessagingHubPage() {
 
                 <TabsContent value="analytics" className="max-w-7xl animate-in fade-in slide-in-from-bottom-2">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <Card className="lg:col-span-2">
-                            <CardHeader>
+                        <Card className="lg:col-span-2 rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm">
+                            <CardHeader className="bg-muted/30 border-b pb-6">
                                 <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-2">
-                                    <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends
+                                    <TrendingUp className="h-5 w-5 text-primary" /> Delivery Trends (30D)
                                 </CardTitle>
-                                <CardDescription>SMS volume and success rates for the last 30 days.</CardDescription>
+                                <CardDescription className="text-xs font-bold uppercase tracking-widest">Global SMS throughput and handset verification.</CardDescription>
                             </CardHeader>
-                            <CardContent className="h-[350px]">
+                            <CardContent className="h-[350px] p-8">
                                 {isLoadingReport ? (
                                     <Skeleton className="w-full h-full rounded-xl" />
                                 ) : reportData.length > 0 ? (
@@ -286,8 +309,9 @@ export default function MessagingHubPage() {
                                                     axisLine={false} 
                                                     fontSize={10} 
                                                     tickFormatter={(val) => format(new Date(val), 'MMM d')}
+                                                    tick={{ fontWeight: 'bold', fill: 'hsl(var(--muted-foreground))' }}
                                                 />
-                                                <YAxis axisLine={false} tickLine={false} fontSize={10} />
+                                                <YAxis axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 'bold', fill: 'hsl(var(--muted-foreground))' }} />
                                                 <ChartTooltip content={<ChartTooltipContent />} />
                                                 <Bar dataKey="sent" fill="var(--color-sent)" radius={4}>
                                                     {reportData.map((entry, index) => (
@@ -298,35 +322,74 @@ export default function MessagingHubPage() {
                                         </ResponsiveContainer>
                                     </ChartContainer>
                                 ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/10">
+                                    <div className="h-full flex flex-col items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/10 p-8">
                                         <Info className="h-10 w-10 mb-4 opacity-20" />
-                                        <p className="font-bold">No Delivery Data Found</p>
-                                        <p className="text-xs uppercase tracking-tighter">Initiate communications to see real-time performance analytics.</p>
+                                        <p className="font-black uppercase tracking-widest text-xs">No throughput data recorded</p>
+                                        <p className="text-[10px] uppercase tracking-tighter mt-1 opacity-60">Campaign metrics will appear here after dispatch</p>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
 
                         <div className="space-y-6">
-                            <Card className="bg-emerald-50 border-emerald-100">
-                                <CardContent className="p-6 flex items-center gap-4">
-                                    <div className="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-200">
-                                        <CheckCircle2 className="h-6 w-6" />
+                            {/* SMS Summary */}
+                            <Card className="bg-emerald-50 border-emerald-100 rounded-[1.5rem] shadow-sm">
+                                <CardContent className="p-6 flex items-center gap-5">
+                                    <div className="p-4 bg-emerald-500 text-white rounded-2xl shadow-lg shadow-emerald-200">
+                                        <Smartphone className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 leading-none mb-1">Delivered Successfully</p>
-                                        <p className="text-3xl font-black text-emerald-900">{reportData.reduce((acc, curr) => acc + (curr.delivered || 0), 0)}</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-emerald-700 leading-none mb-1.5">SMS Delivered (Total)</p>
+                                        <p className="text-4xl font-black text-emerald-900 tabular-nums leading-none">
+                                            {reportData.reduce((acc, curr) => acc + (curr.delivered || 0), 0)}
+                                        </p>
                                     </div>
                                 </CardContent>
                             </Card>
-                            <Card className="bg-rose-50 border-rose-100">
-                                <CardContent className="p-6 flex items-center gap-4">
-                                    <div className="p-3 bg-rose-500 text-white rounded-2xl shadow-lg shadow-rose-200">
-                                        <XCircle className="h-6 w-6" />
+
+                            {/* Email Summary */}
+                            <Card className="bg-blue-50 border-blue-100 rounded-[1.5rem] shadow-sm">
+                                <CardContent className="p-6 flex items-center gap-5">
+                                    <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-200">
+                                        <Mail className="h-6 w-6" />
                                     </div>
                                     <div>
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-rose-700 leading-none mb-1">Failed / Bounced</p>
-                                        <p className="text-3xl font-black text-rose-900">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</p>
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-blue-700 leading-none mb-1.5">Email Sent (Resolved)</p>
+                                        <p className="text-4xl font-black text-blue-900 tabular-nums leading-none">
+                                            {emailStats.sent}
+                                        </p>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Failure Analytics */}
+                            <Card className="bg-rose-50 border-rose-100 rounded-[1.5rem] shadow-sm">
+                                <CardHeader className="p-6 pb-2">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-rose-700 flex items-center gap-2">
+                                        <XCircle className="h-3.5 w-3.5" /> Termination Report
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-6 pt-0 space-y-4">
+                                    <div className="flex justify-between items-end border-b border-rose-100 pb-3">
+                                        <span className="text-[10px] font-bold text-rose-800/60 uppercase">SMS Failures</span>
+                                        <span className="text-2xl font-black text-rose-900 tabular-nums">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-end">
+                                        <span className="text-[10px] font-bold text-rose-800/60 uppercase">Email Bounces</span>
+                                        <span className="text-2xl font-black text-rose-900 tabular-nums">{emailStats.failed}</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="bg-primary/5 border-primary/10 rounded-[1.5rem] shadow-none border-dashed border-2">
+                                <CardContent className="p-6 flex items-center gap-4 text-center justify-center h-24">
+                                    <div className="space-y-1">
+                                        <p className="text-[9px] font-black text-primary uppercase tracking-widest flex items-center gap-2 justify-center">
+                                            <Target className="h-3 w-3" /> Delivery Efficiency
+                                        </p>
+                                        <p className="text-2xl font-black text-foreground">
+                                            {logs && logs.length > 0 ? Math.round(((emailStats.sent + reportData.reduce((a,c) => a + (c.delivered || 0), 0)) / (emailStats.total + reportData.reduce((a,c) => a + (c.sent || 0), 0))) * 100) : 0}%
+                                        </p>
                                     </div>
                                 </CardContent>
                             </Card>
