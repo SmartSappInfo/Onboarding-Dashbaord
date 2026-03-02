@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -246,6 +247,11 @@ export default function SchoolsPage() {
                             <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
                             <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
                             <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.phone || school.email || ''}`}>
+                                    <Send className="mr-2 h-4 w-4" /> Send Message
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setSchoolToDelete(school)}><Trash2 className="mr-2 h-4 w-4" /> Delete School</DropdownMenuItem>
                           </DropdownMenuContent>

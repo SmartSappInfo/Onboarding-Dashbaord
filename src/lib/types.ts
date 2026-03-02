@@ -397,11 +397,12 @@ export interface MessageLog {
   recipient: string;
   subject?: string;
   body: string;
-  status: 'sent' | 'failed';
+  status: 'sent' | 'failed' | 'scheduled';
   error?: string;
   sentAt: string;
   variables: Record<string, any>;
   schoolId?: string;
+  providerId?: string; // Provider-specific ID (e.g. mNotify Campaign ID)
 }
 
 export interface MessageJob {

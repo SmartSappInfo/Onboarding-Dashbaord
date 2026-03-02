@@ -7,10 +7,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, MessageStyle } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, MessageStyle, School } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
+import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,7 +37,9 @@ import {
     X,
     AlertCircle,
     Info,
-    CalendarClock
+    CalendarClock,
+    Building,
+    Wallet
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -71,6 +74,7 @@ export default function ComposerWizard() {
     const [jobId, setJobId] = React.useState<string | null>(null);
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
+    const [smsBalance, setSmsBalance] = React.useState<number | null>(null);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -88,6 +92,15 @@ export default function ComposerWizard() {
     const watchedTemplateId = watch('templateId');
     const watchedMode = watch('mode');
     const watchedIsScheduled = watch('isScheduled');
+    const watchedSchoolId = watch('schoolId');
+
+    React.useEffect(() => {
+        const fetchBalance = async () => {
+            const result = await fetchSmsBalanceAction();
+            if (result.success) setSmsBalance(result.balance ?? 0);
+        };
+        fetchBalance();
+    }, []);
 
     React.useEffect(() => {
         const tId = searchParams.get('templateId');
@@ -118,12 +131,48 @@ export default function ComposerWizard() {
         return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', watchedChannel));
     }, [firestore, watchedChannel]);
 
+    const schoolsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
+    }, [firestore]);
+
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: profiles, isLoading: isLoadingProfiles } = useCollection<SenderProfile>(profilesQuery);
+    const { data: schools } = useCollection<School>(schoolsQuery);
 
     const selectedTemplate = React.useMemo(() => 
         templates?.find(t => t.id === watchedTemplateId), 
     [templates, watchedTemplateId]);
+
+    // Auto-populate variables based on selected school
+    React.useEffect(() => {
+        if (watchedSchoolId && schools) {
+            const school = schools.find(s => s.id === watchedSchoolId);
+            if (school) {
+                const schoolVars: Record<string, any> = {
+                    school_name: school.name,
+                    contact_person: school.contactPerson || school.focalPersons?.[0]?.name,
+                    phone: school.phone || school.focalPersons?.[0]?.phone,
+                    email: school.email || school.focalPersons?.[0]?.email,
+                    location: school.location,
+                    slug: school.slug
+                };
+
+                // Auto-fill recipient if empty and single mode
+                if (watchedMode === 'single' && !getValues('recipient')) {
+                    const recipient = watchedChannel === 'email' ? schoolVars.email : schoolVars.phone;
+                    if (recipient) setValue('recipient', recipient);
+                }
+
+                // Map matching variables
+                selectedTemplate?.variables.forEach(v => {
+                    if (schoolVars[v]) {
+                        setValue(`variables.${v}`, schoolVars[v]);
+                    }
+                });
+            }
+        }
+    }, [watchedSchoolId, schools, selectedTemplate, watchedMode, watchedChannel, setValue, getValues]);
 
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -243,6 +292,8 @@ export default function ComposerWizard() {
         </div>
     );
 
+    const isOutOfCredits = watchedChannel === 'sms' && smsBalance !== null && smsBalance <= 0;
+
     return (
         <div className="space-y-8">
             <div className="flex items-center justify-center gap-8 mb-12">
@@ -284,6 +335,15 @@ export default function ComposerWizard() {
                                             <span>SMS</span>
                                         </Button>
                                     </div>
+                                    {watchedChannel === 'sms' && (
+                                        <div className="flex items-center justify-between px-2 text-[10px] font-black uppercase tracking-tighter">
+                                            <span className="text-muted-foreground">Current Balance</span>
+                                            <span className={cn("flex items-center gap-1.5", smsBalance !== null && smsBalance < 10 ? "text-red-500 animate-pulse" : "text-emerald-600")}>
+                                                <Wallet className="h-3 w-3" />
+                                                {smsBalance !== null ? `${smsBalance} Credits` : 'Loading...'}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-4">
@@ -397,47 +457,73 @@ export default function ComposerWizard() {
 
                             <Separator />
 
-                            <div className="p-6 rounded-2xl border-2 border-primary/10 bg-primary/5 space-y-4 transition-all">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className={cn("p-2 rounded-xl transition-colors", watchedIsScheduled ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                            <CalendarClock className="h-5 w-5" />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="p-6 rounded-2xl border-2 border-primary/10 bg-primary/5 space-y-4 transition-all">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className={cn("p-2 rounded-xl transition-colors", watchedIsScheduled ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                                <CalendarClock className="h-5 w-5" />
+                                            </div>
+                                            <div className="space-y-0.5">
+                                                <Label className="text-sm font-black uppercase tracking-tight">Schedule for Later</Label>
+                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Queue for future delivery</p>
+                                            </div>
                                         </div>
-                                        <div className="space-y-0.5">
-                                            <Label className="text-sm font-black uppercase tracking-tight">Schedule for Later</Label>
-                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Queue message for future delivery</p>
-                                        </div>
-                                    </div>
-                                    <Controller
-                                        name="isScheduled"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Switch 
-                                                checked={field.value} 
-                                                onCheckedChange={field.onChange} 
-                                                className="scale-110"
-                                            />
-                                        )}
-                                    />
-                                </div>
-                                
-                                {watchedIsScheduled && (
-                                    <div className="pt-4 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
                                         <Controller
-                                            name="scheduledAt"
+                                            name="isScheduled"
                                             control={control}
                                             render={({ field }) => (
-                                                <DateTimePicker 
-                                                    value={field.value} 
-                                                    onChange={field.onChange} 
+                                                <Switch 
+                                                    checked={field.value} 
+                                                    onCheckedChange={field.onChange} 
+                                                    className="scale-110"
                                                 />
                                             )}
                                         />
-                                        <p className="text-[10px] text-primary/60 font-bold uppercase tracking-widest mt-3 text-center">
-                                            Recipient will receive this on {getValues('scheduledAt') ? format(getValues('scheduledAt')!, 'PPPP p') : 'selected date'}
-                                        </p>
                                     </div>
-                                )}
+                                    
+                                    {watchedIsScheduled && (
+                                        <div className="pt-4 border-t border-primary/10 animate-in fade-in slide-in-from-top-2">
+                                            <Controller
+                                                name="scheduledAt"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <DateTimePicker 
+                                                        value={field.value} 
+                                                        onChange={field.onChange} 
+                                                    />
+                                                )}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-6 rounded-2xl border-2 border-muted bg-muted/10 space-y-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 rounded-xl bg-muted text-muted-foreground">
+                                            <Building className="h-5 w-5" />
+                                        </div>
+                                        <div className="space-y-0.5">
+                                            <Label className="text-sm font-black uppercase tracking-tight">School Context</Label>
+                                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Auto-fill variables from school data</p>
+                                        </div>
+                                    </div>
+                                    <Controller
+                                        name="schoolId"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                <SelectTrigger className="h-11 rounded-xl bg-background">
+                                                    <SelectValue placeholder="Select a school..." />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="none">No School Context</SelectItem>
+                                                    {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                </div>
                             </div>
 
                             <Separator />
@@ -558,6 +644,19 @@ export default function ComposerWizard() {
                                             {watchedMode === 'single' && <span className="text-xs font-mono text-muted-foreground">{getValues('recipient')}</span>}
                                         </div>
                                     </div>
+                                    
+                                    {isOutOfCredits && (
+                                        <div className="p-4 rounded-xl border-2 border-destructive/20 bg-destructive/5 flex items-start gap-3">
+                                            <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                                            <div className="space-y-1">
+                                                <p className="text-xs font-black uppercase tracking-widest text-destructive">Insufficient Balance</p>
+                                                <p className="text-[10px] text-destructive/80 leading-relaxed font-medium">
+                                                    Your SMS credit balance is zero. Please top up your mNotify account to continue sending communications.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div className="p-4 rounded-xl border bg-blue-50/50 border-blue-200 flex items-start gap-3">
                                         <AlertCircle className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
@@ -583,7 +682,7 @@ export default function ComposerWizard() {
                         </CardContent>
                         <CardFooter className="justify-between bg-muted/30 pt-6">
                             <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-bold">Previous</Button>
-                            <Button type="submit" size="lg" disabled={isSubmitting} className="px-12 font-black shadow-xl h-14 gap-3 bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all active:scale-95">
+                            <Button type="submit" size="lg" disabled={isSubmitting || isOutOfCredits} className="px-12 font-black shadow-xl h-14 gap-3 bg-primary text-white hover:bg-primary/90 rounded-2xl transition-all active:scale-95">
                                 {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
                                 {watchedMode === 'single' ? (watchedIsScheduled ? 'Schedule Message' : 'Send Message Now') : `Start Bulk Dispatch`}
                             </Button>

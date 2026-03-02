@@ -85,6 +85,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       sentAt: scheduledAt || new Date().toISOString(),
       variables,
       schoolId: schoolId || variables.schoolId || variables.school_id,
+      providerId: providerResponse?.summary?._id || null, // Store mNotify ID if available
     };
 
     const logRef = await adminDb.collection('message_logs').add(logData);
