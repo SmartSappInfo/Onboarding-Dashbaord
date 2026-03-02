@@ -3,7 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition } from './types';
-import { resolveVariables } from './messaging-utils';
+import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
@@ -20,7 +20,7 @@ interface SendMessageInput {
 
 /**
  * Main entry point for sending a single message via the messaging engine.
- * Decouples the application logic from the underlying gateways (mNotify & Resend).
+ * Upgraded to handle structured blocks for high-fidelity emails.
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
@@ -52,12 +52,22 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     });
 
-    // 3. Resolve Subject & Body
-    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
-    let resolvedBody = resolveVariables(template.body, finalVariables);
+    // 3. Render Body
+    let resolvedBody = '';
+    
+    if (template.channel === 'email' && template.blocks && template.blocks.length > 0) {
+        // High-Fidelity Block Rendering
+        resolvedBody = renderBlocksToHtml(template.blocks, finalVariables);
+    } else {
+        // Legacy or SMS Flat String Rendering
+        resolvedBody = resolveVariables(template.body, finalVariables);
+    }
 
-    // 4. Apply Style (Email only)
-    if (template.channel === 'email' && template.styleId) {
+    // 4. Resolve Subject (Email only)
+    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
+
+    // 5. Apply Style Wrapper (Email only - for legacy compatibility)
+    if (template.channel === 'email' && template.styleId && !template.blocks?.length) {
       const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
       if (styleSnap.exists) {
         const style = styleSnap.data() as MessageStyle;
@@ -67,7 +77,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       }
     }
 
-    // 5. Perform Actual Delivery
+    // 6. Perform Actual Delivery
     let providerId = null;
     let providerStatus = null;
 
@@ -92,7 +102,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 6. Create Audit Log
+    // 7. Create Audit Log
     const cleanedVariables = JSON.parse(JSON.stringify(finalVariables));
 
     const logData: Omit<MessageLog, 'id'> = {
@@ -120,7 +130,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
-    // 7. Sync with Activity Timeline
+    // 8. Sync with Activity Timeline
     await logActivity({
         schoolId: (logData.schoolId as string) || '',
         userId: null, 

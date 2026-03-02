@@ -409,13 +409,37 @@ export interface MessageStyle {
   updatedAt: string;
 }
 
+export interface MessageBlock {
+  id: string;
+  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'columns' | 'header' | 'footer' | 'logo';
+  title?: string;
+  content?: string;
+  url?: string;
+  link?: string;
+  openInNewTab?: boolean;
+  variant?: 'h1' | 'h2' | 'h3';
+  items?: string[];
+  listStyle?: 'ordered' | 'unordered';
+  columns?: { blocks: MessageBlock[] }[];
+  style?: {
+    textAlign?: 'left' | 'center' | 'right';
+    variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
+    color?: string;
+    backgroundColor?: string;
+    padding?: string;
+    borderRadius?: string;
+    width?: string;
+  };
+}
+
 export interface MessageTemplate {
   id: string;
   name: string;
   category: 'forms' | 'surveys' | 'meetings' | 'general';
   channel: 'sms' | 'email';
   subject?: string;
-  body: string;
+  body: string; // Used for legacy/SMS or resolved HTML output
+  blocks?: MessageBlock[]; // NEW: Structured block system
   styleId?: string;
   variables: string[];
   isActive: boolean;
