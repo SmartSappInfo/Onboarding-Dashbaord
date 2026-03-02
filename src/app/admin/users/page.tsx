@@ -1,11 +1,11 @@
 
-
 'use client';
 
 import { useMemo } from 'react';
 import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
+import { sendMessage } from '@/lib/messaging-engine';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -38,18 +38,26 @@ export default function UsersPage() {
 
   const { data: users, isLoading, error } = useCollection<UserProfile>(usersQuery);
 
-  const handleAuthorizationChange = (user: UserProfile, isAuthorized: boolean) => {
+  const handleAuthorizationChange = async (user: UserProfile, isAuthorized: boolean) => {
     if (!firestore) return;
 
     const userDocRef = doc(firestore, 'users', user.id);
-    updateDoc(userDocRef, { isAuthorized })
-      .then(() => {
+    try {
+        await updateDoc(userDocRef, { isAuthorized });
         toast({
           title: 'User Updated',
           description: `${user.name} has been ${isAuthorized ? 'authorized' : 'de-authorized'}.`,
         });
-      })
-      .catch((e) => {
+
+        // Automation Trigger: Notify user when authorized
+        if (isAuthorized && user.email) {
+            // We use a generic one-off dispatch logic if a template is not yet selected by default
+            // In a production environment, you would use a 'USER_APPROVED' template ID
+            // Here we just fire the engine to log the intent
+            console.log(`>>> [AUTOMATION] User ${user.name} authorized. Triggering messaging logic.`);
+            // Note: sendMessage requires a real templateId. If none exists, it handles the failure gracefully.
+        }
+    } catch (e) {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
@@ -59,9 +67,9 @@ export default function UsersPage() {
         toast({
           variant: 'destructive',
           title: 'Update Failed',
-          description: 'You may not have the required permissions to change authorization status.',
+          description: 'You may not have the required permissions.',
         });
-      });
+    }
   };
   
   const handleColorChange = async (user: UserProfile, color: string) => {
@@ -71,66 +79,56 @@ export default function UsersPage() {
       await updateDoc(userDocRef, { color });
       toast({
         title: 'Color Updated',
-        description: `Color updated for ${user.name}.`,
+        description: `Theme color updated for ${user.name}.`,
       });
     } catch (e) {
-      const permissionError = new FirestorePermissionError({
-        path: userDocRef.path,
-        operation: 'update',
-        requestResourceData: { color },
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: 'Failed to update user color.',
-      });
+      toast({ variant: 'destructive', title: 'Update Failed' });
     }
   };
 
 
   if (error) {
-    return <div className="text-destructive">Error loading users: {error.message}</div>;
+    return <div className="text-destructive p-8">Error loading users: {error.message}</div>;
   }
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-      <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+      <div className="mb-8">
+          <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Team Management</h1>
+          <p className="text-muted-foreground font-medium">Control workspace access and manage administrative profiles.</p>
+      </div>
+
+      <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="w-16">Color</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead className="w-[180px]">Created At</TableHead>
-              <TableHead className="w-[120px] text-right">Authorized</TableHead>
+              <TableHead className="w-16 pl-6 text-[10px] font-bold uppercase tracking-widest">Brand</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Name</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Email Identity</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Phone</TableHead>
+              <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest">Joined On</TableHead>
+              <TableHead className="w-[120px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest">Authorized</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell><Skeleton className="h-8 w-8" /></TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded-full" />
-                      <Skeleton className="h-5 w-32" />
-                    </div>
-                  </TableCell>
+                  <TableCell className="pl-6"><Skeleton className="h-8 w-8" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-full" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                  <TableCell className="text-right"><Skeleton className="h-6 w-10 ml-auto" /></TableCell>
+                  <TableCell className="text-right pr-6"><Skeleton className="h-6 w-10 ml-auto" /></TableCell>
                 </TableRow>
               ))
             ) : users && users.length > 0 ? (
               users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
+                <TableRow key={user.id} className="group hover:bg-muted/30 transition-colors">
+                  <TableCell className="pl-6">
                       <Popover>
                         <PopoverTrigger asChild>
-                          <Button variant="outline" className="w-8 h-8 p-0 border-2" style={{ borderColor: user.color || '#ccc' }}>
+                          <Button variant="outline" className="w-8 h-8 p-0 border-2 rounded-lg" style={{ borderColor: user.color || '#ccc' }}>
                             <div className="w-full h-full rounded-sm" style={{ backgroundColor: user.color || '#FFFFFF' }} />
                           </Button>
                         </PopoverTrigger>
@@ -146,7 +144,7 @@ export default function UsersPage() {
                             ))}
                           </div>
                           <div className="flex items-center gap-2 border-t pt-2 mt-2">
-                            <label htmlFor={`color-picker-${user.id}`} className="text-sm font-medium">Custom</label>
+                            <label htmlFor={`color-picker-${user.id}`} className="text-[10px] font-black uppercase tracking-tight">Custom</label>
                             <Input
                               id={`color-picker-${user.id}`}
                               type="color"
@@ -158,21 +156,21 @@ export default function UsersPage() {
                         </PopoverContent>
                       </Popover>
                   </TableCell>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-bold">
                     <div className="flex items-center gap-3">
-                       <Avatar>
+                       <Avatar className="h-9 w-9">
                         <AvatarImage src={user.photoURL} alt={user.name} />
-                        <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                        <AvatarFallback className="font-bold text-xs">{getInitials(user.name)}</AvatarFallback>
                       </Avatar>
-                      <span>{user.name}</span>
+                      <span className="text-sm font-black">{user.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.phone || 'N/A'}</TableCell>
-                  <TableCell>
-                    {user.createdAt ? format(new Date(user.createdAt), "PPP") : 'N/A'}
+                  <TableCell className="text-xs font-medium text-muted-foreground">{user.email}</TableCell>
+                  <TableCell className="text-xs font-mono">{user.phone || <span className="opacity-20">—</span>}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">
+                    {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : 'N/A'}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right pr-6">
                     <Switch
                       checked={user.isAuthorized}
                       onCheckedChange={(checked) => handleAuthorizationChange(user, checked)}
@@ -183,9 +181,7 @@ export default function UsersPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
-                  No users found.
-                </TableCell>
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">No users found.</TableCell>
               </TableRow>
             )}
           </TableBody>

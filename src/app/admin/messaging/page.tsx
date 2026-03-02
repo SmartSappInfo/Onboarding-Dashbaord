@@ -22,7 +22,8 @@ import {
     TrendingUp,
     CheckCircle2,
     XCircle,
-    Info
+    Info,
+    Layers
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -33,6 +34,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } f
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { subDays, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
+import MessageJobsView from './jobs/page';
 
 const chartConfig = {
   sent: {
@@ -62,8 +64,7 @@ export default function MessagingHubPage() {
         const from = format(subDays(new Date(), 30), 'yyyy-MM-dd');
         const result = await fetchSmsReportsAction(from, to);
         if (result.success && result.report) {
-            // Transform mNotify report data if needed, or use as is
-            setReportData(result.report.slice(0, 7).reverse()); // Just show last 7 active records
+            setReportData(result.report.slice(0, 7).reverse());
         }
         setIsLoadingReport(false);
     }, []);
@@ -84,7 +85,7 @@ export default function MessagingHubPage() {
             border: 'hover:border-emerald-500/50'
         },
         {
-            title: 'Scheduled Messages',
+            title: 'Scheduled Queue',
             description: 'Review and manage communications queued for future delivery.',
             icon: CalendarClock,
             href: '/admin/messaging/scheduled',
@@ -165,26 +166,28 @@ export default function MessagingHubPage() {
                     <div className="p-2 bg-primary/10 rounded-xl">
                         <MessageSquareText className="h-6 w-6 text-primary" />
                     </div>
-                    <h1 className="text-3xl font-bold tracking-tight text-foreground">
+                    <h1 className="text-3xl font-bold tracking-tight text-foreground uppercase tracking-tighter">
                         Messaging Engine
                     </h1>
                 </div>
-                <p className="text-muted-foreground text-lg font-medium">Centralized control for automated and manual school communications.</p>
+                <p className="text-muted-foreground text-lg font-medium">Control and monitor all manual and automated school communications.</p>
             </div>
 
             <Tabs defaultValue="overview" className="space-y-12">
                 <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
                     <TabsTrigger value="overview" className="rounded-lg font-bold px-6">Hub Overview</TabsTrigger>
+                    <TabsTrigger value="jobs" className="rounded-lg font-bold px-6 gap-2">
+                        <Layers className="h-4 w-4" /> Bulk Jobs
+                    </TabsTrigger>
                     <TabsTrigger value="analytics" className="rounded-lg font-bold px-6 gap-2">
-                        <BarChart3 className="h-4 w-4" /> Performance Analytics
+                        <BarChart3 className="h-4 w-4" /> Analytics
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-16 max-w-7xl animate-in fade-in slide-in-from-bottom-2">
-                    {/* Section 1: Operations */}
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Daily Operations</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Operations</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -194,10 +197,9 @@ export default function MessagingHubPage() {
                         </div>
                     </section>
 
-                    {/* Section 2: Infrastructure */}
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Configuration & Assets</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Infrastructure</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -207,12 +209,11 @@ export default function MessagingHubPage() {
                         </div>
                     </section>
 
-                    {/* Section 3: System Channels */}
                     <section className="pt-8">
                         <Card className="bg-primary/5 border-primary/20 shadow-none rounded-[2rem] overflow-hidden">
                             <CardHeader className="p-8 pb-4">
                                 <CardTitle className="text-sm font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                    <Activity className="h-4 w-4" /> System Health & Channels
+                                    <Activity className="h-4 w-4" /> Gateway Performance
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-8 pt-0">
@@ -221,15 +222,11 @@ export default function MessagingHubPage() {
                                         <Mail className="h-6 w-6" />
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="font-black text-sm text-foreground">Email Channel</p>
-                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">Stateless SMTP Gateway</p>
+                                        <p className="font-black text-sm text-foreground">Email Service</p>
+                                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">High-Fidelity Branded Delivery</p>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <div className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                        </div>
-                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
+                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Operational</Badge>
                                     </div>
                                 </div>
                                 
@@ -239,12 +236,8 @@ export default function MessagingHubPage() {
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            <p className="font-black text-sm text-foreground">SMS Channel</p>
-                                            <button 
-                                                onClick={loadBalance} 
-                                                disabled={isLoadingBalance}
-                                                className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
-                                            >
+                                            <p className="font-black text-sm text-foreground">SMS Gateway</p>
+                                            <button onClick={loadBalance} disabled={isLoadingBalance} className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50">
                                                 <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
                                             </button>
                                         </div>
@@ -258,16 +251,16 @@ export default function MessagingHubPage() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <div className="relative flex h-2 w-2">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                        </div>
-                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Online</Badge>
+                                        <Badge className="bg-green-500/10 text-green-600 border-none text-[10px] font-black uppercase tracking-tighter px-2">Operational</Badge>
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
                     </section>
+                </TabsContent>
+
+                <TabsContent value="jobs" className="max-w-7xl animate-in fade-in slide-in-from-bottom-2">
+                    <MessageJobsView />
                 </TabsContent>
 
                 <TabsContent value="analytics" className="max-w-7xl animate-in fade-in slide-in-from-bottom-2">
@@ -336,15 +329,7 @@ export default function MessagingHubPage() {
                                         <p className="text-3xl font-black text-rose-900">{reportData.reduce((acc, curr) => acc + (curr.failed || 0), 0)}</p>
                                     </div>
                                 </CardContent>
-                            </Card>
-                            <Card className="bg-muted/30 border-none shadow-none">
-                                <CardHeader className="p-6 pb-2">
-                                    <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Reporting Guidance</CardTitle>
-                                </CardHeader>
-                                <CardContent className="p-6 pt-0 text-xs leading-relaxed text-muted-foreground font-medium">
-                                    Metrics are synchronized from mNotify BMS reports. High failure rates may indicate stale contact lists or Sender ID issues.
-                                </CardContent>
-                            </Card>
+                            </div>
                         </div>
                     </div>
                 </TabsContent>

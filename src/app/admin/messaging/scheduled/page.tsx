@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { fetchScheduledMessagesAction, deleteScheduledMessageAction } from '@/lib/mnotify-actions';
+import { fetchScheduledMessagesAction, deleteScheduledMessageAction, updateScheduledMessageAction } from '@/lib/mnotify-actions';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { 
@@ -14,13 +14,13 @@ import {
     AlertCircle, 
     RefreshCw, 
     Clock, 
-    User,
-    ArrowRight
+    ArrowRight,
+    Pencil,
+    Save
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   AlertDialog,
@@ -32,6 +32,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { cn } from '@/lib/utils';
 
 export default function ScheduledMessagesPage() {
     const { toast } = useToast();
@@ -39,6 +52,12 @@ export default function ScheduledMessagesPage() {
     const [isLoading, setIsLoading] = React.useState(true);
     const [isDeletingId, setIsDeletingId] = React.useState<string | null>(null);
     const [messageToDelete, setMessageToDelete] = React.useState<any | null>(null);
+    
+    // Edit State
+    const [editingMessage, setEditingMessage] = React.useState<any | null>(null);
+    const [editBody, setEditBody] = React.useState('');
+    const [editDate, setEditDate] = React.useState<Date | undefined>(undefined);
+    const [isUpdating, setIsUpdating] = React.useState(false);
 
     const loadMessages = React.useCallback(async () => {
         setIsLoading(true);
@@ -55,6 +74,36 @@ export default function ScheduledMessagesPage() {
         loadMessages();
     }, [loadMessages]);
 
+    const handleEditClick = (msg: any) => {
+        setEditingMessage(msg);
+        setEditBody(msg.message);
+        setEditDate(new Date(msg.schedule_date));
+    };
+
+    const handleUpdate = async () => {
+        if (!editingMessage || !editBody.trim() || !editDate) return;
+        setIsUpdating(true);
+        try {
+            const result = await updateScheduledMessageAction(
+                editingMessage._id, 
+                editBody.trim(), 
+                editDate, 
+                editingMessage.sender
+            );
+            if (result.success) {
+                toast({ title: 'Schedule Updated' });
+                await loadMessages();
+                setEditingMessage(null);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
     const handleDelete = async () => {
         if (!messageToDelete) return;
         setIsDeletingId(messageToDelete._id);
@@ -62,7 +111,7 @@ export default function ScheduledMessagesPage() {
         try {
             const result = await deleteScheduledMessageAction(messageToDelete._id);
             if (result.success) {
-                toast({ title: 'Message Cancelled', description: 'The scheduled dispatch has been removed.' });
+                toast({ title: 'Message Cancelled' });
                 setMessages(prev => prev.filter(m => m._id !== messageToDelete._id));
             } else {
                 throw new Error(result.error);
@@ -82,22 +131,22 @@ export default function ScheduledMessagesPage() {
                     <div>
                         <Button asChild variant="ghost" className="-ml-2 mb-2">
                             <Link href="/admin/messaging">
-                                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Engine
+                                <ArrowLeft className="mr-2 h-4 w-4" /> Back to Hub
                             </Link>
                         </Button>
                         <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
                             <CalendarClock className="h-8 w-8 text-primary" />
                             Scheduled Dispatches
                         </h1>
-                        <p className="text-muted-foreground font-medium">Manage pending SMS communications queued for future delivery.</p>
+                        <p className="text-muted-foreground font-medium uppercase text-xs tracking-widest mt-1">Pending MT communications in mNotify queue.</p>
                     </div>
-                    <Button variant="outline" onClick={loadMessages} disabled={isLoading} className="rounded-xl font-bold shadow-sm h-10 gap-2">
+                    <Button variant="outline" onClick={loadMessages} disabled={isLoading} className="rounded-xl font-bold h-10 gap-2 shadow-sm">
                         <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
-                        Refresh Queue
+                        Sync Queue
                     </Button>
                 </div>
 
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                     <CardContent className="p-0">
                         <Table>
                             <TableHeader className="bg-muted/30">
@@ -117,7 +166,7 @@ export default function ScheduledMessagesPage() {
                                             <TableCell><Skeleton className="h-4 w-20" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-64" /></TableCell>
-                                            <TableCell className="text-right pr-6"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
+                                            <TableCell className="text-right pr-6"><Skeleton className="h-8 w-16 ml-auto" /></TableCell>
                                         </TableRow>
                                     ))
                                 ) : messages.length > 0 ? (
@@ -135,15 +184,25 @@ export default function ScheduledMessagesPage() {
                                                 <p className="text-xs text-muted-foreground line-clamp-1 max-w-md italic">&ldquo;{msg.message}&rdquo;</p>
                                             </TableCell>
                                             <TableCell className="text-right pr-6">
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    onClick={() => setMessageToDelete(msg)}
-                                                    disabled={isDeletingId === msg._id}
-                                                >
-                                                    {isDeletingId === msg._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                                                </Button>
+                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8"
+                                                        onClick={() => handleEditClick(msg)}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="icon" 
+                                                        className="h-8 w-8 text-destructive"
+                                                        onClick={() => setMessageToDelete(msg)}
+                                                        disabled={isDeletingId === msg._id}
+                                                    >
+                                                        {isDeletingId === msg._id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))
@@ -173,20 +232,50 @@ export default function ScheduledMessagesPage() {
                     </div>
                     <div className="space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight text-primary">Queue Management Notes</p>
-                        <p className="text-xs text-primary/70 leading-relaxed font-medium uppercase tracking-tighter">
+                        <p className="text-xs text-primary/70 leading-relaxed font-medium">
                             Scheduled messages are processed by mNotify at the exact timestamp configured. 
-                            Cancellation from this dashboard will permanently stop the dispatch.
+                            Modifications or cancellations from this dashboard will update the live mNotify queue immediately.
                         </p>
                     </div>
                 </div>
             </div>
+
+            <Dialog open={!!editingMessage} onOpenChange={(o) => !o && setEditingMessage(null)}>
+                <DialogContent className="sm:max-w-md rounded-[2rem]">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-black">Reschedule Dispatch</DialogTitle>
+                        <DialogDescription>Modify the content or delivery time for this message.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-6 py-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Message Content</Label>
+                            <Textarea 
+                                value={editBody} 
+                                onChange={e => setEditBody(e.target.value)}
+                                className="min-h-[120px] rounded-xl bg-muted/20 border-none shadow-none"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">New Delivery Time</Label>
+                            <DateTimePicker value={editDate} onChange={setEditDate} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="ghost" onClick={() => setEditingMessage(null)} disabled={isUpdating}>Cancel</Button>
+                        <Button onClick={handleUpdate} disabled={isUpdating || !editBody.trim()} className="rounded-xl font-bold gap-2">
+                            {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Update Queue
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={!!messageToDelete} onOpenChange={(o) => !o && setMessageToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-black">Cancel Scheduled Dispatch?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will stop the message from being sent to <span className="font-bold text-foreground">{messageToDelete?.recipient}</span> on {messageToDelete && format(new Date(messageToDelete.schedule_date), 'PPPP p')}.
+                            This will permanently remove the message for <span className="font-bold text-foreground">{messageToDelete?.recipient}</span> from the mNotify dispatch queue.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
