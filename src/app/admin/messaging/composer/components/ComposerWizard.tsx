@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -191,6 +192,16 @@ export default function ComposerWizard() {
     const selectedSchool = React.useMemo(() => 
         schools?.find(s => s.id === watchedSchoolId),
     [schools, watchedSchoolId]);
+
+    // Smart Variable Resolution
+    React.useEffect(() => {
+        if (selectedSchool) {
+            setValue('variables.school_name', selectedSchool.name);
+            setValue('variables.school_location', selectedSchool.location || '');
+            setValue('variables.school_phone', selectedSchool.phone || '');
+            setValue('variables.school_email', selectedSchool.email || '');
+        }
+    }, [selectedSchool, setValue]);
 
     // Handle CSV Processing
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -533,16 +544,37 @@ export default function ComposerWizard() {
                             <div className="space-y-8">
                                 {watchedMode === 'single' ? (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                                        <div className="space-y-4">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Manual Recipient Overlay</Label>
-                                            <Controller
-                                                name="recipient"
-                                                control={control}
-                                                render={({ field }) => (
-                                                    <Input {...field} placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-8" />
-                                                )}
-                                            />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Institution Context</Label>
+                                                <Controller
+                                                    name="schoolId"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                            <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-xl px-6 transition-all">
+                                                                <SelectValue placeholder="Pick institution..." />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-2xl">
+                                                                <SelectItem value="none">No Specific Context</SelectItem>
+                                                                {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Manual Recipient Overlay</Label>
+                                                <Controller
+                                                    name="recipient"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Input {...field} placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-8" />
+                                                    )}
+                                                />
+                                            </div>
                                         </div>
+
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                                             {selectedTemplate?.variables.map(v => (
                                                 <div key={v} className="space-y-2">
