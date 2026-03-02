@@ -24,7 +24,8 @@ import {
     Bug,
     ShieldCheck,
     Wand2,
-    Palette
+    Palette,
+    Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -260,7 +261,7 @@ function ColumnEditor({
                             
                             <Select onValueChange={(type: any) => {
                                 const newBlock: MessageBlock = { id: `blk_${Date.now()}`, type, title: `New ${type}`, content: '', style: { textAlign: 'left' } };
-                                updateColumn(cIdx, [...col.blocks, newBlock]);
+                                updateColumn(colIdx, [...col.blocks, newBlock]);
                             }}>
                                 <SelectTrigger className="h-8 border-dashed bg-white/50 text-[9px] font-black uppercase">
                                     <SelectValue placeholder="+ Add Inner Block" />
@@ -477,7 +478,7 @@ function BlockInspector({
                         )}
                     </div>
                 )}
-            </TabsContent>
+            </TabsList>
 
             <TabsContent value="logic" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
                 <BlockLogicEditor 
@@ -889,7 +890,7 @@ export default function MessageTemplatesPage() {
             </div>
 
             {isAdding ? (
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in slide-in-from-top-4 duration-500">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in fade-in slide-in-from-top-4 duration-500">
                     <div className="lg:col-span-3 space-y-8">
                         <Card className="shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
                             <CardHeader className="bg-muted/30 border-b pb-6 p-8">
