@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send, Smartphone, Globe, ShieldCheck, Zap
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send, Smartphone, Globe, ShieldCheck, Zap, Settings2, Share2, Image as ImageIcon
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type MessageTemplate, type SenderProfile } from '@/lib/types';
@@ -197,7 +197,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     );
 };
 
-function EditSurveyContent() {
+export default function EditSurveyPage() {
     const params = useParams();
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -252,6 +252,10 @@ function EditSurveyContent() {
     });
 
     const { getValues, setValue, watch, reset } = form;
+
+    const watchedBgColor = watch('backgroundColor');
+    const watchedPattern = watch('backgroundPattern');
+    const watchedPatternColor = watch('patternColor');
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
@@ -502,48 +506,122 @@ function EditSurveyContent() {
                         <AnimatePresence mode="wait">
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
-                                    <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                                        <Card className="xl:col-span-2 shadow-sm border-none ring-1 ring-border">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                                        {/* Left Side: Survey Details */}
+                                        <Card className="lg:col-span-2 shadow-sm border-none ring-1 ring-border">
                                             <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
-                                                    <div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Survey Identity</CardTitle>
-                                                        <CardDescription className="text-xs font-medium">Core naming and classification.</CardDescription>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
+                                                        <div><CardTitle className="text-lg font-black uppercase tracking-tight">Survey Details</CardTitle></div>
                                                     </div>
+                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Basic information and structural settings.</p>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <FormField control={form.control} name="internalName" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Internal Name</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Name (Administrative)</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormDescription className="text-[10px] uppercase font-bold text-muted-foreground/60 ml-1">Used only within the admin dashboard to identify this survey.</FormDescription><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="title" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Public Header</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Public Survey Title</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormDescription className="text-[10px] uppercase font-bold text-muted-foreground/60 ml-1">The title displayed to respondents on the public survey page.</FormDescription><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="description" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Introduction / Sub-header</FormLabel><FormControl><Textarea placeholder="Share your honest feedback..." {...field} className="min-h-[120px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description / Instructions</FormLabel><FormControl><Textarea placeholder="Share your honest feedback..." {...field} className="min-h-[150px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" /></FormControl><FormMessage /></FormItem>
                                                 )} />
+                                                
+                                                <div className="pt-6 border-t border-border/50">
+                                                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
+                                                        <FormField control={form.control} name="startButtonText" render={({ field }) => (
+                                                            <FormItem className="flex-grow max-w-sm"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Start Button Text</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormDescription className="text-[10px] uppercase font-bold text-muted-foreground/60 ml-1">The label for the button on the cover page.</FormDescription></FormItem>
+                                                        )} />
+                                                        <div className="flex flex-col gap-4 min-w-[200px] bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                                                            <FormField control={form.control} name="showCoverPage" render={({ field }) => (
+                                                                <FormItem className="flex flex-row items-center justify-between space-y-0 gap-4">
+                                                                    <div className="flex items-center gap-2"><Layout className="h-3.5 w-3.5 text-primary"/><FormLabel className="text-[10px] font-black uppercase tracking-widest leading-none">Use Cover Page</FormLabel></div>
+                                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                                </FormItem>
+                                                            )} />
+                                                            <FormField control={form.control} name="showSurveyTitles" render={({ field }) => (
+                                                                <FormItem className="flex flex-row items-center justify-between space-y-0 gap-4">
+                                                                    <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 text-primary"/><FormLabel className="text-[10px] font-black uppercase tracking-widest leading-none">Show Survey Titles</FormLabel></div>
+                                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                                                </FormItem>
+                                                            )} />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </CardContent>
                                         </Card>
 
+                                        {/* Right Side: Branding & Appearance */}
                                         <div className="space-y-8">
+                                            {/* Branding Card */}
                                             <Card className="shadow-sm border-none ring-1 ring-border">
-                                                <CardHeader className="bg-muted/30 border-b pb-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <div>
-                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Theme</CardTitle>
-                                                            <CardDescription className="text-xs font-medium">Branding and styling.</CardDescription>
+                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
+                                                            <div><CardTitle className="text-lg font-black uppercase tracking-tight">Branding</CardTitle></div>
                                                         </div>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Logo and hero imagery.</p>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
                                                     <FormField control={form.control} name="logoUrl" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Brand Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-2xl" /></FormControl></FormItem>
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Brand Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl><FormDescription className="text-[10px] font-bold text-muted-foreground/60 mt-2 px-1">Leave empty to use SmartSapp default logo.</FormDescription></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="bannerImageUrl" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Cover Image</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-2xl" /></FormControl></FormItem>
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover / Banner Image</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl><FormDescription className="text-[10px] font-bold text-muted-foreground/60 mt-2 px-1">High-fidelity banner for the introduction.</FormDescription></FormItem>
                                                     )} />
+                                                </CardContent>
+                                            </Card>
+
+                                            {/* Appearance Card */}
+                                            <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
+                                                            <div><CardTitle className="text-lg font-black uppercase tracking-tight">Appearance</CardTitle></div>
+                                                        </div>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Colors and patterns.</p>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6">
+                                                    <div className="grid grid-cols-1 gap-8">
+                                                        <div className="space-y-6">
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <FormField control={form.control} name="backgroundColor" render={({ field }) => (
+                                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Background Color</FormLabel><div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border focus-within:ring-1 focus-within:ring-primary/20"><Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" /><Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" /></div></FormItem>
+                                                                )} />
+                                                                <FormField control={form.control} name="patternColor" render={({ field }) => (
+                                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Color</FormLabel><div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border focus-within:ring-1 focus-within:ring-primary/20"><Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" /><Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" /></div></FormItem>
+                                                                )} />
+                                                            </div>
+                                                            <FormField control={form.control} name="backgroundPattern" render={({ field }) => (
+                                                                <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Background Style</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None (Solid)</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
+                                                            )} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Design Preview</Label>
+                                                            <div 
+                                                                className="w-full h-40 rounded-2xl border shadow-inner relative flex items-center justify-center bg-slate-50 overflow-hidden"
+                                                                style={{ backgroundColor: watchedBgColor }}
+                                                            >
+                                                                <div className="absolute inset-0 opacity-20 flex items-center justify-center pointer-events-none">
+                                                                    {watchedPattern === 'none' && <div className="text-[10px] font-black text-muted-foreground/30 uppercase">Solid Preview</div>}
+                                                                    {watchedPattern === 'dots' && <div className="grid grid-cols-10 gap-4">{Array.from({length: 40}).map((_,i) => <div key={i} className="w-1 h-1 rounded-full" style={{backgroundColor: watchedPatternColor}} />)}</div>}
+                                                                    {watchedPattern === 'grid' && <div className="w-full h-full border border-dashed" style={{borderColor: watchedPatternColor, opacity: 0.1}} />}
+                                                                    {watchedPattern === 'gradient' && <div className="w-full h-full bg-gradient-to-br from-primary/20 to-transparent" />}
+                                                                    {(watchedPattern !== 'none' && watchedPattern !== 'dots' && watchedPattern !== 'grid' && watchedPattern !== 'gradient') && <div className="text-[10px] font-black text-primary/40 uppercase">{watchedPattern} active</div>}
+                                                                </div>
+                                                                <div className="relative z-10 p-4 rounded-xl bg-white/80 backdrop-blur-md border shadow-sm flex items-center gap-2">
+                                                                    <SmartSappIcon className="h-4 w-4 text-primary" />
+                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-foreground/60">Live Preview Area</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </CardContent>
                                             </Card>
                                         </div>
@@ -622,13 +700,5 @@ function EditSurveyContent() {
 
             <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={scrollToError} />
         </FormProvider>
-    );
-}
-
-export default function EditSurveyPage() {
-    return (
-        <React.Suspense fallback={<div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
-            <EditSurveyContent />
-        </React.Suspense>
     );
 }

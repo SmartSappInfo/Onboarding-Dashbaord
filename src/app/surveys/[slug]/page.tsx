@@ -1,3 +1,4 @@
+
 import { adminDb } from '@/lib/firebase-admin';
 import type { Metadata, ResolvingMetadata } from 'next';
 import type { Survey } from '@/lib/types';
@@ -45,7 +46,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     openGraph: {
       title: survey.title,
       description: cleanDescription,
-      images: survey.bannerImageUrl ? [survey.bannerImageUrl, ...previousImages] : previousImages,
+      images: survey.bannerImageUrl ? [survey.bannerImageUrl] : previousImages,
       type: 'website',
     },
     twitter: {
