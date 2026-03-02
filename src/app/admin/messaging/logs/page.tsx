@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -172,7 +173,7 @@ export default function MessageLogsPage() {
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest pl-6">Timestamp</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Medium</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Recipient</TableHead>
-                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Template Context</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Engagement</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Gateway Status</TableHead>
                                     <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest">Details</TableHead>
                                 </TableRow>
@@ -202,7 +203,30 @@ export default function MessageLogsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-bold text-xs truncate max-w-[150px]">{log.recipient}</TableCell>
-                                            <TableCell className="text-xs text-muted-foreground truncate max-w-[200px] font-medium">{log.templateName || 'Direct Message'}</TableCell>
+                                            <TableCell>
+                                                {log.channel === 'email' ? (
+                                                    <div className="flex items-center gap-3">
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className={cn("flex items-center gap-1 text-[10px] font-black tabular-nums", (log.openedCount || 0) > 0 ? "text-emerald-600" : "text-muted-foreground opacity-30")}>
+                                                                        <Eye className="h-3 w-3" /> {log.openedCount || 0}
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Email Opens</TooltipContent>
+                                                            </Tooltip>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className={cn("flex items-center gap-1 text-[10px] font-black tabular-nums", (log.clickedCount || 0) > 0 ? "text-blue-600" : "text-muted-foreground opacity-30")}>
+                                                                        <MousePointer2 className="h-3 w-3" /> {log.clickedCount || 0}
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Link Clicks</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    </div>
+                                                ) : <span className="text-[9px] font-bold text-muted-foreground/30">—</span>}
+                                            </TableCell>
                                             <TableCell>{getStatusBadge(log)}</TableCell>
                                             <TableCell className="text-right pr-6">
                                                 <Button 

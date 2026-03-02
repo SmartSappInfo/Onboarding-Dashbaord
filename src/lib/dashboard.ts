@@ -2,8 +2,8 @@
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
-import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone } from '@/lib/types';
-import { format, isAfter, startOfToday } from 'date-fns';
+import type { School, Meeting, Survey, OnboardingStage, UserProfile, Module, Activity, Zone, MessageLog } from '@/lib/types';
+import { format, isAfter, startOfToday, subDays } from 'date-fns';
 
 function getDb() {
   if (!getApps().length) {
@@ -24,6 +24,7 @@ export async function getDashboardData() {
     modulesSnapshot,
     activitiesSnapshot,
     zonesSnapshot,
+    logsSnapshot,
   ] = await Promise.all([
     getDocs(collection(db, 'schools')),
     getDocs(collection(db, 'meetings')),
@@ -33,12 +34,13 @@ export async function getDashboardData() {
     getDocs(query(collection(db, 'modules'))),
     getDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
     getDocs(collection(db, 'zones')),
+    getDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
   ].map(p => p.catch(e => {
     console.error("Dashboard data fetching error:", e);
     return e;
   }))); 
 
-  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error || zonesSnapshot instanceof Error) {
+  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error || zonesSnapshot instanceof Error || logsSnapshot instanceof Error) {
       console.error("Failed to fetch one or more dashboard data sources.");
       return {
           metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0, totalStudents: 0 },
@@ -52,11 +54,14 @@ export async function getDashboardData() {
           allUsers: [],
           allSchools: [],
           zoneDistribution: [],
+          messagingMetrics: { emailSuccess: 0, smsSuccess: 0, recentLogs: [] }
       };
   }
 
   const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
   const zones = zonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
+  const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageLog));
+  
   const now = startOfToday();
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
@@ -182,7 +187,6 @@ export async function getDashboardData() {
 
   const activities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
 
-  // Zone Distribution Calculation
   const zoneDistribution = zones.map(zone => {
     const schoolsInZone = schools.filter(s => s.zone?.id === zone.id);
     return {
@@ -191,6 +195,24 @@ export async function getDashboardData() {
       studentCount: schoolsInZone.reduce((sum, s) => sum + (s.nominalRoll || 0), 0)
     };
   });
+
+  // Calculate Messaging Metrics
+  const emailLogs = logs.filter(l => l.channel === 'email');
+  const smsLogs = logs.filter(l => l.channel === 'sms');
+  
+  const emailSuccess = emailLogs.length > 0 
+    ? (emailLogs.filter(l => l.status === 'sent').length / emailLogs.length) * 100 
+    : 100;
+    
+  const smsSuccess = smsLogs.length > 0 
+    ? (smsLogs.filter(l => l.status === 'sent').length / smsLogs.length) * 100 
+    : 100;
+
+  const messagingMetrics = {
+    emailSuccess: Math.round(emailSuccess),
+    smsSuccess: Math.round(smsSuccess),
+    recentLogs: logs.slice(0, 5)
+  };
   
   return {
     metrics,
@@ -204,5 +226,6 @@ export async function getDashboardData() {
     allUsers: users,
     allSchools: schools,
     zoneDistribution,
+    messagingMetrics
   };
 }

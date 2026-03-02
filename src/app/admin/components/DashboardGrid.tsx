@@ -24,6 +24,7 @@ import {
     ModuleRadarChart,
     RecentActivity,
     ZoneDistribution,
+    MessagingWidget,
 } from "@/components/dashboard";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout } from '@/lib/types';
@@ -40,6 +41,7 @@ const componentMap: Record<string, React.FC<any>> = {
   moduleRadarChart: ModuleRadarChart,
   recentActivity: RecentActivity,
   zoneDistribution: ZoneDistribution,
+  messagingWidget: MessagingWidget,
 };
 
 const componentPropsMap = (data: any) => ({
@@ -51,6 +53,7 @@ const componentPropsMap = (data: any) => ({
   moduleRadarChart: { data: data.moduleImplementations },
   recentActivity: { activities: data.activities, users: data.allUsers, schools: data.allSchools },
   zoneDistribution: { data: data.zoneDistribution },
+  messagingWidget: { ...data.messagingMetrics },
 });
 
 const componentGridConfig: Record<string, string> = {
@@ -62,10 +65,12 @@ const componentGridConfig: Record<string, string> = {
   monthlySchoolsChart: 'md:col-span-4',
   recentActivity: 'md:col-span-4 lg:col-span-2 lg:row-span-2',
   zoneDistribution: 'lg:col-span-2',
+  messagingWidget: 'lg:col-span-2',
 };
 
 const DEFAULT_LAYOUT = [
     'userAssignments',
+    'messagingWidget',
     'pipelinePieChart',
     'upcomingMeetings',
     'recentActivity',

@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -26,6 +27,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { doc, getDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import AuthorizationLoader from './components/authorization-loader';
+import NotificationBell from './components/NotificationBell';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,6 +244,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <AssignedUserGlobalFilter />
+                    <NotificationBell />
                     <ThemeToggle />
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
