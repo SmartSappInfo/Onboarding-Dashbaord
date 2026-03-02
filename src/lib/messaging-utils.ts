@@ -50,10 +50,13 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
 /**
  * Renders an array of MessageBlocks into a clean, high-compatibility HTML string.
  * Optimized for Outlook, Gmail, and Mobile clients using table-based layouts.
- * Includes block-level visibility filtering.
+ * Includes block-level visibility filtering and responsive columns.
  */
-export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<string, any>): string {
+export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<string, any>, options?: { width?: string, backgroundColor?: string }): string {
   if (!blocks || blocks.length === 0) return '';
+
+  const maxWidth = options?.width || '600px';
+  const bgColor = options?.backgroundColor || '#ffffff';
 
   const renderBlock = (block: MessageBlock): string => {
     // VISIBILITY CHECK
@@ -63,11 +66,11 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
 
     const align = block.style?.textAlign || 'left';
     const alignStyle = `text-align: ${align};`;
-    const bgColor = block.style?.backgroundColor ? `background-color: ${block.style.backgroundColor};` : '';
+    const blockBgColor = block.style?.backgroundColor ? `background-color: ${block.style.backgroundColor};` : '';
     const padding = block.style?.padding || '10px 0';
     const borderRadius = block.style?.borderRadius ? `border-radius: ${block.style.borderRadius};` : '';
     
-    const wrapperStyle = `padding: ${padding}; ${alignStyle} ${bgColor} ${borderRadius}`;
+    const wrapperStyle = `padding: ${padding}; ${alignStyle} ${blockBgColor} ${borderRadius}`;
 
     switch (block.type) {
       case 'heading': {
@@ -124,12 +127,51 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
         return `<div style="padding: 20px 0;"><hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;" /></div>`;
 
       case 'columns': {
+        const columnCount = block.columns?.length || 1;
+        const colWidth = 100 / columnCount;
+        
+        // Responsive Column Logic
+        // We use display: inline-block on containers to allow stacking
         const cols = (block.columns || []).map(col => {
-          const colWidth = 100 / (block.columns?.length || 1);
           const innerHtml = col.blocks.map(renderBlock).join('');
-          return `<td style="vertical-align: top; width: ${colWidth}%; padding: 0 10px;">${innerHtml}</td>`;
+          return `
+            <!--[if mso | IE]>
+            <td align="left" vertical-align="top" style="width:${colWidth}%;">
+            <![endif]-->
+            <div class="mj-column-per-${Math.round(colWidth)}" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
+              <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
+                <tr>
+                  <td align="left" style="font-size:0px;padding:10px 10px;word-break:break-word;">
+                    ${innerHtml}
+                  </td>
+                </tr>
+              </table>
+            </div>
+            <!--[if mso | IE]>
+            </td>
+            <![endif]-->
+          `;
         }).join('');
-        return `<table width="100%" cellpadding="0" cellspacing="0" style="margin: 20px 0;"><tr>${cols}</tr></table>`;
+
+        return `
+          <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+            <tbody>
+              <tr>
+                <td style="direction:ltr;font-size:0px;padding:20px 0;text-align:center;">
+                  <!--[if mso | IE]>
+                  <table role="presentation" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                  <![endif]-->
+                  ${cols}
+                  <!--[if mso | IE]>
+                    </tr>
+                  </table>
+                  <![endif]-->
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        `;
       }
 
       case 'header': {
@@ -173,5 +215,69 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
     }
   };
 
-  return blocks.map(renderBlock).join('\n');
+  const contentHtml = blocks.map(renderBlock).join('\n');
+
+  // Master Wrapper
+  return `
+    <!doctype html>
+    <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+      <head>
+        <title></title>
+        <!--[if !mso]><!-->
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <!--<![endif]-->
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style type="text/css">
+          #outlook a { padding:0; }
+          body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
+          table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
+          img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
+          p { display:block;margin:13px 0; }
+        </style>
+        <!--[if mso]>
+        <noscript>
+        <xml>
+        <o:OfficeDocumentSettings>
+          <o:AllowPNG/>
+          <o:PixelsPerInch>96</o:PixelsPerInch>
+        </o:OfficeDocumentSettings>
+        </xml>
+        </noscript>
+        <![endif]-->
+        <style type="text/css">
+          @media only screen and (min-width:480px) {
+            .mj-column-per-100 { width:100% !important; max-width: 100%; }
+            .mj-column-per-50 { width:50% !important; max-width: 50%; }
+            .mj-column-per-33 { width:33.333333333333336% !important; max-width: 33.333333333333336%; }
+          }
+        </style>
+      </head>
+      <body style="word-spacing:normal;background-color:${bgColor};">
+        <div style="background-color:${bgColor};">
+          <!--[if mso | IE]>
+          <table align="center" border="0" cellpadding="0" cellspacing="0" class="" style="width:${maxWidth};" width="${maxWidth}" >
+            <tr>
+              <td style="line-height:0px;font-size:0px;mso-line-height-rule:exactly;">
+          <![endif]-->
+          <div style="margin:0px auto;max-width:${maxWidth};">
+            <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
+              <tbody>
+                <tr>
+                  <td style="direction:ltr;font-size:0px;padding:20px 0;text-align:center;">
+                    ${contentHtml}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!--[if mso | IE]>
+              </td>
+            </tr>
+          </table>
+          <![endif]-->
+        </div>
+      </body>
+    </html>
+  `;
 }

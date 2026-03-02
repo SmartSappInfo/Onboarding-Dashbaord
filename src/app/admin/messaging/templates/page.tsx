@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,8 @@ import {
     MonitorPlay,
     Bug,
     ShieldCheck,
-    Wand2
+    Wand2,
+    Palette
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -179,6 +181,105 @@ function BlockLogicEditor({
     );
 }
 
+function ColumnEditor({ 
+    block, 
+    variables, 
+    onChange 
+}: { 
+    block: MessageBlock, 
+    variables: VariableDefinition[], 
+    onChange: (props: Partial<MessageBlock>) => void 
+}) {
+    const columns = block.columns || [{ blocks: [] }];
+
+    const updateColumn = (colIdx: number, blocks: MessageBlock[]) => {
+        const newCols = [...columns];
+        newCols[colIdx] = { ...newCols[colIdx], blocks };
+        onChange({ columns: newCols });
+    };
+
+    const addColumn = () => {
+        onChange({ columns: [...columns, { blocks: [] }] });
+    };
+
+    const removeColumn = (idx: number) => {
+        onChange({ columns: columns.filter((_, i) => i !== idx) });
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Columns ({columns.length})</Label>
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addColumn} 
+                    disabled={columns.length >= 3}
+                    className="h-7 rounded-lg text-[9px] font-black uppercase"
+                >
+                    <Plus className="h-3 w-3 mr-1" /> Add Col
+                </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+                {columns.map((col, cIdx) => (
+                    <div key={cIdx} className="p-4 rounded-xl border border-dashed bg-muted/20 relative group/col">
+                        <div className="flex items-center justify-between mb-3">
+                            <span className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Column ${cIdx + 1}</span>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 text-destructive opacity-0 group-hover/col:opacity-100" 
+                                onClick={() => removeColumn(cIdx)}
+                                disabled={columns.length === 1}
+                            >
+                                <X className="h-3 w-3" />
+                            </Button>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            {col.blocks.map((innerBlock, bIdx) => (
+                                <div key={innerBlock.id} className="p-2.5 rounded-lg bg-white border shadow-sm flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        {React.createElement(blockIcons[innerBlock.type] || Type, { className: "h-3 w-3 text-muted-foreground" })}
+                                        <span className="text-[10px] font-bold truncate">{innerBlock.title || innerBlock.type}</span>
+                                    </div>
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-5 w-5 text-destructive" 
+                                        onClick={() => updateColumn(cIdx, col.blocks.filter((_, i) => i !== bIdx))}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            ))}
+                            
+                            <Select onValueChange={(type: any) => {
+                                const newBlock: MessageBlock = { id: `blk_${Date.now()}`, type, title: `New ${type}`, content: '', style: { textAlign: 'left' } };
+                                updateColumn(cIdx, [...col.blocks, newBlock]);
+                            }}>
+                                <SelectTrigger className="h-8 border-dashed bg-white/50 text-[9px] font-black uppercase">
+                                    <SelectValue placeholder="+ Add Inner Block" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="heading">Heading</SelectItem>
+                                    <SelectItem value="text">Text</SelectItem>
+                                    <SelectItem value="image">Image</SelectItem>
+                                    <SelectItem value="button">Button</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function BlockInspector({ 
     block, 
     variables, 
@@ -201,177 +302,181 @@ function BlockInspector({
             </TabsList>
 
             <TabsContent value="content" className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300 m-0">
-                <div className="grid gap-4">
-                    {block.type === 'heading' && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Heading Title</Label>
-                            <Input 
-                                value={block.title || ''} 
-                                onChange={e => onChange({ title: e.target.value })} 
-                                className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" 
-                            />
-                            <div className="flex gap-2">
-                                {(['h1', 'h2', 'h3'] as const).map(v => (
-                                    <Button 
-                                        key={v}
-                                        type="button"
-                                        size="sm"
-                                        variant={block.variant === v ? 'secondary' : 'ghost'}
-                                        className="h-7 text-[10px] uppercase font-black"
-                                        onClick={() => onChange({ variant: v })}
-                                    >
-                                        {v}
-                                    </Button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {(block.type === 'text' || block.type === 'quote') && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
-                            <Textarea 
-                                value={block.content || ''} 
-                                onChange={e => onChange({ content: e.target.value })}
-                                className={cn(
-                                    "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
-                                    block.type === 'quote' && "italic"
-                                )} 
-                            />
-                        </div>
-                    )}
-
-                    {(block.type === 'header' || block.type === 'footer') && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type} Content</Label>
-                            <Input 
-                                value={block.content || ''} 
-                                onChange={e => onChange({ content: e.target.value })} 
-                                className="font-bold" 
-                            />
-                        </div>
-                    )}
-
-                    {block.type === 'logo' && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Logo Source</Label>
-                            <Input 
-                                value={block.url || '{{school_logo}}'} 
-                                onChange={e => onChange({ url: e.target.value })} 
-                                className="font-mono text-xs" 
-                            />
-                            <p className="text-[9px] text-muted-foreground italic px-1">Defaults to School Registry logo variable.</p>
-                        </div>
-                    )}
-
-                    {['image', 'video'].includes(block.type) && (
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Asset URL</Label>
-                            <MediaSelect 
-                                value={block.url} 
-                                onValueChange={(val) => onChange({ url: val })}
-                                filterType={block.type as any}
-                            />
-                        </div>
-                    )}
-
-                    {block.type === 'button' && (
-                        <div className="space-y-4">
+                {block.type === 'columns' ? (
+                    <ColumnEditor block={block} variables={variables} onChange={onChange} />
+                ) : (
+                    <div className="grid gap-4">
+                        {block.type === 'heading' && (
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
-                                <Input value={block.title || ''} onChange={e => onChange({ title: e.target.value })} placeholder="Click Me" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Action Link</Label>
-                                <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
-                            </div>
-                        </div>
-                    )}
-
-                    {block.type === 'list' && (
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
-                                <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
-                                    <Button 
-                                        type="button" 
-                                        variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
-                                        size="sm" 
-                                        className="h-7 rounded-md px-2"
-                                        onClick={() => onChange({ listStyle: 'unordered' })}
-                                    >
-                                        <List className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button 
-                                        type="button" 
-                                        variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
-                                        size="sm" 
-                                        className="h-7 rounded-md px-2"
-                                        onClick={() => onChange({ listStyle: 'ordered' })}
-                                    >
-                                        <ListOrdered className="h-3.5 w-3.5" />
-                                    </Button>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items</Label>
-                                <div className="space-y-2">
-                                    {block.items?.map((item, idx) => (
-                                        <div key={idx} className="flex items-center gap-2">
-                                            <Input 
-                                                value={item} 
-                                                onChange={e => {
-                                                    const newItems = [...(block.items || [])];
-                                                    newItems[idx] = e.target.value;
-                                                    onChange({ items: newItems });
-                                                }}
-                                                className="h-9"
-                                            />
-                                            <Button 
-                                                type="button" 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-8 w-8 text-destructive"
-                                                onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
-                                            >
-                                                <X className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Heading Title</Label>
+                                <Input 
+                                    value={block.title || ''} 
+                                    onChange={e => onChange({ title: e.target.value })} 
+                                    className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" 
+                                />
+                                <div className="flex gap-2">
+                                    {(['h1', 'h2', 'h3'] as const).map(v => (
+                                        <Button 
+                                            key={v}
+                                            type="button"
+                                            size="sm"
+                                            variant={block.variant === v ? 'secondary' : 'ghost'}
+                                            className="h-7 text-[10px] uppercase font-black"
+                                            onClick={() => onChange({ variant: v })}
+                                        >
+                                            {v}
+                                        </Button>
                                     ))}
-                                    <Button 
-                                        type="button" 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="w-full border-dashed"
-                                        onClick={() => onChange({ items: [...(block.items || []), 'New item'] })}
-                                    >
-                                        <Plus className="h-3 w-3 mr-2" /> Add Item
-                                    </Button>
                                 </div>
                             </div>
-                        </div>
-                    )}
+                        )}
 
-                    {isTextType && (
-                        <div className="pt-4 border-t border-dashed">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Alignment</Label>
-                            <div className="flex gap-1 bg-muted/30 p-1 rounded-xl w-fit border shadow-inner">
-                                {(['left', 'center', 'right'] as const).map(a => (
-                                    <Button 
-                                        key={a}
-                                        type="button" 
-                                        variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
-                                        size="icon" 
-                                        className="h-8 w-8 rounded-lg" 
-                                        onClick={() => onChange({ style: { ...block.style, textAlign: a } })}
-                                    >
-                                        {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
-                                    </Button>
-                                ))}
+                        {(block.type === 'text' || block.type === 'quote') && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
+                                <Textarea 
+                                    value={block.content || ''} 
+                                    onChange={e => onChange({ content: e.target.value })}
+                                    className={cn(
+                                        "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
+                                        block.type === 'quote' && "italic"
+                                    )} 
+                                />
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+
+                        {(block.type === 'header' || block.type === 'footer') && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type} Content</Label>
+                                <Input 
+                                    value={block.content || ''} 
+                                    onChange={e => onChange({ content: e.target.value })} 
+                                    className="font-bold" 
+                                />
+                            </div>
+                        )}
+
+                        {block.type === 'logo' && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Logo Source</Label>
+                                <Input 
+                                    value={block.url || '{{school_logo}}'} 
+                                    onChange={e => onChange({ url: e.target.value })} 
+                                    className="font-mono text-xs" 
+                                />
+                                <p className="text-[9px] text-muted-foreground italic px-1">Defaults to School Registry logo variable.</p>
+                            </div>
+                        )}
+
+                        {['image', 'video'].includes(block.type) && (
+                            <div className="space-y-2">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Asset URL</Label>
+                                <MediaSelect 
+                                    value={block.url} 
+                                    onValueChange={(val) => onChange({ url: val })}
+                                    filterType={block.type as any}
+                                />
+                            </div>
+                        )}
+
+                        {block.type === 'button' && (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                                    <Input value={block.title || ''} onChange={e => onChange({ title: e.target.value })} placeholder="Click Me" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Action Link</Label>
+                                    <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
+                                </div>
+                            </div>
+                        )}
+
+                        {block.type === 'list' && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
+                                    <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
+                                        <Button 
+                                            type="button" 
+                                            variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
+                                            size="sm" 
+                                            className="h-7 rounded-md px-2"
+                                            onClick={() => onChange({ listStyle: 'unordered' })}
+                                        >
+                                            <List className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button 
+                                            type="button" 
+                                            variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
+                                            size="sm" 
+                                            className="h-7 rounded-md px-2"
+                                            onClick={() => onChange({ listStyle: 'ordered' })}
+                                        >
+                                            <ListOrdered className="h-3.5 w-3.5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items</Label>
+                                    <div className="space-y-2">
+                                        {block.items?.map((item, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <Input 
+                                                    value={item} 
+                                                    onChange={e => {
+                                                        const newItems = [...(block.items || [])];
+                                                        newItems[idx] = e.target.value;
+                                                        onChange({ items: newItems });
+                                                    }}
+                                                    className="h-9"
+                                                />
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-8 w-8 text-destructive"
+                                                    onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            size="sm" 
+                                            className="w-full border-dashed"
+                                            onClick={() => onChange({ items: [...(block.items || []), 'New item'] })}
+                                        >
+                                            <Plus className="h-3 w-3 mr-2" /> Add Item
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {isTextType && (
+                            <div className="pt-4 border-t border-dashed">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Alignment</Label>
+                                <div className="flex gap-1 bg-muted/30 p-1 rounded-xl w-fit border shadow-inner">
+                                    {(['left', 'center', 'right'] as const).map(a => (
+                                        <Button 
+                                            key={a}
+                                            type="button" 
+                                            variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
+                                            size="icon" 
+                                            className="h-8 w-8 rounded-lg" 
+                                            onClick={() => onChange({ style: { ...block.style, textAlign: a } })}
+                                        >
+                                            {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
+                                        </Button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </TabsContent>
 
             <TabsContent value="logic" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -418,27 +523,29 @@ function SortableBlockItem({
                 hasLogic ? "border-primary/40 ring-1 ring-primary/5" : "hover:border-primary/40",
                 isHiddenByLogic && "grayscale opacity-40 border-dashed border-red-200"
             )}>
-                <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
-                    <div className="flex items-center gap-3">
-                        <div className="p-1.5 bg-primary/10 rounded-lg">
-                            <Icon className="h-3.5 w-3.5 text-primary" />
+                <CardHeader className="py-2 px-4 border-b bg-muted/10">
+                    <div className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-3">
+                            <div className="p-1.5 bg-primary/10 rounded-lg">
+                                <Icon className="h-3.5 w-3.5 text-primary" />
+                            </div>
+                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">{block.type}</span>
+                            {hasLogic && (
+                                <Badge variant="secondary" className={cn(
+                                    "h-4 border-none text-[7px] px-1.5 font-black uppercase flex items-center gap-1",
+                                    isHiddenByLogic ? "bg-red-500 text-white" : "bg-primary text-white"
+                                )}>
+                                    <Zap className="h-2 w-2 fill-white" /> 
+                                    {isHiddenByLogic ? 'Filtered Out' : 'Logic Active'}
+                                </Badge>
+                            )}
                         </div>
-                        <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">{block.type}</span>
-                        {hasLogic && (
-                            <Badge variant="secondary" className={cn(
-                                "h-4 border-none text-[7px] px-1.5 font-black uppercase flex items-center gap-1",
-                                isHiddenByLogic ? "bg-red-500 text-white" : "bg-primary text-white"
-                            )}>
-                                <Zap className="h-2 w-2 fill-white" /> 
-                                {isHiddenByLogic ? 'Filtered Out' : 'Logic Active'}
-                            </Badge>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-all">
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveUp} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveDown} disabled={index === (simulationVars ? 0 : 0)}><ArrowDown className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onDuplicate}><Copy className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-all">
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveUp} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveDown}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onDuplicate}><Copy className="h-3.5 w-3.5" /></Button>
+                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-4">
@@ -446,7 +553,7 @@ function SortableBlockItem({
                 </CardContent>
             </Card>
             {isHiddenByLogic && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none text-center">
                     <div className="bg-red-600/90 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] rotate-[-5deg] shadow-2xl flex items-center gap-2">
                         <Bug className="h-3 w-3" /> Logic simulation: Block Hidden
                     </div>
@@ -483,6 +590,10 @@ export default function MessageTemplatesPage() {
     const [body, setBody] = React.useState('');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    // Theme Engine State
+    const [themeBgColor, setThemeBgColor] = React.useState('#F1F5F9');
+    const [themeWidth, setThemeWidth] = React.useState('600px');
 
     // Simulation State
     const [simEntity, setSimEntity] = React.useState<'School' | 'Meeting' | 'Survey' | 'none'>('none');
@@ -616,6 +727,7 @@ export default function MessageTemplatesPage() {
             listStyle: type === 'list' ? 'unordered' : undefined,
             style: { textAlign: type === 'logo' ? 'center' : 'left' },
             variant: type === 'heading' ? 'h2' : undefined,
+            columns: type === 'columns' ? [{ blocks: [] }, { blocks: [] }] : undefined,
         };
         setBlocks(prev => [...prev, newBlock]);
     };
@@ -825,6 +937,7 @@ export default function MessageTemplatesPage() {
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('logo')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><SmartSappIcon className="h-3 w-3" /> Logo</Button>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('header')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Layers className="h-3 w-3" /> Header</Button>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('heading')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Heading1 className="h-3 w-3" /> Title</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('columns')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Layout className="h-3 w-3" /> Columns</Button>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('text')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Type className="h-3 w-3" /> Text</Button>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('list')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><List className="h-3 w-3" /> List</Button>
                                                     <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('image')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><ImageIcon className="h-3 w-3" /> Image</Button>
@@ -892,7 +1005,38 @@ export default function MessageTemplatesPage() {
                     </div>
 
                     <div className="lg:col-span-1 space-y-6">
-                        {/* Simulation & Debugging Panel */}
+                        {/* Theme Engine */}
+                        <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm">
+                            <CardHeader className="bg-muted/10 py-4 px-6 border-b flex flex-row items-center gap-2">
+                                <Palette className="h-4 w-4 text-primary" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Theme Engine</span>
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Master Background</Label>
+                                    <div className="flex gap-2 p-1.5 bg-muted/30 rounded-xl border border-border/50">
+                                        <Input type="color" value={themeBgColor} onChange={e => setThemeBgColor(e.target.value)} className="w-8 h-8 p-0 border-none bg-transparent rounded-lg cursor-pointer" />
+                                        <Input value={themeBgColor} onChange={e => setThemeBgColor(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Canonical Width</Label>
+                                    <Select value={themeWidth} onValueChange={setThemeWidth}>
+                                        <SelectTrigger className="h-10 bg-white border-primary/10 rounded-xl font-bold">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="500px">Compact (500px)</SelectItem>
+                                            <SelectItem value="600px">Standard (600px)</SelectItem>
+                                            <SelectItem value="700px">Wide (700px)</SelectItem>
+                                            <SelectItem value="100%">Full Flow (100%)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Simulation Panel */}
                         <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-primary/20 shadow-xl bg-primary/5">
                             <CardHeader className="bg-primary text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0">
                                 <div className="flex items-center gap-2">
@@ -1184,7 +1328,7 @@ export default function MessageTemplatesPage() {
                                     </div>
                                     <div className="flex-1 p-1">
                                         <iframe 
-                                            srcDoc={previewTemplate.blocks?.length ? renderBlocksToHtml(previewTemplate.blocks, simVariables) : resolveVariables(previewTemplate.body, simVariables)}
+                                            srcDoc={renderBlocksToHtml(previewTemplate.blocks || [], simVariables, { width: themeWidth, backgroundColor: themeBgColor })}
                                             className="w-full min-h-[600px] border-none"
                                             title="Email Rendering"
                                         />
