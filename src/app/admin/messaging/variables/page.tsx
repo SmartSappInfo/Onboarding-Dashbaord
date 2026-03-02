@@ -3,7 +3,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { VariableDefinition, MessageTemplate } from '@/lib/types';
 import { syncVariableRegistry, upsertConstantVariable, deleteVariable } from '@/lib/messaging-actions';
@@ -35,7 +35,9 @@ import {
     Pencil,
     Trash2,
     Save,
-    Globe
+    Globe,
+    ChevronDown,
+    Layers
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,6 +49,12 @@ import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export default function VariableRegistryPage() {
     const firestore = useFirestore();
@@ -153,6 +161,73 @@ export default function VariableRegistryPage() {
         );
     }, [variables, searchTerm]);
 
+    const VariableCard = ({ v }: { v: VariableDefinition }) => {
+        const usageCount = usageMap.get(v.key) || 0;
+        const isConstant = v.source === 'constant';
+        return (
+            <Card className="group border-border/50 hover:shadow-xl transition-all rounded-2xl bg-card overflow-hidden">
+                <div className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">
+                                {isConstant ? 'Global Constant' : (v.sourceName || 'Core Schema')}
+                            </p>
+                            <p className="font-bold text-sm text-foreground line-clamp-1">{v.label}</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter bg-muted/50 font-black">{v.type}</Badge>
+                            {usageCount > 0 && (
+                                <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] h-4 px-1 font-black uppercase tracking-tighter">
+                                    Used in {usageCount}
+                                </Badge>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <div className="relative group/copy">
+                        <code className="block p-3 bg-muted/30 rounded-xl font-mono text-[11px] text-foreground/80 border border-transparent group-hover/copy:border-primary/20 transition-all select-all">
+                            {"{{" + v.key + "}}"}
+                        </code>
+                        <TooltipProvider>
+                            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/copy:opacity-100 transition-opacity">
+                                {isConstant && (
+                                    <>
+                                        <button onClick={() => handleEditConst(v)} className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-primary"><Pencil className="h-3.5 w-3.5" /></button>
+                                        <button onClick={() => handleDeleteConst(v.id)} className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                                    </>
+                                )}
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button 
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(`{{${v.key}}}`);
+                                                toast({ title: 'Tag Copied' });
+                                            }}
+                                            className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-primary"
+                                        >
+                                            <CheckCircle2 className="h-3.5 w-3.5" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Copy Variable Tag</TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
+                    </div>
+                    {isConstant && (
+                        <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
+                            <p className="text-[9px] font-black text-primary/60 uppercase mb-0.5">Resolved Value</p>
+                            <p className="text-xs font-bold truncate">{v.constantValue}</p>
+                        </div>
+                    )}
+                </div>
+                <div className="bg-muted/30 px-4 py-2 border-t flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">
+                    <span className="truncate max-w-[150px]">{isConstant ? 'Manual Entry' : `Path: ${v.path}`}</span>
+                    <span className="opacity-40 shrink-0">{v.source}</span>
+                </div>
+            </Card>
+        );
+    };
+
     const VariableList = ({ category, source }: { category?: VariableDefinition['category'], source?: VariableDefinition['source'] }) => {
         const items = filteredVars.filter(v => 
             (category ? v.category === category : true) && 
@@ -161,81 +236,64 @@ export default function VariableRegistryPage() {
         
         if (items.length === 0) {
             return (
-                <div className="py-20 text-center border-2 border-dashed rounded-[2rem] bg-muted/10">
+                <div className="py-20 text-center border-2 border-dashed rounded-[2.5rem] bg-muted/10">
                     <Tag className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
                     <p className="text-muted-foreground font-medium uppercase text-[10px] tracking-widest">No variables found in this context.</p>
                 </div>
             );
         }
 
+        // Handle Grouping for Surveys and Forms
+        if (category === 'surveys' || category === 'forms') {
+            const grouped = items.reduce((acc, v) => {
+                const sourceId = v.sourceId || 'default';
+                if (!acc[sourceId]) {
+                    acc[sourceId] = {
+                        name: v.sourceName || 'Unknown Source',
+                        vars: []
+                    };
+                }
+                acc[sourceId].vars.push(v);
+                return acc;
+            }, {} as Record<string, { name: string, vars: VariableDefinition[] }>);
+
+            return (
+                <Accordion type="multiple" className="space-y-4">
+                    {Object.entries(grouped).map(([sourceId, group]) => (
+                        <AccordionItem key={sourceId} value={sourceId} className="border-none">
+                            <Card className="border-border/50 overflow-hidden shadow-sm hover:shadow-md transition-shadow rounded-2xl">
+                                <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-muted/10 transition-colors">
+                                    <div className="flex items-center gap-4 text-left">
+                                        <div className={cn(
+                                            "p-2 rounded-xl shrink-0",
+                                            category === 'surveys' ? "bg-purple-100 text-purple-600" : "bg-blue-100 text-blue-600"
+                                        )}>
+                                            {category === 'surveys' ? <ClipboardList className="h-5 w-5" /> : <FileText className="h-5 w-5" />}
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-base tracking-tight leading-none mb-1">{group.name}</p>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="secondary" className="h-4 text-[8px] px-1.5 uppercase font-black">{group.vars.length} Variables</Badge>
+                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Source Registry</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-6 pt-2 bg-muted/5 border-t border-dashed">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {group.vars.map(v => <VariableCard key={v.id} v={v} />)}
+                                    </div>
+                                </AccordionContent>
+                            </Card>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            );
+        }
+
         return (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((v) => {
-                    const usageCount = usageMap.get(v.key) || 0;
-                    const isConstant = v.source === 'constant';
-                    return (
-                        <Card key={v.id} className="group border-border/50 hover:shadow-xl transition-all rounded-2xl bg-card overflow-hidden">
-                            <div className="p-4 space-y-3">
-                                <div className="flex items-start justify-between">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black uppercase text-primary tracking-widest leading-none">
-                                            {isConstant ? 'Global Constant' : (v.sourceName || 'Core Schema')}
-                                        </p>
-                                        <p className="font-bold text-sm text-foreground line-clamp-1">{v.label}</p>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter bg-muted/50 font-black">{v.type}</Badge>
-                                        {usageCount > 0 && (
-                                            <Badge className="bg-emerald-50 text-emerald-600 border-emerald-100 text-[8px] h-4 px-1 font-black uppercase tracking-tighter">
-                                                Used in {usageCount}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
-                                
-                                <div className="relative group/copy">
-                                    <code className="block p-3 bg-muted/30 rounded-xl font-mono text-[11px] text-foreground/80 border border-transparent group-hover/copy:border-primary/20 transition-all select-all">
-                                        {"{{" + v.key + "}}"}
-                                    </code>
-                                    <TooltipProvider>
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/copy:opacity-100 transition-opacity">
-                                            {isConstant && (
-                                                <>
-                                                    <button onClick={() => handleEditConst(v)} className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-primary"><Pencil className="h-3.5 w-3.5" /></button>
-                                                    <button onClick={() => handleDeleteConst(v.id)} className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
-                                                </>
-                                            )}
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <button 
-                                                        onClick={() => {
-                                                            navigator.clipboard.writeText(`{{${v.key}}}`);
-                                                            toast({ title: 'Tag Copied' });
-                                                        }}
-                                                        className="p-1.5 rounded-lg bg-white shadow-sm border hover:text-primary"
-                                                    >
-                                                        <CheckCircle2 className="h-3.5 w-3.5" />
-                                                    </button>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Copy Variable Tag</TooltipContent>
-                                            </Tooltip>
-                                        </div>
-                                    </TooltipProvider>
-                                </div>
-                                {isConstant && (
-                                    <div className="p-2 rounded-lg bg-primary/5 border border-primary/10">
-                                        <p className="text-[9px] font-black text-primary/60 uppercase mb-0.5">Resolved Value</p>
-                                        <p className="text-xs font-bold truncate">{v.constantValue}</p>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="bg-muted/30 px-4 py-2 border-t flex items-center justify-between text-[9px] font-bold uppercase tracking-tighter text-muted-foreground">
-                                <span className="truncate max-w-[150px]">{isConstant ? 'Manual Entry' : `Path: ${v.path}`}</span>
-                                <span className="opacity-40 shrink-0">{v.source}</span>
-                            </div>
-                        </Card>
-                    );
-                })}
+                {items.map((v) => <VariableCard key={v.id} v={v} />)}
             </div>
         );
     };
