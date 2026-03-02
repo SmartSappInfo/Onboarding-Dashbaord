@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send, Smartphone, Globe, ShieldCheck, Zap, Settings2, Share2, Image as ImageIcon
+    Check, Loader2, Palette, Layout, Eye, X, Link as LinkIcon, ArrowLeft, ArrowRight, Mail, Send, Globe, ShieldCheck, Zap, Settings2, Share2, ImageIcon
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type MessageTemplate, type SenderProfile } from '@/lib/types';
@@ -40,6 +39,7 @@ import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
+import { SmartSappIcon } from '@/components/icons';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -474,7 +474,7 @@ export default function EditSurveyPage() {
             }
         }
         setStep(targetStep);
-        router.push(`${pathname}?step=${targetStep}`, { scroll: false });
+        router.push(`${targetStep === 1 ? pathname : `${pathname}?step=${targetStep}`}`, { scroll: false });
     }
 
     if (isLoading) return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
