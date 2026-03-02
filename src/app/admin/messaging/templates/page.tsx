@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -435,7 +435,7 @@ function BlockInspector({
                                                     type="button" 
                                                     variant="ghost" 
                                                     size="icon" 
-                                                    className="h-8 w-8 text-destructive"
+                                                    className="h-8 w-8 shrink-0 text-destructive"
                                                     onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
                                                 >
                                                     <X className="h-4 w-4" />
@@ -825,7 +825,7 @@ export default function MessageTemplatesPage() {
         setCategory('general');
         setChannel('sms');
         setSimEntity('none');
-        setSimEntityId('none');
+        setSimRecordId('none');
     };
 
     const handleEditClick = (template: MessageTemplate) => {
