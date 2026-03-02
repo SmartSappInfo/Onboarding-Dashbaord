@@ -48,6 +48,8 @@ import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { motion } from 'framer-motion';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
@@ -83,6 +85,7 @@ export default function ComposerWizard() {
         defaultValues: {
             channel: 'email',
             mode: 'single',
+            recipient: '',
             variables: {},
             schoolId: '',
             isScheduled: false,
@@ -217,7 +220,7 @@ export default function ComposerWizard() {
 
             setCsvHeaders(headers);
             setCsvData(data);
-            toast({ title: 'CSV Processed', description: `${data.length} records identified.` });
+            toast({ title: 'CSV Process Processed', description: `${data.length} records identified.` });
         };
         reader.readAsText(file);
     };
@@ -573,6 +576,7 @@ export default function ComposerWizard() {
                                                 render={({ field }) => (
                                                     <Input 
                                                         {...field} 
+                                                        value={field.value ?? ''}
                                                         placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} 
                                                         className="h-14 rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-xl px-6"
                                                     />
@@ -588,7 +592,12 @@ export default function ComposerWizard() {
                                                         name={`variables.${v}`}
                                                         control={control}
                                                         render={({ field }) => (
-                                                            <Input {...field} value={field.value || ''} placeholder={`Enter value...`} className="bg-muted/30 border-none h-11 rounded-xl shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />
+                                                            <Input 
+                                                                {...field} 
+                                                                value={field.value ?? ''} 
+                                                                placeholder={`Enter value...`} 
+                                                                className="bg-muted/30 border-none h-11 rounded-xl shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" 
+                                                            />
                                                         )}
                                                     />
                                                 </div>
