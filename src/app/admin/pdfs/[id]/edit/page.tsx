@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -39,6 +40,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
+import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -58,10 +60,17 @@ const formSchema = z.object({
   webhookId: z.string().optional(),
   passwordProtected: z.boolean().default(false),
   password: z.string().optional(),
-  // Messaging
+  // Public Notification
   confirmationMessagingEnabled: z.boolean().default(false),
   confirmationTemplateId: z.string().optional(),
   confirmationSenderProfileId: z.string().optional(),
+  // Internal Notification
+  adminAlertsEnabled: z.boolean().default(false),
+  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertNotifyManager: z.boolean().default(false),
+  adminAlertSpecificUserIds: z.array(z.string()).default([]),
+  adminAlertEmailTemplateId: z.string().optional(),
+  adminAlertSmsTemplateId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -163,6 +172,10 @@ export default function EditPdfPage() {
         confirmationMessagingEnabled: false,
         confirmationTemplateId: '',
         confirmationSenderProfileId: '',
+        adminAlertsEnabled: false,
+        adminAlertChannel: 'both',
+        adminAlertNotifyManager: false,
+        adminAlertSpecificUserIds: [],
     }
   });
 
@@ -182,7 +195,7 @@ export default function EditPdfPage() {
 
   const profilesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sender_profiles'), orderBy('name', 'asc'));
+    return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
   }, [firestore]);
   const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
@@ -238,6 +251,12 @@ export default function EditPdfPage() {
         confirmationMessagingEnabled: pdf.confirmationMessagingEnabled || false,
         confirmationTemplateId: pdf.confirmationTemplateId || '',
         confirmationSenderProfileId: pdf.confirmationSenderProfileId || '',
+        adminAlertsEnabled: pdf.adminAlertsEnabled || false,
+        adminAlertChannel: pdf.adminAlertChannel || 'both',
+        adminAlertNotifyManager: pdf.adminAlertNotifyManager || false,
+        adminAlertSpecificUserIds: pdf.adminAlertSpecificUserIds || [],
+        adminAlertEmailTemplateId: pdf.adminAlertEmailTemplateId || '',
+        adminAlertSmsTemplateId: pdf.adminAlertSmsTemplateId || '',
       };
 
       reset(initialData);
@@ -497,7 +516,7 @@ export default function EditPdfPage() {
                             }
                         }}
                     >
-                        <AnimatePresence>
+                        <AnimatePresence mode="wait">
                             {/* PHASE 1: DETAILS */}
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
@@ -509,7 +528,7 @@ export default function EditPdfPage() {
                                                         <FileText className="h-5 w-5 text-primary" />
                                                     </div>
                                                     <div>
-                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Document Identity</CardTitle>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Document Identity</CardTitle>
                                                         <CardDescription className="text-xs font-medium">Naming and classification details for the form.</CardDescription>
                                                     </div>
                                                 </div>
@@ -575,7 +594,7 @@ export default function EditPdfPage() {
                                                             <Palette className="h-5 w-5 text-primary" />
                                                         </div>
                                                         <div>
-                                                            <CardTitle className="text-lg font-black tracking-tight uppercase">Visual Identity</CardTitle>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Visual Identity</CardTitle>
                                                             <CardDescription className="text-xs font-medium">Branding and theme customization.</CardDescription>
                                                         </div>
                                                     </div>
@@ -683,199 +702,195 @@ export default function EditPdfPage() {
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition}>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                                        <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
-                                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl">
-                                                        <Globe className="h-5 w-5 text-primary" />
+                                        <div className="space-y-8">
+                                            <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl">
+                                                            <Globe className="h-5 w-5 text-primary" />
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Finalize & Integrate</CardTitle>
+                                                            <CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Finalize & Integrate</CardTitle>
-                                                        <CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-0">
-                                                <div className="p-6 bg-background">
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        <Controller
-                                                            name="status"
-                                                            control={form.control}
-                                                            render={({ field }) => (
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
-                                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
-                                                                            <SelectValue />
-                                                                        </SelectTrigger>
-                                                                        <SelectContent className="rounded-xl">
-                                                                            <SelectItem value="draft">Draft</SelectItem>
-                                                                            <SelectItem value="published">Published</SelectItem>
-                                                                            <SelectItem value="archived">Archived</SelectItem>
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </div>
-                                                            )}
-                                                        />
-                                                        <Controller
-                                                            name="slug"
-                                                            control={form.control}
-                                                            render={({ field }) => (
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label>
-                                                                    <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                                                        <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div>
-                                                                        <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="px-6 pb-6 space-y-4">
-                                                    <div className={cn(
-                                                        "rounded-2xl border-2 transition-all duration-300",
-                                                        watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
-                                                    )}>
-                                                        <div className="flex items-center justify-between p-4">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                                                    <Lock className="h-4 w-4" />
-                                                                </div>
-                                                                <div className="space-y-0.5">
-                                                                    <Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label>
-                                                                    <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p>
-                                                                </div>
-                                                            </div>
+                                                </CardHeader>
+                                                <CardContent className="p-0">
+                                                    <div className="p-6 bg-background">
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                             <Controller
-                                                                name="passwordProtected"
+                                                                name="status"
                                                                 control={form.control}
-                                                                render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                                                render={({ field }) => (
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
+                                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                                                                                <SelectValue />
+                                                                            </SelectTrigger>
+                                                                            <SelectContent className="rounded-xl">
+                                                                                <SelectItem value="draft">Draft</SelectItem>
+                                                                                <SelectItem value="published">Published</SelectItem>
+                                                                                <SelectItem value="archived">Archived</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                    </div>
+                                                                )}
+                                                            />
+                                                            <Controller
+                                                                name="slug"
+                                                                control={form.control}
+                                                                render={({ field }) => (
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label>
+                                                                        <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div>
+                                                                            <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             />
                                                         </div>
-                                                        <AnimatePresence>
-                                                            {watch('passwordProtected') && (
-                                                                <motion.div 
-                                                                    initial={{ height: 0, opacity: 0 }}
-                                                                    animate={{ height: 'auto', opacity: 1 }}
-                                                                    exit={{ height: 0, opacity: 0 }}
-                                                                    className="overflow-hidden"
-                                                                >
-                                                                    <div className="px-4 pb-4 pt-0">
+                                                    </div>
+
+                                                    <div className="px-6 pb-6 space-y-4">
+                                                        <div className={cn(
+                                                            "rounded-2xl border-2 transition-all duration-300",
+                                                            watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                                                        )}>
+                                                            <div className="flex items-center justify-between p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                                                        <Lock className="h-4 w-4" />
+                                                                    </div>
+                                                                    <div className="space-y-0.5">
+                                                                        <Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label>
+                                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p>
+                                                                    </div>
+                                                                </div>
+                                                                <Controller
+                                                                    name="passwordProtected"
+                                                                    control={form.control}
+                                                                    render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
+                                                                />
+                                                            </div>
+                                                            <AnimatePresence>
+                                                                {watch('passwordProtected') && (
+                                                                    <motion.div 
+                                                                        initial={{ height: 0, opacity: 0 }}
+                                                                        animate={{ height: 'auto', opacity: 1 }}
+                                                                        exit={{ height: 0, opacity: 0 }}
+                                                                        className="overflow-hidden"
+                                                                    >
+                                                                        <div className="px-4 pb-4 pt-0">
+                                                                            <Controller
+                                                                                name="password"
+                                                                                control={form.control}
+                                                                                render={({ field }) => (
+                                                                                    <Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />
+                                                                                )}
+                                                                            />
+                                                                        </div>
+                                                                    </motion.div>
+                                                                )}
+                                                            </AnimatePresence>
+                                                        </div>
+
+                                                        <WebhookManager />
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+
+                                            <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
+                                                <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                                            <Send className="h-5 w-5" />
+                                                        </div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-black tracking-tight uppercase uppercase">Public Confirmation</CardTitle>
+                                                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
+                                                        </div>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-6">
+                                                    <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="p-3 bg-primary/10 rounded-2xl text-primary">
+                                                                <Mail className="h-6 w-6" />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <Label className="text-base font-black uppercase tracking-tight">Public Acknowledgement</Label>
+                                                                <p className="text-xs text-muted-foreground font-medium">Notify parent/respondent</p>
+                                                            </div>
+                                                        </div>
+                                                        <Controller
+                                                            name="confirmationMessagingEnabled"
+                                                            control={form.control}
+                                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />}
+                                                        />
+                                                    </div>
+
+                                                    <AnimatePresence>
+                                                        {watch('confirmationMessagingEnabled') && (
+                                                            <motion.div 
+                                                                initial={{ opacity: 0, y: 10 }}
+                                                                animate={{ opacity: 1, y: 0 }}
+                                                                exit={{ opacity: 0, y: 10 }}
+                                                                className="space-y-6"
+                                                            >
+                                                                <div className="grid gap-4">
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Template</Label>
                                                                         <Controller
-                                                                            name="password"
+                                                                            name="confirmationTemplateId"
                                                                             control={form.control}
                                                                             render={({ field }) => (
-                                                                                <Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />
+                                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
+                                                                                        <SelectValue placeholder="Select template..." />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent className="rounded-2xl">
+                                                                                        <SelectItem value="none">No Template Selected</SelectItem>
+                                                                                        {templates?.filter(t => t.category === 'forms' && t.isActive).map(t => (
+                                                                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                                        ))}
+                                                                                    </SelectContent>
+                                                                                </Select>
                                                                             )}
                                                                         />
                                                                     </div>
-                                                                </motion.div>
-                                                            )}
-                                                        </AnimatePresence>
-                                                    </div>
-
-                                                    <WebhookManager />
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-
-                                        <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
-                                            <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                                                        <Send className="h-5 w-5" />
-                                                    </div>
-                                                    <div>
-                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Auto-Confirmation</CardTitle>
-                                                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-6">
-                                                <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                                                            <Mail className="h-6 w-6" />
-                                                        </div>
-                                                        <div className="space-y-0.5">
-                                                            <Label className="text-base font-black uppercase tracking-tight">Confirmation Message</Label>
-                                                            <p className="text-xs text-muted-foreground font-medium">Notify user upon submission</p>
-                                                        </div>
-                                                    </div>
-                                                    <Controller
-                                                        name="confirmationMessagingEnabled"
-                                                        control={form.control}
-                                                        render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />}
-                                                    />
-                                                </div>
-
-                                                <AnimatePresence>
-                                                    {watch('confirmationMessagingEnabled') && (
-                                                        <motion.div 
-                                                            initial={{ opacity: 0, y: 10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: 10 }}
-                                                            className="space-y-6"
-                                                        >
-                                                            <div className="grid gap-4">
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Message Template</Label>
-                                                                    <Controller
-                                                                        name="confirmationTemplateId"
-                                                                        control={form.control}
-                                                                        render={({ field }) => (
-                                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                                <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
-                                                                                    <SelectValue placeholder="Select template..." />
-                                                                                </SelectTrigger>
-                                                                                <SelectContent className="rounded-2xl">
-                                                                                    <SelectItem value="none">No Template Selected</SelectItem>
-                                                                                    {templates?.filter(t => t.category === 'forms' && t.isActive).map(t => (
-                                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                                    ))}
-                                                                                </SelectContent>
-                                                                            </Select>
-                                                                        )}
-                                                                    />
+                                                                    <div className="space-y-2">
+                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Sender Profile</Label>
+                                                                        <Controller
+                                                                            name="confirmationSenderProfileId"
+                                                                            control={form.control}
+                                                                            render={({ field }) => (
+                                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
+                                                                                        <SelectValue placeholder="Select sender..." />
+                                                                                    </SelectTrigger>
+                                                                                    <SelectContent className="rounded-2xl">
+                                                                                        <SelectItem value="none">No Sender Selected</SelectItem>
+                                                                                        {profiles?.filter(p => p.isActive).map(p => (
+                                                                                            <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
+                                                                                        ))}
+                                                                                    </SelectContent>
+                                                                                </Select>
+                                                                            )}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Sender Identity</Label>
-                                                                    <Controller
-                                                                        name="confirmationSenderProfileId"
-                                                                        control={form.control}
-                                                                        render={({ field }) => (
-                                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                                <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
-                                                                                    <SelectValue placeholder="Select sender..." />
-                                                                                </SelectTrigger>
-                                                                                <SelectContent className="rounded-2xl">
-                                                                                    <SelectItem value="none">No Sender Selected</SelectItem>
-                                                                                    {profiles?.filter(p => p.isActive).map(p => (
-                                                                                        <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
-                                                                                    ))}
-                                                                                </SelectContent>
-                                                                            </Select>
-                                                                        )}
-                                                                    />
-                                                                </div>
-                                                            </div>
-                                                            
-                                                            <div className="p-4 rounded-2xl border-2 border-dashed border-primary/20 bg-primary/5 flex gap-3">
-                                                                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                                                                <div className="space-y-1">
-                                                                    <p className="text-[10px] font-black uppercase tracking-widest text-primary">Automation Note</p>
-                                                                    <p className="text-[10px] font-medium text-primary/70 leading-relaxed uppercase tracking-tighter">
-                                                                        The system will automatically extract the recipient's contact details from the submitted form data.
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </motion.div>
-                                                    )}
-                                                </AnimatePresence>
-                                            </CardContent>
-                                        </Card>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </CardContent>
+                                            </Card>
+                                        </div>
+
+                                        <div className="space-y-8">
+                                            <InternalNotificationConfig prefix="adminAlert" />
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}

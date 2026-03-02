@@ -94,6 +94,13 @@ export interface Meeting {
   type: MeetingType;
   recordingUrl?: string;
   brochureUrl?: string;
+  // Internal Notifications
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
 }
 
 export interface MediaAsset {
@@ -240,7 +247,14 @@ export interface Survey {
   showSurveyTitles?: boolean;
   webhookId?: string;
   webhookEnabled?: boolean;
-  // Admin Notifications
+  // Internal Notifications (Upgraded)
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
+  // Legacy (Preserved for migration)
   adminSmsNotificationEnabled?: boolean;
   adminSmsTemplateId?: string;
   adminSmsSenderProfileId?: string;
@@ -249,11 +263,6 @@ export interface Survey {
   adminEmailTemplateId?: string;
   adminEmailSenderProfileId?: string;
   adminEmailRecipient?: string;
-  // Legacy (preserved for stability)
-  automationMessagingEnabled?: boolean;
-  automationTemplateId?: string;
-  automationSenderProfileId?: string;
-  automationRecipient?: string;
 }
 
 export interface SurveyResponse {
@@ -360,6 +369,13 @@ export interface PDFForm {
     confirmationMessagingEnabled?: boolean;
     confirmationTemplateId?: string;
     confirmationSenderProfileId?: string;
+    // Internal Notifications
+    adminAlertsEnabled?: boolean;
+    adminAlertChannel?: 'email' | 'sms' | 'both';
+    adminAlertNotifyManager?: boolean;
+    adminAlertSpecificUserIds?: string[];
+    adminAlertEmailTemplateId?: string;
+    adminAlertSmsTemplateId?: string;
 }
 
 export interface Submission {
@@ -378,6 +394,8 @@ export interface SenderProfile {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  mNotifyStatus?: string;
+  resendStatus?: string;
 }
 
 export interface MessageStyle {

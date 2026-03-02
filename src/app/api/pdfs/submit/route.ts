@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
 import { sendMessage } from '@/lib/messaging-engine';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
+import { triggerInternalNotification } from '@/lib/notification-engine';
 import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
@@ -34,19 +35,15 @@ export async function POST(req: Request) {
 
     const submissionRef = await pdfRef.collection('submissions').add(submissionData);
 
-    // Messaging Automation Trigger with ATTACHMENT support
+    // 1. PUBLIC ACKNOWLEDGEMENT (Email with Signed PDF)
     if (pdfData.confirmationMessagingEnabled && pdfData.confirmationTemplateId && pdfData.confirmationSenderProfileId) {
-        
         const recipientField = (pdfData.fields as any[]).find((f: any) => f.type === 'email' || f.type === 'phone');
         const recipientValue = recipientField ? formData[recipientField.id] : null;
 
         if (recipientValue) {
             console.log(`>>> [AUTOMATION] Triggering PDF Confirmation for ${recipientValue}`);
-            
             let attachments = [];
-            
             try {
-                // Generate the signed PDF buffer in the background
                 const pdfBuffer = await generatePdfBuffer(pdfData, formData);
                 attachments.push({
                     content: pdfBuffer.toString('base64'),
@@ -57,7 +54,6 @@ export async function POST(req: Request) {
                 console.error(">>> [AUTOMATION] PDF Generation failed for email attachment:", genError);
             }
 
-            // Perform dispatch
             await sendMessage({
                 templateId: pdfData.confirmationTemplateId,
                 senderProfileId: pdfData.confirmationSenderProfileId,
@@ -71,6 +67,25 @@ export async function POST(req: Request) {
                 }
             });
         }
+    }
+
+    // 2. INTERNAL TEAM NOTIFICATION (Upgraded Logic)
+    if (pdfData.adminAlertsEnabled) {
+        await triggerInternalNotification({
+            schoolId: pdfData.schoolId || '',
+            notifyManager: pdfData.adminAlertNotifyManager,
+            specificUserIds: pdfData.adminAlertSpecificUserIds,
+            emailTemplateId: pdfData.adminAlertEmailTemplateId,
+            smsTemplateId: pdfData.adminAlertSmsTemplateId,
+            channel: pdfData.adminAlertChannel,
+            variables: {
+                ...formData,
+                form_name: pdfData.name,
+                submission_id: submissionRef.id,
+                event_type: 'Doc Signed',
+                school_name: pdfData.schoolName || 'Unknown'
+            }
+        });
     }
 
     await logActivity({

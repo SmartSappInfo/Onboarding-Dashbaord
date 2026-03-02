@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -45,6 +44,7 @@ import { Button } from '@/components/ui/button';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { cn } from '@/lib/utils';
 import { logActivity } from '@/lib/activity-logger';
+import { triggerInternalNotification } from '@/lib/notification-engine';
 
 const getInitials = (name?: string | null) =>
   name
@@ -402,7 +402,9 @@ export default function KanbanBoard() {
             title: 'School Moved',
             description: `Moved to "${newStage.name}" stage.`,
           });
+          
           if (user && school) {
+            // Log to timeline
             logActivity({
                 schoolId,
                 userId: user.uid,
@@ -414,6 +416,21 @@ export default function KanbanBoard() {
                     to: newStage.name,
                 }
             });
+
+            // TRIGGER INTERNAL NOTIFICATION
+            // Automatically notify the manager when a school moves to a critical stage
+            if (newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('training')) {
+                triggerInternalNotification({
+                    schoolId,
+                    notifyManager: true,
+                    channel: 'both',
+                    variables: {
+                        school_name: school.name,
+                        new_stage: newStage.name,
+                        event_type: 'Pipeline Progression'
+                    }
+                }).catch(console.error);
+            }
           }
         } catch (error) {
           toast({

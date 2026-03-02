@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,7 @@ import SurveyFormBuilder from '../../components/survey-form-builder';
 import ResultsStep from '../../components/results-step';
 import SurveyPreviewButton from '../../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
+import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -134,15 +135,13 @@ const formSchema = z.object({
   startButtonText: z.string().optional(),
   showCoverPage: z.boolean().default(true),
   showSurveyTitles: z.boolean().default(true),
-  // Admin Notifications
-  adminSmsNotificationEnabled: z.boolean().default(false),
-  adminSmsTemplateId: z.string().optional(),
-  adminSmsSenderProfileId: z.string().optional(),
-  adminSmsRecipient: z.string().optional(),
-  adminEmailNotificationEnabled: z.boolean().default(false),
-  adminEmailTemplateId: z.string().optional(),
-  adminEmailSenderProfileId: z.string().optional(),
-  adminEmailRecipient: z.string().optional(),
+  // Internal Notification
+  adminAlertsEnabled: z.boolean().default(false),
+  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertNotifyManager: z.boolean().default(false),
+  adminAlertSpecificUserIds: z.array(z.string()).default([]),
+  adminAlertEmailTemplateId: z.string().optional(),
+  adminAlertSmsTemplateId: z.string().optional(),
   // Legacy
   automationMessagingEnabled: z.boolean().default(false),
 });
@@ -213,22 +212,10 @@ function EditSurveyContent() {
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
-        return doc(firestore, 'surveys', surveyId);
+        return doc(firestore, 'surveys', surveyId as string);
     }, [firestore, surveyId]);
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
-
-    const templatesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'), orderBy('name', 'asc'));
-    }, [firestore]);
-    const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
-
-    const profilesQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
-    }, [firestore]);
-    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -256,21 +243,15 @@ function EditSurveyContent() {
             startButtonText: 'Let\'s Start',
             showCoverPage: true,
             showSurveyTitles: true,
-            adminSmsNotificationEnabled: false,
-            adminSmsTemplateId: '',
-            adminSmsSenderProfileId: '',
-            adminSmsRecipient: '',
-            adminEmailNotificationEnabled: false,
-            adminEmailTemplateId: '',
-            adminEmailSenderProfileId: '',
-            adminEmailRecipient: '',
+            adminAlertsEnabled: false,
+            adminAlertChannel: 'both',
+            adminAlertNotifyManager: false,
+            adminAlertSpecificUserIds: [],
             automationMessagingEnabled: false,
         }
     });
 
     const { getValues, setValue, watch, reset } = form;
-    const watchedBgColor = watch('backgroundColor');
-    const watchedPattern = watch('backgroundPattern');
 
     React.useEffect(() => {
         if (survey && !form.formState.isDirty) {
@@ -303,14 +284,12 @@ function EditSurveyContent() {
                 startButtonText: survey.startButtonText || 'Let\'s Start',
                 showCoverPage: survey.showCoverPage ?? true,
                 showSurveyTitles: survey.showSurveyTitles ?? true,
-                adminSmsNotificationEnabled: survey.adminSmsNotificationEnabled || false,
-                adminSmsTemplateId: survey.adminSmsTemplateId || '',
-                adminSmsSenderProfileId: survey.adminSmsSenderProfileId || '',
-                adminSmsRecipient: survey.adminSmsRecipient || '',
-                adminEmailNotificationEnabled: survey.adminEmailNotificationEnabled || false,
-                adminEmailTemplateId: survey.adminEmailTemplateId || '',
-                adminEmailSenderProfileId: survey.adminEmailSenderProfileId || '',
-                adminEmailRecipient: survey.adminEmailRecipient || '',
+                adminAlertsEnabled: survey.adminAlertsEnabled || false,
+                adminAlertChannel: survey.adminAlertChannel || 'both',
+                adminAlertNotifyManager: survey.adminAlertNotifyManager || false,
+                adminAlertSpecificUserIds: survey.adminAlertSpecificUserIds || [],
+                adminAlertEmailTemplateId: survey.adminAlertEmailTemplateId || '',
+                adminAlertSmsTemplateId: survey.adminAlertSmsTemplateId || '',
                 automationMessagingEnabled: survey.automationMessagingEnabled || false,
             });
 
@@ -529,7 +508,7 @@ function EditSurveyContent() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
                                                     <div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Survey Identity</CardTitle>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Survey Identity</CardTitle>
                                                         <CardDescription className="text-xs font-medium">Core naming and classification.</CardDescription>
                                                     </div>
                                                 </div>
@@ -553,7 +532,7 @@ function EditSurveyContent() {
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
                                                         <div>
-                                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Theme</CardTitle>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Theme</CardTitle>
                                                             <CardDescription className="text-xs font-medium">Branding and styling.</CardDescription>
                                                         </div>
                                                     </div>
@@ -587,92 +566,35 @@ function EditSurveyContent() {
                             {step === 4 && (
                                 <motion.div key="step4" {...stepTransition}>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                                        <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
-                                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
-                                                    <div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Publish Settings</CardTitle>
-                                                        <CardDescription className="text-xs font-medium">Visibility and identifiers.</CardDescription>
+                                        <div className="space-y-8">
+                                            <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
+                                                        <div>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Publish Settings</CardTitle>
+                                                            <CardDescription className="text-xs font-medium">Visibility and identifiers.</CardDescription>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-8">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField control={form.control} name="status" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Visibility Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
-                                                    )} />
-                                                    <FormField control={form.control} name="slug" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Identifier</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
-                                                    )} />
-                                                </div>
-                                                <Separator />
-                                                <WebhookManager />
-                                            </CardContent>
-                                        </Card>
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-8 bg-background">
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                        <FormField control={form.control} name="status" render={({ field }) => (
+                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Visibility Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
+                                                        )} />
+                                                        <FormField control={form.control} name="slug" render={({ field }) => (
+                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Identifier</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
+                                                        )} />
+                                                    </div>
+                                                    <Separator />
+                                                    <WebhookManager />
+                                                </CardContent>
+                                            </Card>
+                                        </div>
 
-                                        <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
-                                            <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Send className="h-5 w-5" /></div>
-                                                    <div>
-                                                        <CardTitle className="text-lg font-black tracking-tight uppercase">Admin Alerts</CardTitle>
-                                                        <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Internal notifications on response.</CardDescription>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-8">
-                                                {/* Email Admin Alert */}
-                                                <div className={cn("p-5 rounded-2xl border-2 transition-all", watch('adminEmailNotificationEnabled') ? "bg-white border-primary/20 shadow-sm" : "bg-muted/20 border-transparent")}>
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={cn("p-2 rounded-lg", watch('adminEmailNotificationEnabled') ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground")}><Mail className="h-4 w-4" /></div>
-                                                            <Label className="text-sm font-black uppercase tracking-tight">Email Notifications</Label>
-                                                        </div>
-                                                        <Controller name="adminEmailNotificationEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
-                                                    </div>
-                                                    {watch('adminEmailNotificationEnabled') && (
-                                                        <div className="space-y-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Template</Label>
-                                                                <Controller name="adminEmailTemplateId" control={form.control} render={({ field }) => (
-                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Choose template..." /></SelectTrigger><SelectContent>{templates?.filter(t => t.channel === 'email').map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
-                                                                )} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Recipient Address</Label>
-                                                                <Controller name="adminEmailRecipient" control={form.control} render={({ field }) => <Input {...field} placeholder="e.g. admin@school.edu" className="h-9 rounded-lg" />} />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-
-                                                {/* SMS Admin Alert */}
-                                                <div className={cn("p-5 rounded-2xl border-2 transition-all", watch('adminSmsNotificationEnabled') ? "bg-white border-primary/20 shadow-sm" : "bg-muted/20 border-transparent")}>
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={cn("p-2 rounded-lg", watch('adminSmsNotificationEnabled') ? "bg-orange-500 text-white" : "bg-muted text-muted-foreground")}><Smartphone className="h-4 w-4" /></div>
-                                                            <Label className="text-sm font-black uppercase tracking-tight">SMS Alerts</Label>
-                                                        </div>
-                                                        <Controller name="adminSmsNotificationEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} />
-                                                    </div>
-                                                    {watch('adminSmsNotificationEnabled') && (
-                                                        <div className="space-y-4 pt-4 border-t animate-in fade-in slide-in-from-top-2">
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Template</Label>
-                                                                <Controller name="adminSmsTemplateId" control={form.control} render={({ field }) => (
-                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-9 rounded-lg"><SelectValue placeholder="Choose template..." /></SelectTrigger><SelectContent>{templates?.filter(t => t.channel === 'sms').map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent></Select>
-                                                                )} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Recipient Phone</Label>
-                                                                <Controller name="adminSmsRecipient" control={form.control} render={({ field }) => <Input {...field} placeholder="e.g. 024XXXXXXX" className="h-9 rounded-lg" />} />
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
+                                        <div className="space-y-8">
+                                            <InternalNotificationConfig prefix="adminAlert" />
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}
