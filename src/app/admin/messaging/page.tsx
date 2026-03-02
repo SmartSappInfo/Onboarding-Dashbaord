@@ -36,7 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
-import { subDays, format } from 'date-fns';
+import { subDays, format, isValid } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageJobsView from './jobs/page';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -379,7 +379,10 @@ export default function MessagingHubPage() {
                                                     tickLine={false} 
                                                     axisLine={false} 
                                                     fontSize={10} 
-                                                    tickFormatter={(val) => format(new Date(val), 'MMM d')}
+                                                    tickFormatter={(val) => {
+                                                        const date = new Date(val);
+                                                        return isValid(date) ? format(date, 'MMM d') : val;
+                                                    }}
                                                     tick={{ fontWeight: 'bold', fill: 'hsl(var(--muted-foreground))' }}
                                                 />
                                                 <YAxis axisLine={false} tickLine={false} fontSize={10} tick={{ fontWeight: 'bold', fill: 'hsl(var(--muted-foreground))' }} />
