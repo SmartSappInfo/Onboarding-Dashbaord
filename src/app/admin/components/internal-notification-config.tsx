@@ -9,21 +9,25 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Bell, UserCheck, Users, Mail, Smartphone, Info } from 'lucide-react';
+import { Bell, UserCheck, Users, Mail, Smartphone, Info, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
+import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 
 /**
  * Reusable configuration component for Internal Team Notifications.
  * Hooks directly into react-hook-form context.
  */
-export default function InternalNotificationConfig({ prefix = "adminAlert" }: { prefix?: string }) {
-    const { control, watch } = useFormContext();
+export default function InternalNotificationConfig({ prefix = "adminAlert", category = "general" }: { prefix?: string, category?: any }) {
+    const { control, watch, setValue } = useFormContext();
     const firestore = useFirestore();
 
     const enabled = watch(`${prefix}sEnabled`);
     const channel = watch(`${prefix}Channel`);
+
+    const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean } | null>(null);
 
     const usersQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -155,9 +159,19 @@ export default function InternalNotificationConfig({ prefix = "adminAlert" }: { 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4 border-t border-primary/10">
                             {(channel === 'email' || channel === 'both') && (
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                        <Mail className="h-3 w-3" /> Internal Email Template
-                                    </Label>
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                            <Mail className="h-3 w-3" /> Internal Email Template
+                                        </Label>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                            onClick={() => setQuickCreateState({ channel: 'email', open: true })}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New
+                                        </Button>
+                                    </div>
                                     <Controller
                                         name={`${prefix}EmailTemplateId`}
                                         control={control}
@@ -178,9 +192,19 @@ export default function InternalNotificationConfig({ prefix = "adminAlert" }: { 
 
                             {(channel === 'sms' || channel === 'both') && (
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                                        <Smartphone className="h-3 w-3" /> Internal SMS Alert
-                                    </Label>
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                            <Smartphone className="h-3 w-3" /> Internal SMS Alert
+                                        </Label>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New
+                                        </Button>
+                                    </div>
                                     <Controller
                                         name={`${prefix}SmsTemplateId`}
                                         control={control}
@@ -202,6 +226,22 @@ export default function InternalNotificationConfig({ prefix = "adminAlert" }: { 
                     </div>
                 )}
             </div>
+
+            {quickCreateState && (
+                <QuickTemplateDialog 
+                    open={quickCreateState.open}
+                    onOpenChange={(o) => !o && setQuickCreateState(null)}
+                    channel={quickCreateState.channel}
+                    category={category}
+                    onCreated={(id) => {
+                        if (quickCreateState.channel === 'email') {
+                            setValue(`${prefix}EmailTemplateId`, id, { shouldDirty: true });
+                        } else {
+                            setValue(`${prefix}SmsTemplateId`, id, { shouldDirty: true });
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

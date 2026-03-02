@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
+import { collection, doc, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -44,6 +44,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
+import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -149,6 +150,7 @@ export default function EditPdfPage() {
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
   const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
 
   const storageKey = `pdf-autosave-${pdfId}`;
 
@@ -534,7 +536,7 @@ export default function EditPdfPage() {
                                                         <FileText className="h-5 w-5 text-primary" />
                                                     </div>
                                                     <div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Document Identity</CardTitle>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Document Identity</CardTitle>
                                                         <CardDescription className="text-xs font-medium">Naming and classification details for the form.</CardDescription>
                                                     </div>
                                                 </div>
@@ -594,13 +596,13 @@ export default function EditPdfPage() {
 
                                         <div className="space-y-8">
                                             <Card className="shadow-sm border-none ring-1 ring-border">
-                                                <CardHeader className="bg-muted/30 border-b pb-6">
+                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl">
                                                             <Palette className="h-5 w-5 text-primary" />
                                                         </div>
                                                         <div>
-                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Visual Identity</CardTitle>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Visual Identity</CardTitle>
                                                             <CardDescription className="text-xs font-medium">Branding and theme customization.</CardDescription>
                                                         </div>
                                                     </div>
@@ -716,7 +718,7 @@ export default function EditPdfPage() {
                                                             <Globe className="h-5 w-5 text-primary" />
                                                         </div>
                                                         <div>
-                                                            <CardTitle className="text-lg font-black uppercase tracking-tight uppercase">Finalize & Integrate</CardTitle>
+                                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Finalize & Integrate</CardTitle>
                                                             <CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription>
                                                         </div>
                                                     </div>
@@ -814,7 +816,7 @@ export default function EditPdfPage() {
                                                             <Send className="h-5 w-5" />
                                                         </div>
                                                         <div>
-                                                            <CardTitle className="text-lg font-black tracking-tight uppercase uppercase">Public Confirmation</CardTitle>
+                                                            <CardTitle className="text-lg font-black tracking-tight uppercase">Public Confirmation</CardTitle>
                                                             <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
                                                         </div>
                                                     </div>
@@ -847,7 +849,18 @@ export default function EditPdfPage() {
                                                             >
                                                                 <div className="grid gap-4">
                                                                     <div className="space-y-2">
-                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Template</Label>
+                                                                        <div className="flex justify-between items-center px-1">
+                                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60">Template</Label>
+                                                                            <Button 
+                                                                                type="button"
+                                                                                variant="ghost" 
+                                                                                size="sm" 
+                                                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1"
+                                                                                onClick={() => setIsQuickCreateOpen(true)}
+                                                                            >
+                                                                                <PlusCircle className="h-3 w-3" /> New Template
+                                                                            </Button>
+                                                                        </div>
                                                                         <Controller
                                                                             name="confirmationTemplateId"
                                                                             control={form.control}
@@ -895,7 +908,7 @@ export default function EditPdfPage() {
                                         </div>
 
                                         <div className="space-y-8">
-                                            <InternalNotificationConfig prefix="adminAlert" />
+                                            <InternalNotificationConfig prefix="adminAlert" category="forms" />
                                         </div>
                                     </div>
                                 </motion.div>
@@ -942,6 +955,14 @@ export default function EditPdfPage() {
             isOpen={isPreviewOpen}
             onClose={() => setIsPreviewOpen(false)}
             pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm}
+        />
+
+        <QuickTemplateDialog 
+            open={isQuickCreateOpen}
+            onOpenChange={setIsQuickCreateOpen}
+            channel="email"
+            category="forms"
+            onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })}
         />
 
         <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>

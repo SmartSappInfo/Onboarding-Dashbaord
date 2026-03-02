@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText } from 'lucide-react';
+import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle } from 'lucide-react';
 import type { SurveyResultRule, SurveyResultPage, MessageTemplate, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -17,10 +16,13 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 
 function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, templates?: MessageTemplate[], profiles?: SenderProfile[] }) {
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+
+    const [quickCreateChannel, setQuickCreateChannel] = React.useState<'email' | 'sms' | null>(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -84,9 +86,20 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { i
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Email Automation */}
                     <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100 space-y-4">
-                        <div className="flex items-center gap-2 text-blue-600">
-                            <Mail className="h-4 w-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">Email Completion</span>
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 text-blue-600">
+                                <Mail className="h-4 w-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Email Completion</span>
+                            </div>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-blue-600 gap-1 rounded-lg"
+                                onClick={() => setQuickCreateChannel('email')}
+                            >
+                                <PlusCircle className="h-3 w-3" /> New Template
+                            </Button>
                         </div>
                         <div className="space-y-3">
                             <Controller
@@ -126,9 +139,20 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { i
 
                     {/* SMS Automation */}
                     <div className="p-4 rounded-xl border bg-orange-50/30 border-orange-100 space-y-4">
-                        <div className="flex items-center gap-2 text-orange-600">
-                            <Smartphone className="h-4 w-4" />
-                            <span className="text-[10px] font-black uppercase tracking-widest">SMS Completion</span>
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 text-orange-600">
+                                <Smartphone className="h-4 w-4" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">SMS Completion</span>
+                            </div>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-orange-600 gap-1 rounded-lg"
+                                onClick={() => setQuickCreateChannel('sms')}
+                            >
+                                <PlusCircle className="h-3 w-3" /> New Template
+                            </Button>
                         </div>
                         <div className="space-y-3">
                             <Controller
@@ -167,6 +191,20 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { i
                     </div>
                 </div>
             </div>
+
+            <QuickTemplateDialog 
+                open={!!quickCreateChannel}
+                onOpenChange={(o) => !o && setQuickCreateChannel(null)}
+                channel={quickCreateChannel || 'email'}
+                category="surveys"
+                onCreated={(id) => {
+                    if (quickCreateChannel === 'email') {
+                        setValue(`resultRules.${index}.emailTemplateId`, id, { shouldDirty: true });
+                    } else {
+                        setValue(`resultRules.${index}.smsTemplateId`, id, { shouldDirty: true });
+                    }
+                }}
+            />
         </div>
     );
 }

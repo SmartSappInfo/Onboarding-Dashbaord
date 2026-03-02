@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -54,7 +53,8 @@ import {
     FileText,
     ClipboardList,
     Calendar,
-    Database
+    Database,
+    PlusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -64,7 +64,8 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import QuickTemplateDialog from '../../components/quick-template-dialog';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
@@ -94,6 +95,7 @@ export default function ComposerWizard() {
     const searchParams = useSearchParams();
     const [step, setStep] = React.useState(1);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
     
     // AI Refiner State
     const [isRefining, setIsRefining] = React.useState(false);
@@ -506,7 +508,18 @@ export default function ComposerWizard() {
                                 </div>
 
                                 <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">2. Core Template</Label>
+                                    <div className="flex justify-between items-center px-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary">2. Core Template</Label>
+                                        <Button 
+                                            type="button" 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1"
+                                            onClick={() => setIsQuickCreateOpen(true)}
+                                        >
+                                            <PlusCircle className="h-3 w-3" /> New Template
+                                        </Button>
+                                    </div>
                                     <Controller
                                         name="templateId"
                                         control={control}
@@ -1055,6 +1068,14 @@ export default function ComposerWizard() {
                     </Card>
                 )}
             </form>
+
+            <QuickTemplateDialog 
+                open={isQuickCreateOpen}
+                onOpenChange={setIsQuickCreateOpen}
+                channel={watchedChannel}
+                category="general"
+                onCreated={(id) => setValue('templateId', id, { shouldDirty: true })}
+            />
         </div>
     );
 }
