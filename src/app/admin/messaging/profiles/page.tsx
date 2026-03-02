@@ -43,6 +43,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 export default function SenderProfilesPage() {
     const firestore = useFirestore();
