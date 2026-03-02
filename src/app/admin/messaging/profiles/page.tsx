@@ -34,7 +34,9 @@ import {
     Sparkles,
     ShieldCheck,
     Clock,
-    AlertCircle
+    AlertCircle,
+    Info,
+    Send
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
