@@ -599,7 +599,7 @@ export default function MessageTemplatesPage() {
 
     // Simulation State
     const [simEntity, setSimEntity] = React.useState<'School' | 'Meeting' | 'Survey' | 'none'>('none');
-    const [simRecordId, setSimEntityId] = React.useState('none');
+    const [simRecordId, setSimRecordId] = React.useState('none');
     const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
     const [isSimLoading, setIsSimLoading] = React.useState(false);
 
@@ -1051,7 +1051,7 @@ export default function MessageTemplatesPage() {
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Sample Provider</Label>
-                                        <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimEntityId('none'); }}>
+                                        <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimRecordId('none'); }}>
                                             <SelectTrigger className="h-10 bg-white border-primary/10 rounded-xl font-bold">
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -1067,7 +1067,7 @@ export default function MessageTemplatesPage() {
                                     {simEntity !== 'none' && (
                                         <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                                             <Label className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Target Record</Label>
-                                            <Select value={simRecordId} onValueChange={setSimEntityId}>
+                                            <Select value={simRecordId} onValueChange={setSimRecordId}>
                                                 <SelectTrigger className="h-10 bg-white border-primary/10 rounded-xl font-bold">
                                                     <SelectValue placeholder="Pick sample..." />
                                                 </SelectTrigger>
