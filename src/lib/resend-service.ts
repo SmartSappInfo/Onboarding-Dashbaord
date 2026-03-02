@@ -61,6 +61,22 @@ export async function sendEmail(params: {
 }
 
 /**
+ * Sends multiple emails in a single batch request for high performance.
+ * @param emails Array of individual email objects.
+ */
+export async function sendBatchEmails(emails: { from?: string; to: string | string[]; subject: string; html: string; scheduledAt?: string }[]) {
+  const payload = emails.map(email => ({
+    from: email.from || `SmartSapp <notifications@${DOMAIN}>`,
+    to: email.to,
+    subject: email.subject,
+    html: email.html,
+    scheduled_at: email.scheduledAt,
+  }));
+
+  return resendRequest('/emails/batch', 'POST', payload);
+}
+
+/**
  * Retrieves the status and details of a single email.
  */
 export async function getEmail(id: string) {
