@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -47,6 +46,7 @@ import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SenderProfilesPage() {
     const firestore = useFirestore();
@@ -119,7 +119,7 @@ export default function SenderProfilesPage() {
             const docRef = doc(firestore, 'sender_profiles', editingProfile.id);
             await updateDoc(docRef, {
                 name: editName.trim(),
-                identifier: editingProfile.channel === 'sms' ? editIdentifier.trim().toUpperCase() : editIdentifier.trim().toLowerCase(),
+                identifier: editingProfile.channel === 'sms' ? editIdentifier.trim().toUpperCase() : editingProfile.channel === 'email' ? editIdentifier.trim().toLowerCase() : editIdentifier,
                 updatedAt: new Date().toISOString(),
             });
             setEditingProfile(null);
@@ -308,6 +308,7 @@ export default function SenderProfilesPage() {
                                     <TableCell><Skeleton className="h-4 w-16 rounded" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-48 rounded" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-12 mx-auto rounded" /></TableCell>
+                                    <TableCell className="mx-auto text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
                                     <TableCell className="pr-6"><Skeleton className="h-8 w-16 ml-auto rounded" /></TableCell>
                                 </TableRow>
                             ))
