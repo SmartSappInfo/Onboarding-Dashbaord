@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { 
     Palette, 
     Plus, 
@@ -204,7 +205,7 @@ export default function MessageStylesPage() {
                     <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-10 px-4 gap-2 font-bold shadow-lg">
                         <Sparkles className="h-4 w-4" /> Create with AI
                     </RainbowButton>
-                    <Button onClick={() => setIsAdding(!isAdding)} variant="outline" className="font-bold">
+                    <Button onClick={() => { setIsAdding(!isAdding); if(!isAdding) { setName(''); setHtmlWrapper('<html>\n  <body style="font-family: sans-serif; padding: 20px;">\n    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">\n      {{content}}\n    </div>\n  </body>\n</html>'); } }} variant="outline" className="font-bold">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {isAdding ? 'Cancel' : 'New Style'}
                     </Button>
