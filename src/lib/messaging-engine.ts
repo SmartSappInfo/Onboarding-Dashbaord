@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition } from './types';
 import { resolveVariables } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
@@ -26,10 +26,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
   const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
 
   try {
-    // 1. Fetch Core Assets
-    const [templateSnap, senderSnap] = await Promise.all([
+    // 1. Fetch Core Assets & Constants
+    const [templateSnap, senderSnap, constantsSnap] = await Promise.all([
       adminDb.collection('message_templates').doc(templateId).get(),
       adminDb.collection('sender_profiles').doc(senderProfileId).get(),
+      adminDb.collection('messaging_variables').where('source', '==', 'constant').get()
     ]);
 
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
@@ -42,11 +43,20 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (!template.isActive) throw new Error(`Template "${template.name}" is inactive.`);
     if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
-    // 2. Resolve Subject & Body
-    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', variables) : null;
-    let resolvedBody = resolveVariables(template.body, variables);
+    // 2. AUTO-RESOLUTION: Merge Global Constants into the variables map
+    const finalVariables = { ...variables };
+    constantsSnap.forEach(doc => {
+        const v = doc.data() as VariableDefinition;
+        if (v.constantValue !== undefined) {
+            finalVariables[v.key] = v.constantValue;
+        }
+    });
 
-    // 3. Apply Style (Email only)
+    // 3. Resolve Subject & Body
+    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
+    let resolvedBody = resolveVariables(template.body, finalVariables);
+
+    // 4. Apply Style (Email only)
     if (template.channel === 'email' && template.styleId) {
       const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
       if (styleSnap.exists) {
@@ -57,7 +67,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       }
     }
 
-    // 4. Perform Actual Delivery
+    // 5. Perform Actual Delivery
     let providerId = null;
     let providerStatus = null;
 
@@ -82,8 +92,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 5. Create Audit Log
-    const cleanedVariables = JSON.parse(JSON.stringify(variables));
+    // 6. Create Audit Log
+    const cleanedVariables = JSON.parse(JSON.stringify(finalVariables));
 
     const logData: Omit<MessageLog, 'id'> = {
       templateId: template.id,
@@ -97,21 +107,20 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),
       variables: cleanedVariables,
-      schoolId: schoolId || variables.schoolId || variables.school_id || null,
+      schoolId: schoolId || finalVariables.schoolId || finalVariables.school_id || null,
       providerId: providerId || null,
       providerStatus: providerStatus || null,
       hasAttachments: !!(attachments && attachments.length > 0),
       attachmentCount: attachments?.length || 0,
     };
 
-    // Robust sanitization: remove any key that is explicitly undefined
     const sanitizedLogData = Object.fromEntries(
         Object.entries(logData).filter(([_, v]) => v !== undefined)
     );
 
     const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
-    // 6. Sync with Activity Timeline
+    // 7. Sync with Activity Timeline
     await logActivity({
         schoolId: (logData.schoolId as string) || '',
         userId: null, 

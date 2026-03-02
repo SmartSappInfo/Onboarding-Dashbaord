@@ -475,10 +475,11 @@ export interface VariableDefinition {
   key: string;
   label: string;
   category: 'general' | 'meetings' | 'surveys' | 'forms';
-  source: 'static' | 'survey' | 'pdf';
+  source: 'static' | 'survey' | 'pdf' | 'constant';
   sourceId?: string; // ID of the specific Survey or PDF Form
   sourceName?: string; // Friendly name of the source
-  entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission';
-  path: string; // The dot-notation path to the data
+  entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission' | 'Global';
+  path: string; // The dot-notation path to the data (or literal value for constants)
   type: 'string' | 'number' | 'boolean' | 'date';
+  constantValue?: string; // The fixed value for 'constant' type variables
 }

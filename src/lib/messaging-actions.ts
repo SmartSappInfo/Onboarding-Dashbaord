@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 
 /**
  * Synchronizes the Variable Registry by scanning Schools, Meetings, Surveys, and PDFs.
- * Includes a cleanup phase to remove orphaned dynamic variables.
+ * Includes a cleanup phase to remove orphaned dynamic variables while preserving constants.
  */
 export async function syncVariableRegistry() {
   try {
@@ -15,7 +15,7 @@ export async function syncVariableRegistry() {
     
     // 1. CLEANUP PHASE: Fetch all dynamic variables first
     const existingDynamicSnap = await variablesCol
-      .where('source', 'in', ['survey', 'pdf'])
+      .where('source', 'in', ['survey', 'pdf', 'static'])
       .get();
     
     const existingVarIds = new Set(existingDynamicSnap.docs.map(d => d.id));
@@ -38,6 +38,7 @@ export async function syncVariableRegistry() {
     staticVariables.forEach(v => {
       const ref = variablesCol.doc(v.key);
       batch.set(ref, v);
+      varsToKeep.add(v.key);
     });
 
     // 3. DYNAMIC SURVEY HARVESTING
@@ -91,6 +92,7 @@ export async function syncVariableRegistry() {
     });
 
     // 5. PURGE ORPHANS: Delete variables that are no longer in the "keep" set
+    // Note: Constants are excluded from the query in step 1, so they are safe.
     existingVarIds.forEach(id => {
       if (!varsToKeep.has(id)) {
         batch.delete(variablesCol.doc(id));
@@ -104,6 +106,41 @@ export async function syncVariableRegistry() {
     console.error(">>> [VARIABLES] Sync Failed:", error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Creates or updates a Global Constant variable.
+ */
+export async function upsertConstantVariable(data: Partial<VariableDefinition>) {
+    try {
+        const id = data.id || `const_${data.key}`;
+        const finalData = {
+            ...data,
+            source: 'constant',
+            entity: 'Global',
+            category: 'general',
+            type: 'string',
+            updatedAt: new Date().toISOString()
+        };
+        await adminDb.collection('messaging_variables').doc(id).set(finalData, { merge: true });
+        revalidatePath('/admin/messaging/variables');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Deletes a manual constant variable.
+ */
+export async function deleteVariable(id: string) {
+    try {
+        await adminDb.collection('messaging_variables').doc(id).delete();
+        revalidatePath('/admin/messaging/variables');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 }
 
 /**
