@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { VariableDefinition, Survey, PDFForm, SurveyQuestion } from './types';
+import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, Meeting, Submission, SurveyResponse } from './types';
 import { revalidatePath } from 'next/cache';
 
 /**
@@ -86,6 +86,32 @@ export async function syncVariableRegistry() {
     console.error(">>> [VARIABLES] Sync Failed:", error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Fetches data for a specific entity to resolve variables in the composer.
+ */
+export async function fetchContextualData(entity: string, id: string, parentId?: string) {
+    try {
+        let data: any = null;
+        if (entity === 'Meeting') {
+            const snap = await adminDb.collection('meetings').doc(id).get();
+            if (snap.exists) data = snap.data();
+        } else if (entity === 'SurveyResponse' && parentId) {
+            const snap = await adminDb.collection('surveys').doc(parentId).collection('responses').doc(id).get();
+            if (snap.exists) data = snap.data();
+        } else if (entity === 'Submission' && parentId) {
+            const snap = await adminDb.collection('pdfs').doc(parentId).collection('submissions').doc(id).get();
+            if (snap.exists) data = snap.data();
+        } else if (entity === 'School') {
+            const snap = await adminDb.collection('schools').doc(id).get();
+            if (snap.exists) data = snap.data();
+        }
+
+        return { success: true, data };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 }
 
 /**

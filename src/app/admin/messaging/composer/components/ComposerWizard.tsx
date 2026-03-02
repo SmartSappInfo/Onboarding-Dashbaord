@@ -7,11 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson, MessageLog } from '@/lib/types';
+import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson, MessageLog, Meeting, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processBulkJobChunk } from '@/lib/bulk-messaging';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
+import { fetchContextualData } from '@/lib/messaging-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -49,7 +50,11 @@ import {
     Target,
     Layers,
     Wand2,
-    ArrowRight
+    ArrowRight,
+    FileText,
+    ClipboardList,
+    Calendar,
+    Database
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
@@ -71,6 +76,12 @@ const formSchema = z.object({
     schoolId: z.string().optional(),
     isScheduled: z.boolean().default(false),
     scheduledAt: z.date().optional(),
+    // Data Source Bindings
+    sourceMeetingId: z.string().optional(),
+    sourceSurveyId: z.string().optional(),
+    sourceResponseId: z.string().optional(),
+    sourcePdfId: z.string().optional(),
+    sourceSubmissionId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -117,7 +128,13 @@ export default function ComposerWizard() {
     const watchedIsScheduled = watch('isScheduled');
     const watchedSchoolId = watch('schoolId');
     const watchedVariables = watch('variables');
-    const watchedSelectedContacts = watch('selectedContacts');
+    
+    // Watched Data Sources
+    const watchedSourceMeetingId = watch('sourceMeetingId');
+    const watchedSourceSurveyId = watch('sourceSurveyId');
+    const watchedSourceResponseId = watch('sourceResponseId');
+    const watchedSourcePdfId = watch('sourcePdfId');
+    const watchedSourceSubmissionId = watch('sourceSubmissionId');
 
     // Load SMS Balance
     React.useEffect(() => {
@@ -128,44 +145,7 @@ export default function ComposerWizard() {
         fetchBalance();
     }, []);
 
-    // Handle Query Params (Pre-fills and "Correct & Resend")
-    React.useEffect(() => {
-        const correctId = searchParams.get('correctId');
-        if (correctId && firestore) {
-            const logRef = doc(firestore, 'message_logs', correctId);
-            getDoc(logRef).then(snap => {
-                if (snap.exists()) {
-                    const log = snap.data() as MessageLog;
-                    setValue('channel', log.channel);
-                    setValue('templateId', log.templateId);
-                    setValue('senderProfileId', log.senderProfileId);
-                    setValue('recipient', log.recipient);
-                    setValue('variables', log.variables);
-                    setValue('schoolId', log.schoolId || '');
-                    toast({ title: 'Draft Loaded', description: 'Correct any errors and re-dispatch.' });
-                }
-            });
-            return;
-        }
-
-        const tId = searchParams.get('templateId');
-        const chan = searchParams.get('channel') as 'email' | 'sms' | null;
-        const rec = searchParams.get('recipient');
-        const sId = searchParams.get('schoolId');
-        
-        if (chan) setValue('channel', chan);
-        if (tId) setValue('templateId', tId);
-        if (rec) setValue('recipient', rec);
-        if (sId) setValue('schoolId', sId);
-
-        searchParams.forEach((value, key) => {
-            if (key.startsWith('var_')) {
-                const varName = key.replace('var_', '');
-                setValue(`variables.${varName}`, value);
-            }
-        });
-    }, [searchParams, setValue, firestore, toast]);
-
+    // Load Collections for Contextual Binding
     const templatesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('channel', '==', watchedChannel));
@@ -181,9 +161,39 @@ export default function ComposerWizard() {
         return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
     }, [firestore]);
 
+    const meetingsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc'));
+    }, [firestore]);
+
+    const surveysQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'surveys'), where('status', '==', 'published'));
+    }, [firestore]);
+
+    const pdfsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'pdfs'), where('status', '==', 'published'));
+    }, [firestore]);
+
+    const responsesQuery = useMemoFirebase(() => {
+        if (!firestore || !watchedSourceSurveyId) return null;
+        return query(collection(firestore, `surveys/${watchedSourceSurveyId}/responses`), orderBy('submittedAt', 'desc'), limit(50));
+    }, [firestore, watchedSourceSurveyId]);
+
+    const submissionsQuery = useMemoFirebase(() => {
+        if (!firestore || !watchedSourcePdfId) return null;
+        return query(collection(firestore, `pdfs/${watchedSourcePdfId}/submissions`), orderBy('submittedAt', 'desc'), limit(50));
+    }, [firestore, watchedSourcePdfId]);
+
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
-    const { data: profiles, isLoading: isLoadingProfiles } = useCollection<SenderProfile>(profilesQuery);
+    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
     const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: meetings } = useCollection<Meeting>(meetingsQuery);
+    const { data: surveys } = useCollection<Survey>(surveysQuery);
+    const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
+    const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
+    const { data: submissions } = useCollection<Submission>(submissionsQuery);
 
     const selectedTemplate = React.useMemo(() => 
         templates?.find(t => t.id === watchedTemplateId), 
@@ -193,7 +203,51 @@ export default function ComposerWizard() {
         schools?.find(s => s.id === watchedSchoolId),
     [schools, watchedSchoolId]);
 
-    // Smart Variable Resolution
+    // Handle Contextual Binding (Automatic Resolution)
+    React.useEffect(() => {
+        const resolveRecord = async () => {
+            if (watchedSourceMeetingId) {
+                const result = await fetchContextualData('Meeting', watchedSourceMeetingId);
+                if (result.success && result.data) {
+                    setValue('variables.meeting_time', format(new Date(result.data.meetingTime), 'PPP p'));
+                    setValue('variables.meeting_link', result.data.meetingLink);
+                    setValue('variables.meeting_type', result.data.type?.name || '');
+                }
+            }
+        };
+        resolveRecord();
+    }, [watchedSourceMeetingId, setValue]);
+
+    React.useEffect(() => {
+        const resolveResponse = async () => {
+            if (watchedSourceResponseId && watchedSourceSurveyId) {
+                const result = await fetchContextualData('SurveyResponse', watchedSourceResponseId, watchedSourceSurveyId);
+                if (result.success && result.data) {
+                    setValue('variables.score', result.data.score || 0);
+                    result.data.answers?.forEach((a: any) => {
+                        setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value));
+                    });
+                }
+            }
+        };
+        resolveResponse();
+    }, [watchedSourceResponseId, watchedSourceSurveyId, setValue]);
+
+    React.useEffect(() => {
+        const resolveSubmission = async () => {
+            if (watchedSourceSubmissionId && watchedSourcePdfId) {
+                const result = await fetchContextualData('Submission', watchedSourceSubmissionId, watchedSourcePdfId);
+                if (result.success && result.data) {
+                    Object.entries(result.data.formData || {}).forEach(([key, val]) => {
+                        setValue(`variables.${key}`, String(val));
+                    });
+                }
+            }
+        };
+        resolveSubmission();
+    }, [watchedSourceSubmissionId, watchedSourcePdfId, setValue]);
+
+    // Smart Variable Resolution for Schools
     React.useEffect(() => {
         if (selectedSchool) {
             setValue('variables.school_name', selectedSchool.name);
@@ -294,7 +348,6 @@ export default function ComposerWizard() {
             } else {
                 if (csvData.length === 0) throw new Error("No recipient data found.");
                 
-                // Map data using visual mapping
                 const recipients = csvData.map(row => {
                     const mappedVars: Record<string, any> = { ...data.variables };
                     Object.entries(columnMapping).forEach(([templateVar, csvCol]) => {
@@ -361,9 +414,7 @@ export default function ComposerWizard() {
         <div className="space-y-8">
             <div className="flex items-center justify-center gap-8 mb-12">
                 {stepLabel(1, "Blueprint")}
-                <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
                 {stepLabel(2, "Identities")}
-                <ChevronRight className="w-4 h-4 text-muted-foreground/30" />
                 {stepLabel(3, "Validation")}
             </div>
 
@@ -484,8 +535,8 @@ export default function ComposerWizard() {
                                     <Users className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Recipients & Velocity</CardTitle>
-                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure target identities and delivery throughput.</CardDescription>
+                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Identities & Resolution</CardTitle>
+                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Select target identities and bind records for variable resolution.</CardDescription>
                                 </div>
                             </div>
                         </CardHeader>
@@ -544,25 +595,162 @@ export default function ComposerWizard() {
                             <div className="space-y-8">
                                 {watchedMode === 'single' ? (
                                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-10">
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Institution Context</Label>
+                                        {/* Contextual Binding Selectors */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            {/* School Selector (Always visible) */}
+                                            <div className="space-y-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                                    <Building className="h-3 w-3" /> Bind Institution
+                                                </Label>
                                                 <Controller
                                                     name="schoolId"
                                                     control={control}
                                                     render={({ field }) => (
                                                         <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                            <SelectTrigger className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-xl px-6 transition-all">
-                                                                <SelectValue placeholder="Pick institution..." />
+                                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold">
+                                                                <SelectValue placeholder="Pick school..." />
                                                             </SelectTrigger>
-                                                            <SelectContent className="rounded-2xl">
-                                                                <SelectItem value="none">No Specific Context</SelectItem>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="none">Independent</SelectItem>
                                                                 {schools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                                             </SelectContent>
                                                         </Select>
                                                     )}
                                                 />
                                             </div>
+
+                                            {/* Meeting Binder */}
+                                            {selectedTemplate?.category === 'meetings' && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Calendar className="h-3 w-3" /> Bind Session
+                                                    </Label>
+                                                    <Controller
+                                                        name="sourceMeetingId"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+                                                                    <SelectValue placeholder="Pick meeting..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">No Binding</SelectItem>
+                                                                    {meetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                </div>
+                                            )}
+
+                                            {/* Survey Binder */}
+                                            {selectedTemplate?.category === 'surveys' && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                            <ClipboardList className="h-3 w-3" /> Bind Survey
+                                                        </Label>
+                                                        <Controller
+                                                            name="sourceSurveyId"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                    <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+                                                                        <SelectValue placeholder="Pick survey..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="none">No Binding</SelectItem>
+                                                                        {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    {watchedSourceSurveyId && (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                                <Database className="h-3 w-3" /> Select Record
+                                                            </Label>
+                                                            <Controller
+                                                                name="sourceResponseId"
+                                                                control={control}
+                                                                render={({ field }) => (
+                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                        <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+                                                                            <SelectValue placeholder="Pick response..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl">
+                                                                            <SelectItem value="none">None</SelectItem>
+                                                                            {responses?.map(r => (
+                                                                                <SelectItem key={r.id} value={r.id}>
+                                                                                    {format(new Date(r.submittedAt), 'MMM d, HH:mm')} - Score: {r.score}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+
+                                            {/* PDF Binder */}
+                                            {selectedTemplate?.category === 'forms' && (
+                                                <>
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                            <FileText className="h-3 w-3" /> Bind Document
+                                                        </Label>
+                                                        <Controller
+                                                            name="sourcePdfId"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                    <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+                                                                        <SelectValue placeholder="Pick PDF..." />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="none">No Binding</SelectItem>
+                                                                        {pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    {watchedSourcePdfId && (
+                                                        <div className="space-y-2">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                                <Database className="h-3 w-3" /> Select Submission
+                                                            </Label>
+                                                            <Controller
+                                                                name="sourceSubmissionId"
+                                                                control={control}
+                                                                render={({ field }) => (
+                                                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                                                        <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
+                                                                            <SelectValue placeholder="Pick submission..." />
+                                                                        </SelectTrigger>
+                                                                        <SelectContent className="rounded-xl">
+                                                                            <SelectItem value="none">None</SelectItem>
+                                                                            {submissions?.map(s => (
+                                                                                <SelectItem key={s.id} value={s.id}>
+                                                                                    {format(new Date(s.submittedAt), 'MMM d, HH:mm')} - ID: {s.id.substring(0,8)}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+
+                                        <div className="h-px bg-border/50" />
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Manual Recipient Overlay</Label>
                                                 <Controller
@@ -573,16 +761,45 @@ export default function ComposerWizard() {
                                                     )}
                                                 />
                                             </div>
+                                            <div className="space-y-4">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
+                                                <Controller
+                                                    name="isScheduled"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <div className="flex items-center justify-between h-16 bg-muted/20 rounded-[1.25rem] px-6 shadow-inner">
+                                                            <div className="flex items-center gap-3">
+                                                                <CalendarClock className="h-5 w-5 text-muted-foreground" />
+                                                                <span className="text-xs font-bold uppercase tracking-widest">Enable Scheduling</span>
+                                                            </div>
+                                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                                        </div>
+                                                    )}
+                                                />
+                                                {watchedIsScheduled && (
+                                                    <Controller
+                                                        name="scheduledAt"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <DateTimePicker value={field.value} onChange={field.onChange} />
+                                                        )}
+                                                    />
+                                                )}
+                                            </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 bg-muted/10 p-6 rounded-[2rem] border border-border/50 shadow-inner">
+                                            <div className="col-span-full flex items-center justify-between mb-2">
+                                                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Context Overrides</Label>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase opacity-40">Auto-filled via binding</Badge>
+                                            </div>
                                             {selectedTemplate?.variables.map(v => (
                                                 <div key={v} className="space-y-2">
                                                     <Label className="text-[9px] font-black uppercase ml-1 text-muted-foreground">{v.replace(/_/g, ' ')}</Label>
                                                     <Controller
                                                         name={`variables.${v}`}
                                                         control={control}
-                                                        render={({ field }) => <Input {...field} value={field.value ?? ''} className="bg-muted/30 border-none h-12 rounded-xl shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />}
+                                                        render={({ field }) => <Input {...field} value={field.value ?? ''} className="bg-white border border-primary/10 h-11 rounded-xl shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />}
                                                     />
                                                 </div>
                                             ))}
@@ -759,7 +976,6 @@ export default function ComposerWizard() {
 function MessagePreviewer({ template, variables }: { template: MessageTemplate, variables: Record<string, any> }) {
     const combinedVars = { ...variables };
     if (variables.ai_refined_body) {
-        // Show AI refined content if available
         return (
             <div className={cn(
                 "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700 p-8",
