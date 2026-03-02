@@ -75,9 +75,16 @@ export default function QuickTemplateDialog({
 
     const contextVariables = React.useMemo(() => {
         if (!variables) return [];
-        const general = variables.filter(v => v.category === 'general');
-        const specific = variables.filter(v => v.category === category);
-        return [...general, ...specific];
+        // Filter variables that match either 'general' or the specific category
+        const filtered = variables.filter(v => v.category === 'general' || v.category === category);
+        
+        // Deduplicate by ID to prevent "duplicate key" errors if category is 'general'
+        const seen = new Set<string>();
+        return filtered.filter(v => {
+            if (seen.has(v.id)) return false;
+            seen.add(v.id);
+            return true;
+        });
     }, [variables, category]);
 
     const handleInsert = (key: string) => {
