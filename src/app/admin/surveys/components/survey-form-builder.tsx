@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import QuestionEditor from './question-editor';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, Loader2, Check, Layout, ShieldCheck, Zap } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, Loader2, Check, Layout, ShieldCheck, Zap, GripVertical } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import AddElementModal from './add-element-modal';
 import SurveyPreviewButton from './survey-preview-button';
@@ -247,84 +247,9 @@ export default function SurveyFormBuilder() {
     };
 
     return (
-        <div className="relative pb-24">
-            <Card className="bg-muted/30">
-                <CardHeader>
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <CardTitle>Form Builder</CardTitle>
-                            <CardDescription>Build your survey using the editor below.</CardDescription>
-                        </div>
-                         <div className="flex items-center flex-wrap gap-2">
-                             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground min-w-24 text-right transition-all">
-                                {autosaveStatus === 'saving' && (
-                                    <span className="text-primary flex items-center justify-end gap-1 animate-pulse">
-                                        <Loader2 className="h-3 w-3 animate-spin"/> Saving...
-                                    </span>
-                                )}
-                                {autosaveStatus === 'saved' && (
-                                    <span className="text-green-600 flex items-center justify-end gap-1">
-                                        <Check className="h-3 w-3" /> Cached
-                                    </span>
-                                )}
-                            </div>
-                            
-                            <TooltipProvider>
-                                <div className="flex items-center bg-background/50 rounded-xl p-1 border shadow-sm gap-1">
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                type="button"
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allPagesEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                                                onClick={toggleAllPageBreaks}
-                                                disabled={sections.length === 0}
-                                            >
-                                                <Layout className="h-3 w-3" />
-                                                Pages
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Toggle Page Breaks for all Sections</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <Button 
-                                                type="button"
-                                                variant="ghost" 
-                                                size="sm" 
-                                                className={cn("h-8 px-2.5 rounded-lg text-[10px] font-black uppercase tracking-tighter gap-1.5", allValidationEnabled ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                                                onClick={toggleAllValidation}
-                                                disabled={sections.length === 0}
-                                            >
-                                                <ShieldCheck className="h-3 w-3" />
-                                                Strict
-                                            </Button>
-                                        </TooltipTrigger>
-                                        <TooltipContent>Toggle Validation for all Sections</TooltipContent>
-                                    </Tooltip>
-                                </div>
-                            </TooltipProvider>
-
-                            <Separator orientation="vertical" className="h-6 mx-1" />
-                            <AiChatEditor />
-                            <Separator orientation="vertical" className="h-6 mx-1" />
-                            <div className="flex items-center gap-1">
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleUndo} disabled={!canUndo}>
-                                    <Undo className="h-5 w-5" />
-                                </Button>
-                                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-xl" onClick={handleRedo} disabled={!canRedo}>
-                                    <Redo className="h-5 w-5" />
-                                </Button>
-                            </div>
-                            <Separator orientation="vertical" className="h-6 mx-1" />
-                            <SurveyPreviewButton variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                                <Eye className="h-5 w-5" />
-                            </SurveyPreviewButton>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
+        <div className="relative">
+            <div className="flex flex-col md:flex-row gap-8 items-start">
+                <div className="flex-1 w-full">
                     {fields.length > 0 ? (
                         <QuestionEditor 
                             fields={fields} 
@@ -335,7 +260,7 @@ export default function SurveyFormBuilder() {
                             requestAddElement={requestAddElement}
                         />
                     ) : (
-                         <div className="text-center py-20">
+                         <div className="text-center py-20 bg-muted/20 border-2 border-dashed rounded-3xl">
                             <p className="text-muted-foreground mb-4 font-medium italic">This survey has no elements yet.</p>
                             <Button type="button" variant="outline" size="lg" onClick={() => {
                                 setInsertionIndex(0);
@@ -346,8 +271,85 @@ export default function SurveyFormBuilder() {
                             </Button>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+
+                {/* Vertical Builder Toolbar */}
+                <div className="hidden md:block w-14 shrink-0 sticky top-24">
+                    <Card className="shadow-2xl border-primary/10 bg-background/80 backdrop-blur-md p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-black/5">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
+                                        onClick={() => requestAddElement(fields.length - 1)}
+                                    >
+                                        <PlusCircle className="h-5 w-5 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Add Block</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <AiChatEditor variant="icon" />
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+                                        onClick={handleUndo} 
+                                        disabled={!canUndo}
+                                    >
+                                        <Undo className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Undo</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+                                        onClick={handleRedo} 
+                                        disabled={!canRedo}
+                                    >
+                                        <Redo className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Redo</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="inline-block">
+                                        <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl" />
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Preview</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </Card>
+                    
+                    <div className="mt-4 flex flex-col items-center">
+                        <div className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground vertical-rl rotate-180 py-4 opacity-40">
+                            State Architect
+                        </div>
+                    </div>
+                </div>
+            </div>
             
             <AddElementModal 
                 open={isAddElementModalOpen}

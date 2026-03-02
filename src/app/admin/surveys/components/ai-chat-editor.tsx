@@ -13,13 +13,19 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Message {
     role: 'user' | 'assistant';
     content: string;
 }
 
-export default function AiChatEditor() {
+interface AiChatEditorProps {
+    variant?: 'default' | 'icon';
+    className?: string;
+}
+
+export default function AiChatEditor({ variant = 'default', className }: AiChatEditorProps) {
     const { getValues, reset } = useFormContext();
     const { toast } = useToast();
     const [isOpen, setIsOpen] = React.useState(false);
@@ -72,13 +78,11 @@ export default function AiChatEditor() {
             });
 
             if (result.updatedSurvey) {
-                // Ensure background pattern is valid
                 const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
                 const pattern = result.updatedSurvey.backgroundPattern && VALID_PATTERNS.includes(result.updatedSurvey.backgroundPattern) 
                     ? result.updatedSurvey.backgroundPattern 
                     : (currentData.backgroundPattern || 'none');
 
-                // Merge AI architectural changes with current local state to ensure no accidental metadata loss
                 const mergedSurvey = {
                     ...currentData,
                     ...result.updatedSurvey,
@@ -116,7 +120,7 @@ export default function AiChatEditor() {
     };
 
     return (
-        <div className="relative inline-block">
+        <div className={cn("relative inline-block", className)}>
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
@@ -267,18 +271,33 @@ export default function AiChatEditor() {
                 )}
             </AnimatePresence>
 
-            <RainbowButton
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="h-9 px-4 gap-2 font-bold"
-            >
-                {isOpen ? (
-                    <X className="h-4 w-4" />
-                ) : (
-                    <Sparkles className="h-4 w-4" />
-                )}
-                <span>AI Partner</span>
-            </RainbowButton>
+            {variant === 'icon' ? (
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="icon" 
+                                onClick={() => setIsOpen(!isOpen)}
+                                className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
+                            >
+                                {isOpen ? <X className="h-5 w-5 text-primary" /> : <Sparkles className="h-5 w-5 text-primary" />}
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">AI Design Partner</TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+            ) : (
+                <RainbowButton
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="h-9 px-4 gap-2 font-bold"
+                >
+                    {isOpen ? <X className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+                    <span>AI Partner</span>
+                </RainbowButton>
+            )}
         </div>
     );
 }
