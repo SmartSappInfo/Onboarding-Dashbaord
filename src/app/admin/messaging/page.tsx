@@ -13,12 +13,32 @@ import {
     Mail,
     Smartphone,
     History,
-    Activity
+    Activity,
+    RefreshCw,
+    Wallet
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
+import { Button } from '@/components/ui/button';
 
 export default function MessagingHubPage() {
+    const [balance, setBalance] = React.useState<number | null>(null);
+    const [isLoadingBalance, setIsLoadingBalance] = React.useState(false);
+
+    const loadBalance = React.useCallback(async () => {
+        setIsLoadingBalance(true);
+        const result = await fetchSmsBalanceAction();
+        if (result.success) {
+            setBalance(result.balance ?? 0);
+        }
+        setIsLoadingBalance(false);
+    }, []);
+
+    React.useEffect(() => {
+        loadBalance();
+    }, [loadBalance]);
+
     const operations = [
         {
             title: 'Message Composer',
@@ -167,8 +187,24 @@ export default function MessagingHubPage() {
                                     <Smartphone className="h-6 w-6" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                    <p className="font-black text-sm text-foreground">SMS Channel</p>
-                                    <p className="text-[10px] text-muted-foreground uppercase font-black tracking-tight mt-1">Branded Alphanumeric ID</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-black text-sm text-foreground">SMS Channel</p>
+                                        <button 
+                                            onClick={loadBalance} 
+                                            disabled={isLoadingBalance}
+                                            className="text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
+                                        >
+                                            <RefreshCw className={cn("h-3 w-3", isLoadingBalance && "animate-spin")} />
+                                        </button>
+                                    </div>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-orange-50 border border-orange-100">
+                                            <Wallet className="h-3 w-3 text-orange-600" />
+                                            <span className="text-[10px] font-black text-orange-700 uppercase tracking-tighter">
+                                                {isLoadingBalance ? '---' : balance !== null ? `${balance} Credits` : 'N/A'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
                                     <div className="relative flex h-2 w-2">

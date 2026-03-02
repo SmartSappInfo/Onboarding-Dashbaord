@@ -29,11 +29,18 @@ import {
     Check, 
     X,
     Loader2,
-    ArrowLeft
+    ArrowLeft,
+    RefreshCw,
+    Sparkles,
+    ShieldCheck,
+    Clock,
+    AlertCircle
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
+import { Textarea } from '@/components/ui/textarea';
 
 export default function SenderProfilesPage() {
     const firestore = useFirestore();
@@ -52,6 +59,12 @@ export default function SenderProfilesPage() {
     const [editIdentifier, setEditIdentifier] = React.useState('');
     const [isUpdating, setIsUpdating] = React.useState(false);
 
+    // mNotify Logic State
+    const [syncingId, setSyncingId] = React.useState<string | null>(null);
+    const [registeringProfile, setRegisteringProfile] = React.useState<SenderProfile | null>(null);
+    const [regPurpose, setRegPurpose] = React.useState('');
+    const [isRegProcessing, setIsRegProcessing] = React.useState(false);
+
     const profilesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'sender_profiles'), orderBy('createdAt', 'desc'));
@@ -68,7 +81,7 @@ export default function SenderProfilesPage() {
             await addDoc(collection(firestore, 'sender_profiles'), {
                 name: name.trim(),
                 channel,
-                identifier: identifier.trim(),
+                identifier: identifier.trim().toUpperCase(),
                 isDefault: (profiles?.length || 0) === 0,
                 isActive: true,
                 createdAt: new Date().toISOString(),
@@ -100,7 +113,7 @@ export default function SenderProfilesPage() {
             const docRef = doc(firestore, 'sender_profiles', editingProfile.id);
             await updateDoc(docRef, {
                 name: editName.trim(),
-                identifier: editIdentifier.trim(),
+                identifier: editIdentifier.trim().toUpperCase(),
                 updatedAt: new Date().toISOString(),
             });
             setEditingProfile(null);
@@ -111,6 +124,60 @@ export default function SenderProfilesPage() {
             setIsUpdating(false);
         }
     };
+
+    const handleSyncStatus = async (profile: SenderProfile) => {
+        if (profile.channel !== 'sms' || !firestore) return;
+        setSyncingId(profile.id);
+        
+        try {
+            const result = await checkSenderIdStatusAction(profile.identifier);
+            if (result.success) {
+                // Determine a normalized status string based on mNotify response
+                // Logic based on mNotify docs where Success code means approved or it gives text feedback
+                const normalizedStatus = result.message?.toLowerCase().includes('approved') ? 'approved' : 
+                                       result.message?.toLowerCase().includes('pending') ? 'pending' : 
+                                       'not_registered';
+
+                await updateDoc(doc(firestore, 'sender_profiles', profile.id), {
+                    mNotifyStatus: normalizedStatus,
+                    mNotifyMessage: result.message,
+                    updatedAt: new Date().toISOString()
+                });
+                toast({ title: 'Status Synchronized', description: result.message });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Sync Failed', description: e.message });
+        } finally {
+            setSyncingId(null);
+        }
+    }
+
+    const handleStartRegistration = (profile: SenderProfile) => {
+        setRegisteringProfile(profile);
+        setRegPurpose(`Communication for ${profile.name}`);
+    }
+
+    const handleCompleteRegistration = async () => {
+        if (!registeringProfile || !regPurpose.trim()) return;
+        setIsRegProcessing(true);
+        
+        try {
+            const result = await registerSenderIdAction(registeringProfile.identifier, regPurpose.trim());
+            if (result.success) {
+                toast({ title: 'Registration Submitted', description: result.message });
+                await handleSyncStatus(registeringProfile);
+                setRegisteringProfile(null);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Registration Failed', description: e.message });
+        } finally {
+            setIsRegProcessing(false);
+        }
+    }
 
     const toggleActive = async (profile: SenderProfile) => {
         if (!firestore) return;
@@ -123,6 +190,19 @@ export default function SenderProfilesPage() {
         await deleteDoc(doc(firestore, 'sender_profiles', id));
         toast({ title: 'Profile Deleted' });
     };
+
+    const getStatusBadge = (profile: any) => {
+        if (profile.channel !== 'sms') return null;
+        
+        const status = profile.mNotifyStatus || 'unknown';
+        
+        switch (status) {
+            case 'approved': return <Badge className="bg-green-500 hover:bg-green-600 text-white border-none text-[8px] h-5 gap-1 uppercase tracking-tighter"><ShieldCheck className="h-2.5 w-2.5" /> Approved</Badge>;
+            case 'pending': return <Badge variant="secondary" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-orange-200 text-orange-700 bg-orange-50"><Clock className="h-2.5 w-2.5" /> Pending</Badge>;
+            case 'not_registered': return <Badge variant="outline" className="text-[8px] h-5 gap-1 uppercase tracking-tighter border-dashed"><X className="h-2.5 w-2.5" /> Not Registered</Badge>;
+            default: return <Badge variant="ghost" className="text-[8px] h-5 uppercase tracking-tighter opacity-40">Unsynced</Badge>;
+        }
+    }
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
@@ -194,6 +274,7 @@ export default function SenderProfilesPage() {
                             <TableHead className="text-[10px] font-black uppercase tracking-widest">Channel</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-widest">Identifier</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Status</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Active</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-widest text-right pr-6">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -223,7 +304,36 @@ export default function SenderProfilesPage() {
                                             {profile.channel}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs">{profile.identifier}</TableCell>
+                                    <TableCell className="font-mono text-xs uppercase">{profile.identifier}</TableCell>
+                                    <TableCell className="text-center">
+                                        <div className="flex flex-col items-center gap-1.5">
+                                            {getStatusBadge(profile)}
+                                            {profile.channel === 'sms' && (
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={() => handleSyncStatus(profile)} 
+                                                        disabled={syncingId === profile.id}
+                                                        className="text-[9px] font-bold text-primary flex items-center gap-1 hover:underline"
+                                                    >
+                                                        <RefreshCw className={cn("h-2.5 w-2.5", syncingId === profile.id && "animate-spin")} />
+                                                        Sync
+                                                    </button>
+                                                    {(!profile.mNotifyStatus || profile.mNotifyStatus === 'not_registered') && (
+                                                        <>
+                                                            <span className="text-[9px] text-muted-foreground/30">|</span>
+                                                            <button 
+                                                                onClick={() => handleStartRegistration(profile)}
+                                                                className="text-[9px] font-bold text-orange-600 flex items-center gap-1 hover:underline"
+                                                            >
+                                                                <Sparkles className="h-2.5 w-2.5" />
+                                                                Register
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </TableCell>
                                     <TableCell className="text-center">
                                         <Switch 
                                             checked={profile.isActive} 
@@ -255,7 +365,7 @@ export default function SenderProfilesPage() {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={5} className="h-32 text-center text-muted-foreground italic">No sender profiles configured.</TableCell>
+                                <TableCell colSpan={6} className="h-32 text-center text-muted-foreground italic">No sender profiles configured.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -290,7 +400,7 @@ export default function SenderProfilesPage() {
                                 <Input 
                                     id="edit-identifier"
                                     value={editIdentifier} 
-                                    onChange={e => setEditIdentifier(e.target.value)} 
+                                    onChange={e => setEditIdentifier(e.target.value.toUpperCase())} 
                                     placeholder={editingProfile?.channel === 'sms' ? 'SMARTSAPP' : 'notifications@smartsapp.com'} 
                                     required 
                                     maxLength={editingProfile?.channel === 'sms' ? 11 : undefined}
@@ -305,6 +415,52 @@ export default function SenderProfilesPage() {
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Registration Dialog */}
+            <Dialog open={!!registeringProfile} onOpenChange={(open) => !open && setRegisteringProfile(null)}>
+                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden">
+                    <DialogHeader className="p-6 pb-0">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-orange-100 rounded-lg text-orange-600">
+                                <Smartphone className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl font-black">Register Sender ID</DialogTitle>
+                                <DialogDescription>Register &ldquo;{registeringProfile?.identifier}&rdquo; with mNotify.</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-6 space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Purpose of ID</Label>
+                            <Textarea 
+                                value={regPurpose} 
+                                onChange={e => setRegPurpose(e.target.value)}
+                                placeholder="Explain how you will use this ID (e.g., for school announcements and notifications)"
+                                className="min-h-[100px] rounded-xl bg-muted/20 border-none"
+                            />
+                        </div>
+                        <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                            <Info className="h-5 w-5 text-blue-600 shrink-0" />
+                            <p className="text-[10px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                mNotify usually reviews Sender ID requests within 24-48 business hours. 
+                                You will be able to sync the status once processed.
+                            </p>
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-muted/30 p-4">
+                        <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing}>Cancel</Button>
+                        <Button 
+                            onClick={handleCompleteRegistration} 
+                            disabled={isRegProcessing || !regPurpose.trim()}
+                            className="rounded-xl font-bold px-8 shadow-lg"
+                        >
+                            {isRegProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                            Submit for Approval
+                        </Button>
+                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
