@@ -17,6 +17,7 @@ interface SendMessageInput {
 
 /**
  * Main entry point for sending a single message via the messaging engine.
+ * Decouples the application logic from the underlying gateway (mNotify).
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, schoolId } = input;
@@ -36,7 +37,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     if (!sender.isActive) throw new Error(`Sender Profile "${sender.name}" is inactive.`);
     if (!template.isActive) throw new Error(`Template "${template.name}" is inactive.`);
-    if (template.channel !== sender.channel) throw new Error(`Channel mismatch: Template is ${template.channel}, but Sender is ${sender.channel}.`);
+    if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
     // 2. Resolve Subject & Body
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', variables) : undefined;
@@ -53,18 +54,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       }
     }
 
-    // 4. Perform Actual Delivery (Integration Point)
-    let mNotifyResponse = null;
+    // 4. Perform Actual Delivery
+    let providerResponse = null;
     
     if (template.channel === 'sms') {
-        console.log(`>>> [MESSAGING] Dispatching via mNotify: ${sender.identifier} to ${recipient}`);
-        mNotifyResponse = await sendSms({
+        providerResponse = await sendSms({
             recipient,
             message: resolvedBody,
             sender: sender.identifier
         });
     } else {
-        // Email placeholder
+        // Email placeholder for next phase
         console.log(`>>> [MESSAGING] Email dispatch simulation: ${sender.identifier} to ${recipient}`);
     }
 
@@ -89,7 +89,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // 6. Sync with Activity Timeline
     await logActivity({
         schoolId: logData.schoolId || '',
-        userId: null, // System-initiated
+        userId: null, 
         type: 'notification_sent',
         source: 'system',
         description: `Sent ${template.channel} "${template.name}" to ${recipient}`,
@@ -97,31 +97,15 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             logId: logRef.id, 
             channel: template.channel, 
             templateName: template.name,
-            providerResponse: mNotifyResponse 
+            mNotifyStatus: providerResponse?.status 
         }
     });
 
     return { success: true, logId: logRef.id };
 
   } catch (error: any) {
-    console.error(">>> [MESSAGING] FAILED TO SEND:", error.message);
+    console.error(">>> [MESSAGING] DISPATCH ERROR:", error.message);
     
-    // Attempt to log failure if we have enough context
-    try {
-        await adminDb.collection('message_logs').add({
-            templateId,
-            senderProfileId,
-            recipient,
-            status: 'failed',
-            error: error.message,
-            sentAt: new Date().toISOString(),
-            variables,
-            schoolId: schoolId || variables.schoolId || variables.school_id,
-        });
-    } catch (logError) {
-        console.error(">>> [MESSAGING] Could not record failure log.");
-    }
-
     return { success: false, error: error.message };
   }
 }

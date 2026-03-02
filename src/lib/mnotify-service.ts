@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Server-side service for interacting with mNotify BMS API v2.0.
- * All functions here are designed to protect the API key and handle data normalization.
+ * Follows functional patterns and handles data normalization for the Ghana SMS gateway.
  */
 
 const BASE_URL = 'https://api.mnotify.com/api';
@@ -11,40 +11,35 @@ const API_KEY = process.env.MNOTIFY_API_KEY;
 
 /**
  * Normalizes a phone number to the Ghana 233 format required by mNotify.
- * Handles +233, 0..., and local 9-digit numbers.
  */
 function normalizePhoneNumber(phone: string): string {
   const digits = phone.replace(/\D/g, '');
   if (digits.startsWith('233') && digits.length === 12) return digits;
   if (digits.startsWith('0') && digits.length === 10) return '233' + digits.substring(1);
   if (digits.length === 9) return '233' + digits;
-  return digits; // Fallback
+  return digits;
 }
 
 /**
- * Formats a JS Date to the mNotify required format: YYYY-MM-DD hh:mm
+ * Formats a Date to YYYY-MM-DD hh:mm as required by mNotify.
  */
 function formatNotifyDate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
-  const y = date.getFullYear();
-  const m = pad(date.getMonth() + 1);
-  const d = pad(date.getDate());
-  const h = pad(date.getHours());
-  const min = pad(date.getMinutes());
-  return `${y}-${m}-${d} ${h}:${min}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/**
+ * Core request handler for mNotify API.
+ */
 async function mNotifyRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE', body?: any) {
-  if (!API_KEY) throw new Error("MNOTIFY_API_KEY is not configured in environment variables.");
+  if (!API_KEY) throw new Error("MNOTIFY_API_KEY is not configured.");
 
   const url = new URL(`${BASE_URL}${endpoint}`);
   url.searchParams.append('key', API_KEY);
 
   const options: RequestInit = {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
   };
 
   if (body) {
@@ -54,6 +49,7 @@ async function mNotifyRequest(endpoint: string, method: 'GET' | 'POST' | 'PUT' |
   const response = await fetch(url.toString(), options);
   const data = await response.json();
 
+  // mNotify returns status: 'success' or HTTP-like codes in the JSON
   if (data.status !== 'success' && data.status !== 200) {
     throw new Error(data.message || 'mNotify API Request Failed');
   }
@@ -76,7 +72,7 @@ export async function sendSms(params: {
 
   const payload = {
     recipient: recipients,
-    sender: params.sender.substring(0, 11), // Strict 11 char limit
+    sender: params.sender.substring(0, 11),
     message: params.message,
     is_schedule: !!params.scheduleDate,
     schedule_date: params.scheduleDate ? formatNotifyDate(params.scheduleDate) : "",
