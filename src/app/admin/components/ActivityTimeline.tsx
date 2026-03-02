@@ -30,6 +30,7 @@ export default function ActivityTimeline({ schoolId, userId, type, zoneId, limit
   const firestore = useFirestore();
 
   // HIGH PERFORMANCE: Fetch a pool of latest activities once.
+  // We avoid filtering here to bypass index latency and permission complexities.
   const activitiesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(

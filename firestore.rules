@@ -9,8 +9,9 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
-      return isSignedIn() && exists(userPath) && get(userPath).data.isAuthorized == true;
+      // Simplified check: directly get the user profile and check the flag.
+      // This is more resilient to propagation delays than exists() + get().
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true;
     }
 
     // By default, deny all reads and writes.

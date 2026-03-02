@@ -24,18 +24,23 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 export default function NotificationBell() {
     const firestore = useFirestore();
     
-    // Notifications are essentially Activities of type 'notification_sent' or important system events
+    // Notifications are essentially Activities.
+    // We pull the pool of recent activities and filter for "system" (team alerts) in frontend.
     const notificationsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(
             collection(firestore, 'activities'),
-            where('source', '==', 'system'), // Internal system events
             orderBy('timestamp', 'desc'),
-            limit(10)
+            limit(50)
         );
     }, [firestore]);
 
-    const { data: notifications, isLoading } = useCollection<Activity>(notificationsQuery);
+    const { data: allActivities, isLoading } = useCollection<Activity>(notificationsQuery);
+
+    const notifications = React.useMemo(() => {
+        if (!allActivities) return [];
+        return allActivities.filter(a => a.source === 'system').slice(0, 10);
+    }, [allActivities]);
 
     const unreadCount = React.useMemo(() => {
         // For MVP, we treat anything in the last hour as "new"
