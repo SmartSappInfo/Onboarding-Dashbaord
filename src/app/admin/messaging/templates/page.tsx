@@ -2,9 +2,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock, MessageBlockRule } from '@/lib/types';
+import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock, MessageBlockRule, School, Meeting, Survey, SurveyResponse, PDFForm } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,7 +20,10 @@ import {
     Type, Image as ImageIcon, Video, MousePointer2, Quote, Square, 
     PlusCircle, ArrowUp, ArrowDown, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Layers,
-    ChevronDown, Layout, Trophy as TrophyIcon, Zap, Filter
+    ChevronDown, Layout, Trophy as TrophyIcon, Zap, Filter,
+    MonitorPlay,
+    Bug,
+    ShieldCheck
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -33,12 +36,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MediaSelect } from '../../schools/components/media-select';
-import { renderBlocksToHtml } from '@/lib/messaging-utils';
+import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/messaging-utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { fetchContextualData } from '@/lib/messaging-actions';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -382,9 +386,9 @@ function BlockInspector({
 }
 
 function SortableBlockItem({ 
-    id, index, block, variables, onUpdate, onRemove, onDuplicate, onMoveUp, onMoveDown, onInsertVariable 
+    id, index, block, variables, simulationVars, onUpdate, onRemove, onDuplicate, onMoveUp, onMoveDown, onInsertVariable 
 }: { 
-    id: string, index: number, block: MessageBlock, variables: VariableDefinition[], onUpdate: (p: Partial<MessageBlock>) => void, 
+    id: string, index: number, block: MessageBlock, variables: VariableDefinition[], simulationVars?: Record<string, any>, onUpdate: (p: Partial<MessageBlock>) => void, 
     onRemove: () => void, onDuplicate: () => void, onMoveUp: () => void, onMoveDown: () => void,
     onInsertVariable: (key: string) => void
 }) {
@@ -397,6 +401,7 @@ function SortableBlockItem({
     };
 
     const hasLogic = block.visibilityLogic?.rules?.length && block.visibilityLogic.rules.length > 0;
+    const isHiddenByLogic = hasLogic && simulationVars && !shouldShowBlock(block, simulationVars);
 
     return (
         <div ref={setNodeRef} style={style} className="relative group/block">
@@ -410,7 +415,8 @@ function SortableBlockItem({
             
             <Card className={cn(
                 "bg-card shadow-none border transition-all rounded-2xl overflow-hidden",
-                hasLogic ? "border-primary/40 ring-1 ring-primary/5" : "hover:border-primary/40"
+                hasLogic ? "border-primary/40 ring-1 ring-primary/5" : "hover:border-primary/40",
+                isHiddenByLogic && "grayscale opacity-40 border-dashed border-red-200"
             )}>
                 <CardHeader className="py-2 px-4 flex flex-row items-center justify-between space-y-0 border-b bg-muted/10">
                     <div className="flex items-center gap-3">
@@ -419,14 +425,18 @@ function SortableBlockItem({
                         </div>
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">{block.type}</span>
                         {hasLogic && (
-                            <Badge variant="secondary" className="h-4 bg-primary text-white border-none text-[7px] px-1 font-black uppercase flex items-center gap-1">
-                                <Zap className="h-2 w-2 fill-white" /> Logic Active
+                            <Badge variant="secondary" className={cn(
+                                "h-4 border-none text-[7px] px-1.5 font-black uppercase flex items-center gap-1",
+                                isHiddenByLogic ? "bg-red-500 text-white" : "bg-primary text-white"
+                            )}>
+                                <Zap className="h-2 w-2 fill-white" /> 
+                                {isHiddenByLogic ? 'Filtered Out' : 'Logic Active'}
                             </Badge>
                         )}
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-all">
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveUp} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
-                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveDown}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onMoveDown} disabled={index === (simulationVars ? 0 : 0)}><ArrowDown className="h-3.5 w-3.5" /></Button>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onDuplicate}><Copy className="h-3.5 w-3.5" /></Button>
                         <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
@@ -435,6 +445,13 @@ function SortableBlockItem({
                     <BlockInspector block={block} variables={variables} onChange={onUpdate} />
                 </CardContent>
             </Card>
+            {isHiddenByLogic && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+                    <div className="bg-red-600/90 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] rotate-[-5deg] shadow-2xl flex items-center gap-2">
+                        <Bug className="h-3 w-3" /> Logic simulation: Block Hidden
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -462,6 +479,12 @@ export default function MessageTemplatesPage() {
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+    // Simulation State
+    const [simEntity, setSimEntity] = React.useState<'School' | 'Meeting' | 'Survey' | 'none'>('none');
+    const [simRecordId, setSimEntityId] = React.useState('none');
+    const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
+    const [isSimLoading, setIsSimLoading] = React.useState(false);
+
     const sensors = useSensors(useSensor(PointerSensor));
 
     const templatesQuery = useMemoFirebase(() => {
@@ -474,8 +497,26 @@ export default function MessageTemplatesPage() {
         return query(collection(firestore, 'messaging_variables'));
     }, [firestore]);
 
+    const schoolsQuery = useMemoFirebase(() => {
+        if (!firestore || simEntity !== 'School') return null;
+        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
+    }, [firestore, simEntity]);
+
+    const meetingsQuery = useMemoFirebase(() => {
+        if (!firestore || simEntity !== 'Meeting') return null;
+        return query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc'));
+    }, [firestore, simEntity]);
+
+    const surveysQuery = useMemoFirebase(() => {
+        if (!firestore || simEntity !== 'Survey') return null;
+        return query(collection(firestore, 'surveys'), where('status', '==', 'published'));
+    }, [firestore, simEntity]);
+
     const { data: templates, isLoading } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: simSchools } = useCollection<School>(schoolsQuery);
+    const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
+    const { data: simSurveys } = useCollection<Survey>(surveysQuery);
 
     const contextVariables = React.useMemo(() => {
         if (!variables) return [];
@@ -485,6 +526,54 @@ export default function MessageTemplatesPage() {
         filtered.forEach(v => uniqueMap.set(v.key, v));
         return Array.from(uniqueMap.values());
     }, [variables, category, editingTemplate]);
+
+    // Handle Simulation Resolution
+    React.useEffect(() => {
+        const resolveSimData = async () => {
+            if (simEntity === 'none' || simRecordId === 'none') {
+                setSimVariables({});
+                return;
+            }
+            setIsSimLoading(true);
+            try {
+                let entityType = simEntity === 'Survey' ? 'SurveyResponse' : simEntity;
+                let id = simRecordId;
+                let parentId = undefined;
+
+                if (simEntity === 'Survey') {
+                    const respSnap = await getDocs(query(collection(firestore!, `surveys/${simRecordId}/responses`), limit(1)));
+                    if (!respSnap.empty) {
+                        id = respSnap.docs[0].id;
+                        parentId = simRecordId;
+                    }
+                }
+
+                const result = await fetchContextualData(entityType, id, parentId);
+                if (result.success && result.data) {
+                    const vars: Record<string, any> = { ...result.data };
+                    // Flatten for rendering
+                    if (simEntity === 'Meeting') {
+                        vars.meeting_time = format(new Date(result.data.meetingTime), 'PPP p');
+                        vars.meeting_link = result.data.meetingLink;
+                        vars.meeting_type = result.data.type?.name;
+                    }
+                    if (simEntity === 'School') {
+                        vars.school_name = result.data.name;
+                        vars.contact_name = result.data.contactPerson;
+                    }
+                    if (simEntity === 'Survey' && result.data.answers) {
+                        result.data.answers.forEach((a: any) => { vars[a.questionId] = a.value; });
+                    }
+                    setSimVariables(vars);
+                }
+            } catch (e) {
+                console.error("Simulation failed:", e);
+            } finally {
+                setIsSimLoading(false);
+            }
+        };
+        resolveSimData();
+    }, [simEntity, simRecordId, firestore]);
 
     const handleAddBlock = (type: MessageBlock['type']) => {
         const newBlock: MessageBlock = {
@@ -592,6 +681,8 @@ export default function MessageTemplatesPage() {
         setBlocks([]);
         setCategory('general');
         setChannel('sms');
+        setSimEntity('none');
+        setSimEntityId('none');
     };
 
     const handleEditClick = (template: MessageTemplate) => {
@@ -719,6 +810,7 @@ export default function MessageTemplatesPage() {
                                                                 index={idx} 
                                                                 block={block}
                                                                 variables={contextVariables}
+                                                                simulationVars={simVariables}
                                                                 onUpdate={(u) => handleUpdateBlock(block.id, u)}
                                                                 onRemove={() => handleRemoveBlock(block.id)}
                                                                 onDuplicate={() => handleDuplicateBlock(block.id)}
@@ -766,14 +858,84 @@ export default function MessageTemplatesPage() {
                     </div>
 
                     <div className="lg:col-span-1 space-y-6">
-                        <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm sticky top-24">
+                        {/* Simulation & Debugging Panel */}
+                        <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-primary/20 shadow-xl bg-primary/5">
                             <CardHeader className="bg-primary text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0">
+                                <div className="flex items-center gap-2">
+                                    <MonitorPlay className="h-4 w-4" />
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Simulator Studio</span>
+                                </div>
+                                {isSimLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+                            </CardHeader>
+                            <CardContent className="p-6 space-y-6">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Sample Provider</Label>
+                                        <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimEntityId('none'); }}>
+                                            <SelectTrigger className="h-10 bg-white border-primary/10 rounded-xl font-bold">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">No Simulation</SelectItem>
+                                                <SelectItem value="School">School Data</SelectItem>
+                                                <SelectItem value="Meeting">Meeting Record</SelectItem>
+                                                <SelectItem value="Survey">Survey Result</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {simEntity !== 'none' && (
+                                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                                            <Label className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Target Record</Label>
+                                            <Select value={simRecordId} onValueChange={setSimEntityId}>
+                                                <SelectTrigger className="h-10 bg-white border-primary/10 rounded-xl font-bold">
+                                                    <SelectValue placeholder="Pick sample..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="none">Choose record...</SelectItem>
+                                                    {simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                    {simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
+                                                    {simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {Object.keys(simVariables).length > 0 ? (
+                                    <div className="pt-4 border-t border-primary/10 space-y-3">
+                                        <div className="flex items-center justify-between px-1">
+                                            <span className="text-[9px] font-black uppercase text-primary/60">Resolved Trace</span>
+                                            <Badge className="bg-emerald-500 text-white text-[7px] h-4 border-none">Active</Badge>
+                                        </div>
+                                        <ScrollArea className="h-48 rounded-xl bg-white/50 border border-primary/10 p-2 shadow-inner">
+                                            <div className="space-y-1.5">
+                                                {Object.entries(simVariables).map(([k, v]) => (
+                                                    <div key={k} className="flex flex-col gap-0.5 px-2 py-1.5 hover:bg-white rounded-lg transition-colors">
+                                                        <span className="text-[8px] font-mono font-black text-primary/40 uppercase">{"{{" + k + "}}"}</span>
+                                                        <span className="text-[10px] font-bold truncate text-foreground/80">{String(v)}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                    </div>
+                                ) : simEntity !== 'none' && (
+                                    <div className="p-4 rounded-xl border border-dashed border-primary/20 text-center space-y-2">
+                                        <Info className="h-5 w-5 text-primary/30 mx-auto" />
+                                        <p className="text-[9px] font-bold text-primary/60 uppercase leading-relaxed">Select a record to simulate variable resolution and logic branching.</p>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm">
+                            <CardHeader className="bg-muted/10 py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0 border-b">
                                 <div className="flex items-center gap-2">
                                     <Database className="h-4 w-4" />
                                     <span className="text-[10px] font-black uppercase tracking-widest">Variable Library</span>
                                 </div>
                             </CardHeader>
-                            <ScrollArea className="h-[600px] bg-background">
+                            <ScrollArea className="h-[400px] bg-background">
                                 <div className="p-4 space-y-4">
                                     <div className="space-y-2">
                                         {contextVariables.map(v => (
@@ -925,6 +1087,10 @@ export default function MessageTemplatesPage() {
                                     <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorized rendering for &ldquo;{previewTemplate?.name}&rdquo;</DialogDescription>
                                 </div>
                             </div>
+                            <div className="flex flex-col items-end">
+                                <Badge className="bg-primary h-5 text-[8px] font-black uppercase tracking-widest">Real-time simulation</Badge>
+                                {simVariables.school_name && <p className="text-[9px] font-bold text-primary mt-1">Bound: {simVariables.school_name}</p>}
+                            </div>
                         </div>
                     </DialogHeader>
                     
@@ -934,11 +1100,11 @@ export default function MessageTemplatesPage() {
                                 <div className="flex flex-col h-full">
                                     <div className="p-8 bg-muted/30 border-b space-y-2">
                                         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">Handset Subject</p>
-                                        <p className="font-black text-xl text-foreground">{previewTemplate.subject || '(No Subject)'}</p>
+                                        <p className="font-black text-xl text-foreground">{resolveVariables(previewTemplate.subject || '', simVariables) || '(No Subject)'}</p>
                                     </div>
                                     <div className="flex-1 p-1">
                                         <iframe 
-                                            srcDoc={previewTemplate.blocks?.length ? renderBlocksToHtml(previewTemplate.blocks, {}) : previewTemplate.body}
+                                            srcDoc={previewTemplate.blocks?.length ? renderBlocksToHtml(previewTemplate.blocks, simVariables) : resolveVariables(previewTemplate.body, simVariables)}
                                             className="w-full min-h-[600px] border-none"
                                             title="Email Rendering"
                                         />
@@ -953,7 +1119,7 @@ export default function MessageTemplatesPage() {
                                         </div>
                                         <div className="bg-white/5 border border-white/10 rounded-[2rem] p-6 relative shadow-inner group">
                                             <div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] rotate-45 rounded-sm border-l border-b border-white/10" />
-                                            <p className="text-[15px] text-white/95 leading-relaxed font-bold whitespace-pre-wrap">{previewTemplate?.body}</p>
+                                            <p className="text-[15px] text-white/95 leading-relaxed font-bold whitespace-pre-wrap">{resolveVariables(previewTemplate?.body || '', simVariables)}</p>
                                         </div>
                                     </div>
                                 </div>
