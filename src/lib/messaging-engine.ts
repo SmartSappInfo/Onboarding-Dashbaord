@@ -41,7 +41,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
     // 2. Resolve Subject & Body
-    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', variables) : undefined;
+    // FIXED: Ensure resolvedSubject is null instead of undefined for SMS to avoid Firestore crashes
+    let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', variables) : null;
     let resolvedBody = resolveVariables(template.body, variables);
 
     // 3. Apply Style (Email only)
@@ -72,6 +73,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     }
 
     // 5. Create Audit Log
+    // Clean variables to remove any 'undefined' values which Firestore rejects
+    const cleanedVariables = JSON.parse(JSON.stringify(variables));
+
     const logData: Omit<MessageLog, 'id'> = {
       templateId: template.id,
       templateName: template.name,
@@ -79,20 +83,25 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       senderName: sender.name,
       channel: sender.channel,
       recipient,
-      subject: resolvedSubject,
+      subject: resolvedSubject || null,
       body: resolvedBody,
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),
-      variables,
-      schoolId: schoolId || variables.schoolId || variables.school_id,
+      variables: cleanedVariables,
+      schoolId: schoolId || variables.schoolId || variables.school_id || null,
       providerId: providerResponse?.summary?._id || null, // Store mNotify ID if available
     };
 
-    const logRef = await adminDb.collection('message_logs').add(logData);
+    // Robust sanitization: remove any key that is explicitly undefined
+    const sanitizedLogData = Object.fromEntries(
+        Object.entries(logData).filter(([_, v]) => v !== undefined)
+    );
+
+    const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
     // 6. Sync with Activity Timeline
     await logActivity({
-        schoolId: logData.schoolId || '',
+        schoolId: (logData.schoolId as string) || '',
         userId: null, 
         type: 'notification_sent',
         source: 'system',
