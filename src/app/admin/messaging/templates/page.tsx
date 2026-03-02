@@ -3,9 +3,9 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock, MessageBlockRule, School, Meeting, Survey, SurveyResponse, PDFForm } from '@/lib/types';
+import type { MessageTemplate, MessageStyle, VariableDefinition, MessageBlock, MessageBlockRule, SurveyResultPage, School, Meeting, Survey } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -38,7 +38,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MediaSelect } from '../../schools/components/media-select';
@@ -227,7 +227,7 @@ function ColumnEditor({
                 {columns.map((col, cIdx) => (
                     <div key={cIdx} className="p-4 rounded-xl border border-dashed bg-muted/20 relative group/col">
                         <div className="flex items-center justify-between mb-3">
-                            <span className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Column ${cIdx + 1}</span>
+                            <span className="text-[9px] font-black uppercase text-primary/60 tracking-widest">Column #{cIdx + 1}</span>
                             <Button 
                                 type="button" 
                                 variant="ghost" 
@@ -261,7 +261,7 @@ function ColumnEditor({
                             
                             <Select onValueChange={(type: any) => {
                                 const newBlock: MessageBlock = { id: `blk_${Date.now()}`, type, title: `New ${type}`, content: '', style: { textAlign: 'left' } };
-                                updateColumn(colIdx, [...col.blocks, newBlock]);
+                                updateColumn(cIdx, [...col.blocks, newBlock]);
                             }}>
                                 <SelectTrigger className="h-8 border-dashed bg-white/50 text-[9px] font-black uppercase">
                                     <SelectValue placeholder="+ Add Inner Block" />
@@ -478,7 +478,7 @@ function BlockInspector({
                         )}
                     </div>
                 )}
-            </TabsList>
+            </TabsContent>
 
             <TabsContent value="logic" className="m-0 animate-in fade-in slide-in-from-top-2 duration-300">
                 <BlockLogicEditor 
@@ -845,7 +845,7 @@ export default function MessageTemplatesPage() {
         let t = templates;
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
-            t = t.filter(x => x.name.toLowerCase().includes(s) || x.body.toLowerCase().includes(s));
+            t = t.filter(x => x.name.toLowerCase().includes(s) || (x.body && x.body.toLowerCase().includes(s)));
         }
         if (categoryFilter !== 'all') {
             t = t.filter(x => x.category === categoryFilter);
@@ -1085,7 +1085,7 @@ export default function MessageTemplatesPage() {
                                     <div className="pt-4 border-t border-primary/10 space-y-3">
                                         <div className="flex items-center justify-between px-1">
                                             <span className="text-[9px] font-black uppercase text-primary/60">Resolved Trace</span>
-                                            <Badge className="bg-emerald-500 text-white text-[7px] h-4 border-none">Active</Badge>
+                                            <Badge className="bg-emerald-50 text-white text-[7px] h-4 border-none">Active</Badge>
                                         </div>
                                         <ScrollArea className="h-48 rounded-xl bg-white/50 border border-primary/10 p-2 shadow-inner">
                                             <div className="space-y-1.5">
@@ -1233,7 +1233,7 @@ export default function MessageTemplatesPage() {
                                             </CardHeader>
                                             <CardContent className="px-6 pb-6 space-y-6">
                                                 <div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">
-                                                    &ldquo;{template.blocks?.length ? `${template.blocks.length} Content Blocks` : template.body.replace(/<[^>]*>?/gm, '')}&rdquo;
+                                                    &ldquo;{template.blocks?.length ? `${template.blocks.length} Content Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {template.variables.map(v => (
