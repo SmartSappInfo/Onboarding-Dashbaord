@@ -403,6 +403,12 @@ export interface MessageLog {
   variables: Record<string, any>;
   schoolId?: string;
   providerId?: string; // Provider-specific ID (e.g. mNotify Campaign ID)
+  providerStatus?: string;
+  updatedAt?: string;
+  hasAttachments?: boolean;
+  attachmentCount?: number;
+  openedCount?: number;
+  clickedCount?: number;
 }
 
 export interface MessageJob {

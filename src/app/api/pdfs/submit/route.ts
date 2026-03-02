@@ -2,6 +2,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
 import { sendMessage } from '@/lib/messaging-engine';
+import { generatePdfBuffer } from '@/lib/pdf-actions';
+import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
@@ -18,7 +20,7 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Form not found' }, { status: 404 });
     }
 
-    const pdfData = pdfSnap.data();
+    const pdfData = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
     if (pdfData?.status !== 'published') {
       return Response.json({ error: 'Form is not published' }, { status: 403 });
     }
@@ -32,20 +34,35 @@ export async function POST(req: Request) {
 
     const submissionRef = await pdfRef.collection('submissions').add(submissionData);
 
-    // Messaging Automation Trigger
-    if (pdfData?.confirmationMessagingEnabled && pdfData?.confirmationTemplateId && pdfData?.confirmationSenderProfileId) {
-        // Attempt to find a recipient from the form data (look for email or phone)
-        // Check for specific field types first
+    // Messaging Automation Trigger with ATTACHMENT support
+    if (pdfData.confirmationMessagingEnabled && pdfData.confirmationTemplateId && pdfData.confirmationSenderProfileId) {
+        
         const recipientField = (pdfData.fields as any[]).find((f: any) => f.type === 'email' || f.type === 'phone');
         const recipientValue = recipientField ? formData[recipientField.id] : null;
 
         if (recipientValue) {
             console.log(`>>> [AUTOMATION] Triggering PDF Confirmation for ${recipientValue}`);
-            // Perform actual dispatch
+            
+            let attachments = [];
+            
+            try {
+                // Generate the signed PDF buffer in the background
+                const pdfBuffer = await generatePdfBuffer(pdfData, formData);
+                attachments.push({
+                    content: pdfBuffer.toString('base64'),
+                    filename: `${pdfData.name}-Signed.pdf`,
+                    type: 'application/pdf'
+                });
+            } catch (genError) {
+                console.error(">>> [AUTOMATION] PDF Generation failed for email attachment:", genError);
+            }
+
+            // Perform dispatch
             await sendMessage({
                 templateId: pdfData.confirmationTemplateId,
                 senderProfileId: pdfData.confirmationSenderProfileId,
                 recipient: String(recipientValue),
+                attachments: attachments.length > 0 ? attachments : undefined,
                 variables: {
                     ...formData,
                     form_name: pdfData.name,

@@ -6,13 +6,14 @@ import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog } from '.
 import { resolveVariables } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
-import { sendEmail } from './resend-service';
+import { sendEmail, type EmailAttachment } from './resend-service';
 
 interface SendMessageInput {
   templateId: string;
   senderProfileId: string;
   recipient: string;
   variables: Record<string, any>;
+  attachments?: EmailAttachment[];
   schoolId?: string;
   scheduledAt?: string; // ISO string
 }
@@ -22,7 +23,7 @@ interface SendMessageInput {
  * Decouples the application logic from the underlying gateways (mNotify & Resend).
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
-  const { templateId, senderProfileId, recipient, variables, schoolId, scheduledAt } = input;
+  const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
 
   try {
     // 1. Fetch Core Assets
@@ -71,10 +72,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerStatus = providerResponse?.status;
     } else {
         const providerResponse = await sendEmail({
-            from: sender.identifier, // This should be a verified email like "Name <noreply@enroll.smartsapp.com>"
+            from: sender.identifier, 
             to: recipient,
             subject: resolvedSubject || 'Notification',
             html: resolvedBody,
+            attachments: attachments,
             scheduledAt: scheduledAt
         });
         providerId = providerResponse?.id;
@@ -98,6 +100,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       schoolId: schoolId || variables.schoolId || variables.school_id || null,
       providerId: providerId || null,
       providerStatus: providerStatus || null,
+      hasAttachments: !!(attachments && attachments.length > 0),
+      attachmentCount: attachments?.length || 0,
     };
 
     // Robust sanitization: remove any key that is explicitly undefined
@@ -119,7 +123,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             channel: template.channel, 
             templateName: template.name,
             providerId: providerId,
-            scheduledAt: scheduledAt
+            scheduledAt: scheduledAt,
+            hasAttachments: logData.hasAttachments
         }
     });
 

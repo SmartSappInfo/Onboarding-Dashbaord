@@ -20,7 +20,8 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
     History, ArrowLeft, Mail, Smartphone, CheckCircle2, XCircle, 
-    Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck
+    Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck,
+    FileText, MousePointer2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -80,7 +81,6 @@ export default function MessageLogsPage() {
                     isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
                 } else throw new Error(result.error);
             } else {
-                // Resend Status Sync
                 const result = await fetchEmailStatusAction(selectedLog.providerId);
                 if (result.success) {
                     providerStatus = result.data.last_event || 'sent';
@@ -249,6 +249,30 @@ export default function MessageLogsPage() {
                     
                     <ScrollArea className="flex-1">
                         <div className="p-6 space-y-10 pb-20">
+                            {/* Read Receipt Stats */}
+                            {selectedLog?.channel === 'email' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Card className="bg-emerald-50 border-emerald-100 rounded-2xl">
+                                        <CardContent className="p-4 flex items-center gap-4">
+                                            <div className="p-2.5 bg-emerald-500 text-white rounded-xl"><Eye className="h-4 w-4" /></div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase text-emerald-700">Opens</p>
+                                                <p className="text-2xl font-black text-emerald-900">{selectedLog.openedCount || 0}</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                    <Card className="bg-blue-50 border-blue-100 rounded-2xl">
+                                        <CardContent className="p-4 flex items-center gap-4">
+                                            <div className="p-2.5 bg-blue-500 text-white rounded-xl"><MousePointer2 className="h-4 w-4" /></div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase text-blue-700">Clicks</p>
+                                                <p className="text-2xl font-black text-blue-900">{selectedLog.clickedCount || 0}</p>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                </div>
+                            )}
+
                             {/* Metadata Grid */}
                             <div className="grid grid-cols-2 gap-8 bg-muted/20 p-6 rounded-3xl border border-border/50">
                                 <div className="space-y-1">
@@ -282,6 +306,18 @@ export default function MessageLogsPage() {
                                 </div>
                             </div>
 
+                            {selectedLog?.hasAttachments && (
+                                <Card className="bg-primary/5 border-primary/20 rounded-2xl">
+                                    <CardContent className="p-4 flex items-center gap-4">
+                                        <div className="p-2 bg-primary/10 rounded-lg text-primary"><FileText className="h-5 w-5" /></div>
+                                        <div>
+                                            <p className="text-sm font-black text-primary uppercase tracking-tight">Attachments Included</p>
+                                            <p className="text-[10px] font-bold text-primary/60 uppercase">{selectedLog.attachmentCount} file(s) transmitted</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
                             {selectedLog?.providerId && (
                                 <Card className="bg-slate-50 border-dashed border-2 rounded-2xl">
                                     <CardContent className="p-4 flex items-center justify-between">
@@ -295,33 +331,6 @@ export default function MessageLogsPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
-                            )}
-
-                            {selectedLog?.schoolId && (
-                                <Card className="bg-primary/5 border-primary/20 rounded-2xl overflow-hidden group hover:border-primary transition-all">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-3 bg-primary/10 rounded-xl text-primary group-hover:bg-primary group-hover:text-white transition-colors"><Building className="h-5 w-5" /></div>
-                                            <div>
-                                                <p className="text-[10px] font-black uppercase tracking-widest text-primary leading-none mb-1">Target School Environment</p>
-                                                <p className="text-sm font-black truncate max-w-[200px]">ID: {selectedLog.schoolId}</p>
-                                            </div>
-                                        </div>
-                                        <Button variant="link" asChild className="h-8 text-[10px] font-black uppercase tracking-widest text-primary">
-                                            <Link href={`/admin/schools/${selectedLog.schoolId}`}>Open Console</Link>
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {selectedLog?.status === 'failed' && (
-                                <div className="p-5 rounded-2xl border-2 border-destructive/20 bg-destructive/5 flex items-start gap-4 shadow-sm">
-                                    <AlertCircle className="h-6 w-6 text-destructive shrink-0 mt-0.5" />
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black uppercase tracking-widest text-destructive">Termination Error</p>
-                                        <p className="text-sm font-bold text-destructive/80 leading-relaxed">{selectedLog.error}</p>
-                                    </div>
-                                </div>
                             )}
 
                             <Separator className="opacity-50" />
@@ -356,21 +365,6 @@ export default function MessageLogsPage() {
                                     </div>
                                 )}
                             </div>
-
-                            {/* Raw Variables */}
-                            {selectedLog?.variables && Object.keys(selectedLog.variables).length > 0 && (
-                                <div className="space-y-3">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Dynamic logic resolution (Raw)</Label>
-                                    <div className="bg-muted/50 p-5 rounded-2xl font-mono text-[9px] grid grid-cols-2 gap-3 shadow-inner border border-border/50">
-                                        {Object.entries(selectedLog.variables).map(([key, val]) => (
-                                            <div key={key} className="truncate group" title={`${key}: ${val}`}>
-                                                <span className="text-primary font-black uppercase tracking-tighter opacity-60 group-hover:opacity-100 transition-opacity">{key}:</span> 
-                                                <span className="ml-2 font-bold text-foreground/80">{String(val)}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </ScrollArea>
                     <DialogFooter className="p-4 bg-muted/30 border-t shrink-0">

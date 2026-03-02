@@ -10,6 +10,12 @@ const BASE_URL = 'https://api.resend.com';
 const API_KEY = process.env.RESEND_API_KEY;
 const DOMAIN = process.env.RESEND_DOMAIN || 'enroll.smartsapp.com';
 
+export interface EmailAttachment {
+  content: string; // Base64 string
+  filename: string;
+  type?: string; // Mime type
+}
+
 /**
  * Core request handler for Resend API using native fetch.
  */
@@ -40,13 +46,14 @@ async function resendRequest(endpoint: string, method: 'GET' | 'POST' | 'PATCH' 
 
 /**
  * Sends an email or schedules one for later.
- * @param params Object containing recipient, subject, html, and optional scheduledAt.
+ * @param params Object containing recipient, subject, html, attachments, and optional scheduledAt.
  */
 export async function sendEmail(params: {
   from?: string;
   to: string | string[];
   subject: string;
   html: string;
+  attachments?: EmailAttachment[];
   scheduledAt?: string; // ISO 8601 format
 }) {
   const payload = {
@@ -54,6 +61,7 @@ export async function sendEmail(params: {
     to: params.to,
     subject: params.subject,
     html: params.html,
+    attachments: params.attachments,
     scheduled_at: params.scheduledAt,
   };
 
@@ -64,12 +72,20 @@ export async function sendEmail(params: {
  * Sends multiple emails in a single batch request for high performance.
  * @param emails Array of individual email objects.
  */
-export async function sendBatchEmails(emails: { from?: string; to: string | string[]; subject: string; html: string; scheduledAt?: string }[]) {
+export async function sendBatchEmails(emails: { 
+    from?: string; 
+    to: string | string[]; 
+    subject: string; 
+    html: string; 
+    attachments?: EmailAttachment[];
+    scheduledAt?: string 
+}[]) {
   const payload = emails.map(email => ({
     from: email.from || `SmartSapp <notifications@${DOMAIN}>`,
     to: email.to,
     subject: email.subject,
     html: email.html,
+    attachments: email.attachments,
     scheduled_at: email.scheduledAt,
   }));
 
