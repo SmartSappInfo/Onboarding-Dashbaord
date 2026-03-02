@@ -41,7 +41,8 @@ import {
     Building,
     Wallet,
     Trophy,
-    TrendingUp
+    TrendingUp,
+    Zap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
