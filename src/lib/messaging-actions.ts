@@ -6,6 +6,12 @@ import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, Meeting, Subm
 import { revalidatePath } from 'next/cache';
 
 /**
+ * @fileOverview Server-side actions for the Variable Registry.
+ * Handles harvesting dynamic schema from Surveys and PDFs, managing constants,
+ * and resolving data for the messaging engine.
+ */
+
+/**
  * Synchronizes the Variable Registry by scanning Schools, Meetings, Surveys, and PDFs.
  * Includes a cleanup phase to remove orphaned dynamic variables while preserving constants.
  */
@@ -13,7 +19,7 @@ export async function syncVariableRegistry() {
   try {
     const variablesCol = adminDb.collection('messaging_variables');
     
-    // 1. CLEANUP PHASE: Fetch all dynamic variables first
+    // 1. CLEANUP PHASE: Fetch all dynamic variables first (excluding constants)
     const existingDynamicSnap = await variablesCol
       .where('source', 'in', ['survey', 'pdf', 'static'])
       .get();
@@ -24,12 +30,14 @@ export async function syncVariableRegistry() {
     const batch = adminDb.batch();
 
     // 2. STATIC CORE VARIABLES (Always Sync/Update)
+    // We've expanded these to include focal person data for smarter targeting.
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
       { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
       { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
       { key: 'school_location', label: 'School Location', category: 'general', source: 'static', entity: 'School', path: 'location', type: 'string' },
       { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
       { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
+      { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'contactPerson', type: 'string' },
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
@@ -42,7 +50,7 @@ export async function syncVariableRegistry() {
     });
 
     // 3. DYNAMIC SURVEY HARVESTING
-    const surveysSnap = await adminDb.collection('surveys').where('status', '==', 'published').get();
+    const surveysSnap = await adminDb.collection('surveys').where('status', '!=', 'archived').get();
     surveysSnap.forEach(doc => {
       const survey = doc.data() as Survey;
       const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
@@ -66,7 +74,7 @@ export async function syncVariableRegistry() {
     });
 
     // 4. DYNAMIC PDF FORM HARVESTING
-    const pdfsSnap = await adminDb.collection('pdfs').where('status', '==', 'published').get();
+    const pdfsSnap = await adminDb.collection('pdfs').where('status', '!=', 'archived').get();
     pdfsSnap.forEach(doc => {
       const pdf = doc.data() as PDFForm;
       const fields = pdf.fields || [];
@@ -92,7 +100,6 @@ export async function syncVariableRegistry() {
     });
 
     // 5. PURGE ORPHANS: Delete variables that are no longer in the "keep" set
-    // Note: Constants are excluded from the query in step 1, so they are safe.
     existingVarIds.forEach(id => {
       if (!varsToKeep.has(id)) {
         batch.delete(variablesCol.doc(id));

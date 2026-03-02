@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { collection, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, doc, getDoc, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, SenderProfile, MessageStyle, School, FocalPerson, MessageLog, Meeting, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
 import { sendMessage } from '@/lib/messaging-engine';
@@ -64,6 +64,7 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
@@ -107,6 +108,9 @@ export default function ComposerWizard() {
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
     const [smsBalance, setSmsBalance] = React.useState<number | null>(null);
+
+    // Recipient Targeting State (Phase 7)
+    const [recipientSuggestions, setRecipientSuggestions] = React.useState<{ label: string, value: string, source: string }[]>([]);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -203,6 +207,41 @@ export default function ComposerWizard() {
         schools?.find(s => s.id === watchedSchoolId),
     [schools, watchedSchoolId]);
 
+    // Phase 7: Recipient Discovery Logic
+    const discoverRecipients = React.useCallback((data: any, source: string) => {
+        const candidates: { label: string, value: string, source: string }[] = [];
+        if (!data) return candidates;
+
+        const isEmail = watchedChannel === 'email';
+        
+        // Strategy 1: Check standard fields
+        if (isEmail && data.email) candidates.push({ label: `School Admin (${data.email})`, value: data.email, source });
+        if (!isEmail && data.phone) candidates.push({ label: `School Phone (${data.phone})`, value: data.phone, source });
+        if (data.contactPerson) candidates.push({ label: `Contact: ${data.contactPerson}`, value: isEmail ? data.email : data.phone, source });
+
+        // Strategy 2: Check deep focal persons (Schools)
+        if (data.focalPersons && Array.isArray(data.focalPersons)) {
+            data.focalPersons.forEach((p: FocalPerson) => {
+                candidates.push({ label: `${p.type}: ${p.name}`, value: isEmail ? p.email : p.phone, source: 'Focal Person' });
+            });
+        }
+
+        // Strategy 3: Dynamic harvesting from survey answers or PDF fields
+        if (data.answers || data.formData) {
+            const fields = data.answers || Object.entries(data.formData).map(([k, v]) => ({ questionId: k, value: v }));
+            fields.forEach((f: any) => {
+                const val = String(f.value);
+                if (isEmail && val.includes('@') && val.includes('.')) {
+                    candidates.push({ label: `Detected Email`, value: val, source });
+                } else if (!isEmail && val.length >= 10 && /^\+?[\d\s-]+$/.test(val)) {
+                    candidates.push({ label: `Detected Phone`, value: val, source });
+                }
+            });
+        }
+
+        return candidates.filter(c => !!c.value);
+    }, [watchedChannel]);
+
     // Handle Contextual Binding (Automatic Resolution)
     React.useEffect(() => {
         const resolveRecord = async () => {
@@ -227,11 +266,13 @@ export default function ComposerWizard() {
                     result.data.answers?.forEach((a: any) => {
                         setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value));
                     });
+                    // Phase 7: Recipient Auto-Discovery
+                    setRecipientSuggestions(prev => [...prev, ...discoverRecipients(result.data, 'Survey')]);
                 }
             }
         };
         resolveResponse();
-    }, [watchedSourceResponseId, watchedSourceSurveyId, setValue]);
+    }, [watchedSourceResponseId, watchedSourceSurveyId, setValue, discoverRecipients]);
 
     React.useEffect(() => {
         const resolveSubmission = async () => {
@@ -241,11 +282,13 @@ export default function ComposerWizard() {
                     Object.entries(result.data.formData || {}).forEach(([key, val]) => {
                         setValue(`variables.${key}`, String(val));
                     });
+                    // Phase 7: Recipient Auto-Discovery
+                    setRecipientSuggestions(prev => [...prev, ...discoverRecipients(result.data, 'PDF')]);
                 }
             }
         };
         resolveSubmission();
-    }, [watchedSourceSubmissionId, watchedSourcePdfId, setValue]);
+    }, [watchedSourceSubmissionId, watchedSourcePdfId, setValue, discoverRecipients]);
 
     // Smart Variable Resolution for Schools
     React.useEffect(() => {
@@ -254,8 +297,12 @@ export default function ComposerWizard() {
             setValue('variables.school_location', selectedSchool.location || '');
             setValue('variables.school_phone', selectedSchool.phone || '');
             setValue('variables.school_email', selectedSchool.email || '');
+            setValue('variables.contact_name', selectedSchool.contactPerson || '');
+            
+            // Phase 7: Focal Person Discovery
+            setRecipientSuggestions(prev => [...prev, ...discoverRecipients(selectedSchool, 'School')]);
         }
-    }, [selectedSchool, setValue]);
+    }, [selectedSchool, setValue, discoverRecipients]);
 
     // Handle CSV Processing
     const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -569,7 +616,7 @@ export default function ComposerWizard() {
 
                                 <div className="space-y-4">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">4. Dispatch Mode</Label>
-                                    <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50">
+                                    <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-[1.25rem] border border-border/50 shadow-inner">
                                         <Button 
                                             type="button" 
                                             variant={watchedMode === 'single' ? 'secondary' : 'ghost'} 
@@ -752,14 +799,53 @@ export default function ComposerWizard() {
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                             <div className="space-y-4">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Manual Recipient Overlay</Label>
-                                                <Controller
-                                                    name="recipient"
-                                                    control={control}
-                                                    render={({ field }) => (
-                                                        <Input {...field} placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-8" />
+                                                <div className="flex items-center justify-between px-1">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Manual Recipient Overlay</Label>
+                                                    {recipientSuggestions.length > 0 && (
+                                                        <TooltipProvider>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> Discovery Active
+                                                                    </div>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent>Targeting suggestions available from bound record</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
                                                     )}
-                                                />
+                                                </div>
+                                                <div className="space-y-3">
+                                                    <Controller
+                                                        name="recipient"
+                                                        control={control}
+                                                        render={({ field }) => (
+                                                            <Input {...field} placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-8" />
+                                                        )}
+                                                    />
+                                                    
+                                                    {/* Phase 7: Smart Suggestions UI */}
+                                                    {recipientSuggestions.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2 pt-1">
+                                                            {recipientSuggestions.map((sug, i) => (
+                                                                <button
+                                                                    key={i}
+                                                                    type="button"
+                                                                    onClick={() => setValue('recipient', sug.value)}
+                                                                    className={cn(
+                                                                        "flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all hover:scale-105 active:scale-95",
+                                                                        watch('recipient') === sug.value ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-primary/10 text-primary hover:bg-primary/5"
+                                                                    )}
+                                                                >
+                                                                    <Contact className="h-3 w-3" />
+                                                                    <div className="text-left leading-none">
+                                                                        <p className="text-[9px] font-black uppercase tracking-tighter">{sug.label}</p>
+                                                                        <p className="text-[8px] opacity-60 font-bold">{sug.source}</p>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                             <div className="space-y-4">
                                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Schedule Delay (Optional)</Label>
@@ -810,7 +896,7 @@ export default function ComposerWizard() {
                                         {!csvData.length ? (
                                             <div className="p-16 border-4 border-dashed rounded-[4rem] flex flex-col items-center justify-center text-center gap-8 bg-muted/10 border-muted-foreground/10 hover:border-primary/30 transition-all duration-700">
                                                 <Upload className="h-12 w-12 text-primary" />
-                                                <Input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
+                                                <input type="file" accept=".csv" className="hidden" id="csv-upload" onChange={handleCsvUpload} />
                                                 <Button asChild variant="outline" className="rounded-2xl border-2 font-black h-16 px-16 uppercase tracking-widest text-xs">
                                                     <label htmlFor="csv-upload" className="cursor-pointer">Identify Data Stream (.CSV)</label>
                                                 </Button>
