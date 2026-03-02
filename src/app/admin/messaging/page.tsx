@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -36,12 +35,12 @@ import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-acti
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell, Pie, PieChart, Legend } from 'recharts';
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';
 import { subDays, format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import MessageJobsView from './jobs/page';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query } from 'firebase/firestore';
 import type { MessageLog } from '@/lib/types';
 
 const chartConfig = {
@@ -158,6 +157,15 @@ export default function MessagingHubPage() {
             color: 'text-purple-500',
             bg: 'bg-purple-500/10',
             border: 'hover:border-purple-500/50'
+        },
+        {
+            title: 'Sender Profiles',
+            description: 'Manage authorized SMS Sender IDs and verified Email identities.',
+            icon: Fingerprint,
+            href: '/admin/messaging/profiles',
+            color: 'text-blue-600',
+            bg: 'bg-blue-600/10',
+            border: 'hover:border-blue-600/50'
         }
     ];
 
@@ -202,7 +210,7 @@ export default function MessagingHubPage() {
                         <MessageSquareText className="h-6 w-6" />
                     </div>
                     <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">
-                        Messaging Engine
+                        Messaging Centre
                     </h1>
                 </div>
                 <p className="text-muted-foreground text-lg font-medium">Control and monitor all manual and automated school communications.</p>
@@ -283,7 +291,7 @@ export default function MessagingHubPage() {
 
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Mission Operations</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Messaging Tasks</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -295,10 +303,10 @@ export default function MessagingHubPage() {
 
                     <section>
                         <div className="flex items-center gap-3 mb-8">
-                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Architectural Infrastructure</Badge>
+                            <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-border text-muted-foreground">Messaging Setup</Badge>
                             <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                             {infrastructure.map((mod) => (
                                 <ModuleCard key={mod.title} mod={mod} />
                             ))}
