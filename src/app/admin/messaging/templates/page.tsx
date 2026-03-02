@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -20,7 +19,7 @@ import {
     Type, Image as ImageIcon, Video, MousePointer2, Quote, Square, 
     PlusCircle, ArrowUp, ArrowDown, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, List, ListOrdered, Layers,
-    ChevronDown, Layout
+    ChevronDown, Layout, Trophy as TrophyIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -32,12 +31,12 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { MediaSelect } from '../../schools/components/media-select';
+import { renderBlocksToHtml } from '@/lib/messaging-utils';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -52,6 +51,7 @@ const blockIcons: Record<string, React.ElementType> = {
     footer: Layers,
     logo: SmartSappIcon,
     columns: Layout,
+    'score-card': TrophyIcon,
 };
 
 type GroupByOption = 'none' | 'category' | 'channel';
@@ -59,7 +59,7 @@ type GroupByOption = 'none' | 'category' | 'channel';
 // --- SUB-COMPONENTS ---
 
 function BlockInspector({ block, onChange }: { block: MessageBlock, onChange: (props: Partial<MessageBlock>) => void }) {
-    const isTextType = ['text', 'heading', 'quote', 'button'].includes(block.type);
+    const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
 
     return (
         <div className="space-y-6 pt-4 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -89,13 +89,27 @@ function BlockInspector({ block, onChange }: { block: MessageBlock, onChange: (p
                     </div>
                 )}
 
-                {block.type === 'text' && (
+                {(block.type === 'text' || block.type === 'quote') && (
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Paragraph Content</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
                         <Textarea 
                             value={block.content || ''} 
                             onChange={e => onChange({ content: e.target.value })}
-                            className="min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed" 
+                            className={cn(
+                                "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
+                                block.type === 'quote' && "italic"
+                            )} 
+                        />
+                    </div>
+                )}
+
+                {(block.type === 'header' || block.type === 'footer') && (
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{block.type} Content</Label>
+                        <Input 
+                            value={block.content || ''} 
+                            onChange={e => onChange({ content: e.target.value })} 
+                            className="font-bold" 
                         />
                     </div>
                 )}
@@ -132,6 +146,67 @@ function BlockInspector({ block, onChange }: { block: MessageBlock, onChange: (p
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Action Link</Label>
                             <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
+                        </div>
+                    </div>
+                )}
+
+                {block.type === 'list' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
+                            <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => onChange({ listStyle: 'unordered' })}
+                                >
+                                    <List className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => onChange({ listStyle: 'ordered' })}
+                                >
+                                    <ListOrdered className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            {block.items?.map((item, idx) => (
+                                <div key={idx} className="flex items-center gap-2">
+                                    <Input 
+                                        value={item} 
+                                        onChange={e => {
+                                            const newItems = [...(block.items || [])];
+                                            newItems[idx] = e.target.value;
+                                            onChange({ items: newItems });
+                                        }}
+                                        className="h-9"
+                                    />
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-destructive"
+                                        onClick={() => onChange({ items: block.items?.filter((_, i) => i !== idx) })}
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ))}
+                            <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                className="w-full border-dashed"
+                                onClick={() => onChange({ items: [...(block.items || []), 'New item'] })}
+                            >
+                                <Plus className="h-3 w-3 mr-2" /> Add Item
+                            </Button>
                         </div>
                     </div>
                 )}
@@ -233,10 +308,6 @@ export default function MessageTemplatesPage() {
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-    // AI Form State
-    const [aiPrompt, setAiPrompt] = React.useState('');
-    const [isAiProcessing, setIsAiProcessing] = React.useState(false);
-
     const sensors = useSensors(useSensor(PointerSensor));
 
     const templatesQuery = useMemoFirebase(() => {
@@ -252,42 +323,12 @@ export default function MessageTemplatesPage() {
     const { data: templates, isLoading } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
 
-    const registryKeys = React.useMemo(() => new Set(variables?.map(v => v.key) || []), [variables]);
-
-    const filteredTemplates = React.useMemo(() => {
-        if (!templates) return [];
-        return templates.filter(t => {
-            const matchesSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                 t.body.toLowerCase().includes(searchTerm.toLowerCase());
-            const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
-            const matchesChannel = channelFilter === 'all' || t.channel === channelFilter;
-            return matchesSearch && matchesCategory && matchesChannel;
-        });
-    }, [templates, searchTerm, categoryFilter, channelFilter]);
-
-    const groupedTemplates = React.useMemo(() => {
-        if (groupBy === 'none') return { 'All Templates': filteredTemplates };
-        return filteredTemplates.reduce((acc, t) => {
-            const key = groupBy === 'category' ? t.category : t.channel;
-            const groupKey = key.charAt(0).toUpperCase() + key.slice(1);
-            if (!acc[groupKey]) acc[groupKey] = [];
-            acc[groupKey].push(t);
-            return acc;
-        }, {} as Record<string, MessageTemplate[]>);
-    }, [filteredTemplates, groupBy]);
-
     const contextVariables = React.useMemo(() => {
         if (!variables) return [];
         const activeCategory = editingTemplate ? editingTemplate.category : category;
-        const generalVars = variables.filter(v => v.category === 'general');
-        let specificVars: VariableDefinition[] = [];
-        if (activeCategory === 'meetings') specificVars = variables.filter(v => v.category === 'meetings');
-        if (activeCategory === 'surveys') specificVars = variables.filter(v => v.category === 'surveys');
-        if (activeCategory === 'forms') specificVars = variables.filter(v => v.category === 'forms');
-
-        // Use a map to deduplicate by key
+        const filtered = variables.filter(v => v.category === 'general' || v.category === activeCategory);
         const uniqueMap = new Map<string, VariableDefinition>();
-        [...generalVars, ...specificVars].forEach(v => uniqueMap.set(v.key, v));
+        filtered.forEach(v => uniqueMap.set(v.key, v));
         return Array.from(uniqueMap.values());
     }, [variables, category, editingTemplate]);
 
@@ -297,7 +338,9 @@ export default function MessageTemplatesPage() {
             type,
             title: type === 'heading' ? 'New Heading' : type === 'button' ? 'Action Button' : '',
             content: type === 'text' ? 'New paragraph content...' : '',
-            style: { textAlign: 'left' },
+            items: type === 'list' ? ['Point one', 'Point two'] : undefined,
+            listStyle: type === 'list' ? 'unordered' : undefined,
+            style: { textAlign: type === 'logo' ? 'center' : 'left' },
             variant: type === 'heading' ? 'h2' : undefined,
         };
         setBlocks(prev => [...prev, newBlock]);
@@ -334,7 +377,6 @@ export default function MessageTemplatesPage() {
 
     const handleInsertVariable = (key: string) => {
         const tag = `{{${key}}}`;
-        // Find focused input and insert tag
         const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
         if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
             const start = active.selectionStart || 0;
@@ -409,6 +451,17 @@ export default function MessageTemplatesPage() {
         setIsAdding(true);
     };
 
+    const groupedTemplates = React.useMemo(() => {
+        if (groupBy === 'none') return { 'All Templates': filteredTemplates };
+        return filteredTemplates.reduce((acc, t) => {
+            const key = groupBy === 'category' ? t.category : t.channel;
+            const groupKey = key.charAt(0).toUpperCase() + key.slice(1);
+            if (!acc[groupKey]) acc[groupKey] = [];
+            acc[groupKey].push(t);
+            return acc;
+        }, {} as Record<string, MessageTemplate[]>);
+    }, [filteredTemplates, groupBy]);
+
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
@@ -424,9 +477,6 @@ export default function MessageTemplatesPage() {
                     <p className="text-muted-foreground font-medium">Build structural communication assets with institutional data.</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-10 px-4 gap-2 font-bold shadow-lg">
-                        <Sparkles className="h-4 w-4" /> Create with AI
-                    </RainbowButton>
                     <Button onClick={() => { setIsAdding(!isAdding); if(!isAdding) resetForm(); }} variant={isAdding ? "ghost" : "default"} className="font-bold rounded-xl h-10 px-6 shadow-xl">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                         {isAdding ? 'Cancel' : 'New Template'}
@@ -436,7 +486,6 @@ export default function MessageTemplatesPage() {
 
             {isAdding ? (
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 animate-in slide-in-from-top-4 duration-500">
-                    {/* Main Builder Area */}
                     <div className="lg:col-span-3 space-y-8">
                         <Card className="shadow-2xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
                             <CardHeader className="bg-muted/30 border-b pb-6 p-8">
@@ -478,15 +527,18 @@ export default function MessageTemplatesPage() {
                                         </div>
                                         
                                         <div className="space-y-6">
-                                            <div className="flex items-center justify-between px-1">
-                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Content Canvas</Label>
-                                                <div className="flex gap-2">
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('logo')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><SmartSappIcon className="h-3 w-3" /> Logo</Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('header')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><Layers className="h-3 w-3" /> Header</Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('heading')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><Heading1 className="h-3 w-3" /> Title</Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('text')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><Type className="h-3 w-3" /> Text</Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('image')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><ImageIcon className="h-3 w-3" /> Image</Button>
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('button')} className="h-7 text-[8px] font-black uppercase tracking-tighter rounded-lg gap-1.5"><MousePointer2 className="h-3 w-3" /> CTA</Button>
+                                            <div className="flex flex-wrap items-center justify-between gap-4 px-1">
+                                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Content Studio</Label>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('logo')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><SmartSappIcon className="h-3 w-3" /> Logo</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('header')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Layers className="h-3 w-3" /> Header</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('heading')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Heading1 className="h-3 w-3" /> Title</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('text')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Type className="h-3 w-3" /> Text</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('list')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><List className="h-3 w-3" /> List</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('image')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><ImageIcon className="h-3 w-3" /> Image</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('button')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><MousePointer2 className="h-3 w-3" /> CTA</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('score-card')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><TrophyIcon className="h-3 w-3" /> Score</Button>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => handleAddBlock('footer')} className="h-7 text-[8px] font-black uppercase rounded-lg gap-1.5"><Layers className="h-3 w-3" /> Footer</Button>
                                                 </div>
                                             </div>
 
@@ -539,28 +591,22 @@ export default function MessageTemplatesPage() {
                                 <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold">Discard</Button>
                                 <Button onClick={handleSave} disabled={isSubmitting} className="px-12 rounded-[1.25rem] font-black shadow-2xl active:scale-95 transition-all text-base uppercase tracking-widest bg-primary text-white">
                                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                    {editingTemplate ? 'Update Logic' : 'Save Template'}
+                                    {editingTemplate ? 'Update Template' : 'Save Template'}
                                 </Button>
                             </CardFooter>
                         </Card>
                     </div>
 
-                    {/* Variable Sidebar */}
                     <div className="lg:col-span-1 space-y-6">
                         <Card className="rounded-[2rem] overflow-hidden border-none ring-1 ring-border shadow-sm sticky top-24">
                             <CardHeader className="bg-primary text-white py-4 px-6 shrink-0 flex flex-row items-center justify-between space-y-0">
                                 <div className="flex items-center gap-2">
                                     <Database className="h-4 w-4" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Library</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest">Variable Library</span>
                                 </div>
-                                <Badge variant="outline" className="text-[8px] font-black uppercase border-white/20 text-white bg-white/10 h-5">Live Hub</Badge>
                             </CardHeader>
                             <ScrollArea className="h-[600px] bg-background">
                                 <div className="p-4 space-y-4">
-                                    <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-40" />
-                                        <Input placeholder="Find tags..." className="pl-9 h-9 rounded-xl bg-muted/20 border-none text-xs font-bold" />
-                                    </div>
                                     <div className="space-y-2">
                                         {contextVariables.map(v => (
                                             <button
@@ -670,7 +716,7 @@ export default function MessageTemplatesPage() {
                                                     )}>
                                                         {template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
                                                     </div>
-                                                    <div className="min-w-0">
+                                                    <div className="min-w-0 flex-1">
                                                         <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
                                                         <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
                                                     </div>
