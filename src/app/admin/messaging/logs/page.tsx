@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
     History, ArrowLeft, Mail, Smartphone, CheckCircle2, XCircle, 
     Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck,
-    FileText, MousePointer2
+    FileText, MousePointer2, Wand2, ArrowRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -40,17 +39,20 @@ import { fetchSmsStatusAction } from '@/lib/mnotify-actions';
 import { fetchEmailStatusAction } from '@/lib/resend-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 export default function MessageLogsPage() {
     const firestore = useFirestore();
+    const router = useRouter();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedLog, setSelectedLog] = React.useState<MessageLog | null>(null);
     const [isSyncing, setIsSyncing] = React.useState(false);
 
+    // Pull all logs and filter in frontend for reliability
     const logsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, 'message_logs'), orderBy('sentAt', 'desc'), limit(100));
+        return query(collection(firestore, 'message_logs'), orderBy('sentAt', 'desc'), limit(200));
     }, [firestore]);
 
     const { data: logs, isLoading } = useCollection<MessageLog>(logsQuery);
@@ -249,6 +251,33 @@ export default function MessageLogsPage() {
                     
                     <ScrollArea className="flex-1">
                         <div className="p-6 space-y-10 pb-20">
+                            {/* Error Diagnostics */}
+                            {selectedLog?.status === 'failed' && (
+                                <Card className="bg-red-50 border-red-100 rounded-2xl animate-pulse">
+                                    <CardContent className="p-4 flex items-center gap-4 text-red-800">
+                                        <AlertCircle className="h-6 w-6 text-red-600" />
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase tracking-widest">Deep Diagnostic Failure</p>
+                                            <p className="text-sm font-bold uppercase tracking-tighter">{selectedLog.error || 'Provider rejected the dispatch attempt.'}</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            )}
+
+                            {/* Correct & Resend Workflow */}
+                            {selectedLog?.status === 'failed' && (
+                                <Button 
+                                    className="w-full h-14 rounded-2xl font-black text-lg gap-3 bg-emerald-600 hover:bg-emerald-700 shadow-2xl transition-all active:scale-95"
+                                    onClick={() => {
+                                        router.push(`/admin/messaging/composer?correctId=${selectedLog.id}`);
+                                        setSelectedLog(null);
+                                    }}
+                                >
+                                    <Wand2 className="h-6 w-6" />
+                                    Correct & Resend
+                                </Button>
+                            )}
+
                             {/* Read Receipt Stats */}
                             {selectedLog?.channel === 'email' && (
                                 <div className="grid grid-cols-2 gap-4">
@@ -305,33 +334,6 @@ export default function MessageLogsPage() {
                                     </div>
                                 </div>
                             </div>
-
-                            {selectedLog?.hasAttachments && (
-                                <Card className="bg-primary/5 border-primary/20 rounded-2xl">
-                                    <CardContent className="p-4 flex items-center gap-4">
-                                        <div className="p-2 bg-primary/10 rounded-lg text-primary"><FileText className="h-5 w-5" /></div>
-                                        <div>
-                                            <p className="text-sm font-black text-primary uppercase tracking-tight">Attachments Included</p>
-                                            <p className="text-[10px] font-bold text-primary/60 uppercase">{selectedLog.attachmentCount} file(s) transmitted</p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
-
-                            {selectedLog?.providerId && (
-                                <Card className="bg-slate-50 border-dashed border-2 rounded-2xl">
-                                    <CardContent className="p-4 flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Provider Reference ({selectedLog.channel === 'email' ? 'Resend' : 'mNotify'})</p>
-                                            <p className="font-mono text-[10px] font-bold text-primary">{selectedLog.providerId}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Reported State</p>
-                                            <Badge variant="outline" className="h-5 text-[10px] font-black tabular-nums uppercase border-primary/20 text-primary">{selectedLog.providerStatus || 'Sent'}</Badge>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )}
 
                             <Separator className="opacity-50" />
 
