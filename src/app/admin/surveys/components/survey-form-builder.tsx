@@ -303,6 +303,38 @@ export default function SurveyFormBuilder() {
                                     <Button 
                                         type="button"
                                         size="icon" 
+                                        variant={allPagesEnabled ? "secondary" : "ghost"} 
+                                        className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
+                                        onClick={toggleAllPageBreaks}
+                                    >
+                                        <Layout className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Toggle All Page Breaks</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant={allValidationEnabled ? "secondary" : "ghost"} 
+                                        className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
+                                        onClick={toggleAllValidation}
+                                    >
+                                        <ShieldCheck className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Toggle All Strict Validation</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
                                         variant="ghost" 
                                         className="h-10 w-10 rounded-xl disabled:opacity-30"
                                         onClick={handleUndo} 
@@ -342,12 +374,6 @@ export default function SurveyFormBuilder() {
                             </Tooltip>
                         </TooltipProvider>
                     </Card>
-                    
-                    <div className="mt-4 flex flex-col items-center">
-                        <div className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground vertical-rl rotate-180 py-4 opacity-40">
-                            State Architect
-                        </div>
-                    </div>
                 </div>
             </div>
             

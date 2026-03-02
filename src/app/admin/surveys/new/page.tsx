@@ -38,8 +38,6 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
-import AiSurveyGenerator from '../components/ai-survey-generator';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 
 const questionSchema = z.object({
@@ -203,7 +201,6 @@ export default function NewSurveyPage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
-    const [isAiGenOpen, setIsAiGenOpen] = React.useState(false);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -420,9 +417,6 @@ export default function NewSurveyPage() {
                         <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Create New Survey</h1>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" onClick={() => setIsAiGenOpen(true)} className="h-9 gap-2 font-bold rounded-xl border-primary/20 hover:bg-primary/5 text-primary">
-                            <Sparkles className="h-4 w-4" /> Create with AI
-                        </Button>
                         <AiChatEditor className="h-9" />
                     </div>
                 </div>
@@ -584,14 +578,6 @@ export default function NewSurveyPage() {
                     </form>
                 </FormProvider>
             </div>
-
-            <Dialog open={isAiGenOpen} onOpenChange={setIsAiGenOpen}>
-                <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
-                    <AiSurveyGenerator />
-                </DialogContent>
-            </Dialog>
-
-            <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={scrollToError} />
         </div>
     );
 }
