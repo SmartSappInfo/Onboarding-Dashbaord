@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams } from 'next/navigation';
@@ -25,13 +25,13 @@ import type { School, Meeting, MeetingType } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
-  Form,
   FormControl,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
   FormDescription,
+  Form,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -43,6 +43,8 @@ import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
+import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
+import { triggerInternalNotification } from '@/lib/notification-engine';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -56,6 +58,13 @@ const formSchema = z.object({
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  // Internal Notifications
+  adminAlertsEnabled: z.boolean().default(false),
+  adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
+  adminAlertNotifyManager: z.boolean().default(false),
+  adminAlertSpecificUserIds: z.array(z.string()).default([]),
+  adminAlertEmailTemplateId: z.string().optional(),
+  adminAlertSmsTemplateId: z.string().optional(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -94,6 +103,10 @@ export default function EditMeetingPage() {
       meetingLink: '',
       recordingUrl: '',
       brochureUrl: '',
+      adminAlertsEnabled: false,
+      adminAlertChannel: 'both',
+      adminAlertNotifyManager: true,
+      adminAlertSpecificUserIds: [],
     },
   });
 
@@ -118,6 +131,12 @@ export default function EditMeetingPage() {
             meetingLink: meeting.meetingLink || '',
             recordingUrl: meeting.recordingUrl || '',
             brochureUrl: meeting.brochureUrl || '',
+            adminAlertsEnabled: meeting.adminAlertsEnabled || false,
+            adminAlertChannel: meeting.adminAlertChannel || 'both',
+            adminAlertNotifyManager: meeting.adminAlertNotifyManager ?? true,
+            adminAlertSpecificUserIds: meeting.adminAlertSpecificUserIds || [],
+            adminAlertEmailTemplateId: meeting.adminAlertEmailTemplateId || '',
+            adminAlertSmsTemplateId: meeting.adminAlertSmsTemplateId || '',
           });
           setHasInitialized(true);
       }
@@ -148,12 +167,20 @@ export default function EditMeetingPage() {
         meetingLink: data.meetingLink,
         recordingUrl: data.recordingUrl || '',
         brochureUrl: data.brochureUrl || '',
+        adminAlertsEnabled: data.adminAlertsEnabled,
+        adminAlertChannel: data.adminAlertChannel,
+        adminAlertNotifyManager: data.adminAlertNotifyManager,
+        adminAlertSpecificUserIds: data.adminAlertSpecificUserIds,
+        adminAlertEmailTemplateId: data.adminAlertEmailTemplateId,
+        adminAlertSmsTemplateId: data.adminAlertSmsTemplateId,
     };
 
     const docRef = doc(firestore, 'meetings', meetingId);
     
-    updateDoc(docRef, meetingData).then(() => {
+    updateDoc(docRef, meetingData).then(async () => {
         toast({ title: 'Meeting Updated', description: `Session for ${data.school.name} saved.` });
+        
+        // 1. Log Activity
         logActivity({
             schoolId: data.school.id,
             userId: user.uid,
@@ -162,6 +189,27 @@ export default function EditMeetingPage() {
             description: `updated the ${data.type.name} session for "${data.school.name}".`,
             metadata: { meetingId }
         });
+
+        // 2. Trigger Internal Notification
+        if (data.adminAlertsEnabled) {
+            await triggerInternalNotification({
+                schoolId: data.school.id,
+                notifyManager: data.adminAlertNotifyManager,
+                specificUserIds: data.adminAlertSpecificUserIds,
+                emailTemplateId: data.adminAlertEmailTemplateId,
+                smsTemplateId: data.adminAlertSmsTemplateId,
+                channel: data.adminAlertChannel,
+                variables: {
+                    school_name: data.school.name,
+                    meeting_type: data.type.name,
+                    date: format(data.meetingTime, 'PPPP'),
+                    time: format(data.meetingTime, 'p'),
+                    link: data.meetingLink,
+                    event_type: 'Session Updated'
+                }
+            });
+        }
+
         router.push('/admin/meetings');
     }).catch((error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -194,7 +242,7 @@ export default function EditMeetingPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="max-w-3xl mx-auto space-y-8">
+      <div className="max-w-5xl mx-auto space-y-8">
         <div className="flex items-center justify-between">
             <Button asChild variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground font-bold">
                 <Link href="/admin/meetings">
@@ -220,229 +268,237 @@ export default function EditMeetingPage() {
 
         <h1 className="text-4xl font-black tracking-tight text-foreground uppercase">Update Session</h1>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
-              <CardHeader className="bg-muted/30 border-b pb-6">
-                <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-xl">
-                        <Calendar className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
-                        <CardDescription className="text-xs font-medium">Core institutional setup, logistics, and supporting assets.</CardDescription>
-                    </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 space-y-8 bg-background">
-                {/* Institution & Category Group */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="school"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Target School</FormLabel>
-                            <Select
-                                onValueChange={(schoolId: string) => {
-                                    const school = schools?.find((s) => s.id === schoolId);
-                                    field.onChange(school);
-                                    if (school && !form.getValues('schoolSlug')) {
-                                        form.setValue('schoolSlug', school.slug, { shouldValidate: true });
-                                    }
-                                }}
-                                value={field.value?.id || ""}
-                            >
-                                <FormControl>
-                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                                        <SelectValue placeholder="Select institution..." />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="rounded-xl">
-                                    {schools?.map((school) => (
-                                        <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control}
-                        name="type"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Category</FormLabel>
-                            <Select
-                                onValueChange={(typeId: string) => {
-                                    const type = MEETING_TYPES.find(t => t.id === typeId);
-                                    field.onChange(type);
-                                }}
-                                value={field.value?.id || ""}
-                            >
-                                <FormControl>
-                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                        <SelectValue placeholder="Select type..." />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="rounded-xl">
-                                    {MEETING_TYPES.map((type) => (
-                                        <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-
-                <Separator className="bg-border/50" />
-
-                {/* Logistics Group */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="meetingTime"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
-                            <FormControl>
-                                <DateTimePicker
-                                    value={field.value}
-                                    onChange={field.onChange}
-                                    disabled={form.formState.isSubmitting}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="meetingLink"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Google Meet URL</FormLabel>
-                            <FormControl>
-                                <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                    <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
-                                    <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
-                                </div>
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                </div>
-
-                <Separator className="bg-border/50" />
-
-                {/* Assets Group */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField
-                        control={form.control}
-                        name="recordingUrl"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
-                            <FormControl>
-                                <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="brochureUrl"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
-                                <FormControl>
-                                    <BrochureSelect
-                                        value={field.value}
-                                        onValueChange={field.onChange}
-                                        className="rounded-xl border-none shadow-none bg-muted/20"
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
-              <CardHeader className="bg-primary/10 border-b pb-6">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                            <Globe className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <CardTitle className="text-lg font-black tracking-tight uppercase">Public Addressing</CardTitle>
-                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
-                        </div>
-                    </div>
-                    {publicUrl && (
-                        <Button asChild variant="link" size="sm" className="text-primary font-black text-[10px] uppercase tracking-widest">
-                            <a href={publicUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="h-3 w-3 mr-1.5" />
-                                View Portal
-                            </a>
-                        </Button>
-                    )}
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <FormField
-                    control={form.control}
-                    name="schoolSlug"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
-                            <div className="flex flex-col sm:flex-row group transition-all">
-                                <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
-                                    /meetings/{watchedType?.slug || 'parent-engagement'}/
-                                </div>
-                                <FormControl>
-                                    <Input 
-                                        {...field} 
-                                        placeholder="e.g. school-slug" 
-                                        className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4" 
-                                    />
-                                </FormControl>
+        <FormProvider {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <Calendar className="h-5 w-5 text-primary" />
                             </div>
-                            <FormDescription className="text-[10px] uppercase font-black text-muted-foreground/40 mt-2 ml-1">
-                                MUST MATCH THE OFFICIAL SCHOOL SLUG FOR AUTOMATIC ROUTING.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-              </CardContent>
-            </Card>
+                            <div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Session Configuration</CardTitle>
+                                <CardDescription className="text-xs font-medium">Core institutional setup, logistics, and supporting assets.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8 bg-background">
+                        {/* Institution & Category Group */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="school"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Target School</FormLabel>
+                                    <Select
+                                        onValueChange={(schoolId: string) => {
+                                            const school = schools?.find((s) => s.id === schoolId);
+                                            field.onChange(school);
+                                            if (school && !form.getValues('schoolSlug')) {
+                                                form.setValue('schoolSlug', school.slug, { shouldValidate: true });
+                                            }
+                                        }}
+                                        value={field.value?.id || ""}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                                <SelectValue placeholder="Select institution..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            {schools?.map((school) => (
+                                                <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
 
-            <div className="flex flex-col gap-4 pt-8">
-                <Button 
-                    type="submit" 
-                    size="lg" 
-                    disabled={form.formState.isSubmitting}
-                    className="h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95"
-                >
-                    {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
-                    Commit Changes
-                </Button>
-                <Button type="button" variant="ghost" className="font-bold text-muted-foreground" onClick={() => router.push('/admin/meetings')}>
-                    Cancel and Discard
-                </Button>
+                            <FormField
+                                control={form.control}
+                                name="type"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Session Category</FormLabel>
+                                    <Select
+                                        onValueChange={(typeId: string) => {
+                                            const type = MEETING_TYPES.find(t => t.id === typeId);
+                                            field.onChange(type);
+                                        }}
+                                        value={field.value?.id || ""}
+                                    >
+                                        <FormControl>
+                                            <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
+                                                <SelectValue placeholder="Select type..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            {MEETING_TYPES.map((type) => (
+                                                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <Separator className="bg-border/50" />
+
+                        {/* Logistics Group */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="meetingTime"
+                                render={({ field }) => (
+                                <FormItem className="flex flex-col">
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Scheduled Time</FormLabel>
+                                    <FormControl>
+                                        <DateTimePicker
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            disabled={form.formState.isSubmitting}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="meetingLink"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Google Meet URL</FormLabel>
+                                    <FormControl>
+                                        <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
+                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r"><Video className="h-3 w-3" /></div>
+                                            <Input placeholder="https://meet.google.com/..." {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-sm" />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <Separator className="bg-border/50" />
+
+                        {/* Assets Group */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="recordingUrl"
+                                render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Video Recording (YouTube)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="https://youtu.be/..." {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="brochureUrl"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Public Brochure</FormLabel>
+                                        <FormControl>
+                                            <BrochureSelect
+                                                value={field.value}
+                                                onValueChange={field.onChange}
+                                                className="rounded-xl border-none shadow-none bg-muted/20"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </CardContent>
+                    </Card>
+
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-primary/5">
+                    <CardHeader className="bg-primary/10 border-b pb-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                    <Globe className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-black tracking-tight uppercase">Public Addressing</CardTitle>
+                                    <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Define the public URL identity.</CardDescription>
+                                </div>
+                            </div>
+                            {publicUrl && (
+                                <Button asChild variant="link" size="sm" className="text-primary font-black text-[10px] uppercase tracking-widest">
+                                    <a href={publicUrl} target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="h-3 w-3 mr-1.5" />
+                                        View Portal
+                                    </a>
+                                </Button>
+                            )}
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                        <FormField
+                            control={form.control}
+                            name="schoolSlug"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">URL Path Context</FormLabel>
+                                    <div className="flex flex-col sm:flex-row group transition-all">
+                                        <div className="flex h-12 items-center bg-muted border border-border border-r-0 rounded-t-xl sm:rounded-l-xl sm:rounded-tr-none px-4 text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 shrink-0">
+                                            /meetings/{watchedType?.slug || 'parent-engagement'}/
+                                        </div>
+                                        <FormControl>
+                                            <Input 
+                                                {...field} 
+                                                placeholder="e.g. school-slug" 
+                                                className="h-12 rounded-t-none sm:rounded-l-none rounded-b-xl sm:rounded-r-xl bg-white border-2 border-slate-200 focus:border-primary focus-visible:ring-0 shadow-none font-bold text-lg px-4" 
+                                            />
+                                        </FormControl>
+                                    </div>
+                                    <FormDescription className="text-[10px] uppercase font-black text-muted-foreground/40 mt-2 ml-1">
+                                        MUST MATCH THE OFFICIAL SCHOOL SLUG FOR AUTOMATIC ROUTING.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                    </Card>
+                </div>
+
+                <div className="space-y-8">
+                    <InternalNotificationConfig prefix="adminAlert" />
+
+                    <div className="pt-4 sticky top-24">
+                        <Button 
+                            type="submit" 
+                            size="lg" 
+                            disabled={form.formState.isSubmitting}
+                            className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95"
+                        >
+                            {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
+                            Commit Changes
+                        </Button>
+                        <Button type="button" variant="ghost" className="w-full mt-4 font-bold text-muted-foreground" onClick={() => router.push('/admin/meetings')}>
+                            Discard
+                        </Button>
+                    </div>
+                </div>
             </div>
           </form>
-        </Form>
+        </FormProvider>
       </div>
     </div>
   )
