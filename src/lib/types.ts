@@ -183,13 +183,15 @@ export type SurveyElement = SurveyQuestion | SurveyLayoutBlock | SurveyLogicBloc
 
 export interface SurveyResultBlock {
     id: string;
-    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card';
+    type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'score-card' | 'list';
     title?: string;
     content?: string;
     url?: string;
     link?: string;
     openInNewTab?: boolean;
     variant?: 'h1' | 'h2' | 'h3';
+    items?: string[];
+    listStyle?: 'ordered' | 'unordered';
     style?: {
         textAlign?: 'left' | 'center' | 'right';
         variant?: 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost' | 'link';
@@ -263,6 +265,7 @@ export interface Survey {
   adminEmailTemplateId?: string;
   adminEmailSenderProfileId?: string;
   adminEmailRecipient?: string;
+  automationMessagingEnabled?: boolean;
 }
 
 export interface SurveyResponse {

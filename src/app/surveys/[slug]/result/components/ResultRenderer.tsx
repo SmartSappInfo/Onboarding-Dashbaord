@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -101,7 +102,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     switch (block.type) {
         case 'heading': {
             const Tag = block.variant || 'h2';
-            const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
+            const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl font-bold";
             return (
                 <Tag 
                     className={cn(sizeClass, "tracking-tight whitespace-pre-wrap", containerClasses)} 
@@ -113,6 +114,20 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
         }
         case 'text':
             return <div className={cn("prose prose-slate dark:prose-invert max-w-none text-base sm:text-lg text-muted-foreground leading-relaxed whitespace-pre-wrap", containerClasses)} dangerouslySetInnerHTML={{ __html: block.content || '' }} />;
+        case 'list':
+            return (
+                <div className={containerClasses}>
+                    {block.listStyle === 'ordered' ? (
+                        <ol className="list-decimal list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
+                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                        </ol>
+                    ) : (
+                        <ul className="list-disc list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
+                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                        </ul>
+                    )}
+                </div>
+            );
         case 'image':
             return block.url ? (
                 <div className={cn("relative aspect-video rounded-xl sm:rounded-2xl overflow-hidden shadow-lg border bg-white", containerClasses)}>

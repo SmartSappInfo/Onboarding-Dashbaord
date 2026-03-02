@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -9,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { 
     Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
     Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, 
-    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle, Bold, Italic, Underline
+    ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle, Bold, Italic, Underline,
+    List, ListOrdered
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -34,6 +36,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
     text: Type,
+    list: List,
     image: ImageIcon,
     video: Video,
     button: MousePointer2,
@@ -67,13 +70,24 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
                                         <h2 className="text-3xl font-black tracking-tight">{block.title}</h2>
                                     )}
                                     {block.type === 'text' && <div className="prose prose-slate max-w-none text-lg leading-relaxed" dangerouslySetInnerHTML={{ __html: block.content || '' }} />}
-                                    {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-white"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
+                                    {block.type === 'list' && (
+                                        block.listStyle === 'ordered' ? (
+                                            <ol className="list-decimal list-inside space-y-2 text-lg font-medium text-slate-700">
+                                                {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                                            </ol>
+                                        ) : (
+                                            <ul className="list-disc list-inside space-y-2 text-lg font-medium text-slate-700">
+                                                {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                                            </ul>
+                                        )
+                                    )}
+                                    {block.type === 'image' && block.url && <div className="relative aspect-video w-full rounded-2xl overflow-hidden shadow-lg border-4 border-white bg-white"><Image src={block.url} alt="preview" fill className="object-cover" /></div>}
                                     {block.type === 'video' && block.url && <div className="w-full"><VideoEmbed url={block.url} /></div>}
                                     {block.type === 'button' && <Button size="lg" variant={block.style?.variant as any} className="h-14 px-8 text-lg font-black rounded-xl shadow-lg">{block.title} <ArrowRight className="ml-2 h-5 w-5"/></Button>}
                                     {block.type === 'quote' && <div className="p-8 bg-white border-l-4 border-primary rounded-r-2xl italic text-xl shadow-sm text-left"><Quote className="h-8 w-8 text-primary/20 mb-4" />{block.content}</div>}
                                     {block.type === 'score-card' && (
                                         <Card className="w-full bg-primary text-white border-none shadow-xl rounded-3xl p-8 flex flex-col items-center text-center">
-                                            <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-4 py-1 text-[10px] font-black tracking-widest uppercase">Sample Result</Badge>
+                                            <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-black tracking-widest uppercase">Sample Result</Badge>
                                             <div className="flex flex-col gap-1">
                                                 <span className="text-7xl font-black tabular-nums tracking-tighter">{(maxScore * 0.85).toFixed(0)}</span>
                                                 <span className="text-lg font-bold opacity-60 uppercase tracking-widest">out of {maxScore}</span>
@@ -147,8 +161,12 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
 }
 
 function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockIndex: number }) {
-    const { register, setValue } = useFormContext();
+    const { register, setValue, control } = useFormContext();
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
+    const { fields: listItems, append: addListItem, remove: removeListItem } = useFieldArray({
+        control,
+        name: `resultPages.${pageIndex}.blocks.${blockIndex}.items`
+    });
 
     if (!block) return null;
 
@@ -177,6 +195,50 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                     <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quote Text</Label>
                         <Textarea {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.content`)} className="text-lg italic border-none shadow-none focus-visible:ring-0 p-0 bg-transparent" />
+                    </div>
+                )}
+                {block.type === 'list' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
+                            <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.listStyle`, 'unordered', { shouldDirty: true })}
+                                >
+                                    <List className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.listStyle`, 'ordered', { shouldDirty: true })}
+                                >
+                                    <ListOrdered className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items</Label>
+                            <div className="space-y-2">
+                                {listItems.map((item, idx) => (
+                                    <div key={item.id} className="flex items-center gap-2">
+                                        <div className="text-[10px] font-black opacity-20 w-4">{idx + 1}</div>
+                                        <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.items.${idx}`)} className="h-9 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium" />
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => removeListItem(idx)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button type="button" variant="outline" size="sm" className="w-full rounded-xl border-dashed border-2 mt-2 h-9" onClick={() => addListItem('')}>
+                                    <Plus className="h-3.5 w-3.5 mr-2" /> Add Point
+                                </Button>
+                            </div>
+                        </div>
                     </div>
                 )}
                 {['image', 'video'].includes(block.type) && (
@@ -365,6 +427,10 @@ function PageEditor({ pageIndex }: { pageIndex: number }) {
             newBlock.variant = 'h2';
         }
         if (type === 'text') newBlock.content = '<p>Your descriptive text here...</p>';
+        if (type === 'list') {
+            newBlock.listStyle = 'unordered';
+            newBlock.items = ['First point', 'Second important point'];
+        }
         if (type === 'button') {
             newBlock.title = 'Next Step';
             newBlock.link = '#';

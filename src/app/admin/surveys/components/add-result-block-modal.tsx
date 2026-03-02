@@ -18,6 +18,7 @@ import {
     Quote,
     Square,
     Trophy,
+    List,
 } from 'lucide-react';
 import type { SurveyResultBlock } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +32,7 @@ interface AddResultBlockModalProps {
 const blockTypes: { type: SurveyResultBlock['type']; label: string; description: string; icon: React.ElementType }[] = [
     { type: 'heading', label: 'Heading', description: 'Large, bold title for sections.', icon: Heading1 },
     { type: 'text', label: 'Text Block', description: 'Paragraphs with HTML support.', icon: Type },
+    { type: 'list', label: 'List View', description: 'Bulleted or numbered points.', icon: List },
     { type: 'image', label: 'Image', description: 'Upload or link an image.', icon: ImageIcon },
     { type: 'video', label: 'Video', description: 'Embed a YouTube or Vimeo link.', icon: Video },
     { type: 'button', label: 'Action Button', description: 'Call-to-action link.', icon: MousePointer2 },

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -249,6 +250,111 @@ export default function SurveyFormBuilder() {
     return (
         <div className="relative">
             <div className="flex flex-col md:flex-row gap-8 items-start">
+                {/* Vertical Builder Toolbar - Now Top Left */}
+                <div className="hidden md:block w-14 shrink-0 sticky top-24">
+                    <Card className="shadow-2xl border-primary/10 bg-background/80 backdrop-blur-md p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-black/5">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
+                                        onClick={() => requestAddElement(fields.length - 1)}
+                                    >
+                                        <PlusCircle className="h-5 w-5 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Add Block</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <AiChatEditor variant="icon" />
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant={allPagesEnabled ? "secondary" : "ghost"} 
+                                        className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
+                                        onClick={toggleAllPageBreaks}
+                                    >
+                                        <Layout className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Toggle All Page Breaks</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant={allValidationEnabled ? "secondary" : "ghost"} 
+                                        className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
+                                        onClick={toggleAllValidation}
+                                    >
+                                        <ShieldCheck className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Toggle All Strict Validation</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+                                        onClick={handleUndo} 
+                                        disabled={!canUndo}
+                                    >
+                                        <Undo className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Undo</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        type="button"
+                                        size="icon" 
+                                        variant="ghost" 
+                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
+                                        onClick={handleRedo} 
+                                        disabled={!canRedo}
+                                    >
+                                        <Redo className="h-5 w-5" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Redo</TooltipContent>
+                            </Tooltip>
+
+                            <Separator className="w-8" />
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="inline-block">
+                                        <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
+                                            <Eye className="h-5 w-5 text-primary" />
+                                        </SurveyPreviewButton>
+                                    </div>
+                                </TooltipTrigger>
+                                <TooltipContent side="right">Preview Survey</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </Card>
+                </div>
+
                 <div className="flex-1 w-full">
                     {fields.length > 0 ? (
                         <QuestionEditor 
@@ -271,109 +377,6 @@ export default function SurveyFormBuilder() {
                             </Button>
                         </div>
                     )}
-                </div>
-
-                {/* Vertical Builder Toolbar */}
-                <div className="hidden md:block w-14 shrink-0 sticky top-24">
-                    <Card className="shadow-2xl border-primary/10 bg-background/80 backdrop-blur-md p-1.5 rounded-2xl flex flex-col items-center gap-3 ring-1 ring-black/5">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-10 w-10 rounded-xl hover:bg-primary/10 transition-colors"
-                                        onClick={() => requestAddElement(fields.length - 1)}
-                                    >
-                                        <PlusCircle className="h-5 w-5 text-primary" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Add Block</TooltipContent>
-                            </Tooltip>
-
-                            <Separator className="w-8" />
-
-                            <AiChatEditor variant="icon" />
-
-                            <Separator className="w-8" />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant={allPagesEnabled ? "secondary" : "ghost"} 
-                                        className={cn("h-10 w-10 rounded-xl", allPagesEnabled && "bg-primary/10 text-primary")}
-                                        onClick={toggleAllPageBreaks}
-                                    >
-                                        <Layout className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Toggle All Page Breaks</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant={allValidationEnabled ? "secondary" : "ghost"} 
-                                        className={cn("h-10 w-10 rounded-xl", allValidationEnabled && "bg-primary/10 text-primary")}
-                                        onClick={toggleAllValidation}
-                                    >
-                                        <ShieldCheck className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Toggle All Strict Validation</TooltipContent>
-                            </Tooltip>
-
-                            <Separator className="w-8" />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
-                                        onClick={handleUndo} 
-                                        disabled={!canUndo}
-                                    >
-                                        <Undo className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Undo</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button 
-                                        type="button"
-                                        size="icon" 
-                                        variant="ghost" 
-                                        className="h-10 w-10 rounded-xl disabled:opacity-30"
-                                        onClick={handleRedo} 
-                                        disabled={!canRedo}
-                                    >
-                                        <Redo className="h-5 w-5" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Redo</TooltipContent>
-                            </Tooltip>
-
-                            <Separator className="w-8" />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <div className="inline-block">
-                                        <SurveyPreviewButton variant="ghost" size="icon" className="h-10 w-10 rounded-xl" />
-                                    </div>
-                                </TooltipTrigger>
-                                <TooltipContent side="left">Preview</TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    </Card>
                 </div>
             </div>
             
