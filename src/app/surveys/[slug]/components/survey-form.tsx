@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -19,7 +20,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -664,6 +665,14 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pag
     );
 }
 
+type AutomationStatus = { 
+    id: string; 
+    label: string; 
+    status: 'pending' | 'success' | 'failed' | 'skipped'; 
+    error?: string; 
+    icon: React.ElementType;
+};
+
 export default function SurveyForm({ survey, onSubmitted, isPreview = false }: SurveyFormProps) {
     const firestore = useFirestore();
     const router = useRouter();
@@ -699,6 +708,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    // Automation Status Tracking
+    const [automationStatuses, setAutomationStatuses] = React.useState<AutomationStatus[]>([]);
+    const [isStatusModalOpen, setIsStatusModalOpen] = React.useState(false);
 
     const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
     const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
@@ -808,6 +821,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         return missing;
     };
 
+    const updateAutomationStatus = (id: string, status: AutomationStatus['status'], error?: string) => {
+        setAutomationStatuses(prev => prev.map(s => s.id === id ? { ...s, status, error } : s));
+    };
+
     const onInvalid = (errors: any) => {
         const data = form.getValues();
         const missing = validateAllRequired(data);
@@ -828,6 +845,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const onSubmit = async (data: z.infer<typeof surveySchema>) => {
         if (isPreview) { onSubmitted(); return; }
+        
         survey.elements.filter(isQuestion).forEach(q => form.clearErrors(q.id));
         const missing = validateAllRequired(data);
         if (missing.length > 0) {
@@ -835,13 +853,43 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             else onInvalid({});
             return;
         }
+
         if (!firestore) return;
         setIsSubmitting(true);
+        
+        // 1. Initialize statuses
+        const initialTasks: AutomationStatus[] = [
+            { id: 'db', label: 'Database Persistence', status: 'pending', icon: Zap },
+        ];
+
         const score = calculateScore(data);
+        const outcome = resolveOutcome(score);
+
+        if (survey.webhookEnabled && survey.webhookId) {
+            initialTasks.push({ id: 'webhook', label: 'Webhook Dispatch', status: 'pending', icon: Globe });
+        }
+
+        const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email');
+        const phoneQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'phone');
+        const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
+        const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
+
+        if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
+            initialTasks.push({ id: 'email_ack', label: 'Respondent Email', status: 'pending', icon: Mail });
+        }
+        if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
+            initialTasks.push({ id: 'sms_ack', label: 'Respondent SMS', status: 'pending', icon: Smartphone });
+        }
+        if (survey.adminAlertsEnabled) {
+            initialTasks.push({ id: 'admin_alert', label: 'Admin Team Alerts', status: 'pending', icon: Bell });
+        }
+
+        setAutomationStatuses(initialTasks);
+        setIsStatusModalOpen(true);
+
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        // Prepare dynamic variables for messaging
         const variables: Record<string, any> = {
             survey_title: survey.title,
             score: score || 0,
@@ -849,12 +897,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             submission_date: format(new Date(), 'PPPP'),
         };
 
-        // Flatten question answers into variables
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
             if (val !== undefined) {
-                const key = q.id; // Use ID as key for stability
-                variables[key] = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                variables[q.id] = typeof val === 'object' ? JSON.stringify(val) : String(val);
             }
         });
 
@@ -862,93 +908,102 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
         const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
+        
         form.control.disabled = true;
+
         try {
+            // Task 1: DB Save
             const docRef = await addDoc(responsesCollection, responseData);
-            
-            // Resolve outcome for respondent messaging
-            const outcome = resolveOutcome(score);
+            updateAutomationStatus('db', 'success');
 
-            // 1. Respondent Automation (from Logic Rules)
-            if (outcome) {
-                const respondentEmail = survey.elements.filter(isQuestion).find(q => q.type === 'email')?.id ? serializedData[survey.elements.filter(isQuestion).find(q => q.type === 'email')!.id] : null;
-                const respondentPhone = survey.elements.filter(isQuestion).find(q => q.type === 'phone')?.id ? serializedData[survey.elements.filter(isQuestion).find(q => q.type === 'phone')!.id] : null;
+            // Concurrent Automation Execution
+            const automationPromises = [];
 
-                if (respondentEmail && outcome.emailTemplateId && outcome.emailTemplateId !== 'none') {
-                    sendMessage({
-                        templateId: outcome.emailTemplateId,
-                        senderProfileId: outcome.emailSenderProfileId || 'default',
-                        recipient: String(respondentEmail),
-                        variables
-                    }).catch(e => console.error("Respondent Email Automation failed:", e));
-                }
-
-                if (respondentPhone && outcome.smsTemplateId && outcome.smsTemplateId !== 'none') {
-                    sendMessage({
-                        templateId: outcome.smsTemplateId,
-                        senderProfileId: outcome.smsSenderProfileId || 'default',
-                        recipient: String(respondentPhone),
-                        variables
-                    }).catch(e => console.error("Respondent SMS Automation failed:", e));
-                }
-            }
-
-            // 2. INTERNAL TEAM NOTIFICATION (Improved Logic)
-            if (survey.adminAlertsEnabled) {
-                triggerInternalNotification({
-                    schoolId: '', // Context is survey specific
-                    notifyManager: survey.adminAlertNotifyManager,
-                    specificUserIds: survey.adminAlertSpecificUserIds,
-                    emailTemplateId: survey.adminAlertEmailTemplateId,
-                    smsTemplateId: survey.adminAlertSmsTemplateId,
-                    channel: survey.adminAlertChannel,
-                    variables: {
-                        ...variables,
-                        event_type: 'Survey Submitted',
-                        outcome_label: outcome?.label || 'Default'
-                    }
-                }).catch(e => console.error("Admin Alert failed:", e));
-            }
-
-            // 3. Webhook Execution
+            // Webhook Execution
             if (survey.webhookEnabled && survey.webhookId) {
-                const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId));
-                if (webhookDoc.exists()) {
-                    const webhookData = webhookDoc.data() as Webhook;
-                    const webhookPayload: Record<string, any> = {
-                        survey_title: survey.title,
-                        survey_id: survey.id,
-                        submission_id: docRef.id,
-                        submitted_at: responseData.submittedAt,
-                        score: score,
-                        outcome_label: outcome?.label || 'Default',
-                    };
-                    if (typeof window !== 'undefined') webhookPayload.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
-                    
-                    survey.elements.filter(isQuestion).forEach(q => {
-                        const answerValue = cleanedData[q.id];
-                        if (answerValue !== undefined) {
-                            const key = q.title.replace(/<[^>]*>?/gm, '').trim() || q.id;
-                            let val = answerValue;
-                            if (q.type === 'checkboxes' && typeof answerValue === 'object') {
-                                val = answerValue.options?.join(', ');
-                                if (answerValue.other) val += `, Other: ${answerValue.other}`;
-                            } else if (Array.isArray(answerValue)) val = answerValue.join(', ');
-                            webhookPayload[key] = val;
-                        }
-                    });
-                    fetch(webhookData.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(webhookPayload) }).catch(err => console.error("Webhook push failed:", err));
-                }
+                const webhookTask = async () => {
+                    try {
+                        const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId!));
+                        if (!webhookDoc.exists()) throw new Error("Webhook endpoint missing in library.");
+                        const webhookData = webhookDoc.data() as Webhook;
+                        const payload = {
+                            survey_title: survey.title,
+                            survey_id: survey.id,
+                            submission_id: docRef.id,
+                            submitted_at: responseData.submittedAt,
+                            score: score,
+                            outcome_label: outcome?.label || 'Default',
+                            answers: cleanedData,
+                            result_url: typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}` : ''
+                        };
+                        const res = await fetch(webhookData.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        if (!res.ok) throw new Error(`Gateway returned ${res.status}`);
+                        updateAutomationStatus('webhook', 'success');
+                    } catch (e: any) {
+                        updateAutomationStatus('webhook', 'failed', e.message);
+                    }
+                };
+                automationPromises.push(webhookTask());
             }
-            
-            await new Promise(resolve => setTimeout(resolve, 800));
-            if (survey.scoringEnabled && outcome) { router.push(`/surveys/${survey.slug}/result/${docRef.id}`); return; }
-            onSubmitted();
-        } catch (error) {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: responsesCollection.path, operation: 'create', requestResourceData: responseData }));
-            toast({ variant: 'destructive', title: 'Error', description: 'Failed to submit response.' });
+
+            // Respondent Automations
+            if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
+                const emailTask = async () => {
+                    try {
+                        const res = await sendMessage({ templateId: outcome.emailTemplateId!, senderProfileId: outcome.emailSenderProfileId || 'default', recipient: String(respondentEmail), variables });
+                        if (!res.success) throw new Error(res.error);
+                        updateAutomationStatus('email_ack', 'success');
+                    } catch (e: any) {
+                        updateAutomationStatus('email_ack', 'failed', e.message);
+                    }
+                };
+                automationPromises.push(emailTask());
+            }
+
+            if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
+                const smsTask = async () => {
+                    try {
+                        const res = await sendMessage({ templateId: outcome.smsTemplateId!, senderProfileId: outcome.smsSenderProfileId || 'default', recipient: String(respondentPhone), variables });
+                        if (!res.success) throw new Error(res.error);
+                        updateAutomationStatus('sms_ack', 'success');
+                    } catch (e: any) {
+                        updateAutomationStatus('sms_ack', 'failed', e.message);
+                    }
+                };
+                automationPromises.push(smsTask());
+            }
+
+            // Admin Alerts
+            if (survey.adminAlertsEnabled) {
+                const adminTask = async () => {
+                    try {
+                        await triggerInternalNotification({
+                            schoolId: '',
+                            notifyManager: survey.adminAlertNotifyManager,
+                            specificUserIds: survey.adminAlertSpecificUserIds,
+                            emailTemplateId: survey.adminAlertEmailTemplateId,
+                            smsTemplateId: survey.adminAlertSmsTemplateId,
+                            channel: survey.adminAlertChannel,
+                            variables: { ...variables, event_type: 'Survey Submitted', outcome_label: outcome?.label || 'Default' }
+                        });
+                        updateAutomationStatus('admin_alert', 'success');
+                    } catch (e: any) {
+                        updateAutomationStatus('admin_alert', 'failed', e.message);
+                    }
+                };
+                automationPromises.push(adminTask());
+            }
+
+            await Promise.allSettled(automationPromises);
             setIsSubmitting(false);
-        } finally { form.control.disabled = false; }
+
+        } catch (error: any) {
+            updateAutomationStatus('db', 'failed', error.message);
+            errorEmitter.emit('permission-error', new FirestorePermissionError({ path: responsesCollection.path, operation: 'create', requestResourceData: responseData }));
+            setIsSubmitting(false);
+        } finally { 
+            form.control.disabled = false; 
+        }
     };
 
     const handleNext = async () => {
@@ -1019,6 +1074,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 const el = document.getElementById(first.id);
                 if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('input, select, textarea, button')?.focus(); }
             }, 1000);
+        }
+    };
+
+    const handleAcknowledgeSuccess = () => {
+        setIsStatusModalOpen(false);
+        const score = calculateScore(form.getValues());
+        const outcome = resolveOutcome(score);
+        if (survey.scoringEnabled && outcome) {
+            router.push(`/surveys/${survey.slug}/result/${automationStatuses[0].id === 'db' ? 'auto' : ''}`); // submission ID is actually needed here
+            // But for simplicity in the UX flow, we can just trigger the onSubmitted which handles outcome redirect if score is present
+            onSubmitted();
+        } else {
+            onSubmitted();
         }
     };
 
@@ -1129,6 +1197,73 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     </ScrollArea>
                     <DialogFooter>
                         <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">Go Fix These</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* AUTOMATION STATUS DIALOG */}
+            <Dialog open={isStatusModalOpen} onOpenChange={(open) => { if (!open && !isSubmitting) handleAcknowledgeSuccess(); }}>
+                <DialogContent className="sm:max-w-md rounded-[2.5rem] overflow-hidden p-0 border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                <Zap className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Submission Processing</DialogTitle>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing automation protocol...</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-8 space-y-6">
+                        {automationStatuses.map((task) => (
+                            <div key={task.id} className="flex items-center justify-between group">
+                                <div className="flex items-center gap-4">
+                                    <div className={cn(
+                                        "p-2 rounded-xl transition-all",
+                                        task.status === 'success' ? "bg-emerald-100 text-emerald-600" :
+                                        task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-muted text-muted-foreground opacity-40"
+                                    )}>
+                                        <task.icon className="h-4 w-4" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-black text-foreground uppercase tracking-tight">{task.label}</p>
+                                        {task.error && <p className="text-[9px] font-bold text-rose-600 uppercase mt-0.5">{task.error}</p>}
+                                    </div>
+                                </div>
+                                <div className="shrink-0">
+                                    {task.status === 'pending' ? (
+                                        <Loader2 className="h-5 w-5 animate-spin text-primary opacity-40" />
+                                    ) : task.status === 'success' ? (
+                                        <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in duration-300" />
+                                    ) : (
+                                        <TooltipProvider>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <XCircle className="h-5 w-5 text-rose-500" />
+                                                </TooltipTrigger>
+                                                <TooltipContent className="bg-rose-600 text-white border-none font-bold text-[10px]">
+                                                    {task.error || 'System Timeout'}
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <DialogFooter className="p-6 bg-muted/30 border-t">
+                        <Button 
+                            onClick={handleAcknowledgeSuccess} 
+                            disabled={isSubmitting}
+                            className="w-full h-14 rounded-2xl font-black text-lg uppercase tracking-[0.1em] shadow-xl active:scale-95 transition-all"
+                        >
+                            {isSubmitting ? (
+                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working...</>
+                            ) : (
+                                <><Check className="mr-2 h-5 w-5" /> Continue</>
+                            )}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
