@@ -22,15 +22,15 @@ import {
     MonitorPlay, Palette, Layout, Wand2, Info, Copy, GripVertical, 
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
     Square, List, PlusCircle, ArrowUp, ArrowDown, AlignLeft, 
-    AlignCenter, AlignRight, Bold, Italic, Underline
+    AlignCenter, AlignRight, Bold, Italic, Underline, Save, Search
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/messaging-utils';
@@ -49,13 +49,9 @@ const blockIcons: Record<string, React.ElementType> = {
     divider: Square,
     header: Layout,
     footer: Layout,
-    logo: SmartSappIcon,
+    logo: Zap,
     'score-card': Trophy,
 };
-
-function SmartSappIcon({ className }: { className?: string }) {
-    return <Zap className={cn("h-4 w-4", className)} />;
-}
 
 // --- SUB-COMPONENTS ---
 
@@ -566,7 +562,7 @@ export default function MessageTemplatesPage() {
                                 )}>
                                     {channel === 'sms' ? (
                                         <div className="space-y-8">
-                                            <div className="flex items-center justify-between opacity-20"><SmartSappIcon className="text-white" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
+                                            <div className="flex items-center justify-between opacity-20"><Zap className="text-white" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
                                             <div className="p-6 bg-white/5 border border-white/10 rounded-2xl relative">
                                                 <div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" />
                                                 <p className="text-sm text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
@@ -657,25 +653,4 @@ export default function MessageTemplatesPage() {
             </div>
         </div>
     );
-}
-
-function Search({ className, ...props }: React.SVGProps<SVGSVGElement>) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={cn("lucide lucide-search", className)}
-        >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-        </svg>
-    )
 }
