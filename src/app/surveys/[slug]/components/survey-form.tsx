@@ -823,6 +823,20 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         return missing;
     };
 
+    const onInvalid = (errors: any) => {
+        const missing = validateAllRequired(form.getValues());
+        if (missing.length > 0) {
+            setMissingFields(missing);
+            setShowMissingFieldsModal(true);
+        } else {
+            toast({
+                variant: 'destructive',
+                title: 'Check your answers',
+                description: 'Some fields require your attention.',
+            });
+        }
+    };
+
     const updateAutomationStatus = (id: string, status: AutomationStatus['status'], error?: string) => {
         setAutomationStatuses(prev => prev.map(s => s.id === id ? { ...s, status, error } : s));
     };
@@ -843,8 +857,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         survey.elements.filter(isQuestion).forEach(q => form.clearErrors(q.id));
         const missing = validateAllRequired(data);
         if (missing.length > 0) {
-            if (!isAllSectionsStrict) { setMissingFields(missing); setShowMissingFieldsModal(true); }
-            else onInvalid({});
+            if (!isAllSectionsStrict) { 
+                setMissingFields(missing); 
+                setShowMissingFieldsModal(true); 
+            } else {
+                onInvalid({});
+            }
             return;
         }
 
