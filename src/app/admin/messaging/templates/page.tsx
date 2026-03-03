@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import {
     Code, Eye, Sparkles, Check, Pencil, Database, Zap, Trophy, 
     MonitorPlay, Layout, Wand2, Info, Copy, GripVertical, 
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
-    Square, List, PlusCircle, ArrowUp, ArrowDown, AlignLeft, 
+    Square, List, ListOrdered, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2
@@ -31,8 +30,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { resolveVariables, renderBlocksToHtml, shouldShowBlock } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
@@ -297,18 +296,19 @@ export default function MessageTemplatesPage() {
     const sensors = useSensors(useSensor(PointerSensor));
 
     // Data Queries
-    const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_templates'), orderBy('createdAt', 'desc')) : null, [firestore]);
-    const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables')) : null, [firestore]);
     const schoolsQuery = useMemoFirebase(() => (firestore && simEntity === 'School') ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore, simEntity]);
     const meetingsQuery = useMemoFirebase(() => (firestore && simEntity === 'Meeting') ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore, simEntity]);
     const surveysQuery = useMemoFirebase(() => (firestore && simEntity === 'Survey') ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore, simEntity]);
     const pdfsQuery = useMemoFirebase(() => (firestore && simEntity === 'Submission') ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore, simEntity]);
 
+    const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_templates'), orderBy('createdAt', 'desc')) : null, [firestore]);
+    const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables')) : null, [firestore]);
+
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: simSurveys } = useCollection<Survey>(simSurveysQuery);
+    const { data: simSurveys } = useCollection<Survey>(surveysQuery);
     const { data: simPdfs } = useCollection<PDFForm>(pdfsQuery);
 
     // Resize Handler

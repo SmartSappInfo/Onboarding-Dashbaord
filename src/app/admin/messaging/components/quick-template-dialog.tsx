@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -169,7 +168,7 @@ export default function QuickTemplateDialog({
     };
 
     return (
-        <Dialog open={open} onOpenChange={handleOpenChange}>
+        <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
                 <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
                     <div className="flex items-center justify-between">
