@@ -24,7 +24,7 @@ import {
     Square, List, ListOrdered, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
-    Maximize2, Minimize2
+    Maximize2, Minimize2, Settings
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -58,84 +58,254 @@ const blockIcons: Record<string, React.ElementType> = {
 
 // --- SUB-COMPONENTS ---
 
-function BlockInspector({ 
+/**
+ * High-fidelity block renderer for the design canvas.
+ * This should look like the final email.
+ */
+function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulationVars: Record<string, any> }) {
+    const align = block.style?.textAlign || 'left';
+    const resolvedTitle = resolveVariables(block.title || '', simulationVars);
+    const resolvedContent = resolveVariables(block.content || '', simulationVars);
+    const resolvedUrl = resolveVariables(block.url || '', simulationVars);
+
+    switch (block.type) {
+        case 'heading': {
+            const Tag = block.variant || 'h2';
+            const sizeClass = Tag === 'h1' ? "text-3xl" : Tag === 'h2' ? "text-2xl" : "text-lg";
+            return (
+                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    <Tag className={cn("font-black tracking-tight leading-tight m-0", sizeClass)}>{resolvedTitle || 'New Heading'}</Tag>
+                </div>
+            );
+        }
+        case 'text':
+            return (
+                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    <p className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap">{resolvedContent || 'New paragraph content...'}</p>
+                </div>
+            );
+        case 'button':
+            return (
+                <div className={cn("w-full py-4", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">{resolvedTitle || 'Click Me'}</Button>
+                </div>
+            );
+        case 'image':
+            return (
+                <div className={cn("w-full py-2", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    {resolvedUrl ? (
+                        <div className="relative aspect-video rounded-2xl overflow-hidden border bg-muted shadow-inner">
+                            <img src={resolvedUrl} alt="block" className="w-full h-full object-cover" />
+                        </div>
+                    ) : (
+                        <div className="aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-muted/20 text-muted-foreground gap-2">
+                            <ImageIcon className="h-8 w-8 opacity-20" />
+                            <span className="text-[10px] font-black uppercase tracking-widest">Image Area</span>
+                        </div>
+                    )}
+                </div>
+            );
+        case 'quote':
+            return (
+                <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-lg leading-relaxed text-slate-700", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    <Quote className="h-6 w-6 text-primary/20 mb-2" />
+                    {resolvedContent || 'Quote content...'}
+                </div>
+            );
+        case 'list':
+            const ListTag = block.listStyle === 'ordered' ? 'ol' : 'ul';
+            return (
+                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                    <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal" : "list-disc", "list-inside")}>
+                        {(block.items || ['New point...']).map((item, i) => (
+                            <li key={i}>{resolveVariables(item, simulationVars)}</li>
+                        ))}
+                    </ListTag>
+                </div>
+            );
+        case 'divider':
+            return <hr className="w-full my-6 border-slate-200" />;
+        case 'score-card':
+            return (
+                <div className="w-full py-6">
+                    <Card className="bg-primary text-white border-none shadow-2xl rounded-[2rem] p-8 flex flex-col items-center text-center">
+                        <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-3 py-1 text-[8px] font-black uppercase tracking-widest">Assessment Result</Badge>
+                        <span className="text-6xl font-black tabular-nums tracking-tighter">{simulationVars.score || 0}</span>
+                        <span className="text-[10px] font-bold opacity-60 uppercase tracking-[0.2em] mt-1">Total Points Recorded</span>
+                    </Card>
+                </div>
+            );
+        default:
+            return <div className="p-4 border border-dashed rounded text-[10px] text-muted-foreground uppercase text-center">{block.type} Block Content</div>;
+    }
+}
+
+function SortableBlockItem({ 
+    id, index, block, isSelected, simulationVars, onSelect, onRemove, onDuplicate 
+}: { 
+    id: string, index: number, block: MessageBlock, isSelected: boolean, simulationVars: Record<string, any>, onSelect: () => void, onRemove: () => void, onDuplicate: () => void
+}) {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+
+    const style = {
+        transform: CSS.Translate.toString(transform),
+        transition,
+    };
+
+    return (
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            className={cn(
+                "relative group/block transition-all duration-300",
+                isSelected && "z-10"
+            )}
+            onClick={(e) => { e.stopPropagation(); onSelect(); }}
+        >
+            {/* Selection Outline & Handle */}
+            <div className={cn(
+                "absolute -inset-4 border-2 rounded-[1.5rem] pointer-events-none transition-all duration-300",
+                isSelected ? "border-primary shadow-2xl shadow-primary/10 bg-primary/[0.02]" : "border-transparent"
+            )} />
+
+            <div
+                {...attributes}
+                {...listeners}
+                className={cn(
+                    "absolute -left-10 top-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-background border rounded-full transition-all duration-300 shadow-xl",
+                    isSelected || "opacity-0 group-hover/block:opacity-100"
+                )}
+            >
+                <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+
+            {/* Quick Actions */}
+            <div className={cn(
+                "absolute -right-10 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1 transition-all duration-300",
+                isSelected || "opacity-0 group-hover/block:opacity-100"
+            )}>
+                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg hover:text-primary" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3.5 w-3.5" /></Button>
+                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+            </div>
+            
+            <div className="relative py-2 px-4">
+                <VisualBlock block={block} simulationVars={simulationVars} />
+            </div>
+        </div>
+    );
+}
+
+// --- SIDEBAR INSPECTOR ---
+
+function GlobalBlockInspector({ 
     block, 
     variables, 
-    onChange 
+    onUpdate 
 }: { 
     block: MessageBlock, 
     variables: VariableDefinition[], 
-    onChange: (props: Partial<MessageBlock>) => void 
+    onUpdate: (props: Partial<MessageBlock>) => void 
 }) {
     const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="grid gap-4">
+        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
+            <div className="space-y-6">
                 {block.type === 'heading' && (
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Heading Title</Label>
-                        <Input 
-                            value={block.title || ''} 
-                            onChange={e => onChange({ title: e.target.value })} 
-                            className="font-bold text-lg border-none shadow-none focus-visible:ring-0 p-0 h-auto bg-transparent" 
-                        />
-                        <div className="flex gap-2">
-                            {(['h1', 'h2', 'h3'] as const).map(v => (
-                                <Button 
-                                    key={v}
-                                    type="button"
-                                    size="sm"
-                                    variant={block.variant === v ? 'secondary' : 'ghost'}
-                                    className="h-7 text-[10px] uppercase font-black"
-                                    onClick={() => onChange({ variant: v })}
-                                >
-                                    {v}
-                                </Button>
-                            ))}
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Content</Label>
+                            <Input 
+                                value={block.title || ''} 
+                                onChange={e => onUpdate({ title: e.target.value })} 
+                                className="font-bold rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20" 
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Importance Level</Label>
+                            <div className="flex gap-2">
+                                {(['h1', 'h2', 'h3'] as const).map(v => (
+                                    <Button 
+                                        key={v}
+                                        type="button"
+                                        size="sm"
+                                        variant={block.variant === v ? 'default' : 'outline'}
+                                        className="h-8 flex-1 rounded-lg font-black"
+                                        onClick={() => onUpdate({ variant: v })}
+                                    >
+                                        {v.toUpperCase()}
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
 
                 {(block.type === 'text' || block.type === 'quote') && (
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{block.type === 'quote' ? 'Quote' : 'Paragraph'} Content</Label>
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Body Text</Label>
                         <Textarea 
                             value={block.content || ''} 
-                            onChange={e => onChange({ content: e.target.value })}
-                            className={cn(
-                                "min-h-[120px] text-base border-none shadow-none focus-visible:ring-0 p-0 bg-transparent leading-relaxed",
-                                block.type === 'quote' && "italic"
-                            )} 
+                            onChange={e => onUpdate({ content: e.target.value })}
+                            className="min-h-[150px] rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed" 
                         />
                     </div>
                 )}
 
                 {block.type === 'button' && (
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
-                            <Input value={block.title || ''} onChange={e => onChange({ title: e.target.value })} placeholder="Click Me" />
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Button Label</Label>
+                            <Input value={block.title || ''} onChange={e => onUpdate({ title: e.target.value })} className="font-bold rounded-xl h-11" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Action Link</Label>
-                            <Input value={block.link || ''} onChange={e => onChange({ link: e.target.value })} placeholder="https://..." />
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Link</Label>
+                            <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
+                                <div className="bg-muted px-3 flex items-center text-muted-foreground/40 border-r"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                <Input value={block.link || ''} onChange={e => onUpdate({ link: e.target.value })} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-[10px]" />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Style</Label>
+                            <Select value={block.style?.variant || 'default'} onValueChange={(val) => onUpdate({ style: { ...block.style, variant: val } })}>
+                                <SelectTrigger className="h-11 rounded-xl font-bold"><SelectValue /></SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="default">Primary Solid</SelectItem>
+                                    <SelectItem value="outline">Branded Outline</SelectItem>
+                                    <SelectItem value="secondary">Soft Gray</SelectItem>
+                                    <SelectItem value="destructive">Warning Red</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                )}
+
+                {block.type === 'image' && (
+                    <div className="space-y-4">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Source Resolution</Label>
+                        <div className="space-y-2">
+                            <Input 
+                                value={block.url || ''} 
+                                onChange={e => onUpdate({ url: e.target.value })} 
+                                placeholder="Paste image URL here..."
+                                className="h-11 rounded-xl bg-muted/20 border-none font-mono text-[10px]" 
+                            />
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase px-1 italic">Tip: Use variables like &#123;&#123;school_logo&#125;&#125; for automation.</p>
                         </div>
                     </div>
                 )}
 
                 {isTextType && (
-                    <div className="pt-4 border-t border-dashed">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block">Alignment</Label>
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-xl w-fit border shadow-inner">
+                    <div className="pt-6 border-t border-dashed">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block ml-1">Paragraph Alignment</Label>
+                        <div className="flex gap-1 bg-muted/30 p-1 rounded-[1.25rem] border shadow-inner">
                             {(['left', 'center', 'right'] as const).map(a => (
                                 <Button 
                                     key={a}
                                     type="button" 
                                     variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
-                                    size="icon" 
-                                    className="h-8 w-8 rounded-lg" 
-                                    onClick={() => onChange({ style: { ...block.style, textAlign: a } })}
+                                    className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")} 
+                                    onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
                                 >
                                     {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
                                 </Button>
@@ -144,60 +314,6 @@ function BlockInspector({
                     </div>
                 )}
             </div>
-        </div>
-    );
-}
-
-function SortableBlockItem({ 
-    id, index, block, variables, simulationVars, onUpdate, onRemove, onDuplicate 
-}: { 
-    id: string, index: number, block: MessageBlock, variables: VariableDefinition[], simulationVars?: Record<string, any>, onUpdate: (p: Partial<MessageBlock>) => void, 
-    onRemove: () => void, onDuplicate: () => void
-}) {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
-    const Icon = blockIcons[block.type] || Type;
-
-    const style = {
-        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-        transition,
-    };
-
-    const hasLogic = block.visibilityLogic?.rules?.length && block.visibilityLogic.rules.length > 0;
-    const isHiddenByLogic = hasLogic && simulationVars && !shouldShowBlock(block, simulationVars);
-
-    return (
-        <div ref={setNodeRef} style={style} className="relative group/block">
-            <div
-                {...attributes}
-                {...listeners}
-                className="absolute -left-2 top-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-background border rounded-full opacity-0 group-hover/block:opacity-100 transition-opacity shadow-lg"
-            >
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
-            </div>
-            
-            <Card className={cn(
-                "bg-card shadow-none border transition-all rounded-2xl overflow-hidden",
-                hasLogic ? "border-primary/40 ring-1 ring-primary/5" : "hover:border-primary/40",
-                isHiddenByLogic && "grayscale opacity-40 border-dashed border-red-200"
-            )}>
-                <CardHeader className="py-2 px-4 border-b bg-muted/10">
-                    <div className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-3">
-                            <div className="p-1.5 bg-primary/10 rounded-lg">
-                                <Icon className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground">{block.type}</span>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover/block:opacity-100 transition-all">
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onDuplicate}><Copy className="h-3.5 w-3.5" /></Button>
-                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent className="p-4">
-                    <BlockInspector block={block} variables={variables} onChange={onUpdate} />
-                </CardContent>
-            </Card>
         </div>
     );
 }
@@ -271,11 +387,13 @@ export default function MessageTemplatesPage() {
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
-    const [editorMode, setEditorMode] = React.useState<'builder' | 'code' | 'text'>('builder');
+    const [editorMode, setEditorMode] = React.useState<'builder' | 'code'>('builder');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
+    const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
+    const [sidebarTab, setSidebarTab] = React.useState<'data' | 'properties'>('data');
 
     // Resizable Sidebar State
-    const [variablesWidth, setVariablesWidth] = React.useState(288); // Default w-72 (288px)
+    const [variablesWidth, setVariablesWidth] = React.useState(320); 
     const [isResizing, setIsResizing] = React.useState(false);
 
     // Template State
@@ -322,19 +440,14 @@ export default function MessageTemplatesPage() {
     React.useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
-            const newWidth = Math.max(200, Math.min(600, e.clientX));
+            const newWidth = Math.max(250, Math.min(600, e.clientX));
             setVariablesWidth(newWidth);
         };
-
-        const handleMouseUp = () => {
-            setIsResizing(false);
-        };
-
+        const handleMouseUp = () => setIsResizing(false);
         if (isResizing) {
             window.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
         }
-
         return () => {
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
@@ -356,16 +469,10 @@ export default function MessageTemplatesPage() {
 
                 if (simEntity === 'Survey') {
                     const respSnap = await getDocs(query(collection(firestore, `surveys/${simRecordId}/responses`), limit(1)));
-                    if (!respSnap.empty) {
-                        id = respSnap.docs[0].id;
-                        parentId = simRecordId;
-                    }
+                    if (!respSnap.empty) { id = respSnap.docs[0].id; parentId = simRecordId; }
                 } else if (simEntity === 'Submission') {
                     const subSnap = await getDocs(query(collection(firestore, `pdfs/${simRecordId}/submissions`), limit(1)));
-                    if (!subSnap.empty) {
-                        id = subSnap.docs[0].id;
-                        parentId = simRecordId;
-                    }
+                    if (!subSnap.empty) { id = subSnap.docs[0].id; parentId = simRecordId; }
                 }
 
                 const result = await fetchContextualData(entityType, id, parentId);
@@ -399,13 +506,15 @@ export default function MessageTemplatesPage() {
 
     const handleAddBlock = (type: MessageBlock['type']) => {
         const newBlock: MessageBlock = {
-            id: `blk_${Date.now()}`,
+            id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             type,
-            title: type === 'heading' ? 'New Heading' : type === 'button' ? 'Action Button' : '',
+            title: type === 'heading' ? 'Outcome Heading' : type === 'button' ? 'Action Button' : '',
             content: type === 'text' ? 'New paragraph content...' : '',
-            style: { textAlign: 'left' }
+            style: { textAlign: 'left', variant: 'default' }
         };
         setBlocks(prev => [...prev, newBlock]);
+        setSelectedBlockId(newBlock.id);
+        setSidebarTab('properties');
     };
 
     const handleDragEnd = (event: DragEndEvent) => {
@@ -464,6 +573,8 @@ export default function MessageTemplatesPage() {
         setSimRecordId('none');
         setStep(1);
         setIsFullScreen(false);
+        setSelectedBlockId(null);
+        setSidebarTab('data');
     };
 
     const handleEditClick = (template: MessageTemplate) => {
@@ -502,6 +613,8 @@ export default function MessageTemplatesPage() {
     ) || [];
 
     const filteredVars = variables?.filter(v => v.category === 'general' || v.category === category) || [];
+
+    const selectedBlock = React.useMemo(() => blocks.find(b => b.id === selectedBlockId), [blocks, selectedBlockId]);
 
     const stepTransition = {
         initial: { opacity: 0, x: 20 },
@@ -629,7 +742,7 @@ export default function MessageTemplatesPage() {
                                     </motion.div>
                                 )}
 
-                                {/* STEP 2: WORKSHOP (BUILDER + VARIABLES) */}
+                                {/* STEP 2: WORKSHOP (DESIGNER) */}
                                 {step === 2 && (
                                     <motion.div 
                                         key="step2" 
@@ -639,44 +752,77 @@ export default function MessageTemplatesPage() {
                                             isFullScreen && "fixed inset-0 z-[100] h-screen w-screen"
                                         )}
                                     >
-                                        {/* Left: Variables Library (Resizable) */}
+                                        {/* Left: Tabbed Sidebar (Resizable) */}
                                         <div 
                                             className="border-r bg-background flex flex-col shrink-0 relative"
                                             style={{ width: variablesWidth }}
                                         >
-                                            <div className="p-4 border-b bg-muted/10 flex items-center gap-2">
-                                                <Database className="h-4 w-4 text-primary" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Data Hub</span>
-                                            </div>
-                                            <ScrollArea className="flex-1">
-                                                <div className="p-4 space-y-2">
-                                                    {filteredVars.map(v => (
-                                                        <TooltipProvider key={v.id}>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <button 
-                                                                        type="button"
-                                                                        onClick={() => {
-                                                                            const tag = `{{${v.key}}}`;
-                                                                            navigator.clipboard.writeText(tag);
-                                                                            toast({ title: 'Tag Copied', description: `${tag} is ready to paste.` });
-                                                                        }}
-                                                                        className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group"
-                                                                    >
-                                                                        <div className="flex items-center justify-between mb-1">
-                                                                            <span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span>
-                                                                            <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
-                                                                        </div>
-                                                                        <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
-                                                                        <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
-                                                                    </button>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent side="right">Click to Copy Tag</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    ))}
+                                            <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col">
+                                                <div className="p-2 border-b bg-muted/10 shrink-0">
+                                                    <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/50 p-1 rounded-xl">
+                                                        <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Data Hub</TabsTrigger>
+                                                        <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Properties</TabsTrigger>
+                                                    </TabsList>
                                                 </div>
-                                            </ScrollArea>
+                                                
+                                                <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                    <ScrollArea className="flex-1">
+                                                        <div className="p-4 space-y-2">
+                                                            {filteredVars.map(v => (
+                                                                <button 
+                                                                    key={v.id}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const tag = `{{${v.key}}}`;
+                                                                        navigator.clipboard.writeText(tag);
+                                                                        toast({ title: 'Tag Copied', description: `${tag} is ready to paste.` });
+                                                                    }}
+                                                                    className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                                                                >
+                                                                    <div className="flex items-center justify-between mb-1">
+                                                                        <span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span>
+                                                                        <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
+                                                                    </div>
+                                                                    <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                    <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </ScrollArea>
+                                                </TabsContent>
+
+                                                <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                    <ScrollArea className="flex-1">
+                                                        <div className="p-6">
+                                                            {selectedBlock ? (
+                                                                <div className="space-y-6">
+                                                                    <div className="flex items-center gap-3 pb-4 border-b">
+                                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg">
+                                                                            {React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}
+                                                                        </div>
+                                                                        <div>
+                                                                            <h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3>
+                                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <GlobalBlockInspector 
+                                                                        block={selectedBlock} 
+                                                                        variables={variables || []} 
+                                                                        onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, ...u } : b))}
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="py-20 text-center space-y-4">
+                                                                    <div className="mx-auto w-12 h-12 rounded-2xl bg-muted/50 border flex items-center justify-center text-muted-foreground/30">
+                                                                        <Layout className="h-6 w-6" />
+                                                                    </div>
+                                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit its properties</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </ScrollArea>
+                                                </TabsContent>
+                                            </Tabs>
 
                                             {/* Resize Handle */}
                                             <div 
@@ -689,7 +835,7 @@ export default function MessageTemplatesPage() {
                                         </div>
 
                                         {/* Center: Editor Workspace */}
-                                        <div className="flex-1 flex flex-col bg-muted/5 min-w-0 relative">
+                                        <div className="flex-1 flex flex-col bg-muted/10 min-w-0 relative">
                                             <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
                                                 <div className="flex items-center gap-4">
                                                     {channel === 'email' && (
@@ -711,60 +857,124 @@ export default function MessageTemplatesPage() {
                                                         {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                                                         {isFullScreen ? 'Exit Zen Mode' : 'Zen Mode'}
                                                     </Button>
-                                                    <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs">
-                                                        <Eye className="h-4 w-4" /> Final Simulation
+                                                    <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary">
+                                                        <Eye className="h-4 w-4" /> Simulation Studio
                                                     </Button>
                                                 </div>
                                             </div>
 
-                                            <ScrollArea className="flex-1">
-                                                <div className="max-w-3xl mx-auto p-8 pb-32">
+                                            <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
+                                                <div className="max-w-4xl mx-auto p-8 pb-64">
                                                     {channel === 'email' && editorMode === 'builder' ? (
-                                                        <div className="space-y-8">
-                                                            <div className="flex flex-wrap gap-2 p-2 bg-background/80 backdrop-blur-md border rounded-2xl shadow-sm mb-4 sticky top-0 z-10 ring-1 ring-black/5">
-                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('heading')} className="h-8 text-[9px] font-black uppercase"><Heading1 className="h-3.5 w-3.5 mr-1.5" /> Title</Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-8 text-[9px] font-black uppercase"><Type className="h-3.5 w-3.5 mr-1.5" /> Text</Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('button')} className="h-8 text-[9px] font-black uppercase"><MousePointer2 className="h-3.5 w-3.5 mr-1.5" /> Button</Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('image')} className="h-8 text-[9px] font-black uppercase"><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Image</Button>
-                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('score-card')} className="h-8 text-[9px] font-black uppercase"><Trophy className="h-3.5 w-3.5 mr-1.5" /> Score</Button>
+                                                        <div className="space-y-12">
+                                                            {/* High-Fidelity Canvas */}
+                                                            <div className="max-w-[600px] mx-auto bg-white shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden ring-1 ring-black/5">
+                                                                {/* Email Header Decorative */}
+                                                                <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
+                                                                
+                                                                <div className="p-12 space-y-2">
+                                                                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                                                        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                                                                            <div className="space-y-4">
+                                                                                {blocks.map((block, idx) => (
+                                                                                    <SortableBlockItem 
+                                                                                        key={block.id} 
+                                                                                        id={block.id} 
+                                                                                        index={idx} 
+                                                                                        block={block}
+                                                                                        isSelected={selectedBlockId === block.id}
+                                                                                        simulationVars={simVariables}
+                                                                                        onSelect={() => {
+                                                                                            setSelectedBlockId(block.id);
+                                                                                            setSidebarTab('properties');
+                                                                                        }}
+                                                                                        onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
+                                                                                        onDuplicate={() => {
+                                                                                            const newBlock = { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
+                                                                                            const next = [...blocks];
+                                                                                            next.splice(idx + 1, 0, newBlock);
+                                                                                            setBlocks(next);
+                                                                                        }}
+                                                                                    />
+                                                                                ))}
+                                                                            </div>
+                                                                        </SortableContext>
+                                                                    </DndContext>
+
+                                                                    {blocks.length === 0 && (
+                                                                        <div className="py-32 flex flex-col items-center justify-center text-center gap-4 opacity-30">
+                                                                            <SmartSappIcon className="h-16 w-16" />
+                                                                            <p className="font-black uppercase tracking-widest text-xs">Awaiting Architecture</p>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
 
-                                                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                                                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                                                                    <div className="space-y-6 min-h-[400px]">
-                                                                        {blocks.map((block, idx) => (
-                                                                            <SortableBlockItem 
-                                                                                key={block.id} 
-                                                                                id={block.id} 
-                                                                                index={idx} 
-                                                                                block={block}
-                                                                                variables={variables || []}
-                                                                                onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, ...u } : b))}
-                                                                                onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
-                                                                                onDuplicate={() => {
-                                                                                    const newBlock = { ...block, id: `blk_${Date.now()}` };
-                                                                                    const next = [...blocks];
-                                                                                    next.splice(idx + 1, 0, newBlock);
-                                                                                    setBlocks(next);
-                                                                                }}
-                                                                            />
-                                                                        ))}
-                                                                    </div>
-                                                                </SortableContext>
-                                                            </DndContext>
+                                                            {/* Floating Toolbar */}
+                                                            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[80] animate-in slide-in-from-bottom-8 duration-700">
+                                                                <Card className="rounded-full shadow-2xl border-primary/20 bg-background/90 backdrop-blur-xl p-2 flex items-center gap-1.5 ring-1 ring-black/5 scale-110">
+                                                                    <TooltipProvider>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('heading')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Heading1 className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Heading</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('text')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Type className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Paragraph</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('button')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><MousePointer2 className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Button</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('image')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><ImageIcon className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Image</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('quote')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Quote className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Quote</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('list')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><List className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add List</TooltipContent>
+                                                                        </Tooltip>
+                                                                        <Separator orientation="vertical" className="h-6 mx-1" />
+                                                                        <Tooltip>
+                                                                            <TooltipTrigger asChild>
+                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('score-card')} className="h-10 w-10 rounded-full hover:bg-yellow-500/10 text-yellow-600"><Trophy className="h-5 w-5" /></Button>
+                                                                            </TooltipTrigger>
+                                                                            <TooltipContent>Add Score Card</TooltipContent>
+                                                                        </Tooltip>
+                                                                    </TooltipProvider>
+                                                                </Card>
+                                                            </div>
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-6">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                                                                    {channel === 'sms' ? 'Handset Payload' : editorMode === 'code' ? 'HTML Payload' : 'Text Payload'}
+                                                                    {channel === 'sms' ? 'Handset Payload' : 'Source Code Editor'}
                                                                 </Label>
-                                                                <Textarea 
-                                                                    value={body} 
-                                                                    onChange={e => setBody(e.target.value)} 
-                                                                    className="min-h-[500px] rounded-[2.5rem] font-mono text-sm leading-relaxed p-10 shadow-2xl bg-white border-none focus-visible:ring-1 focus-visible:ring-primary/20"
-                                                                    placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
-                                                                />
+                                                                <div className="p-1 rounded-[2.5rem] bg-slate-900 shadow-2xl">
+                                                                    <Textarea 
+                                                                        value={body} 
+                                                                        onChange={e => setBody(e.target.value)} 
+                                                                        className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 bg-slate-900 border-none text-blue-400 focus-visible:ring-0 shadow-none selection:bg-blue-500/30"
+                                                                        placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     )}
@@ -772,13 +982,16 @@ export default function MessageTemplatesPage() {
                                             </ScrollArea>
                                         </div>
 
-                                        {/* Right: Live Preview Mini */}
-                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-100 flex-col overflow-hidden shrink-0">
-                                            <div className="p-4 border-b bg-background flex items-center gap-2">
-                                                <Eye className="h-4 w-4 text-primary" />
-                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Live Feedback</span>
+                                        {/* Right: Persitent Live Preview Mini */}
+                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-50 flex-col overflow-hidden shrink-0">
+                                            <div className="p-4 border-b bg-background flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <Eye className="h-4 w-4 text-primary" />
+                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">High Fidelity Feed</span>
+                                                </div>
+                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">Live Resolution</Badge>
                                             </div>
-                                            <div className="flex-1 overflow-auto p-6">
+                                            <div className="flex-1 overflow-auto p-6 bg-muted/30">
                                                 <div className={cn(
                                                     "w-full transition-all duration-700 shadow-2xl rounded-3xl overflow-hidden border-4 border-white bg-white",
                                                     channel === 'sms' && "bg-[#0A1427] border-slate-800 p-6"
@@ -788,14 +1001,14 @@ export default function MessageTemplatesPage() {
                                                             <div className="flex items-center justify-between opacity-20"><Zap className="text-white h-4 w-4" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
                                                             <div className="p-4 bg-white/5 border border-white/10 rounded-xl relative">
                                                                 <div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" />
-                                                                <p className="text-sm text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
+                                                                <p className="text-xs text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="flex flex-col">
                                                             <div className="p-4 bg-muted/20 border-b space-y-1">
                                                                 <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span>
-                                                                <p className="font-black text-xs truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
+                                                                <p className="font-black text-[10px] truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
                                                             </div>
                                                             <iframe srcDoc={resolvedPreview} className="w-full min-h-[500px] border-none" title="Live Preview" />
                                                         </div>
