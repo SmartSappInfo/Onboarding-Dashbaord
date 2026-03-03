@@ -882,10 +882,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
 
         if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
-            initialTasks.push({ id: 'email_ack', label: 'Email Completion (Outcome)', status: 'pending', icon: Mail });
+            initialTasks.push({ id: 'email_ack', label: 'Email Result Acknowledgment', status: 'pending', icon: Mail });
         }
         if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
-            initialTasks.push({ id: 'sms_ack', label: 'SMS Completion (Outcome)', status: 'pending', icon: Smartphone });
+            initialTasks.push({ id: 'sms_ack', label: 'SMS Result Acknowledgment', status: 'pending', icon: Smartphone });
         }
         
         // Admin notification always tracked if enabled
@@ -957,7 +957,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Respondent Acknowledgment Workflows
+            // Respondent Acknowledgment Workflows (Result-Specific)
             if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     try {
@@ -1218,7 +1218,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                             <div>
                                 <DialogTitle className="text-xl font-black uppercase tracking-tight">Submission Processing</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing automation protocol...</DialogDescription>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing result-specific protocols...</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
