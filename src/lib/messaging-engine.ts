@@ -20,31 +20,53 @@ interface SendMessageInput {
 
 /**
  * Main entry point for sending a single message via the messaging engine.
- * Upgraded to handle structured blocks for high-fidelity emails.
+ * Upgraded to handle structured blocks for high-fidelity emails and automatic sender fallback.
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
 
   try {
-    // 1. Fetch Core Assets & Constants
-    const [templateSnap, senderSnap, constantsSnap] = await Promise.all([
-      adminDb.collection('message_templates').doc(templateId).get(),
-      adminDb.collection('sender_profiles').doc(senderProfileId).get(),
-      adminDb.collection('messaging_variables').where('source', '==', 'constant').get()
-    ]);
-
+    // 1. Fetch Template
+    const templateSnap = await adminDb.collection('message_templates').doc(templateId).get();
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
-    if (!senderSnap.exists) throw new Error(`Sender Profile not found: ${senderProfileId}`);
-
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
-    const sender = { id: senderSnap.id, ...senderSnap.data() } as SenderProfile;
+
+    // 2. Resolve Sender Profile (with intelligent fallback for 'default' or missing IDs)
+    let senderProfileSnap;
+    if (senderProfileId === 'default' || !senderProfileId || senderProfileId === 'none') {
+        const defaultSnap = await adminDb.collection('sender_profiles')
+            .where('channel', '==', template.channel)
+            .where('isDefault', '==', true)
+            .where('isActive', '==', true)
+            .limit(1)
+            .get();
+        
+        if (defaultSnap.empty) {
+            const anyActiveSnap = await adminDb.collection('sender_profiles')
+                .where('channel', '==', template.channel)
+                .where('isActive', '==', true)
+                .limit(1)
+                .get();
+            
+            if (anyActiveSnap.empty) throw new Error(`No active sender profile found for ${template.channel}`);
+            senderProfileSnap = anyActiveSnap.docs[0];
+        } else {
+            senderProfileSnap = defaultSnap.docs[0];
+        }
+    } else {
+        senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+    }
+
+    if (!senderProfileSnap.exists) throw new Error(`Sender Profile not found: ${senderProfileId}`);
+    const sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
 
     if (!sender.isActive) throw new Error(`Sender Profile "${sender.name}" is inactive.`);
     if (!template.isActive) throw new Error(`Template "${template.name}" is inactive.`);
     if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
-    // 2. AUTO-RESOLUTION: Merge Global Constants into the variables map
+    // 3. Resolve Global Constants
     const finalVariables = { ...variables };
+    const constantsSnap = await adminDb.collection('messaging_variables').where('source', '==', 'constant').get();
     constantsSnap.forEach(doc => {
         const v = doc.data() as VariableDefinition;
         if (v.constantValue !== undefined) {
@@ -52,22 +74,19 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     });
 
-    // 3. Render Body
+    // 4. Render Body
     let resolvedBody = '';
-    
     if (template.channel === 'email' && template.blocks && template.blocks.length > 0) {
-        // High-Fidelity Block Rendering
         resolvedBody = renderBlocksToHtml(template.blocks, finalVariables);
     } else {
-        // Legacy or SMS Flat String Rendering
         resolvedBody = resolveVariables(template.body, finalVariables);
     }
 
-    // 4. Resolve Subject & Preview Text (Email only)
+    // 5. Resolve Metadata (Email only)
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
 
-    // 5. Apply Style Wrapper (Email only - for legacy compatibility)
+    // 6. Apply Legacy Style Wrapper (if no blocks)
     if (template.channel === 'email' && template.styleId && !template.blocks?.length) {
       const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
       if (styleSnap.exists) {
@@ -78,7 +97,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       }
     }
 
-    // 6. Perform Actual Delivery
+    // 7. Perform Delivery
     let providerId = null;
     let providerStatus = null;
 
@@ -103,9 +122,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 7. Create Audit Log
-    const cleanedVariables = JSON.parse(JSON.stringify(finalVariables));
-
+    // 8. Create Audit Log
     const logData: Omit<MessageLog, 'id'> = {
       templateId: template.id,
       templateName: template.name,
@@ -118,7 +135,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       body: resolvedBody,
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),
-      variables: cleanedVariables,
+      variables: JSON.parse(JSON.stringify(finalVariables)),
       schoolId: schoolId || finalVariables.schoolId || finalVariables.school_id || null,
       providerId: providerId || null,
       providerStatus: providerStatus || null,
@@ -132,7 +149,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
-    // 8. Sync with Activity Timeline
+    // 9. Sync Activity Timeline
     await logActivity({
         schoolId: (logData.schoolId as string) || '',
         userId: null, 
@@ -144,8 +161,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             channel: template.channel, 
             templateName: template.name,
             providerId: providerId,
-            scheduledAt: scheduledAt,
-            hasAttachments: logData.hasAttachments
+            scheduledAt: scheduledAt
         }
     });
 

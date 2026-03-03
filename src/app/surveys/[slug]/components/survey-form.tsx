@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -34,7 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
 import { triggerInternalNotification } from '@/lib/notification-engine';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logActivity } from '@/lib/activity-logger';
 
 interface SurveyFormProps {
@@ -718,12 +719,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
     const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
 
-    const isAllSectionsStrict = React.useMemo(() => {
-        const sections = survey.elements.filter(el => el.type === 'section');
-        if (sections.length === 0) return false;
-        return sections.every((s: any) => s.validateBeforeNext);
-    }, [survey.elements]);
-
     const pages = React.useMemo(() => {
         const p: SurveyElement[][] = [];
         let currentPage: SurveyElement[] = [];
@@ -867,6 +862,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
+        // Better contact harvesting (Check specific types AND labels as fallback)
+        const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email' || q.title.toLowerCase().includes('email'));
+        const phoneQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'phone' || q.title.toLowerCase().includes('phone') || q.title.toLowerCase().includes('contact'));
+        
+        const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
+        const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
+
         // Initialize status tracker
         const initialTasks: AutomationStatus[] = [
             { id: 'db', label: 'Institutional Persistence', status: 'pending', icon: Zap },
@@ -876,21 +878,16 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             initialTasks.push({ id: 'webhook', label: 'Cloud Webhook Gateway', status: 'pending', icon: Globe });
         }
 
-        const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email');
-        const phoneQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'phone');
-        const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
-        const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
-
-        if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
-            initialTasks.push({ id: 'email_ack', label: 'Email Result Acknowledgment', status: 'pending', icon: Mail });
+        // We always show these tasks in the tracker, but they might be marked as 'skipped' if no contact provided
+        if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
+            initialTasks.push({ id: 'email_ack', label: 'Email Confirmation (Respondent)', status: 'pending', icon: Mail });
         }
-        if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
-            initialTasks.push({ id: 'sms_ack', label: 'SMS Result Acknowledgment', status: 'pending', icon: Smartphone });
+        if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
+            initialTasks.push({ id: 'sms_ack', label: 'SMS Confirmation (Respondent)', status: 'pending', icon: Smartphone });
         }
         
-        // Admin notification always tracked if enabled
         if (survey.adminAlertsEnabled) {
-            initialTasks.push({ id: 'admin_alert', label: 'Administrative Team Alerts', status: 'pending', icon: Bell });
+            initialTasks.push({ id: 'admin_alert', label: 'Internal Team Notification', status: 'pending', icon: Bell });
         }
 
         setAutomationStatuses(initialTasks);
@@ -899,7 +896,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        // HARVEST ALL DATA FOR PAYLOAD & VARIABLES
         const variables: Record<string, any> = {
             survey_title: survey.title,
             score: score || 0,
@@ -908,6 +904,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             outcome_label: outcome?.label || 'Default',
         };
 
+        // Deep harvesting: Map all form answers to technical tags
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
             if (val !== undefined) {
@@ -928,7 +925,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             setLastSubmissionId(docRef.id);
             updateAutomationStatus('db', 'success');
 
-            // Concurrent Automation Execution
             const automationPromises = [];
 
             // Webhook Pipeline
@@ -957,11 +953,20 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Respondent Acknowledgment Workflows (Result-Specific)
-            if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
+            // Respondent Acknowledgment (Outcome Specific)
+            if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
+                    if (!respondentEmail) {
+                        updateAutomationStatus('email_ack', 'skipped', 'No email address detected in form data.');
+                        return;
+                    }
                     try {
-                        const res = await sendMessage({ templateId: outcome.emailTemplateId!, senderProfileId: outcome.emailSenderProfileId || 'default', recipient: String(respondentEmail), variables });
+                        const res = await sendMessage({ 
+                            templateId: outcome.emailTemplateId!, 
+                            senderProfileId: outcome.emailSenderProfileId || 'default', 
+                            recipient: String(respondentEmail), 
+                            variables 
+                        });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('email_ack', 'success');
                     } catch (e: any) {
@@ -971,10 +976,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(emailTask());
             }
 
-            if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
+            if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
                 const smsTask = async () => {
+                    if (!respondentPhone) {
+                        updateAutomationStatus('sms_ack', 'skipped', 'No phone number detected in form data.');
+                        return;
+                    }
                     try {
-                        const res = await sendMessage({ templateId: outcome.smsTemplateId!, senderProfileId: outcome.smsSenderProfileId || 'default', recipient: String(respondentPhone), variables });
+                        const res = await sendMessage({ 
+                            templateId: outcome.smsTemplateId!, 
+                            senderProfileId: outcome.smsSenderProfileId || 'default', 
+                            recipient: String(respondentPhone), 
+                            variables 
+                        });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('sms_ack', 'success');
                     } catch (e: any) {
@@ -984,7 +998,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(smsTask());
             }
 
-            // Administrative Notifications (Messaging)
+            // Administrative Notifications
             if (survey.adminAlertsEnabled) {
                 const adminTask = async () => {
                     try {
@@ -1005,7 +1019,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(adminTask());
             }
 
-            // MANDATORY System Audit Log (Regardless of toggle)
+            // Mandatory System Activity Audit
             logActivity({
                 schoolId: '',
                 userId: null,
@@ -1218,7 +1232,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             </div>
                             <div>
                                 <DialogTitle className="text-xl font-black uppercase tracking-tight">Submission Processing</DialogTitle>
-                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing result-specific protocols...</DialogDescription>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest">Executing post-submission protocols...</DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
@@ -1229,13 +1243,16 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                     <div className={cn(
                                         "p-2 rounded-xl transition-all",
                                         task.status === 'success' ? "bg-emerald-100 text-emerald-600" :
-                                        task.status === 'failed' ? "bg-rose-100 text-rose-600" : "bg-muted text-muted-foreground opacity-40"
+                                        task.status === 'failed' ? "bg-rose-100 text-rose-600" : 
+                                        task.status === 'skipped' ? "bg-amber-100 text-amber-600" :
+                                        "bg-muted text-muted-foreground opacity-40"
                                     )}>
                                         <task.icon className="h-4 w-4" />
                                     </div>
                                     <div>
                                         <p className="text-sm font-black text-foreground uppercase tracking-tight">{task.label}</p>
                                         {task.error && <p className="text-[9px] font-bold text-rose-600 uppercase mt-0.5">{task.error}</p>}
+                                        {task.status === 'skipped' && <p className="text-[9px] font-bold text-amber-600 uppercase mt-0.5">Not applicable</p>}
                                     </div>
                                 </div>
                                 <div className="shrink-0">
@@ -1243,6 +1260,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                         <Loader2 className="h-5 w-5 animate-spin text-primary opacity-40" />
                                     ) : task.status === 'success' ? (
                                         <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in duration-300" />
+                                    ) : task.status === 'skipped' ? (
+                                        <Info className="h-5 w-5 text-amber-500" />
                                     ) : (
                                         <TooltipProvider>
                                             <Tooltip>
