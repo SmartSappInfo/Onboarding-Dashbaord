@@ -75,7 +75,12 @@ export default function QuickTemplateDialog({
 
     // Queries
     const surveysQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'surveys'), where('status', '!=', 'archived'), orderBy('internalName', 'asc')) : null, 
+        firestore ? query(
+            collection(firestore, 'surveys'), 
+            where('status', '!=', 'archived'), 
+            orderBy('status', 'asc'),
+            orderBy('internalName', 'asc')
+        ) : null, 
     [firestore]);
 
     const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables')) : null, [firestore]);
