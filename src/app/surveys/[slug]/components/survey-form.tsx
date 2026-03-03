@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -861,9 +862,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
-        // Smart Identification of respondent info
-        const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email' || q.title.toLowerCase().includes('email'));
-        const phoneQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'phone' || q.title.toLowerCase().includes('phone') || q.title.toLowerCase().includes('contact'));
+        // --- Respondent Identification Logic ---
+        // We scan for specific types OR titles that imply contact info
+        const emailQuestion = survey.elements.filter(isQuestion).find(q => 
+            q.type === 'email' || 
+            q.title.toLowerCase().includes('email address') ||
+            q.title.toLowerCase().includes('your email')
+        );
+        const phoneQuestion = survey.elements.filter(isQuestion).find(q => 
+            q.type === 'phone' || 
+            q.title.toLowerCase().includes('phone number') ||
+            q.title.toLowerCase().includes('mobile number') ||
+            q.title.toLowerCase().includes('contact number')
+        );
         
         const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
         const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
@@ -878,10 +889,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
 
         if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
-            initialTasks.push({ id: 'email_ack', label: 'Email Result Delivery', status: 'pending', icon: Mail });
+            initialTasks.push({ id: 'email_ack', label: 'Email Confirmation (Respondent)', status: 'pending', icon: Mail });
         }
         if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
-            initialTasks.push({ id: 'sms_ack', label: 'SMS Result Delivery', status: 'pending', icon: Smartphone });
+            initialTasks.push({ id: 'sms_ack', label: 'SMS Confirmation (Respondent)', status: 'pending', icon: Smartphone });
         }
         
         if (survey.adminAlertsEnabled) {
@@ -977,7 +988,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Task 3: Respondent Logic-Based Messaging (Result Specific)
+            // Task 3: Respondent Logic-Based Messaging (Outcome Specific)
             if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     if (!respondentEmail) {
@@ -1045,7 +1056,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(adminTask());
             }
 
-            // Task 5: Activity Log (Always Mandatory)
+            // Task 5: Activity Log (Always Mandatory for Audit)
             logActivity({
                 schoolId: survey.schoolId || '',
                 userId: null, 

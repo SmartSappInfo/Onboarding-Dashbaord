@@ -9,11 +9,12 @@ service cloud.firestore {
     }
 
     function isAuthorized() {
-      // Direct flag check with a hardcoded fallback for the development admin identity
-      // to resolve bootstrap race conditions.
+      // Robust flag check with a hardcoded fallback for the development admin identity.
+      // We check email first to avoid termination if the user document doesn't exist yet.
       return isSignedIn() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true ||
-        request.auth.token.email == 'admin@smartsapp.com'
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAuthorized == true)
       );
     }
 
@@ -36,6 +37,9 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
     match /zones/{document=**} {
+      allow read, write: if isAuthorized();
+    }
+    match /messaging_variables/{document=**} {
       allow read, write: if isAuthorized();
     }
     
@@ -99,15 +103,15 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAuthorized();
       }
-    }
 
-    match /surveys/{surveyId}/responses/{responseId} {
-      allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
-      allow read, list, delete: if isAuthorized();
-    }
+      match /responses/{responseId} {
+        allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
+        allow read, list, delete: if isAuthorized();
+      }
 
-    match /surveys/{surveyId}/summaries/{summaryId} {
-      allow create, read, list, delete: if isAuthorized();
+      match /summaries/{summaryId} {
+        allow create, read, list, delete: if isAuthorized();
+      }
     }
 
     // --- Doc Signing Rules ---
@@ -124,7 +128,7 @@ service cloud.firestore {
 
     // --- Activity Log Rules ---
     match /activities/{activityId} {
-      allow create: if isAuthorized();
+      allow create: if isAuthorized() || isSignedIn(); // Public users can trigger via actions
       allow read, list: if isAuthorized();
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
