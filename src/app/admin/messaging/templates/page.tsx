@@ -38,6 +38,16 @@ import { resolveVariables, renderBlocksToHtml, shouldShowBlock, parseHtmlToBlock
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
@@ -397,6 +407,8 @@ export default function MessageTemplatesPage() {
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
     const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'tags' | 'properties'>('blocks');
     const [cloningId, setCloningId] = React.useState<string | null>(null);
+    const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
+    const [isDeleting, setIsDeleting] = React.useState(false);
 
     // Resizable Sidebar State
     const [variablesWidth, setVariablesWidth] = React.useState(320); 
@@ -625,6 +637,20 @@ export default function MessageTemplatesPage() {
             toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
         }
         setCloningId(null);
+    };
+
+    const handleDelete = async () => {
+        if (!firestore || !templateToDelete) return;
+        setIsDeleting(true);
+        try {
+            await deleteDoc(doc(firestore, 'message_templates', templateToDelete.id));
+            toast({ title: 'Template Removed', description: `"${templateToDelete.name}" has been deleted.` });
+            setTemplateToDelete(null);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: e.message });
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const resetForm = () => {
@@ -1078,7 +1104,28 @@ export default function MessageTemplatesPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
                                     <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[400px]">
-                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} onClick={() => handleCloneClick(template)} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button></div>
+                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
+                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}>
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className={cn("h-9 w-9 rounded-xl hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} 
+                                                onClick={() => handleCloneClick(template)} 
+                                                disabled={!!cloningId}
+                                            >
+                                                <CopyPlus className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" 
+                                                onClick={() => setTemplateToDelete(template)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
                                         
                                         <div className="flex-1 overflow-hidden relative bg-muted/10 border-b">
                                             {template.channel === 'email' ? (
@@ -1114,6 +1161,28 @@ export default function MessageTemplatesPage() {
                     </ScrollArea>
                 )}
             </div>
+
+            <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
+                <AlertDialogContent className="rounded-[2rem]">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Delete Protocol?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-sm font-medium">
+                            This will permanently remove the template <span className="font-bold text-foreground">&ldquo;{templateToDelete?.name}&rdquo;</span> from the institutional library. Any automations currently referencing this blueprint may fail.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="mt-4">
+                        <AlertDialogCancel className="rounded-xl font-bold">Retain Template</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={handleDelete} 
+                            disabled={isDeleting}
+                            className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl"
+                        >
+                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Permanently Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
