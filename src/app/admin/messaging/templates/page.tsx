@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -146,7 +147,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
                 <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
                     <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal text-left" : "list-disc text-left", "list-inside")}>
                         {(block.items || ['New point...']).map((item, i) => (
-                            <li key={i}>{resolveVariables(item, simulationVars)}</li>
+                            <li key={item + i}>{resolveVariables(item, simulationVars)}</li>
                         ))}
                     </ListTag>
                 </div>
@@ -400,6 +401,7 @@ export default function MessageTemplatesPage() {
     const [isAdding, setIsAdding] = React.useState(false);
     const [step, setStep] = React.useState(1);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
+    const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
@@ -693,18 +695,18 @@ export default function MessageTemplatesPage() {
         setStep(target);
     };
 
-    const resolvedPreview = React.useMemo(() => {
-        let finalBody = resolveVariables(body, simVariables);
+    const resolvedPreview = React.useCallback((tmpl: MessageTemplate, vars: Record<string, any>) => {
+        let finalBody = resolveVariables(tmpl.body, vars);
         
-        if (channel === 'email' && styleId !== 'none') {
-            const selectedStyle = styles?.find(s => s.id === styleId);
+        if (tmpl.channel === 'email' && tmpl.styleId && tmpl.styleId !== 'none') {
+            const selectedStyle = styles?.find(s => s.id === tmpl.styleId);
             if (selectedStyle && selectedStyle.htmlWrapper.includes('{{content}}')) {
                 finalBody = selectedStyle.htmlWrapper.replace('{{content}}', finalBody);
             }
         }
         
         return finalBody;
-    }, [body, simVariables, channel, styleId, styles]);
+    }, [styles]);
 
     const filteredTemplates = templates?.filter(t => 
         (categoryFilter === 'all' || t.category === categoryFilter) &&
@@ -1083,9 +1085,9 @@ export default function MessageTemplatesPage() {
                                             <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center")}>
                                                 {isSimLoading && <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p></div>}
                                                 {channel === 'sms' ? (
-                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview.length / 160)} SMS Segments</span></div></div>
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(editingTemplate!, simVariables)}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview(editingTemplate!, simVariables).length / 160)} SMS Segments</span></div></div>
                                                 ) : (
-                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
+                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview(editingTemplate!, simVariables)} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
                                                 )}
                                             </div>
                                         </div>
@@ -1103,55 +1105,65 @@ export default function MessageTemplatesPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[400px]">
-                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
-                                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}>
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className={cn("h-9 w-9 rounded-xl hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} 
-                                                onClick={() => handleCloneClick(template)} 
-                                                disabled={!!cloningId}
-                                            >
-                                                <CopyPlus className="h-4 w-4" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" 
-                                                onClick={() => setTemplateToDelete(template)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
+                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
+                                        {/* MANAGEMENT HEADROOM */}
+                                        <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-muted/5 group-hover:bg-background transition-colors duration-500">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
+                                                    {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
+                                                </div>
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{template.channel} Protocol</span>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Preview" onClick={() => setPreviewTemplate(template)}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Edit" onClick={() => handleEditClick(template)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} title="Clone" onClick={() => handleCloneClick(template)} disabled={!!cloningId}>
+                                                    <CopyPlus className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" title="Delete" onClick={() => setTemplateToDelete(template)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
                                         </div>
                                         
-                                        <div className="flex-1 overflow-hidden relative bg-muted/10 border-b">
+                                        {/* PREVIEW CANVAS */}
+                                        <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-start p-1.5">
                                             {template.channel === 'email' ? (
-                                                <div className="w-full h-full p-2 origin-top transform scale-[0.6] select-none pointer-events-none overflow-hidden">
-                                                    <iframe 
-                                                        srcDoc={template.body} 
-                                                        className="w-[160%] h-[160%] border-none bg-white rounded-lg shadow-inner pointer-events-none" 
-                                                        title="preview"
-                                                    />
+                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-2xl shadow-inner">
+                                                    <div className="absolute inset-0 transform origin-top scale-[0.45] w-[222%] h-[222%] pointer-events-none p-4">
+                                                        <iframe 
+                                                            srcDoc={template.body} 
+                                                            className="w-full h-full border-none bg-white rounded-3xl pointer-events-none shadow-xl" 
+                                                            title="preview"
+                                                        />
+                                                    </div>
                                                 </div>
                                             ) : (
-                                                <div className="p-6 flex flex-col justify-center h-full gap-4">
-                                                    <div className="flex items-center justify-between opacity-20"><Zap className="h-4 w-4" /><span className="text-[8px] font-black uppercase">SMS Protocol</span></div>
-                                                    <div className="p-4 bg-[#0A1427] text-white rounded-2xl shadow-xl border border-white/5"><p className="text-[10px] font-bold leading-relaxed line-clamp-6 italic opacity-80">&ldquo;{template.body}&rdquo;</p></div>
+                                                <div className="w-full h-full bg-[#0A1427] rounded-2xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+                                                    <div className="absolute -right-4 -top-4 opacity-5 rotate-12">
+                                                        <Zap size={120} />
+                                                    </div>
+                                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl shadow-xl backdrop-blur-sm">
+                                                        <p className="text-[9px] font-bold text-white/80 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
+                                                    </div>
+                                                    <div className="flex items-center justify-between opacity-20 border-t border-white/10 pt-3">
+                                                        <SmartSappIcon className="h-3.5 w-3.5" variant="white" />
+                                                        <span className="text-[7px] font-black uppercase tracking-widest text-white">Handset Simulator</span>
+                                                    </div>
                                                 </div>
                                             )}
                                             <div className="absolute inset-0 bg-transparent z-10" />
                                         </div>
 
-                                        <CardHeader className="p-6 shrink-0 bg-background">
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn("p-2 rounded-xl border shadow-sm", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>{template.channel === 'sms' ? <Smartphone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}</div>
-                                                <div className="min-w-0 flex-1">
-                                                    <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                    <p className="text-[8px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-0.5">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
-                                                </div>
+                                        {/* FOOTER */}
+                                        <CardHeader className="p-5 shrink-0 bg-background border-t">
+                                            <div className="min-w-0">
+                                                <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
+                                                <p className="text-[8px] uppercase font-bold tracking-[0.2em] text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
                                             </div>
                                         </CardHeader>
                                     </Card>
@@ -1161,6 +1173,59 @@ export default function MessageTemplatesPage() {
                     </ScrollArea>
                 )}
             </div>
+
+            {/* QUICK PREVIEW MODAL */}
+            <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
+                <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-none shadow-2xl">
+                    <DialogHeader className="p-6 border-b bg-white shrink-0 flex flex-row items-center justify-between space-y-0 pr-12">
+                        <div>
+                            <DialogTitle className="text-xl font-black uppercase tracking-tight">{previewTemplate?.name}</DialogTitle>
+                            <DialogDescription className="text-xs font-bold uppercase tracking-widest">Global Protocol Preview</DialogDescription>
+                        </div>
+                        <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border">
+                            <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('desktop')}>
+                                <Monitor className="h-3.5 w-3.5" /> Desktop
+                            </Button>
+                            <Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('mobile')}>
+                                <PhoneIcon className="h-3.5 w-3.5" /> Mobile
+                            </Button>
+                        </div>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden relative p-8 flex justify-center">
+                        <div className={cn(
+                            "transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
+                            previewDevice === 'mobile' ? "w-[375px] h-full" : "w-full max-w-4xl",
+                            previewTemplate?.channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center"
+                        )}>
+                            {previewTemplate?.channel === 'sms' ? (
+                                <div className="w-full max-w-sm space-y-10">
+                                    <div className="flex items-center justify-between opacity-20">
+                                        <Zap className="text-white h-6 w-6" />
+                                        <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink</span>
+                                    </div>
+                                    <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner">
+                                        <div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" />
+                                        <p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col h-full bg-white">
+                                    <div className="p-8 bg-muted/20 border-b space-y-2">
+                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Subject Line</span>
+                                        <p className="font-black text-xl text-foreground">{previewTemplate?.subject || '(No Subject)'}</p>
+                                    </div>
+                                    <iframe srcDoc={resolvedPreview(previewTemplate!, {})} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    <DialogFooter className="p-4 bg-white border-t shrink-0">
+                        <Button onClick={() => setPreviewTemplate(null)} className="rounded-xl font-bold px-8">Close Preview</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
                 <AlertDialogContent className="rounded-[2rem]">
