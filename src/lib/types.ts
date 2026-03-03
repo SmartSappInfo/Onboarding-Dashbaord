@@ -93,6 +93,12 @@ export interface Meeting {
   type: MeetingType;
   recordingUrl?: string;
   brochureUrl?: string;
+  adminAlertsEnabled?: boolean;
+  adminAlertChannel?: 'email' | 'sms' | 'both';
+  adminAlertNotifyManager?: boolean;
+  adminAlertSpecificUserIds?: string[];
+  adminAlertEmailTemplateId?: string;
+  adminAlertSmsTemplateId?: string;
 }
 
 export interface MediaAsset {
@@ -191,6 +197,7 @@ export interface SurveyResultBlock {
         backgroundColor?: string;
         padding?: string;
         borderRadius?: string;
+        width?: string;
         animate?: boolean;
     };
 }

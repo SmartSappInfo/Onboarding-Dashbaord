@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -34,6 +33,7 @@ import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
+import { triggerInternalNotification } from '@/lib/notification-engine';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -488,7 +488,7 @@ const ElementRenderer = ({
                                             value={field.value}
                                             onChange={(v) => handleValueChange(v, field.onChange)}
                                             disabled={false}
-                                            surveyId={survey.id}
+                                            surveyId={surveyId}
                                         />
                                     </div>
                                 )}
@@ -521,7 +521,7 @@ const ElementRenderer = ({
                 return null;
             case 'heading': {
                 const Tag = block.variant || 'h2';
-                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl sm:text-3xl font-bold";
+                const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl font-bold" : Tag === 'h3' ? "text-xl font-bold" : "text-2xl font-bold";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
                         <span dangerouslySetInnerHTML={{ __html: block.title || '' }} />
@@ -893,23 +893,21 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 }
             }
 
-            // 2. Admin Automation (from Publish Step)
-            if (survey.adminEmailNotificationEnabled && survey.adminEmailTemplateId && survey.adminEmailRecipient) {
-                sendMessage({
-                    templateId: survey.adminEmailTemplateId,
-                    senderProfileId: survey.adminEmailSenderProfileId || 'default',
-                    recipient: survey.adminEmailRecipient,
-                    variables: { ...variables, admin_note: 'A new survey response has been received.' }
-                }).catch(e => console.error("Admin Email Automation failed:", e));
-            }
-
-            if (survey.adminSmsNotificationEnabled && survey.adminSmsTemplateId && survey.adminSmsRecipient) {
-                sendMessage({
-                    templateId: survey.adminSmsTemplateId,
-                    senderProfileId: survey.adminSmsSenderProfileId || 'default',
-                    recipient: survey.adminSmsRecipient,
-                    variables: { ...variables, admin_note: 'New survey response received.' }
-                }).catch(e => console.error("Admin SMS Automation failed:", e));
+            // 2. INTERNAL TEAM NOTIFICATION (Improved Logic)
+            if (survey.adminAlertsEnabled) {
+                triggerInternalNotification({
+                    schoolId: '', // Context is survey specific
+                    notifyManager: survey.adminAlertNotifyManager,
+                    specificUserIds: survey.adminAlertSpecificUserIds,
+                    emailTemplateId: survey.adminAlertEmailTemplateId,
+                    smsTemplateId: survey.adminAlertSmsTemplateId,
+                    channel: survey.adminAlertChannel,
+                    variables: {
+                        ...variables,
+                        event_type: 'Survey Submitted',
+                        outcome_label: outcome?.label || 'Default'
+                    }
+                }).catch(e => console.error("Admin Alert failed:", e));
             }
 
             // 3. Webhook Execution
