@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -567,8 +568,17 @@ export default function MessageTemplatesPage() {
     };
 
     const handleSave = async () => {
-        if (!firestore || !name) return;
+        if (!firestore) return;
+        if (!name.trim()) {
+            toast({ variant: 'destructive', title: 'Name Required', description: 'Please provide a name for this template.' });
+            return;
+        }
         setIsSubmitting(true);
+
+        // Extract variables from content
+        const contentForExtraction = `${subject} ${body} ${JSON.stringify(blocks)}`;
+        const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
+        const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
         const templateData = {
             name: name.trim(),
@@ -579,6 +589,7 @@ export default function MessageTemplatesPage() {
             body: body.trim(),
             blocks: channel === 'email' ? blocks : undefined,
             styleId: channel === 'email' && styleId !== 'none' ? styleId : null,
+            variables: variableList,
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
@@ -593,8 +604,9 @@ export default function MessageTemplatesPage() {
             setIsAdding(false);
             setEditingTemplate(null);
             resetForm();
-        } catch (e) {
-            toast({ variant: 'destructive', title: 'Save Failed' });
+        } catch (e: any) {
+            console.error("Save Failed:", e);
+            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
         } finally {
             setIsSubmitting(false);
         }
@@ -863,7 +875,7 @@ export default function MessageTemplatesPage() {
                                                 </div>
                                                 <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
-                                                        <div className="p-4 pt-4 space-y-8">
+                                                        <div className="p-4 pt-2 space-y-8">
                                                             <div className="space-y-4">
                                                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Core Typography</h3>
                                                                 <div className="grid grid-cols-2 gap-3">
@@ -894,7 +906,7 @@ export default function MessageTemplatesPage() {
                                                 </TabsContent>
                                                 <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
-                                                        <div className="p-4 pt-4 space-y-2">
+                                                        <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => (
                                                                 <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group">
                                                                     <div className="flex items-center justify-between mb-1"><span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span><Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" /></div>
@@ -912,7 +924,7 @@ export default function MessageTemplatesPage() {
                                                 </TabsContent>
                                                 <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
-                                                        <div className="p-4 pt-4">
+                                                        <div className="p-4 pt-2">
                                                             {selectedBlock ? (
                                                                 <div className="space-y-4">
                                                                     <div className="flex items-center gap-3 pb-4 border-b">
