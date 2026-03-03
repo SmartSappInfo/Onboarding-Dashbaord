@@ -191,9 +191,9 @@ export default function MessageStylesPage() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
             <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <Button asChild variant="ghost" className="-ml-2 mb-2">
+                    <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
                         <Link href="/admin/messaging">
-                            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Engine
+                            <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
                         </Link>
                     </Button>
                     <h1 className="text-3xl font-black tracking-tight flex items-center gap-3 text-foreground">

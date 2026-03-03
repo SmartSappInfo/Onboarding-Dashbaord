@@ -668,26 +668,35 @@ export default function MessageTemplatesPage() {
 
     return (
         <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
-            <div className="shrink-0 p-4 sm:p-6 md:p-8 flex items-center justify-between border-b bg-background shadow-sm z-20">
-                <div>
-                    <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                        {isAdding ? (editingTemplate ? 'Editing Protocol' : 'Designing New Blueprint') : 'Institutional Template Hub'}
-                    </p>
-                </div>
-                {!isAdding ? (
-                    <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8 h-11 transition-all active:scale-95">
-                        <Plus className="mr-2 h-5 w-5" /> New Template
-                    </Button>
-                ) : (
-                    <div className="flex items-center gap-3">
-                        <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold h-11">Discard</Button>
-                        <Button onClick={handleSave} disabled={isSubmitting || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95">
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Commit Changes
-                        </Button>
+            <div className="shrink-0 p-4 sm:p-6 md:p-8 border-b bg-background shadow-sm z-20">
+                <div className="flex items-center justify-between">
+                    <div>
+                        {!isAdding && (
+                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
+                                <Link href="/admin/messaging">
+                                    <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
+                                </Link>
+                            </Button>
+                        )}
+                        <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                            {isAdding ? (editingTemplate ? 'Editing Protocol' : 'Designing New Blueprint') : 'Institutional Template Hub'}
+                        </p>
                     </div>
-                )}
+                    {!isAdding ? (
+                        <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8 h-11 transition-all active:scale-95">
+                            <Plus className="mr-2 h-5 w-5" /> New Template
+                        </Button>
+                    ) : (
+                        <div className="flex items-center gap-3">
+                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold h-11">Discard</Button>
+                            <Button onClick={handleSave} disabled={isSubmitting || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Commit Changes
+                            </Button>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col">

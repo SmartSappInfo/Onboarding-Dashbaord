@@ -174,7 +174,7 @@ export default function ScheduledMessagesPage() {
                     <div>
                         <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
                             <Link href="/admin/messaging">
-                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Hub
+                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
                             </Link>
                         </Button>
                         <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
@@ -287,7 +287,7 @@ export default function ScheduledMessagesPage() {
                     <div className="space-y-1">
                         <p className="text-sm font-black uppercase tracking-tight text-primary">Operational Oversight</p>
                         <p className="text-[10px] text-primary/70 leading-relaxed font-bold uppercase tracking-widest">
-                            SMS queue updates are synced directly with mNotify BMS. Email cancellations utilize the Resend suppression logic to prevent delivery. 
+                            SMS queue updates are synced directly with mNotify BMS. Email cancellations utilize the Resend logic to prevent delivery. 
                             Note that Email content modifications must be handled by re-dispatching.
                         </p>
                     </div>

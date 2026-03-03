@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -284,7 +285,7 @@ export default function VariableRegistryPage() {
     };
 
     const healthMetrics = React.useMemo(() => {
-        if (!variables || !templates) return { used: 0, unused: 0, broken: 0 };
+        if (!variables || !templates) return { used: 0, unused: 0, usedPercentage: 0, broken: 0 };
         const usedKeys = new Set(usageMap.keys());
         const registryKeys = new Set(variables.map(v => v.key));
         let broken = 0;
@@ -295,7 +296,12 @@ export default function VariableRegistryPage() {
                 if (matches.some(match => !registryKeys.has(match.replace(/\{\{|\}\}/g, '').trim()))) broken++;
             }
         });
-        return { used: usedKeys.size, unused: variables.length - usedKeys.size, broken: broken };
+        return { 
+            used: usedKeys.size, 
+            unused: variables.length - usedKeys.size, 
+            broken: broken,
+            usedPercentage: variables.length > 0 ? Math.round((usedKeys.size / variables.length) * 100) : 0
+        };
     }, [variables, templates, usageMap]);
 
     return (
@@ -305,7 +311,7 @@ export default function VariableRegistryPage() {
                     <div>
                         <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
                             <Link href="/admin/messaging">
-                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Engine
+                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
                             </Link>
                         </Button>
                         <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
