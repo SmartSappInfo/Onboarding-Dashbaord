@@ -331,7 +331,7 @@ export default function MessageLogsPage() {
                                                 <p className="text-2xl font-black text-blue-900">{selectedLog.clickedCount || 0}</p>
                                             </div>
                                         </CardContent>
-                                    </div>
+                                    </Card>
                                 </div>
                             )}
 
