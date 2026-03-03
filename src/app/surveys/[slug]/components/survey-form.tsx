@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -36,6 +35,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { logActivity } from '@/lib/activity-logger';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -843,7 +843,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
     const handleAcknowledgeSuccess = () => {
         setIsStatusModalOpen(false);
-        const score = calculateScore(form.getValues());
         if (survey.scoringEnabled && lastSubmissionId) {
             router.push(`/surveys/${survey.slug}/result/${lastSubmissionId}`);
         } else {
@@ -857,12 +856,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         survey.elements.filter(isQuestion).forEach(q => form.clearErrors(q.id));
         const missing = validateAllRequired(data);
         if (missing.length > 0) {
-            if (!isAllSectionsStrict) { 
-                setMissingFields(missing); 
-                setShowMissingFieldsModal(true); 
-            } else {
-                onInvalid({});
-            }
+            setMissingFields(missing); 
+            setShowMissingFieldsModal(true); 
             return;
         }
 
@@ -872,13 +867,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
-        // 1. Initialize statuses
+        // Initialize status tracker
         const initialTasks: AutomationStatus[] = [
-            { id: 'db', label: 'Database Persistence', status: 'pending', icon: Zap },
+            { id: 'db', label: 'Institutional Persistence', status: 'pending', icon: Zap },
         ];
 
         if (survey.webhookEnabled && survey.webhookId) {
-            initialTasks.push({ id: 'webhook', label: 'Webhook Dispatch', status: 'pending', icon: Globe });
+            initialTasks.push({ id: 'webhook', label: 'Cloud Webhook Gateway', status: 'pending', icon: Globe });
         }
 
         const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email');
@@ -892,8 +887,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
             initialTasks.push({ id: 'sms_ack', label: 'SMS Completion (Outcome)', status: 'pending', icon: Smartphone });
         }
+        
+        // Admin notification always tracked if enabled
         if (survey.adminAlertsEnabled) {
-            initialTasks.push({ id: 'admin_alert', label: 'Admin Team Alerts', status: 'pending', icon: Bell });
+            initialTasks.push({ id: 'admin_alert', label: 'Administrative Team Alerts', status: 'pending', icon: Bell });
         }
 
         setAutomationStatuses(initialTasks);
@@ -902,11 +899,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
+        // HARVEST ALL DATA FOR PAYLOAD & VARIABLES
         const variables: Record<string, any> = {
             survey_title: survey.title,
             score: score || 0,
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
+            outcome_label: outcome?.label || 'Default',
         };
 
         survey.elements.filter(isQuestion).forEach(q => {
@@ -916,7 +915,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             }
         });
 
-        const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null && (typeof v !== 'number' || v > 0) ));
+        const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
         const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
@@ -924,7 +923,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         form.control.disabled = true;
 
         try {
-            // Task 1: DB Save
+            // Task 1: Persistent Save
             const docRef = await addDoc(responsesCollection, responseData);
             setLastSubmissionId(docRef.id);
             updateAutomationStatus('db', 'success');
@@ -932,25 +931,24 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             // Concurrent Automation Execution
             const automationPromises = [];
 
-            // Webhook Execution
+            // Webhook Pipeline
             if (survey.webhookEnabled && survey.webhookId) {
                 const webhookTask = async () => {
                     try {
                         const webhookDoc = await getDoc(doc(firestore, 'webhooks', survey.webhookId!));
-                        if (!webhookDoc.exists()) throw new Error("Webhook endpoint missing in library.");
-                        const webhookData = webhookDoc.data() as Webhook;
-                        const payload = {
-                            survey_title: survey.title,
-                            survey_id: survey.id,
-                            submission_id: docRef.id,
-                            submitted_at: responseData.submittedAt,
-                            score: score,
-                            outcome_label: outcome?.label || 'Default',
-                            answers: cleanedData,
-                            result_url: typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}` : ''
-                        };
-                        const res = await fetch(webhookData.url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        if (!res.ok) throw new Error(`Gateway returned ${res.status}`);
+                        if (!webhookDoc.exists()) throw new Error("Endpoint missing");
+                        const webhook = webhookDoc.data() as Webhook;
+                        const res = await fetch(webhook.url, { 
+                            method: 'POST', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify({ 
+                                ...variables, 
+                                answers: cleanedData, 
+                                submission_id: docRef.id,
+                                survey_id: survey.id
+                            }) 
+                        });
+                        if (!res.ok) throw new Error(`Status ${res.status}`);
                         updateAutomationStatus('webhook', 'success');
                     } catch (e: any) {
                         updateAutomationStatus('webhook', 'failed', e.message);
@@ -959,7 +957,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Respondent Automations
+            // Respondent Acknowledgment Workflows
             if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     try {
@@ -986,7 +984,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(smsTask());
             }
 
-            // Admin Alerts
+            // Administrative Notifications (Messaging)
             if (survey.adminAlertsEnabled) {
                 const adminTask = async () => {
                     try {
@@ -997,7 +995,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             emailTemplateId: survey.adminAlertEmailTemplateId,
                             smsTemplateId: survey.adminAlertSmsTemplateId,
                             channel: survey.adminAlertChannel,
-                            variables: { ...variables, event_type: 'Survey Submitted', outcome_label: outcome?.label || 'Default' }
+                            variables: { ...variables, event_type: 'Survey Completion' }
                         });
                         updateAutomationStatus('admin_alert', 'success');
                     } catch (e: any) {
@@ -1006,6 +1004,16 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 };
                 automationPromises.push(adminTask());
             }
+
+            // MANDATORY System Audit Log (Regardless of toggle)
+            logActivity({
+                schoolId: '',
+                userId: null,
+                type: 'form_submission',
+                source: 'public',
+                description: `Respondent completed survey: "${survey.title}"`,
+                metadata: { surveyId: survey.id, submissionId: docRef.id, score, outcome: outcome?.label }
+            });
 
             await Promise.allSettled(automationPromises);
             setIsSubmitting(false);
@@ -1069,7 +1077,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 });
                 if (invalidQuestionsOnPage.length > 0) {
                     invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: 'This field is required.' }));
-                    toast({ variant: 'destructive', title: 'Action Required', description: 'Please complete the required fields in this section before moving ahead.' });
+                    toast({ variant: 'destructive', title: 'Action Required', description: 'Please complete the required fields in this section.' });
                     return;
                 }
             }
@@ -1201,7 +1209,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 </DialogContent>
             </Dialog>
 
-            {/* AUTOMATION STATUS DIALOG */}
             <Dialog open={isStatusModalOpen} onOpenChange={(open) => { if (!open && !isSubmitting) handleAcknowledgeSuccess(); }}>
                 <DialogContent className="sm:max-w-md rounded-[2.5rem] overflow-hidden p-0 border-none shadow-2xl">
                     <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
