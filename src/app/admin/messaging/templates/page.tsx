@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
-    FileType, Plus, Trash2, Mail, Smartphone, X, Loader2, ArrowLeft, 
+    FileType, Plus, Trash2, Mail, Smartphone, X, Loader2, ArrowLeft, ArrowRight,
     Code, Eye, Sparkles, Check, Pencil, Database, Zap, Trophy, 
     MonitorPlay, Palette, Layout, Wand2, Info, Copy, GripVertical, 
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
@@ -32,7 +32,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
