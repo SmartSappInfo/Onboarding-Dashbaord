@@ -53,9 +53,9 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  contactPerson?: string; // Kept for legacy/migration support
-  email?: string; // Kept for legacy/migration support
-  phone?: string; // Kept for legacy/migration support
+  contactPerson?: string; 
+  email?: string;
+  phone?: string;
   status: SchoolStatus;
   zone?: Zone;
   focalPersons?: FocalPerson[];
@@ -94,13 +94,6 @@ export interface Meeting {
   type: MeetingType;
   recordingUrl?: string;
   brochureUrl?: string;
-  // Internal Notifications
-  adminAlertsEnabled?: boolean;
-  adminAlertChannel?: 'email' | 'sms' | 'both';
-  adminAlertNotifyManager?: boolean;
-  adminAlertSpecificUserIds?: string[];
-  adminAlertEmailTemplateId?: string;
-  adminAlertSmsTemplateId?: string;
 }
 
 export interface MediaAsset {
@@ -217,7 +210,6 @@ export interface SurveyResultRule {
     maxScore: number;
     priority: number;
     pageId: string;
-    // Respondent Messaging
     emailTemplateId?: string;
     smsTemplateId?: string;
     emailSenderProfileId?: string;
@@ -249,23 +241,12 @@ export interface Survey {
   showSurveyTitles?: boolean;
   webhookId?: string;
   webhookEnabled?: boolean;
-  // Internal Notifications (Upgraded)
   adminAlertsEnabled?: boolean;
   adminAlertChannel?: 'email' | 'sms' | 'both';
   adminAlertNotifyManager?: boolean;
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
-  // Legacy (Preserved for migration)
-  adminSmsNotificationEnabled?: boolean;
-  adminSmsTemplateId?: string;
-  adminSmsSenderProfileId?: string;
-  adminSmsRecipient?: string;
-  adminEmailNotificationEnabled?: boolean;
-  adminEmailTemplateId?: string;
-  adminEmailSenderProfileId?: string;
-  adminEmailRecipient?: string;
-  automationMessagingEnabled?: boolean;
 }
 
 export interface SurveyResponse {
@@ -372,7 +353,6 @@ export interface PDFForm {
     confirmationMessagingEnabled?: boolean;
     confirmationTemplateId?: string;
     confirmationSenderProfileId?: string;
-    // Internal Notifications
     adminAlertsEnabled?: boolean;
     adminAlertChannel?: 'email' | 'sms' | 'both';
     adminAlertNotifyManager?: boolean;
@@ -417,7 +397,7 @@ export interface MessageBlockRule {
 
 export interface MessageBlock {
   id: string;
-  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'columns' | 'header' | 'footer' | 'logo';
+  type: 'heading' | 'text' | 'image' | 'video' | 'button' | 'quote' | 'divider' | 'list' | 'columns' | 'header' | 'footer' | 'logo' | 'score-card';
   title?: string;
   content?: string;
   url?: string;
@@ -448,8 +428,8 @@ export interface MessageTemplate {
   category: 'forms' | 'surveys' | 'meetings' | 'general';
   channel: 'sms' | 'email';
   subject?: string;
-  body: string; // Used for legacy/SMS or resolved HTML output
-  blocks?: MessageBlock[]; // NEW: Structured block system
+  body: string; 
+  blocks?: MessageBlock[]; 
   styleId?: string;
   variables: string[];
   isActive: boolean;
@@ -472,7 +452,7 @@ export interface MessageLog {
   sentAt: string;
   variables: Record<string, any>;
   schoolId?: string;
-  providerId?: string; // Provider-specific ID (e.g. mNotify Campaign ID)
+  providerId?: string; 
   providerStatus?: string;
   updatedAt?: string;
   hasAttachments?: boolean;
@@ -510,10 +490,10 @@ export interface VariableDefinition {
   label: string;
   category: 'general' | 'meetings' | 'surveys' | 'forms';
   source: 'static' | 'survey' | 'pdf' | 'constant';
-  sourceId?: string; // ID of the specific Survey or PDF Form
-  sourceName?: string; // Friendly name of the source
+  sourceId?: string; 
+  sourceName?: string; 
   entity: 'School' | 'Meeting' | 'SurveyResponse' | 'Submission' | 'Global';
-  path: string; // The dot-notation path to the data (or literal value for constants)
+  path: string; 
   type: 'string' | 'number' | 'boolean' | 'date';
-  constantValue?: string; // The fixed value for 'constant' type variables
+  constantValue?: string; 
 }

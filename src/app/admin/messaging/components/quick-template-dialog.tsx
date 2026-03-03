@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -29,7 +30,14 @@ import {
     Smartphone, 
     Check,
     Info,
-    Wand2
+    Wand2,
+    X,
+    Layout,
+    Type,
+    Heading1,
+    MousePointer2,
+    Quote,
+    Square
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -56,7 +64,6 @@ export default function QuickTemplateDialog({
     const [name, setName] = React.useState('');
     const [subject, setSubject] = React.useState('');
     const [body, setBody] = React.useState('');
-    const [styleId, setStyleId] = React.useState('none');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isAiProcessing, setIsAiProcessing] = React.useState(false);
@@ -66,18 +73,8 @@ export default function QuickTemplateDialog({
     const bodyRef = React.useRef<HTMLTextAreaElement>(null);
     const subjectRef = React.useRef<HTMLInputElement>(null);
 
-    const varsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return query(collection(firestore, 'messaging_variables'));
-    }, [firestore]);
-
-    const stylesQuery = useMemoFirebase(() => {
-        if (!firestore || channel !== 'email') return null;
-        return query(collection(firestore, 'message_styles'), orderBy('name', 'asc'));
-    }, [firestore, channel]);
-
+    const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables')) : null, [firestore]);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
-    const { data: styles } = useCollection<MessageStyle>(stylesQuery);
 
     const contextVariables = React.useMemo(() => {
         if (!variables) return [];
@@ -114,28 +111,19 @@ export default function QuickTemplateDialog({
 
     const handleInsert = (key: string) => {
         const tag = `{{${key}}}`;
-        const target = document.activeElement === subjectRef.current ? 'subject' : 'body';
-        
-        if (target === 'body') {
-            const el = bodyRef.current;
-            if (!el) return;
-            const start = el.selectionStart;
-            const end = el.selectionEnd;
-            setBody(body.substring(0, start) + tag + body.substring(end));
+        const active = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
+        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) {
+            const start = active.selectionStart || 0;
+            const end = active.selectionEnd || 0;
+            const val = active.value;
+            active.value = val.substring(0, start) + tag + val.substring(end);
+            active.dispatchEvent(new Event('input', { bubbles: true }));
             setTimeout(() => {
-                el.focus();
-                el.setSelectionRange(start + tag.length, start + tag.length);
+                active.focus();
+                active.setSelectionRange(start + tag.length, start + tag.length);
             }, 0);
         } else {
-            const el = subjectRef.current;
-            if (!el) return;
-            const start = el.selectionStart;
-            const end = el.selectionEnd;
-            setSubject(subject.substring(0, start) + tag + subject.substring(end));
-            setTimeout(() => {
-                el.focus();
-                el.setSelectionRange(start + tag.length, start + tag.length);
-            }, 0);
+            setBody(prev => prev + tag);
         }
     };
 
@@ -154,7 +142,6 @@ export default function QuickTemplateDialog({
                 subject: channel === 'email' ? subject.trim() : undefined,
                 body: body.trim(),
                 blocks: channel === 'email' && blocks.length > 0 ? blocks : undefined,
-                styleId: channel === 'email' && styleId !== 'none' ? styleId : undefined,
                 variables: variableList,
                 isActive: true,
                 createdAt: new Date().toISOString(),
@@ -177,13 +164,12 @@ export default function QuickTemplateDialog({
         setSubject('');
         setBody('');
         setBlocks([]);
-        setStyleId('none');
         setAiPrompt('');
         setShowAiInput(false);
     };
 
     return (
-        <Dialog open={open} onOpenChange={onOpenChange}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden rounded-[2rem] border-none shadow-2xl">
                 <DialogHeader className="p-6 border-b bg-muted/30 shrink-0">
                     <div className="flex items-center justify-between">
@@ -212,7 +198,6 @@ export default function QuickTemplateDialog({
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                    {/* Editor Side */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {showAiInput ? (
                             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
@@ -222,11 +207,11 @@ export default function QuickTemplateDialog({
                                         <Label className="text-sm font-black uppercase tracking-tight text-primary">AI Architect</Label>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">What should this message say?</Label>
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Describe your communication objective</Label>
                                         <Textarea 
                                             value={aiPrompt} 
                                             onChange={e => setAiPrompt(e.target.value)}
-                                            placeholder="e.g. Create a professional welcome email for new parents. Mention the kickoff meeting date and include a button to the portal."
+                                            placeholder="e.g. A formal admission offer. Mention orientation dates and include a call-to-action button."
                                             className="min-h-[150px] rounded-2xl bg-white border-none shadow-inner p-4 leading-relaxed"
                                         />
                                     </div>
@@ -236,7 +221,7 @@ export default function QuickTemplateDialog({
                                         className="w-full h-12 rounded-xl font-black shadow-xl"
                                     >
                                         {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                                        Generate Structured Template
+                                        Generate Template Structure
                                     </Button>
                                 </div>
                             </div>
@@ -247,57 +232,41 @@ export default function QuickTemplateDialog({
                                     <Input 
                                         value={name} 
                                         onChange={e => setName(e.target.value)} 
-                                        placeholder="e.g. Booking Confirmation" 
+                                        placeholder="e.g. Welcome Message" 
                                         className="h-11 rounded-xl bg-muted/20 border-none font-bold"
                                     />
                                 </div>
 
                                 {channel === 'email' && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Line</Label>
-                                            <Input 
-                                                ref={subjectRef}
-                                                value={subject} 
-                                                onChange={e => setSubject(e.target.value)} 
-                                                placeholder="Email subject..." 
-                                                className="h-11 rounded-xl bg-muted/20 border-none font-bold"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Branding Style</Label>
-                                            <Select value={styleId} onValueChange={setStyleId}>
-                                                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none">Plain Text Layout</SelectItem>
-                                                    {styles?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Line</Label>
+                                        <Input 
+                                            ref={subjectRef}
+                                            value={subject} 
+                                            onChange={e => setSubject(e.target.value)} 
+                                            placeholder="Email subject..." 
+                                            className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                                        />
                                     </div>
                                 )}
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Message Content</Label>
-                                        {blocks.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] font-black uppercase h-5">Structured Blocks Active</Badge>}
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{channel === 'email' ? 'Email Body' : 'SMS Message'}</Label>
+                                        {blocks.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] font-black uppercase h-5">Block System Active</Badge>}
                                     </div>
                                     <Textarea 
                                         ref={bodyRef}
                                         value={body} 
                                         onChange={e => setBody(e.target.value)}
                                         className="min-h-[250px] rounded-2xl bg-muted/20 border-none p-4 font-medium leading-relaxed resize-none shadow-inner"
-                                        placeholder={blocks.length > 0 ? "[ Blocks will be prioritized during dispatch ]" : `Hi {{contact_name}}, your request for {{school_name}} is being processed...`}
+                                        placeholder={blocks.length > 0 ? "[ Blocks are active. Use the Template Studio for full editing. ]" : `Hi {{contact_name}}, welcome to...`}
                                     />
-                                    {blocks.length > 0 && <p className="text-[9px] text-muted-foreground italic px-1">Note: This template now contains modular blocks which will provide a rich layout in the final email.</p>}
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Variable Sidebar */}
                     <div className="w-full lg:w-72 border-l bg-muted/5 p-4 shrink-0 overflow-hidden flex flex-col gap-4">
                         <div className="flex items-center gap-2 px-1">
                             <Database className="h-3.5 w-3.5 text-primary" />
@@ -306,7 +275,7 @@ export default function QuickTemplateDialog({
                         
                         <ScrollArea className="flex-1">
                             <div className="space-y-2 pr-3 pb-10">
-                                {contextVariables.length > 0 ? contextVariables.map(v => (
+                                {contextVariables.map(v => (
                                     <button
                                         key={v.id}
                                         type="button"
@@ -320,19 +289,14 @@ export default function QuickTemplateDialog({
                                         <p className="text-xs font-bold truncate leading-none">{v.label}</p>
                                         <code className="text-[9px] font-mono text-muted-foreground opacity-60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                     </button>
-                                )) : (
-                                    <div className="py-10 text-center opacity-30 flex flex-col items-center gap-2">
-                                        <Tag className="h-8 w-8" />
-                                        <p className="text-[9px] font-black uppercase tracking-widest">No Library Tags</p>
-                                    </div>
-                                )}
+                                ))}
                             </div>
                         </ScrollArea>
 
                         <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 flex items-start gap-3">
                             <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                             <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                                Use tags to inject live school, meeting, or respondent data automatically.
+                                Click a variable to inject it at your cursor position.
                             </p>
                         </div>
                     </div>

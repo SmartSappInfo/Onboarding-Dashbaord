@@ -26,7 +26,7 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
   const evaluateRule = (rule: MessageBlockRule): boolean => {
     const value = variables[rule.variableKey];
     const strValue = String(value ?? '').trim();
-    const target = rule.value.trim();
+    const target = (rule.value || '').trim();
 
     switch (rule.operator) {
       case 'isEqualTo': return strValue === target;
@@ -59,7 +59,6 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
   const bgColor = options?.backgroundColor || '#ffffff';
 
   const renderBlock = (block: MessageBlock): string => {
-    // VISIBILITY CHECK
     if (!shouldShowBlock(block, variables)) {
       return '';
     }
@@ -130,15 +129,13 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
         const columnCount = block.columns?.length || 1;
         const colWidth = 100 / columnCount;
         
-        // Responsive Column Logic
-        // We use display: inline-block on containers to allow stacking
         const cols = (block.columns || []).map(col => {
           const innerHtml = col.blocks.map(renderBlock).join('');
           return `
             <!--[if mso | IE]>
             <td align="left" vertical-align="top" style="width:${colWidth}%;">
             <![endif]-->
-            <div class="mj-column-per-${Math.round(colWidth)}" style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
+            <div style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
               <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
                 <tr>
                   <td align="left" style="font-size:0px;padding:10px 10px;word-break:break-word;">
@@ -217,7 +214,6 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
 
   const contentHtml = blocks.map(renderBlock).join('\n');
 
-  // Master Wrapper
   return `
     <!doctype html>
     <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
@@ -240,7 +236,7 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
         <xml>
         <o:OfficeDocumentSettings>
           <o:AllowPNG/>
-          <o:PixelsPerInch>96</o:PixelsPerInch>
+          <o:PixelsPerInch(96)/>
         </o:OfficeDocumentSettings>
         </xml>
         </noscript>
