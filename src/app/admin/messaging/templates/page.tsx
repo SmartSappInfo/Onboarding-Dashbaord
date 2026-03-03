@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -771,15 +772,15 @@ export default function MessageTemplatesPage() {
                                 {step === 2 && (
                                     <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
                                         <div className="border-r bg-background flex flex-col shrink-0 relative" style={{ width: variablesWidth }}>
-                                            <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col">
+                                            <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                                 <div className="px-2 py-2 border-b bg-muted/10 shrink-0">
                                                     <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
                                                         <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
                                                         <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
-                                                        <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Properties</TabsTrigger>
+                                                        <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Props</TabsTrigger>
                                                     </TabsList>
                                                 </div>
-                                                <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-4 pt-2 space-y-8">
                                                             <div className="space-y-4">
@@ -810,20 +811,25 @@ export default function MessageTemplatesPage() {
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
-                                                <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-4 pt-2 space-y-2">
-                                                            {filteredVars.map(v => (
+                                                            {filteredVars.length > 0 ? filteredVars.map(v => (
                                                                 <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group">
                                                                     <div className="flex items-center justify-between mb-1"><span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span><Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" /></div>
                                                                     <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
                                                                     <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                                 </button>
-                                                            ))}
+                                                            )) : (
+                                                                <div className="py-20 text-center opacity-30 px-4">
+                                                                    <Database className="h-8 w-8 mx-auto mb-2" />
+                                                                    <p className="text-[10px] font-black uppercase tracking-widest">No tags found</p>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
-                                                <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-4 pt-2">
                                                             {selectedBlock ? (
