@@ -695,9 +695,8 @@ export default function MessageTemplatesPage() {
                                                     {channel === 'email' && (
                                                         <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-fit">
                                                             <TabsList className="bg-muted/50 p-1 rounded-xl h-9 border">
-                                                                <TabsTrigger value="builder" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
+                                                                <TabsTrigger value="builder" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
                                                                 <TabsTrigger value="code" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
-                                                                <TabsTrigger value="text" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Type className="h-3 w-3" /> Text</TabsTrigger>
                                                             </TabsList>
                                                         </Tabs>
                                                     )}
@@ -710,7 +709,7 @@ export default function MessageTemplatesPage() {
                                                         className={cn("h-9 rounded-xl font-bold gap-2 text-xs", isFullScreen && "text-primary bg-primary/5")}
                                                     >
                                                         {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                                                        {isFullScreen ? 'Exit Full Screen' : 'Zen Mode'}
+                                                        {isFullScreen ? 'Exit Zen Mode' : 'Zen Mode'}
                                                     </Button>
                                                     <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs">
                                                         <Eye className="h-4 w-4" /> Final Simulation
