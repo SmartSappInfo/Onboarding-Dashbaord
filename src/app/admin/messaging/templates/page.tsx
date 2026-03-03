@@ -24,7 +24,7 @@ import {
     Square, List, ListOrdered, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
-    Maximize2, Minimize2, Settings
+    Maximize2, Minimize2, Settings, Link as LinkIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -34,7 +34,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { resolveVariables, renderBlocksToHtml, shouldShowBlock } from '@/lib/messaging-utils';
+import { resolveVariables, renderBlocksToHtml, shouldShowBlock, parseHtmlToBlocks } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -58,10 +58,6 @@ const blockIcons: Record<string, React.ElementType> = {
 
 // --- SUB-COMPONENTS ---
 
-/**
- * High-fidelity block renderer for the design canvas.
- * This should look like the final email.
- */
 function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulationVars: Record<string, any> }) {
     const align = block.style?.textAlign || 'left';
     const resolvedTitle = resolveVariables(block.title || '', simulationVars);
@@ -162,7 +158,6 @@ function SortableBlockItem({
             )}
             onClick={(e) => { e.stopPropagation(); onSelect(); }}
         >
-            {/* Selection Outline & Handle */}
             <div className={cn(
                 "absolute -inset-4 border-2 rounded-[1.5rem] pointer-events-none transition-all duration-300",
                 isSelected ? "border-primary shadow-2xl shadow-primary/10 bg-primary/[0.02]" : "border-transparent"
@@ -179,7 +174,6 @@ function SortableBlockItem({
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
             </div>
 
-            {/* Quick Actions */}
             <div className={cn(
                 "absolute -right-10 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1 transition-all duration-300",
                 isSelected || "opacity-0 group-hover/block:opacity-100"
@@ -318,62 +312,6 @@ function GlobalBlockInspector({
     );
 }
 
-// --- STEPPER UI ---
-
-const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
-    const steps = [
-        { name: 'Configuration', icon: Settings2 },
-        { name: 'Workshop', icon: Layout },
-        { name: 'Simulation', icon: MonitorPlay }
-    ];
-
-    return (
-        <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
-            {steps.map((step, index) => {
-                const stepNum = index + 1;
-                const Icon = step.icon;
-                const isActive = currentStep === stepNum;
-                const isCompleted = currentStep > stepNum;
-
-                return (
-                    <React.Fragment key={step.name}>
-                        <button 
-                            type="button"
-                            onClick={() => onStepClick(stepNum)}
-                            className="flex flex-col items-center group outline-none"
-                        >
-                            <div
-                                className={cn(
-                                    'flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm group-hover:scale-110',
-                                    isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
-                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
-                                )}
-                            >
-                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
-                            </div>
-                            <p className={cn(
-                                'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
-                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
-                            )}>
-                                {step.name}
-                            </p>
-                        </button>
-                        {index < steps.length - 1 && (
-                            <div className="flex-1 mx-4 h-[2px] relative overflow-hidden bg-muted rounded-full">
-                                <motion.div 
-                                    initial={false}
-                                    animate={{ width: isCompleted ? '100%' : '0%' }}
-                                    className="absolute left-0 top-0 h-full bg-primary"
-                                />
-                            </div>
-                        )}
-                    </React.Fragment>
-                );
-            })}
-        </div>
-    );
-};
-
 // --- MAIN PAGE ---
 
 export default function MessageTemplatesPage() {
@@ -387,7 +325,7 @@ export default function MessageTemplatesPage() {
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
-    const [editorMode, setEditorMode] = React.useState<'builder' | 'code'>('builder');
+    const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
     const [sidebarTab, setSidebarTab] = React.useState<'data' | 'properties'>('data');
@@ -430,6 +368,29 @@ export default function MessageTemplatesPage() {
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
     const { data: simSurveys } = useCollection<Survey>(surveysQuery);
     const { data: simPdfs } = useCollection<PDFForm>(pdfsQuery);
+
+    // --- SYNC ENGINE ---
+
+    // Sync Designer -> Code (Whenever blocks change, update the flat HTML body)
+    React.useEffect(() => {
+        if (channel === 'email' && editorMode === 'designer') {
+            const generatedHtml = renderBlocksToHtml(blocks, {});
+            if (generatedHtml !== body) {
+                setBody(generatedHtml);
+            }
+        }
+    }, [blocks, channel, editorMode, body]);
+
+    // Sync Code -> Designer (Whenever HTML body is edited manually, try to hydrate blocks)
+    const handleCodeChange = (newHtml: string) => {
+        setBody(newHtml);
+        if (editorMode === 'code') {
+            const hydratedBlocks = parseHtmlToBlocks(newHtml);
+            if (hydratedBlocks.length > 0) {
+                setBlocks(hydratedBlocks);
+            }
+        }
+    };
 
     // Resize Handler
     const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
@@ -538,8 +499,8 @@ export default function MessageTemplatesPage() {
             channel,
             subject: channel === 'email' ? subject.trim() : undefined,
             previewText: channel === 'email' ? previewText.trim() : undefined,
-            body: body.trim(),
-            blocks: channel === 'email' && editorMode === 'builder' ? blocks : undefined,
+            body: body.trim(), // The synced HTML string is what actually gets saved
+            blocks: channel === 'email' ? blocks : undefined, // Blocks preserved for future designer re-hydration
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
@@ -586,7 +547,7 @@ export default function MessageTemplatesPage() {
         setPreviewText(template.previewText || '');
         setBody(template.body || '');
         setBlocks(template.blocks || []);
-        setEditorMode(template.blocks?.length ? 'builder' : 'code');
+        setEditorMode(template.blocks?.length ? 'designer' : 'code');
         setIsAdding(true);
         setStep(1);
     };
@@ -602,10 +563,8 @@ export default function MessageTemplatesPage() {
     };
 
     const resolvedPreview = React.useMemo(() => {
-        if (channel === 'sms') return resolveVariables(body, simVariables);
-        if (editorMode === 'builder' && blocks.length > 0) return renderBlocksToHtml(blocks, simVariables);
         return resolveVariables(body, simVariables);
-    }, [body, blocks, simVariables, editorMode, channel]);
+    }, [body, simVariables]);
 
     const filteredTemplates = templates?.filter(t => 
         (categoryFilter === 'all' || t.category === categoryFilter) &&
@@ -621,6 +580,60 @@ export default function MessageTemplatesPage() {
         animate: { opacity: 1, x: 0 },
         exit: { opacity: 0, x: -20 },
         transition: { type: 'spring', damping: 25, stiffness: 200 }
+    };
+
+    const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
+        const steps = [
+            { name: 'Configuration', icon: Settings2 },
+            { name: 'Workshop', icon: Layout },
+            { name: 'Simulation', icon: MonitorPlay }
+        ];
+
+        return (
+            <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
+                {steps.map((step, index) => {
+                    const stepNum = index + 1;
+                    const Icon = step.icon;
+                    const isActive = currentStep === stepNum;
+                    const isCompleted = currentStep > stepNum;
+
+                    return (
+                        <React.Fragment key={step.name}>
+                            <button 
+                                type="button"
+                                onClick={() => onStepClick(stepNum)}
+                                className="flex flex-col items-center group outline-none"
+                            >
+                                <div
+                                    className={cn(
+                                        'flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm group-hover:scale-110',
+                                        isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
+                                        isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
+                                    )}
+                                >
+                                    {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                                </div>
+                                <p className={cn(
+                                    'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
+                                    isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
+                                )}>
+                                    {step.name}
+                                </p>
+                            </button>
+                            {index < steps.length - 1 && (
+                                <div className="flex-1 mx-4 h-[2px] relative overflow-hidden bg-muted rounded-full">
+                                    <motion.div 
+                                        initial={false}
+                                        animate={{ width: isCompleted ? '100%' : '0%' }}
+                                        className="absolute left-0 top-0 h-full bg-primary"
+                                    />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+            </div>
+        );
     };
 
     return (
@@ -651,14 +664,12 @@ export default function MessageTemplatesPage() {
             <div className="flex-1 overflow-hidden flex flex-col">
                 {isAdding ? (
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        {/* Stepper Header */}
                         <div className="bg-background border-b pt-6 shrink-0">
-                            <Stepper currentStep={step} onStepClick={handleStepClick} />
+                            <Stepper currentStep={step} onStepClick={handleStepChange} />
                         </div>
 
                         <div className="flex-1 relative overflow-hidden">
                             <AnimatePresence mode="wait">
-                                {/* STEP 1: CONFIGURATION */}
                                 {step === 1 && (
                                     <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
                                         <div className="max-w-2xl mx-auto space-y-8 pb-20">
@@ -706,27 +717,14 @@ export default function MessageTemplatesPage() {
                                                                 <Monitor className="h-4 w-4 text-primary" />
                                                                 <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Inbox Perspective</h3>
                                                             </div>
-                                                            
                                                             <div className="space-y-6">
                                                                 <div className="space-y-2">
                                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Line</Label>
-                                                                    <Input 
-                                                                        value={subject} 
-                                                                        onChange={e => setSubject(e.target.value)} 
-                                                                        placeholder="e.g. Welcome to {{school_name}}" 
-                                                                        className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-6" 
-                                                                    />
+                                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Welcome to {{school_name}}" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-6" />
                                                                 </div>
-                                                                
                                                                 <div className="space-y-2">
                                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Preview Text (Preheader)</Label>
-                                                                    <Input 
-                                                                        value={previewText} 
-                                                                        onChange={e => setPreviewText(e.target.value)} 
-                                                                        placeholder="Brief summary that appears in the inbox preview..." 
-                                                                        className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium text-sm px-6" 
-                                                                    />
-                                                                    <p className="text-[9px] font-bold text-muted-foreground/60 px-1 uppercase tracking-tighter">This text appears after the subject line in most email clients.</p>
+                                                                    <Input value={previewText} onChange={e => setPreviewText(e.target.value)} placeholder="Brief summary..." className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium text-sm px-6" />
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -742,21 +740,9 @@ export default function MessageTemplatesPage() {
                                     </motion.div>
                                 )}
 
-                                {/* STEP 2: WORKSHOP (DESIGNER) */}
                                 {step === 2 && (
-                                    <motion.div 
-                                        key="step2" 
-                                        {...stepTransition} 
-                                        className={cn(
-                                            "absolute inset-0 flex select-none bg-background transition-all duration-500",
-                                            isFullScreen && "fixed inset-0 z-[100] h-screen w-screen"
-                                        )}
-                                    >
-                                        {/* Left: Tabbed Sidebar (Resizable) */}
-                                        <div 
-                                            className="border-r bg-background flex flex-col shrink-0 relative"
-                                            style={{ width: variablesWidth }}
-                                        >
+                                    <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
+                                        <div className="border-r bg-background flex flex-col shrink-0 relative" style={{ width: variablesWidth }}>
                                             <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col">
                                                 <div className="p-2 border-b bg-muted/10 shrink-0">
                                                     <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/50 p-1 rounded-xl">
@@ -764,25 +750,12 @@ export default function MessageTemplatesPage() {
                                                         <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Properties</TabsTrigger>
                                                     </TabsList>
                                                 </div>
-                                                
                                                 <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-4 space-y-2">
                                                             {filteredVars.map(v => (
-                                                                <button 
-                                                                    key={v.id}
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        const tag = `{{${v.key}}}`;
-                                                                        navigator.clipboard.writeText(tag);
-                                                                        toast({ title: 'Tag Copied', description: `${tag} is ready to paste.` });
-                                                                    }}
-                                                                    className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group"
-                                                                >
-                                                                    <div className="flex items-center justify-between mb-1">
-                                                                        <span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span>
-                                                                        <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
-                                                                    </div>
+                                                                <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group">
+                                                                    <div className="flex items-center justify-between mb-1"><span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span><Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" /></div>
                                                                     <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
                                                                     <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
                                                                 </button>
@@ -790,173 +763,80 @@ export default function MessageTemplatesPage() {
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
-
                                                 <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-6">
                                                             {selectedBlock ? (
                                                                 <div className="space-y-6">
                                                                     <div className="flex items-center gap-3 pb-4 border-b">
-                                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg">
-                                                                            {React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}
-                                                                        </div>
-                                                                        <div>
-                                                                            <h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3>
-                                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p>
-                                                                        </div>
+                                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg">{React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}</div>
+                                                                        <div><h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p></div>
                                                                     </div>
-                                                                    <GlobalBlockInspector 
-                                                                        block={selectedBlock} 
-                                                                        variables={variables || []} 
-                                                                        onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, ...u } : b))}
-                                                                    />
+                                                                    <GlobalBlockInspector block={selectedBlock} variables={variables || []} onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, ...u } : b))} />
                                                                 </div>
                                                             ) : (
-                                                                <div className="py-20 text-center space-y-4">
-                                                                    <div className="mx-auto w-12 h-12 rounded-2xl bg-muted/50 border flex items-center justify-center text-muted-foreground/30">
-                                                                        <Layout className="h-6 w-6" />
-                                                                    </div>
-                                                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit its properties</p>
-                                                                </div>
+                                                                <div className="py-20 text-center space-y-4"><div className="mx-auto w-12 h-12 rounded-2xl bg-muted/50 border flex items-center justify-center text-muted-foreground/30"><Layout className="h-6 w-6" /></div><p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit its properties</p></div>
                                                             )}
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
                                             </Tabs>
-
-                                            {/* Resize Handle */}
-                                            <div 
-                                                className={cn(
-                                                    "absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors",
-                                                    isResizing ? "bg-primary/40" : "hover:bg-primary/20"
-                                                )}
-                                                onMouseDown={handleMouseDown}
-                                            />
+                                            <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
                                         </div>
 
-                                        {/* Center: Editor Workspace */}
                                         <div className="flex-1 flex flex-col bg-muted/10 min-w-0 relative">
                                             <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
                                                 <div className="flex items-center gap-4">
                                                     {channel === 'email' && (
                                                         <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-fit">
                                                             <TabsList className="bg-muted/50 p-1 rounded-xl h-9 border">
-                                                                <TabsTrigger value="builder" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
+                                                                <TabsTrigger value="designer" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
                                                                 <TabsTrigger value="code" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
                                                             </TabsList>
                                                         </Tabs>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
-                                                    <Button 
-                                                        variant="ghost" 
-                                                        size="sm" 
-                                                        onClick={() => setIsFullScreen(!isFullScreen)} 
-                                                        className={cn("h-9 rounded-xl font-bold gap-2 text-xs", isFullScreen && "text-primary bg-primary/5")}
-                                                    >
-                                                        {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-                                                        {isFullScreen ? 'Exit Zen Mode' : 'Zen Mode'}
-                                                    </Button>
-                                                    <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary">
-                                                        <Eye className="h-4 w-4" /> Simulation Studio
-                                                    </Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => setIsFullScreen(!isFullScreen)} className={cn("h-9 rounded-xl font-bold gap-2 text-xs", isFullScreen && "text-primary bg-primary/5")}>{isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}{isFullScreen ? 'Exit Zen Mode' : 'Zen Mode'}</Button>
+                                                    <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary"><Eye className="h-4 w-4" /> Simulation Studio</Button>
                                                 </div>
                                             </div>
 
                                             <ScrollArea className="flex-1" onClick={() => setSelectedBlockId(null)}>
                                                 <div className="max-w-4xl mx-auto p-8 pb-64">
-                                                    {channel === 'email' && editorMode === 'builder' ? (
+                                                    {channel === 'email' && editorMode === 'designer' ? (
                                                         <div className="space-y-12">
-                                                            {/* High-Fidelity Canvas */}
                                                             <div className="max-w-[600px] mx-auto bg-white shadow-2xl rounded-[2.5rem] border border-border/50 min-h-[800px] relative overflow-hidden ring-1 ring-black/5">
-                                                                {/* Email Header Decorative */}
                                                                 <div className="h-1 bg-gradient-to-r from-primary/40 via-primary to-primary/40" />
-                                                                
                                                                 <div className="p-12 space-y-2">
                                                                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                                                                         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
                                                                             <div className="space-y-4">
                                                                                 {blocks.map((block, idx) => (
                                                                                     <SortableBlockItem 
-                                                                                        key={block.id} 
-                                                                                        id={block.id} 
-                                                                                        index={idx} 
-                                                                                        block={block}
-                                                                                        isSelected={selectedBlockId === block.id}
-                                                                                        simulationVars={simVariables}
-                                                                                        onSelect={() => {
-                                                                                            setSelectedBlockId(block.id);
-                                                                                            setSidebarTab('properties');
-                                                                                        }}
+                                                                                        key={block.id} id={block.id} index={idx} block={block} isSelected={selectedBlockId === block.id} simulationVars={simVariables}
+                                                                                        onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
                                                                                         onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
-                                                                                        onDuplicate={() => {
-                                                                                            const newBlock = { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
-                                                                                            const next = [...blocks];
-                                                                                            next.splice(idx + 1, 0, newBlock);
-                                                                                            setBlocks(next);
-                                                                                        }}
+                                                                                        onDuplicate={() => { const newBlock = { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }; const next = [...blocks]; next.splice(idx + 1, 0, newBlock); setBlocks(next); }}
                                                                                     />
                                                                                 ))}
                                                                             </div>
                                                                         </SortableContext>
                                                                     </DndContext>
-
-                                                                    {blocks.length === 0 && (
-                                                                        <div className="py-32 flex flex-col items-center justify-center text-center gap-4 opacity-30">
-                                                                            <SmartSappIcon className="h-16 w-16" />
-                                                                            <p className="font-black uppercase tracking-widest text-xs">Awaiting Architecture</p>
-                                                                        </div>
-                                                                    )}
+                                                                    {blocks.length === 0 && <div className="py-32 flex flex-col items-center justify-center text-center gap-4 opacity-30"><SmartSappIcon className="h-16 w-16" /><p className="font-black uppercase tracking-widest text-xs">Awaiting Architecture</p></div>}
                                                                 </div>
                                                             </div>
-
-                                                            {/* Floating Toolbar */}
                                                             <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[80] animate-in slide-in-from-bottom-8 duration-700">
-                                                                <Card className="rounded-full shadow-2xl border-primary/20 bg-background/90 backdrop-blur-xl p-2 flex items-center gap-1.5 ring-1 ring-black/5 scale-110">
+                                                                <Card className="rounded-full shadow-2xl border-primary/10 bg-background/90 backdrop-blur-xl p-2 flex items-center gap-1.5 ring-1 ring-black/5 scale-110">
                                                                     <TooltipProvider>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('heading')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Heading1 className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Heading</TooltipContent>
-                                                                        </Tooltip>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('text')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Type className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Paragraph</TooltipContent>
-                                                                        </Tooltip>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('button')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><MousePointer2 className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Button</TooltipContent>
-                                                                        </Tooltip>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('image')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><ImageIcon className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Image</TooltipContent>
-                                                                        </Tooltip>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('quote')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Quote className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Quote</TooltipContent>
-                                                                        </Tooltip>
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('list')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><List className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add List</TooltipContent>
-                                                                        </Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('heading')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Heading1 className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Heading</TooltipContent></Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('text')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Type className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Paragraph</TooltipContent></Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('button')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><MousePointer2 className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Button</TooltipContent></Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('image')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><ImageIcon className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Image</TooltipContent></Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('quote')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Quote className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Quote</TooltipContent></Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('list')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><List className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add List</TooltipContent></Tooltip>
                                                                         <Separator orientation="vertical" className="h-6 mx-1" />
-                                                                        <Tooltip>
-                                                                            <TooltipTrigger asChild>
-                                                                                <Button variant="ghost" size="icon" onClick={() => handleAddBlock('score-card')} className="h-10 w-10 rounded-full hover:bg-yellow-500/10 text-yellow-600"><Trophy className="h-5 w-5" /></Button>
-                                                                            </TooltipTrigger>
-                                                                            <TooltipContent>Add Score Card</TooltipContent>
-                                                                        </Tooltip>
+                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('score-card')} className="h-10 w-10 rounded-full hover:bg-yellow-500/10 text-yellow-600"><Trophy className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Score Card</TooltipContent></Tooltip>
                                                                     </TooltipProvider>
                                                                 </Card>
                                                             </div>
@@ -964,13 +844,11 @@ export default function MessageTemplatesPage() {
                                                     ) : (
                                                         <div className="space-y-6">
                                                             <div className="space-y-2">
-                                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                                                                    {channel === 'sms' ? 'Handset Payload' : 'Source Code Editor'}
-                                                                </Label>
+                                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{channel === 'sms' ? 'Handset Payload' : 'Source Code Editor'}</Label>
                                                                 <div className="p-1 rounded-[2.5rem] bg-slate-900 shadow-2xl">
                                                                     <Textarea 
                                                                         value={body} 
-                                                                        onChange={e => setBody(e.target.value)} 
+                                                                        onChange={e => handleCodeChange(e.target.value)} 
                                                                         className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 bg-slate-900 border-none text-blue-400 focus-visible:ring-0 shadow-none selection:bg-blue-500/30"
                                                                         placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
                                                                     />
@@ -982,36 +860,14 @@ export default function MessageTemplatesPage() {
                                             </ScrollArea>
                                         </div>
 
-                                        {/* Right: Persitent Live Preview Mini */}
                                         <div className="hidden xl:flex w-[400px] border-l bg-slate-50 flex-col overflow-hidden shrink-0">
-                                            <div className="p-4 border-b bg-background flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <Eye className="h-4 w-4 text-primary" />
-                                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">High Fidelity Feed</span>
-                                                </div>
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">Live Resolution</Badge>
-                                            </div>
+                                            <div className="p-4 border-b bg-background flex items-center justify-between"><div className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">High Fidelity Feed</span></div><Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">Live Resolution</Badge></div>
                                             <div className="flex-1 overflow-auto p-6 bg-muted/30">
-                                                <div className={cn(
-                                                    "w-full transition-all duration-700 shadow-2xl rounded-3xl overflow-hidden border-4 border-white bg-white",
-                                                    channel === 'sms' && "bg-[#0A1427] border-slate-800 p-6"
-                                                )}>
+                                                <div className={cn("w-full transition-all duration-700 shadow-2xl rounded-3xl overflow-hidden border-4 border-white bg-white", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-6")}>
                                                     {channel === 'sms' ? (
-                                                        <div className="space-y-6">
-                                                            <div className="flex items-center justify-between opacity-20"><Zap className="text-white h-4 w-4" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
-                                                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl relative">
-                                                                <div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" />
-                                                                <p className="text-xs text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
-                                                            </div>
-                                                        </div>
+                                                        <div className="space-y-6"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-4 w-4" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div><div className="p-4 bg-white/5 border border-white/10 rounded-xl relative"><div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" /><p className="text-xs text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p></div></div>
                                                     ) : (
-                                                        <div className="flex flex-col">
-                                                            <div className="p-4 bg-muted/20 border-b space-y-1">
-                                                                <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span>
-                                                                <p className="font-black text-[10px] truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
-                                                            </div>
-                                                            <iframe srcDoc={resolvedPreview} className="w-full min-h-[500px] border-none" title="Live Preview" />
-                                                        </div>
+                                                        <div className="flex flex-col"><div className="p-4 bg-muted/20 border-b space-y-1"><span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span><p className="font-black text-[10px] truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview} className="w-full min-h-[500px] border-none" title="Live Preview" /></div>
                                                     )}
                                                 </div>
                                             </div>
@@ -1019,97 +875,34 @@ export default function MessageTemplatesPage() {
                                     </motion.div>
                                 )}
 
-                                {/* STEP 3: SIMULATION STUDIO */}
                                 {step === 3 && (
                                     <motion.div key="step3" {...stepTransition} className="absolute inset-0 flex flex-col bg-slate-50">
                                         <div className="p-6 border-b bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 shadow-sm z-10">
                                             <div className="flex items-center gap-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl"><MonitorPlay className="h-5 w-5 text-primary" /></div>
-                                                    <div>
-                                                        <h3 className="text-sm font-black uppercase tracking-tight">Simulation Studio</h3>
-                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Live data record binding</p>
-                                                    </div>
-                                                </div>
+                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MonitorPlay className="h-5 w-5 text-primary" /></div><div><h3 className="text-sm font-black uppercase tracking-tight">Simulation Studio</h3><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Live data record binding</p></div></div>
                                                 <Separator orientation="vertical" className="h-10 hidden sm:block" />
                                                 <div className="flex items-center gap-3">
                                                     <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimRecordId('none'); }}>
                                                         <SelectTrigger className="h-10 w-[160px] rounded-xl bg-muted/20 border-none font-black text-[10px] uppercase tracking-widest"><SelectValue placeholder="Pick Source..." /></SelectTrigger>
-                                                        <SelectContent className="rounded-xl">
-                                                            <SelectItem value="none">Empty State</SelectItem>
-                                                            <SelectItem value="School">School Directory</SelectItem>
-                                                            <SelectItem value="Meeting">Meeting Record</SelectItem>
-                                                            <SelectItem value="Survey">Survey Result</SelectItem>
-                                                            <SelectItem value="Submission">Doc Signing Submission</SelectItem>
-                                                        </SelectContent>
+                                                        <SelectContent className="rounded-xl"><SelectItem value="none">Empty State</SelectItem><SelectItem value="School">School Directory</SelectItem><SelectItem value="Meeting">Meeting Record</SelectItem><SelectItem value="Survey">Survey Result</SelectItem><SelectItem value="Submission">Doc Signing Submission</SelectItem></SelectContent>
                                                     </Select>
                                                     {simEntity !== 'none' && (
                                                         <Select value={simRecordId} onValueChange={setSimRecordId}>
                                                             <SelectTrigger className="h-10 w-[200px] rounded-xl bg-muted/20 border-none font-bold text-xs"><SelectValue placeholder="Pick Record..." /></SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
-                                                                <SelectItem value="none">Select Instance...</SelectItem>
-                                                                {simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                                                {simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
-                                                                {simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                                                                {simEntity === 'Submission' && simPdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                                                            </SelectContent>
+                                                            <SelectContent className="rounded-xl"><SelectItem value="none">Select Instance...</SelectItem>{simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}{simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}{simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}{simEntity === 'Submission' && simPdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                                                         </Select>
                                                     )}
                                                 </div>
                                             </div>
-
-                                            <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border">
-                                                <Button 
-                                                    variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} 
-                                                    size="sm" 
-                                                    className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase"
-                                                    onClick={() => setPreviewDevice('desktop')}
-                                                >
-                                                    <Monitor className="h-3.5 w-3.5" /> Desktop
-                                                </Button>
-                                                <Button 
-                                                    variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} 
-                                                    size="sm" 
-                                                    className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase"
-                                                    onClick={() => setPreviewDevice('mobile')}
-                                                >
-                                                    <PhoneIcon className="h-3.5 w-3.5" /> Mobile
-                                                </Button>
-                                            </div>
+                                            <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border"><Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('desktop')}><Monitor className="h-3.5 w-3.5" /> Desktop</Button><Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('mobile')}><PhoneIcon className="h-3.5 w-3.5" /> Mobile</Button></div>
                                         </div>
-
                                         <div className="flex-1 overflow-auto p-8 flex justify-center">
-                                            <div className={cn(
-                                                "transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
-                                                previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl",
-                                                channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center"
-                                            )}>
-                                                {isSimLoading && (
-                                                    <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
-                                                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p>
-                                                    </div>
-                                                )}
-
+                                            <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center")}>
+                                                {isSimLoading && <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p></div>}
                                                 {channel === 'sms' ? (
-                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700">
-                                                        <div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div>
-                                                        <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner">
-                                                            <div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" />
-                                                            <p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview}</p>
-                                                        </div>
-                                                        <div className="pt-8 border-t border-white/5 text-center">
-                                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview.length / 160)} SMS Segments</span>
-                                                        </div>
-                                                    </div>
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview.length / 160)} SMS Segments</span></div></div>
                                                 ) : (
-                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000">
-                                                        <div className="p-8 bg-muted/20 border-b space-y-2">
-                                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span>
-                                                            <p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
-                                                        </div>
-                                                        <iframe srcDoc={resolvedPreview} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" />
-                                                    </div>
+                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
                                                 )}
                                             </div>
                                         </div>
@@ -1122,67 +915,17 @@ export default function MessageTemplatesPage() {
                     <ScrollArea className="h-full">
                         <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 pb-32">
                             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
-                                <div className="relative flex-grow w-full">
-                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                                    <Input placeholder="Filter blueprints..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40"><SelectValue /></SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="all">Global Hub</SelectItem>
-                                        <SelectItem value="general">General</SelectItem>
-                                        <SelectItem value="meetings">Meetings</SelectItem>
-                                        <SelectItem value="surveys">Surveys</SelectItem>
-                                        <SelectItem value="forms">Doc Signing</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="relative flex-grow w-full"><Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" /><Input placeholder="Filter blueprints..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+                                <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="all">Global Hub</SelectItem><SelectItem value="general">General</SelectItem><SelectItem value="meetings">Meetings</SelectItem><SelectItem value="surveys">Surveys</SelectItem><SelectItem value="forms">Doc Signing</SelectItem></SelectContent></Select>
                             </div>
-
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {isLoadingTemplates ? (
-                                    Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />)
-                                ) : filteredTemplates.length > 0 ? (
-                                    filteredTemplates.map(template => (
-                                        <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50">
-                                            <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
-                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button>
-                                            </div>
-                                            <CardHeader className="p-6 pb-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={cn(
-                                                        "p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", 
-                                                        template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100"
-                                                    )}>
-                                                        {template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                        <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
-                                                    </div>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="px-6 pb-6 space-y-6">
-                                                <div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">
-                                                    &ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;
-                                                </div>
-                                                <div className="flex flex-wrap gap-2">
-                                                    {template.variables.slice(0, 4).map(v => (
-                                                        <Badge key={v} variant="outline" className="text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm bg-white border-primary/10 text-primary">
-                                                            &#123;&#123;{v}&#125;&#125;
-                                                        </Badge>
-                                                    ))}
-                                                    {template.variables.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))
-                                ) : (
-                                    <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4">
-                                        <FileType className="h-16 w-16 text-muted-foreground/20" />
-                                        <p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p>
-                                    </div>
-                                )}
+                                {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
+                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50">
+                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button></div>
+                                        <CardHeader className="p-6 pb-4"><div className="flex items-center gap-4"><div className={cn("p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>{template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle><p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p></div></div></CardHeader>
+                                        <CardContent className="px-6 pb-6 space-y-6"><div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">&ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;</div><div className="flex flex-wrap gap-2">{template.variables.slice(0, 4).map(v => (<Badge key={v} variant="outline" className="text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm bg-white border-primary/10 text-primary">&#123;&#123;{v}&#125;&#125;</Badge>))}{template.variables.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}</div></CardContent>
+                                    </Card>
+                                )) : <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4"><FileType className="h-16 w-16 text-muted-foreground/20" /><p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p></div>}
                             </div>
                         </div>
                     </ScrollArea>
