@@ -24,7 +24,7 @@ import {
     Square, List, ListOrdered, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
-    Maximize2, Minimize2, Settings, Link as LinkIcon
+    Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -328,7 +328,7 @@ export default function MessageTemplatesPage() {
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
-    const [sidebarTab, setSidebarTab] = React.useState<'data' | 'properties'>('data');
+    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'data' | 'properties'>('blocks');
 
     // Resizable Sidebar State
     const [variablesWidth, setVariablesWidth] = React.useState(320); 
@@ -369,9 +369,7 @@ export default function MessageTemplatesPage() {
     const { data: simSurveys } = useCollection<Survey>(surveysQuery);
     const { data: simPdfs } = useCollection<PDFForm>(pdfsQuery);
 
-    // --- SYNC ENGINE ---
-
-    // Sync Designer -> Code (Whenever blocks change, update the flat HTML body)
+    // Sync Designer -> Code
     React.useEffect(() => {
         if (channel === 'email' && editorMode === 'designer') {
             const generatedHtml = renderBlocksToHtml(blocks, {});
@@ -381,7 +379,7 @@ export default function MessageTemplatesPage() {
         }
     }, [blocks, channel, editorMode, body]);
 
-    // Sync Code -> Designer (Whenever HTML body is edited manually, try to hydrate blocks)
+    // Code -> Designer
     const handleCodeChange = (newHtml: string) => {
         setBody(newHtml);
         if (editorMode === 'code') {
@@ -465,12 +463,13 @@ export default function MessageTemplatesPage() {
         resolveSimData();
     }, [simEntity, simRecordId, firestore]);
 
-    const handleAddBlock = (type: MessageBlock['type']) => {
+    const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1'|'h2'|'h3') => {
         const newBlock: MessageBlock = {
             id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
             type,
-            title: type === 'heading' ? 'Outcome Heading' : type === 'button' ? 'Action Button' : '',
+            title: type === 'heading' ? (variant === 'h1' ? 'Main Heading' : 'Subheading Content') : type === 'button' ? 'Action Button' : '',
             content: type === 'text' ? 'New paragraph content...' : '',
+            variant: variant,
             style: { textAlign: 'left', variant: 'default' }
         };
         setBlocks(prev => [...prev, newBlock]);
@@ -499,8 +498,8 @@ export default function MessageTemplatesPage() {
             channel,
             subject: channel === 'email' ? subject.trim() : undefined,
             previewText: channel === 'email' ? previewText.trim() : undefined,
-            body: body.trim(), // The synced HTML string is what actually gets saved
-            blocks: channel === 'email' ? blocks : undefined, // Blocks preserved for future designer re-hydration
+            body: body.trim(),
+            blocks: channel === 'email' ? blocks : undefined,
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
@@ -535,7 +534,7 @@ export default function MessageTemplatesPage() {
         setStep(1);
         setIsFullScreen(false);
         setSelectedBlockId(null);
-        setSidebarTab('data');
+        setSidebarTab('blocks');
     };
 
     const handleEditClick = (template: MessageTemplate) => {
@@ -552,12 +551,10 @@ export default function MessageTemplatesPage() {
         setStep(1);
     };
 
-    const handleStepClick = (target: number) => {
-        if (target > step) {
-            if (step === 1 && !name) {
-                toast({ variant: 'destructive', title: 'Identity Required', description: 'Please provide a name for the template.' });
-                return;
-            }
+    const handleStepChange = (target: number) => {
+        if (target > step && step === 1 && !name) {
+            toast({ variant: 'destructive', title: 'Identity Required', description: 'Please provide a name for the template.' });
+            return;
         }
         setStep(target);
     };
@@ -636,9 +633,21 @@ export default function MessageTemplatesPage() {
         );
     };
 
+    const BlockLibraryTile = ({ icon: Icon, label, onClick }: { icon: React.ElementType, label: string, onClick: () => void }) => (
+        <button
+            type="button"
+            onClick={onClick}
+            className="flex flex-col items-center justify-center p-4 rounded-xl border border-border/50 bg-background hover:border-primary/40 hover:bg-primary/5 transition-all group aspect-square"
+        >
+            <div className="p-2.5 rounded-lg bg-muted/50 group-hover:bg-primary/10 transition-colors mb-2">
+                <Icon className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-tight text-foreground/70 group-hover:text-primary">{label}</span>
+        </button>
+    );
+
     return (
         <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
-            {/* Header */}
             <div className="shrink-0 p-4 sm:p-6 flex items-center justify-between border-b bg-background shadow-sm z-20">
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
@@ -731,7 +740,7 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </CardContent>
                                                 <CardFooter className="bg-muted/30 p-8 border-t justify-end">
-                                                    <Button size="lg" onClick={() => handleStepClick(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group">
+                                                    <Button size="lg" onClick={() => handleStepChange(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group">
                                                         Continue to Workshop <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                                                     </Button>
                                                 </CardFooter>
@@ -745,11 +754,43 @@ export default function MessageTemplatesPage() {
                                         <div className="border-r bg-background flex flex-col shrink-0 relative" style={{ width: variablesWidth }}>
                                             <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col">
                                                 <div className="p-2 border-b bg-muted/10 shrink-0">
-                                                    <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/50 p-1 rounded-xl">
-                                                        <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Data Hub</TabsTrigger>
+                                                    <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
+                                                        <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
+                                                        <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
                                                         <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Properties</TabsTrigger>
                                                     </TabsList>
                                                 </div>
+                                                <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col">
+                                                    <ScrollArea className="flex-1">
+                                                        <div className="p-6 space-y-8">
+                                                            <div className="space-y-4">
+                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Core Typography</h3>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <BlockLibraryTile icon={Heading1} label="Heading" onClick={() => handleAddBlock('heading', 'h1')} />
+                                                                    <BlockLibraryTile icon={Type} label="Subheading" onClick={() => handleAddBlock('heading', 'h2')} />
+                                                                    <BlockLibraryTile icon={PenTool} label="Content" onClick={() => handleAddBlock('text')} />
+                                                                    <BlockLibraryTile icon={Quote} label="Quote" onClick={() => handleAddBlock('quote')} />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Media & Interaction</h3>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <BlockLibraryTile icon={ImageIcon} label="Image" onClick={() => handleAddBlock('image')} />
+                                                                    <BlockLibraryTile icon={MousePointer2} label="Button" onClick={() => handleAddBlock('button')} />
+                                                                    <BlockLibraryTile icon={List} label="List" onClick={() => handleAddBlock('list')} />
+                                                                    <BlockLibraryTile icon={Trophy} label="Score Card" onClick={() => handleAddBlock('score-card')} />
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-4">
+                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Structural</h3>
+                                                                <div className="grid grid-cols-2 gap-3">
+                                                                    <BlockLibraryTile icon={Square} label="Divider" onClick={() => handleAddBlock('divider')} />
+                                                                    <BlockLibraryTile icon={Layout} label="Footer" onClick={() => handleAddBlock('footer')} />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </ScrollArea>
+                                                </TabsContent>
                                                 <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
                                                         <div className="p-4 space-y-2">
@@ -825,20 +866,6 @@ export default function MessageTemplatesPage() {
                                                                     </DndContext>
                                                                     {blocks.length === 0 && <div className="py-32 flex flex-col items-center justify-center text-center gap-4 opacity-30"><SmartSappIcon className="h-16 w-16" /><p className="font-black uppercase tracking-widest text-xs">Awaiting Architecture</p></div>}
                                                                 </div>
-                                                            </div>
-                                                            <div className="fixed bottom-12 left-1/2 -translate-x-1/2 z-[80] animate-in slide-in-from-bottom-8 duration-700">
-                                                                <Card className="rounded-full shadow-2xl border-primary/10 bg-background/90 backdrop-blur-xl p-2 flex items-center gap-1.5 ring-1 ring-black/5 scale-110">
-                                                                    <TooltipProvider>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('heading')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Heading1 className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Heading</TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('text')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Type className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Paragraph</TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('button')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><MousePointer2 className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Button</TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('image')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><ImageIcon className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Image</TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('quote')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><Quote className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Quote</TooltipContent></Tooltip>
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('list')} className="h-10 w-10 rounded-full hover:bg-primary/10 text-primary"><List className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add List</TooltipContent></Tooltip>
-                                                                        <Separator orientation="vertical" className="h-6 mx-1" />
-                                                                        <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="icon" onClick={() => handleAddBlock('score-card')} className="h-10 w-10 rounded-full hover:bg-yellow-500/10 text-yellow-600"><Trophy className="h-5 w-5" /></Button></TooltipTrigger><TooltipContent>Add Score Card</TooltipContent></Tooltip>
-                                                                    </TooltipProvider>
-                                                                </Card>
                                                             </div>
                                                         </div>
                                                     ) : (
