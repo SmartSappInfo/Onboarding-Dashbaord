@@ -206,7 +206,7 @@ function GlobalBlockInspector({
     const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
             <div className="space-y-6">
                 {block.type === 'heading' && (
                     <div className="space-y-4">
@@ -772,7 +772,7 @@ export default function MessageTemplatesPage() {
                                     <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
                                         <div className="border-r bg-background flex flex-col shrink-0 relative" style={{ width: variablesWidth }}>
                                             <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col">
-                                                <div className="p-2 border-b bg-muted/10 shrink-0">
+                                                <div className="px-2 py-2 border-b bg-muted/10 shrink-0">
                                                     <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
                                                         <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
                                                         <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
@@ -781,7 +781,7 @@ export default function MessageTemplatesPage() {
                                                 </div>
                                                 <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
-                                                        <div className="p-6 space-y-8">
+                                                        <div className="p-4 pt-2 space-y-8">
                                                             <div className="space-y-4">
                                                                 <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Core Typography</h3>
                                                                 <div className="grid grid-cols-2 gap-3">
@@ -812,7 +812,7 @@ export default function MessageTemplatesPage() {
                                                 </TabsContent>
                                                 <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
-                                                        <div className="p-4 space-y-2">
+                                                        <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.map(v => (
                                                                 <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group">
                                                                     <div className="flex items-center justify-between mb-1"><span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span><Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" /></div>
@@ -825,9 +825,9 @@ export default function MessageTemplatesPage() {
                                                 </TabsContent>
                                                 <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col">
                                                     <ScrollArea className="flex-1">
-                                                        <div className="p-6">
+                                                        <div className="p-4 pt-2">
                                                             {selectedBlock ? (
-                                                                <div className="space-y-6">
+                                                                <div className="space-y-4">
                                                                     <div className="flex items-center gap-3 pb-4 border-b">
                                                                         <div className="p-2 bg-primary text-white rounded-xl shadow-lg">{React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}</div>
                                                                         <div><h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p></div>
