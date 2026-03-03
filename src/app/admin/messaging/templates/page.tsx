@@ -110,7 +110,11 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
                 <div className={cn("w-full py-2", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
                     {resolvedUrl ? (
                         <div className="w-full">
-                            <VideoEmbed url={resolvedUrl} />
+                            <iframe 
+                                src={`https://www.youtube.com/embed/${resolvedUrl.split('/').pop()?.split('v=')[1]?.split('&')[0] || resolvedUrl.split('/').pop()}`}
+                                className="w-full aspect-video rounded-2xl shadow-lg border-4 border-white"
+                                allowFullScreen
+                            />
                         </div>
                     ) : (
                         <div className="aspect-video rounded-2xl border-2 border-dashed flex flex-col items-center justify-center bg-muted/20 text-muted-foreground gap-2">
@@ -349,7 +353,7 @@ export default function MessageTemplatesPage() {
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
-    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'data' | 'properties'>('blocks');
+    const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'tags' | 'properties'>('blocks');
 
     // Resizable Sidebar State
     const [variablesWidth, setVariablesWidth] = React.useState(320); 
@@ -386,7 +390,7 @@ export default function MessageTemplatesPage() {
     const stylesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_styles'), orderBy('name', 'asc')) : null, [firestore]);
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
-    const { data: variables, isLoading: areVariablesLoading } = useCollection<VariableDefinition>(varsQuery);
+    const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
@@ -403,16 +407,20 @@ export default function MessageTemplatesPage() {
         }
     }, [blocks, channel, editorMode, body]);
 
-    // Code -> Designer
     const handleCodeChange = (newHtml: string) => {
         setBody(newHtml);
-        if (editorMode === 'code') {
-            const hydratedBlocks = parseHtmlToBlocks(newHtml);
-            if (hydratedBlocks.length > 0) {
-                setBlocks(hydratedBlocks);
+    };
+
+    const handleEditorTabChange = (mode: 'designer' | 'code') => {
+        if (mode === 'designer' && editorMode === 'code') {
+            // Attempt to re-hydrate blocks from code (metadata or heuristics)
+            const hydrated = parseHtmlToBlocks(body);
+            if (hydrated.length > 0) {
+                setBlocks(hydrated);
             }
         }
-    };
+        setEditorMode(mode);
+    }
 
     // Resize Handler
     const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
@@ -605,7 +613,7 @@ export default function MessageTemplatesPage() {
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
-    // FILTER HIDDEN VARIABLES
+    // Filter hidden variables out of the studio tags list
     const filteredVars = variables?.filter(v => (v.category === 'general' || v.category === category) && !v.hidden) || [];
 
     const selectedBlock = React.useMemo(() => blocks.find(b => b.id === selectedBlockId), [blocks, selectedBlockId]);
@@ -803,7 +811,7 @@ export default function MessageTemplatesPage() {
                                                 <div className="px-2 py-2 border-b bg-muted/10 shrink-0">
                                                     <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
                                                         <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
-                                                        <TabsTrigger value="data" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
+                                                        <TabsTrigger value="tags" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
                                                         <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Props</TabsTrigger>
                                                     </TabsList>
                                                 </div>
@@ -838,7 +846,7 @@ export default function MessageTemplatesPage() {
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
-                                                <TabsContent value="data" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-4 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => (
@@ -881,7 +889,7 @@ export default function MessageTemplatesPage() {
                                             <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
                                                 <div className="flex items-center gap-4">
                                                     {channel === 'email' && (
-                                                        <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-fit">
+                                                        <Tabs value={editorMode} onValueChange={(v: any) => handleEditorTabChange(v)} className="w-fit">
                                                             <TabsList className="bg-muted/50 p-1 rounded-xl h-9 border">
                                                                 <TabsTrigger value="designer" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Designer</TabsTrigger>
                                                                 <TabsTrigger value="code" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>

@@ -140,53 +140,6 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
         blockHtml = `<div style="padding: 20px 0;"><hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 0;" /></div>`;
         break;
 
-      case 'columns': {
-        const columnCount = block.columns?.length || 1;
-        const colWidth = 100 / columnCount;
-        
-        const cols = (block.columns || []).map(col => {
-          const innerHtml = col.blocks.map(renderBlock).join('');
-          return `
-            <!--[if mso | IE]>
-            <td align="left" vertical-align="top" style="width:${colWidth}%;">
-            <![endif]-->
-            <div style="font-size:0px;text-align:left;direction:ltr;display:inline-block;vertical-align:top;width:100%;">
-              <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="vertical-align:top;" width="100%">
-                <tr>
-                  <td align="left" style="font-size:0px;padding:10px 10px;word-break:break-word;">
-                    ${innerHtml}
-                  </td>
-                </tr>
-              </table>
-            </div>
-            <!--[if mso | IE]>
-            </td>
-            <![endif]-->
-          `;
-        }).join('');
-
-        blockHtml = `
-          <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
-            <tbody>
-              <tr>
-                <td style="direction:ltr;font-size:0px;padding:20px 0;text-align:center;">
-                  <!--[if mso | IE]>
-                  <table role="presentation" border="0" cellpadding="0" cellspacing="0">
-                    <tr>
-                  <![endif]-->
-                  ${cols}
-                  <!--[if mso | IE]>
-                    </tr>
-                  </table>
-                  <![endif]-->
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        `;
-        break;
-      }
-
       case 'header': {
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
@@ -270,25 +223,108 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
 }
 
 /**
- * Reconstructs a MessageBlock array from an HTML string by parsing metadata markers.
+ * Reconstructs a MessageBlock array from an HTML string.
+ * First tries metadata markers (full state), then falls back to a heuristic parser for raw code.
  */
 export function parseHtmlToBlocks(html: string): MessageBlock[] {
   if (!html) return [];
   
+  // 1. Try metadata markers first (Preserves full state and IDs)
   const blocks: MessageBlock[] = [];
-  const regex = /<!--\s*BLOCK_DATA:(.*?)\s*-->/g;
+  const markerRegex = /<!--\s*BLOCK_DATA:(.*?)\s*-->/g;
   let match;
+  let foundMarkers = false;
 
-  while ((match = regex.exec(html)) !== null) {
+  while ((match = markerRegex.exec(html)) !== null) {
     try {
       const base64Data = match[1];
       const blockJson = atob(base64Data);
       const block = JSON.parse(blockJson);
       blocks.push(block);
+      foundMarkers = true;
     } catch (e) {
       console.warn("Failed to parse block metadata from HTML:", e);
     }
   }
 
-  return blocks;
+  if (foundMarkers) return blocks;
+
+  // 2. Fallback: Heuristic Parsing for Raw HTML (Browser only)
+  if (typeof window === 'undefined') return [];
+
+  try {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const container = doc.body;
+    const heuristicBlocks: MessageBlock[] = [];
+
+    // Identification Helper
+    const isSignificant = (el: HTMLElement) => {
+        const tag = el.tagName.toLowerCase();
+        if (['h1', 'h2', 'h3', 'p', 'img', 'hr', 'ul', 'ol', 'blockquote', 'a'].includes(tag)) return true;
+        if (el.classList.contains('title') || el.classList.contains('text') || el.classList.contains('button') || el.classList.contains('logo') || el.classList.contains('footer')) return true;
+        return false;
+    };
+
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as HTMLElement;
+        const tag = el.tagName.toLowerCase();
+        
+        // Skip purely system or invisible containers
+        if (['script', 'style', 'meta', 'head', 'title'].includes(tag)) return;
+
+        if (isSignificant(el)) {
+            const id = `blk_ext_${Math.random().toString(36).substr(2, 9)}`;
+            let block: MessageBlock | null = null;
+
+            if (tag === 'h1' || tag === 'h2' || tag === 'h3' || el.classList.contains('title')) {
+                block = { id, type: 'heading', variant: (tag.startsWith('h') ? tag : 'h2') as any, title: el.innerText.trim() };
+            } else if (tag === 'hr' || el.classList.contains('divider')) {
+                block = { id, type: 'divider' };
+            } else if (tag === 'img' || el.classList.contains('logo')) {
+                block = { id, type: el.classList.contains('logo') ? 'logo' : 'image', url: el.getAttribute('src') || '' };
+            } else if (tag === 'a' && (el.classList.contains('button') || el.getAttribute('style')?.includes('background'))) {
+                block = { id, type: 'button', title: el.innerText.trim(), link: el.getAttribute('href') || '#', style: { textAlign: 'center', variant: 'default' } };
+            } else if (tag === 'ul' || tag === 'ol') {
+                const items = Array.from(el.querySelectorAll('li')).map(li => li.innerText.trim());
+                block = { id, type: 'list', listStyle: tag === 'ol' ? 'ordered' : 'unordered', items };
+            } else if (tag === 'blockquote') {
+                block = { id, type: 'quote', content: el.innerText.trim() };
+            } else if (el.classList.contains('footer')) {
+                block = { id, type: 'footer', content: el.innerHTML.trim() };
+            } else if (tag === 'p' || el.classList.contains('text') || (el.innerText.trim().length > 0 && el.children.length === 0)) {
+                const content = el.innerHTML.trim();
+                if (content) {
+                    block = { id, type: 'text', content };
+                }
+            }
+
+            if (block) {
+                // Normalize variables {var} -> {{var}} for SmartSapp compatibility
+                const normalize = (val?: string) => val?.replace(/\{(\w+)\}/g, '{{$1}}') || '';
+                if (block.title) block.title = normalize(block.title);
+                if (block.content) block.content = normalize(block.content);
+                if (block.url) block.url = normalize(block.url);
+                if (block.link) block.link = normalize(block.link);
+                
+                heuristicBlocks.push(block);
+                return; // Stop branch traversal once a block is identified
+            }
+        }
+      }
+
+      // Recurse into children
+      for (let i = 0; i < node.childNodes.length; i++) {
+        walk(node.childNodes[i]);
+      }
+    };
+
+    walk(container);
+    return heuristicBlocks;
+
+  } catch (e) {
+    console.error("Heuristic parsing failure:", e);
+    return [];
+  }
 }
