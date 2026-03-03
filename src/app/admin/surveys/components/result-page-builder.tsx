@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -161,12 +160,8 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
 }
 
 function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockIndex: number }) {
-    const { register, setValue, control } = useFormContext();
+    const { register, setValue, watch } = useFormContext();
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
-    const { fields: listItems, append: addListItem, remove: removeListItem } = useFieldArray({
-        control,
-        name: `resultPages.${pageIndex}.blocks.${blockIndex}.items`
-    });
 
     if (!block) return null;
 
@@ -223,21 +218,13 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items</Label>
-                            <div className="space-y-2">
-                                {listItems.map((item, idx) => (
-                                    <div key={item.id} className="flex items-center gap-2">
-                                        <div className="text-[10px] font-black opacity-20 w-4">{idx + 1}</div>
-                                        <Input {...register(`resultPages.${pageIndex}.blocks.${blockIndex}.items.${idx}`)} className="h-9 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium" />
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => removeListItem(idx)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                <Button type="button" variant="outline" size="sm" className="w-full rounded-xl border-dashed border-2 mt-2 h-9" onClick={() => addListItem('')}>
-                                    <Plus className="h-3.5 w-3.5 mr-2" /> Add Point
-                                </Button>
-                            </div>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items (One per line)</Label>
+                            <Textarea 
+                                value={block.items?.join('\n') || ''}
+                                onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.items`, e.target.value.split('\n'), { shouldDirty: true })}
+                                className="min-h-[200px] text-sm rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 font-medium"
+                                placeholder="Pasting a list works here..."
+                            />
                         </div>
                     </div>
                 )}

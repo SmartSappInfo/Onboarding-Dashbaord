@@ -134,7 +134,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             const ListTag = block.listStyle === 'ordered' ? 'ol' : 'ul';
             return (
                 <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
-                    <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal" : "list-disc", "list-inside")}>
+                    <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal text-left" : "list-disc text-left", "list-inside")}>
                         {(block.items || ['New point...']).map((item, i) => (
                             <li key={i}>{resolveVariables(item, simulationVars)}</li>
                         ))}
@@ -222,7 +222,7 @@ function GlobalBlockInspector({
     variables: VariableDefinition[], 
     onUpdate: (props: Partial<MessageBlock>) => void 
 }) {
-    const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer'].includes(block.type);
+    const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer', 'list'].includes(block.type);
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -268,6 +268,43 @@ function GlobalBlockInspector({
                     </div>
                 )}
 
+                {block.type === 'list' && (
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Style</Label>
+                            <div className="flex gap-1 bg-muted/30 p-1 rounded-lg border">
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'unordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => onUpdate({ listStyle: 'unordered' })}
+                                >
+                                    <List className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button 
+                                    type="button" 
+                                    variant={block.listStyle === 'ordered' ? 'secondary' : 'ghost'} 
+                                    size="sm" 
+                                    className="h-7 rounded-md px-2"
+                                    onClick={() => onUpdate({ listStyle: 'ordered' })}
+                                >
+                                    <ListOrdered className="h-3.5 w-3.5" />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Items (One per line)</Label>
+                            <Textarea 
+                                value={block.items?.join('\n') || ''}
+                                onChange={e => onUpdate({ items: e.target.value.split('\n') })}
+                                className="min-h-[200px] rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed"
+                                placeholder="Pasting a list works here too..."
+                            />
+                        </div>
+                    </div>
+                )}
+
                 {block.type === 'button' && (
                     <div className="space-y-6">
                         <div className="space-y-2">
@@ -310,6 +347,12 @@ function GlobalBlockInspector({
                         <p className="text-[9px] font-bold text-muted-foreground uppercase px-1 italic">
                             Tip: Use variables like &#123;&#123;school_logo&#125;&#125; for dynamic content.
                         </p>
+                    </div>
+                )}
+
+                {block.type === 'score-card' && (
+                    <div className="p-4 rounded-xl border bg-primary/5 border-primary/10">
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest text-center">Score Card UI is fixed</p>
                     </div>
                 )}
 
@@ -503,6 +546,10 @@ export default function MessageTemplatesPage() {
             variant: variant,
             style: { textAlign: 'left', variant: 'default' }
         };
+        if (type === 'list') {
+            newBlock.listStyle = 'unordered';
+            newBlock.items = ['List item one', 'List item two'];
+        }
         setBlocks(prev => [...prev, newBlock]);
         setSelectedBlockId(newBlock.id);
         setSidebarTab('properties');
