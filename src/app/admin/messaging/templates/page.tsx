@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -22,7 +21,8 @@ import {
     MonitorPlay, Palette, Layout, Wand2, Info, Copy, GripVertical, 
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
     Square, List, PlusCircle, ArrowUp, ArrowDown, AlignLeft, 
-    AlignCenter, AlignRight, Bold, Italic, Underline, Save, Search
+    AlignCenter, AlignRight, Bold, Italic, Underline, Save, Search,
+    Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -37,6 +37,8 @@ import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/mes
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { AnimatePresence, motion } from 'framer-motion';
+import { SmartSappIcon } from '@/components/icons';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -199,6 +201,62 @@ function SortableBlockItem({
     );
 }
 
+// --- STEPPER UI ---
+
+const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
+    const steps = [
+        { name: 'Configuration', icon: Settings2 },
+        { name: 'Workshop', icon: Layout },
+        { name: 'Simulation', icon: MonitorPlay }
+    ];
+
+    return (
+        <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
+            {steps.map((step, index) => {
+                const stepNum = index + 1;
+                const Icon = step.icon;
+                const isActive = currentStep === stepNum;
+                const isCompleted = currentStep > stepNum;
+
+                return (
+                    <React.Fragment key={step.name}>
+                        <button 
+                            type="button"
+                            onClick={() => onStepClick(stepNum)}
+                            className="flex flex-col items-center group outline-none"
+                        >
+                            <div
+                                className={cn(
+                                    'flex items-center justify-center w-10 h-10 rounded-2xl border-2 transition-all duration-300 shadow-sm group-hover:scale-110',
+                                    isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
+                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
+                                )}
+                            >
+                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                            </div>
+                            <p className={cn(
+                                'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
+                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
+                            )}>
+                                {step.name}
+                            </p>
+                        </button>
+                        {index < steps.length - 1 && (
+                            <div className="flex-1 mx-4 h-[2px] relative overflow-hidden bg-muted rounded-full">
+                                <motion.div 
+                                    initial={false}
+                                    animate={{ width: isCompleted ? '100%' : '0%' }}
+                                    className="absolute left-0 top-0 h-full bg-primary"
+                                />
+                            </div>
+                        )}
+                    </React.Fragment>
+                );
+            })}
+        </div>
+    );
+};
+
 // --- MAIN PAGE ---
 
 export default function MessageTemplatesPage() {
@@ -206,8 +264,9 @@ export default function MessageTemplatesPage() {
     const { toast } = useToast();
     const { user } = useUser();
     
-    // UI State
+    // UI Flow State
     const [isAdding, setIsAdding] = React.useState(false);
+    const [step, setStep] = React.useState(1);
     const [editingTemplate, setEditingTemplate] = React.useState<MessageTemplate | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
@@ -227,6 +286,7 @@ export default function MessageTemplatesPage() {
     const [simRecordId, setSimRecordId] = React.useState('none');
     const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
     const [isSimLoading, setIsSimLoading] = React.useState(false);
+    const [previewDevice, setPreviewDevice] = React.useState<'desktop' | 'mobile'>('desktop');
 
     const sensors = useSensors(useSensor(PointerSensor));
 
@@ -353,6 +413,7 @@ export default function MessageTemplatesPage() {
         setChannel('email');
         setSimEntity('none');
         setSimRecordId('none');
+        setStep(1);
     };
 
     const handleEditClick = (template: MessageTemplate) => {
@@ -365,12 +426,18 @@ export default function MessageTemplatesPage() {
         setBlocks(template.blocks || []);
         setEditorMode(template.blocks?.length ? 'builder' : 'code');
         setIsAdding(true);
+        setStep(1);
     };
 
-    const filteredTemplates = templates?.filter(t => 
-        (categoryFilter === 'all' || t.category === categoryFilter) &&
-        (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
-    ) || [];
+    const handleStepClick = (target: number) => {
+        if (target > step) {
+            if (step === 1 && !name) {
+                toast({ variant: 'destructive', title: 'Identity Required', description: 'Please provide a name for the template.' });
+                return;
+            }
+        }
+        setStep(target);
+    };
 
     const resolvedPreview = React.useMemo(() => {
         if (channel === 'sms') return resolveVariables(body, simVariables);
@@ -378,225 +445,379 @@ export default function MessageTemplatesPage() {
         return resolveVariables(body, simVariables);
     }, [body, blocks, simVariables, editorMode, channel]);
 
+    const filteredTemplates = templates?.filter(t => 
+        (categoryFilter === 'all' || t.category === categoryFilter) &&
+        (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
+    ) || [];
+
+    const filteredVars = variables?.filter(v => v.category === 'general' || v.category === category) || [];
+
+    const stepTransition = {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -20 },
+        transition: { type: 'spring', damping: 25, stiffness: 200 }
+    };
+
     return (
         <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
             {/* Header */}
-            <div className="shrink-0 p-4 sm:p-6 md:p-8 flex items-center justify-between border-b bg-background">
+            <div className="shrink-0 p-4 sm:p-6 flex items-center justify-between border-b bg-background shadow-sm z-20">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
-                    <p className="text-muted-foreground font-medium">Design structural, logic-aware communication blueprints.</p>
+                    <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+                        {isAdding ? (editingTemplate ? 'Editing Protocol' : 'Designing New Blueprint') : 'Institutional Template Hub'}
+                    </p>
                 </div>
                 {!isAdding ? (
-                    <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8">
+                    <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8 h-11 transition-all active:scale-95">
                         <Plus className="mr-2 h-5 w-5" /> New Template
                     </Button>
                 ) : (
                     <div className="flex items-center gap-3">
-                        <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold">Discard</Button>
-                        <Button onClick={handleSave} disabled={isSubmitting} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white">
+                        <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold h-11">Discard</Button>
+                        <Button onClick={handleSave} disabled={isSubmitting || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95">
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                            Commit Template
+                            Commit Changes
                         </Button>
                     </div>
                 )}
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col">
                 {isAdding ? (
-                    <div className="flex h-full w-full">
-                        {/* Editor Pane */}
-                        <div className="flex-1 flex flex-col border-r bg-background">
-                            <div className="p-6 border-b space-y-6 shrink-0">
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Identity</Label>
-                                        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Booking Confirm" className="font-bold" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Context</Label>
-                                        <Select value={category} onValueChange={(v: any) => setCategory(v)}>
-                                            <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="general">General</SelectItem>
-                                                <SelectItem value="meetings">Meetings</SelectItem>
-                                                <SelectItem value="surveys">Surveys</SelectItem>
-                                                <SelectItem value="forms">Doc Signing</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Medium</Label>
-                                        <Select value={channel} onValueChange={(v: any) => setChannel(v)}>
-                                            <SelectTrigger className="font-bold"><SelectValue /></SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="email">Email</SelectItem>
-                                                <SelectItem value="sms">SMS</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
-
-                                {channel === 'email' && (
-                                    <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-full">
-                                        <TabsList className="grid w-full grid-cols-3 h-10 p-1 bg-muted/50 rounded-xl border">
-                                            <TabsTrigger value="builder" className="font-black uppercase text-[10px] tracking-widest gap-2">
-                                                <Layout className="h-3.5 w-3.5" /> Visual Builder
-                                            </TabsTrigger>
-                                            <TabsTrigger value="code" className="font-black uppercase text-[10px] tracking-widest gap-2">
-                                                <Code className="h-3.5 w-3.5" /> Source Code
-                                            </TabsTrigger>
-                                            <TabsTrigger value="text" className="font-black uppercase text-[10px] tracking-widest gap-2">
-                                                <Type className="h-3.5 w-3.5" /> Plain Text
-                                            </TabsTrigger>
-                                        </TabsList>
-                                    </Tabs>
-                                )}
-                            </div>
-
-                            <ScrollArea className="flex-1 p-6 bg-muted/5">
-                                <div className="max-w-3xl mx-auto space-y-8 pb-32">
-                                    {channel === 'email' && editorMode === 'builder' ? (
-                                        <div className="space-y-8">
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Subject</Label>
-                                                <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl bg-background shadow-inner" />
-                                            </div>
-                                            
-                                            <div className="flex flex-wrap gap-2 p-2 bg-background border rounded-2xl shadow-sm mb-4">
-                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('heading')} className="h-8 text-[9px] font-black uppercase"><Heading1 className="h-3.5 w-3.5 mr-1.5" /> Title</Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-8 text-[9px] font-black uppercase"><Type className="h-3.5 w-3.5 mr-1.5" /> Text</Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('button')} className="h-8 text-[9px] font-black uppercase"><MousePointer2 className="h-3.5 w-3.5 mr-1.5" /> Button</Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('image')} className="h-8 text-[9px] font-black uppercase"><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Image</Button>
-                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('score-card')} className="h-8 text-[9px] font-black uppercase"><Trophy className="h-3.5 w-3.5 mr-1.5" /> Score</Button>
-                                            </div>
-
-                                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                                                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                                                    <div className="space-y-6 min-h-[400px]">
-                                                        {blocks.map((block, idx) => (
-                                                            <SortableBlockItem 
-                                                                key={block.id} 
-                                                                id={block.id} 
-                                                                index={idx} 
-                                                                block={block}
-                                                                variables={variables || []}
-                                                                simulationVars={simVariables}
-                                                                onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, ...u } : b))}
-                                                                onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
-                                                                onDuplicate={() => {
-                                                                    const newBlock = { ...block, id: `blk_${Date.now()}` };
-                                                                    const next = [...blocks];
-                                                                    next.splice(idx + 1, 0, newBlock);
-                                                                    setBlocks(next);
-                                                                }}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                </SortableContext>
-                                            </DndContext>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            {channel === 'email' && (
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Subject</Label>
-                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl" />
-                                                </div>
-                                            )}
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
-                                                    {channel === 'sms' ? 'SMS Body' : editorMode === 'code' ? 'HTML Payload' : 'Plain Text Payload'}
-                                                </Label>
-                                                <Textarea 
-                                                    value={body} 
-                                                    onChange={e => setBody(e.target.value)} 
-                                                    className="min-h-[500px] rounded-2xl font-mono text-sm leading-relaxed p-8 shadow-inner bg-background border-none focus-visible:ring-1 focus-visible:ring-primary/20"
-                                                    placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
-                                                />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </ScrollArea>
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Stepper Header */}
+                        <div className="bg-background border-b pt-6 shrink-0">
+                            <Stepper currentStep={step} onStepClick={handleStepClick} />
                         </div>
 
-                        {/* Preview Pane */}
-                        <div className="hidden lg:flex w-[450px] xl:w-[550px] flex-col bg-slate-100 relative">
-                            <div className="p-6 border-b bg-background shrink-0 flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <MonitorPlay className="h-5 w-5 text-primary" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest">Studio Preview</span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimRecordId('none'); }}>
-                                        <SelectTrigger className="h-8 w-32 text-[10px] font-black uppercase bg-muted/50 border-none">
-                                            <SelectValue placeholder="Simulate..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Empty State</SelectItem>
-                                            <SelectItem value="School">School</SelectItem>
-                                            <SelectItem value="Meeting">Meeting</SelectItem>
-                                            <SelectItem value="Survey">Survey</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                    {simEntity !== 'none' && (
-                                        <Select value={simRecordId} onValueChange={setSimRecordId}>
-                                            <SelectTrigger className="h-8 w-32 text-[10px] font-black uppercase bg-muted/50 border-none">
-                                                <SelectValue placeholder="Record..." />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Pick...</SelectItem>
-                                                {simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                                                {simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName}</SelectItem>)}
-                                                {simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    )}
-                                </div>
-                            </div>
+                        <div className="flex-1 relative overflow-hidden">
+                            <AnimatePresence mode="wait">
+                                {/* STEP 1: CONFIGURATION */}
+                                {step === 1 && (
+                                    <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
+                                        <div className="max-w-2xl mx-auto space-y-8">
+                                            <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
+                                                <CardHeader className="bg-muted/30 border-b p-8">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
+                                                        <div>
+                                                            <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Medium</CardTitle>
+                                                            <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters for this blueprint.</CardDescription>
+                                                        </div>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-10 space-y-10">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocol Name (Internal)</Label>
+                                                        <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Admission Confirmation" className="h-14 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-xl px-6 focus:ring-1 focus:ring-primary/20 transition-all" />
+                                                    </div>
 
-                            <div className="flex-1 overflow-auto p-8 flex flex-col items-center">
-                                <div className={cn(
-                                    "w-full max-w-[400px] transition-all duration-700 shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white bg-white",
-                                    channel === 'sms' && "bg-[#0A1427] border-slate-800 p-8"
-                                )}>
-                                    {channel === 'sms' ? (
-                                        <div className="space-y-8">
-                                            <div className="flex items-center justify-between opacity-20"><Zap className="text-white" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
-                                            <div className="p-6 bg-white/5 border border-white/10 rounded-2xl relative">
-                                                <div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" />
-                                                <p className="text-sm text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                        <div className="space-y-4">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Operational Context</Label>
+                                                            <Select value={category} onValueChange={(v: any) => setCategory(v)}>
+                                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="general">General Broadcast</SelectItem>
+                                                                    <SelectItem value="meetings">Meeting Logistics</SelectItem>
+                                                                    <SelectItem value="surveys">Survey Intelligence</SelectItem>
+                                                                    <SelectItem value="forms">Doc Signing Actions</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">Delivery Medium</Label>
+                                                            <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                                                                <button type="button" onClick={() => setChannel('email')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'email' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>Email</button>
+                                                                <button type="button" onClick={() => setChannel('sms')} className={cn("h-10 rounded-lg font-black uppercase text-[9px] tracking-widest transition-all", channel === 'sms' ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")}>SMS</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                                <CardFooter className="bg-muted/30 p-8 border-t justify-end">
+                                                    <Button size="lg" onClick={() => handleStepClick(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group">
+                                                        Continue to Workshop <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                                    </Button>
+                                                </CardFooter>
+                                            </Card>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {/* STEP 2: WORKSHOP (BUILDER + VARIABLES) */}
+                                {step === 2 && (
+                                    <motion.div key="step2" {...stepTransition} className="absolute inset-0 flex">
+                                        {/* Left: Variables Library */}
+                                        <div className="w-72 border-r bg-background flex flex-col shrink-0">
+                                            <div className="p-4 border-b bg-muted/10 flex items-center gap-2">
+                                                <Database className="h-4 w-4 text-primary" />
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Data Hub</span>
+                                            </div>
+                                            <ScrollArea className="flex-1">
+                                                <div className="p-4 space-y-2">
+                                                    {filteredVars.map(v => (
+                                                        <TooltipProvider key={v.id}>
+                                                            <Tooltip>
+                                                                <TooltipTrigger asChild>
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            const tag = `{{${v.key}}}`;
+                                                                            navigator.clipboard.writeText(tag);
+                                                                            toast({ title: 'Tag Copied', description: `${tag} is ready to paste.` });
+                                                                        }}
+                                                                        className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                                                                    >
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span>
+                                                                            <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
+                                                                        </div>
+                                                                        <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                        <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                                    </button>
+                                                                </TooltipTrigger>
+                                                                <TooltipContent side="right">Click to Copy Tag</TooltipContent>
+                                                            </Tooltip>
+                                                        </TooltipProvider>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+
+                                        {/* Center: Editor Workspace */}
+                                        <div className="flex-1 flex flex-col bg-muted/5">
+                                            <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                    {channel === 'email' && (
+                                                        <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-fit">
+                                                            <TabsList className="bg-muted/50 p-1 rounded-xl h-9 border">
+                                                                <TabsTrigger value="builder" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
+                                                                <TabsTrigger value="code" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Code className="h-3 w-3" /> Code</TabsTrigger>
+                                                                <TabsTrigger value="text" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Type className="h-3 w-3" /> Text</TabsTrigger>
+                                                            </TabsList>
+                                                        </Tabs>
+                                                    )}
+                                                </div>
+                                                <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs">
+                                                    <Eye className="h-4 w-4" /> Final Simulation
+                                                </Button>
+                                            </div>
+
+                                            <ScrollArea className="flex-1">
+                                                <div className="max-w-3xl mx-auto p-8 pb-32">
+                                                    {channel === 'email' && editorMode === 'builder' ? (
+                                                        <div className="space-y-8">
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Header</Label>
+                                                                <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl rounded-2xl bg-white border-none shadow-xl focus:ring-1 focus:ring-primary/20" />
+                                                            </div>
+                                                            
+                                                            <div className="flex flex-wrap gap-2 p-2 bg-background/80 backdrop-blur-md border rounded-2xl shadow-sm mb-4 sticky top-0 z-10 ring-1 ring-black/5">
+                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('heading')} className="h-8 text-[9px] font-black uppercase"><Heading1 className="h-3.5 w-3.5 mr-1.5" /> Title</Button>
+                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-8 text-[9px] font-black uppercase"><Type className="h-3.5 w-3.5 mr-1.5" /> Text</Button>
+                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('button')} className="h-8 text-[9px] font-black uppercase"><MousePointer2 className="h-3.5 w-3.5 mr-1.5" /> Button</Button>
+                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('image')} className="h-8 text-[9px] font-black uppercase"><ImageIcon className="h-3.5 w-3.5 mr-1.5" /> Image</Button>
+                                                                <Button variant="ghost" size="sm" onClick={() => handleAddBlock('score-card')} className="h-8 text-[9px] font-black uppercase"><Trophy className="h-3.5 w-3.5 mr-1.5" /> Score</Button>
+                                                            </div>
+
+                                                            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                                                                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                                                                    <div className="space-y-6 min-h-[400px]">
+                                                                        {blocks.map((block, idx) => (
+                                                                            <SortableBlockItem 
+                                                                                key={block.id} 
+                                                                                id={block.id} 
+                                                                                index={idx} 
+                                                                                block={block}
+                                                                                variables={variables || []}
+                                                                                onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, ...u } : b))}
+                                                                                onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
+                                                                                onDuplicate={() => {
+                                                                                    const newBlock = { ...block, id: `blk_${Date.now()}` };
+                                                                                    const next = [...blocks];
+                                                                                    next.splice(idx + 1, 0, newBlock);
+                                                                                    setBlocks(next);
+                                                                                }}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                </SortableContext>
+                                                            </DndContext>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="space-y-6">
+                                                            {channel === 'email' && (
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Subject Header</Label>
+                                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl rounded-2xl bg-white border-none shadow-xl" />
+                                                                </div>
+                                                            )}
+                                                            <div className="space-y-2">
+                                                                <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
+                                                                    {channel === 'sms' ? 'Handset Payload' : editorMode === 'code' ? 'HTML Payload' : 'Text Payload'}
+                                                                </Label>
+                                                                <Textarea 
+                                                                    value={body} 
+                                                                    onChange={e => setBody(e.target.value)} 
+                                                                    className="min-h-[500px] rounded-[2.5rem] font-mono text-sm leading-relaxed p-10 shadow-2xl bg-white border-none focus-visible:ring-1 focus-visible:ring-primary/20"
+                                                                    placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+
+                                        {/* Right: Live Preview Mini */}
+                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-100 flex-col overflow-hidden">
+                                            <div className="p-4 border-b bg-background flex items-center gap-2">
+                                                <Eye className="h-4 w-4 text-primary" />
+                                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Live Feedback</span>
+                                            </div>
+                                            <div className="flex-1 overflow-auto p-6">
+                                                <div className={cn(
+                                                    "w-full transition-all duration-700 shadow-2xl rounded-3xl overflow-hidden border-4 border-white bg-white",
+                                                    channel === 'sms' && "bg-[#0A1427] border-slate-800 p-6"
+                                                )}>
+                                                    {channel === 'sms' ? (
+                                                        <div className="space-y-6">
+                                                            <div className="flex items-center justify-between opacity-20"><Zap className="text-white h-4 w-4" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div>
+                                                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl relative">
+                                                                <div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" />
+                                                                <p className="text-sm text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col">
+                                                            <div className="p-4 bg-muted/20 border-b space-y-1">
+                                                                <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span>
+                                                                <p className="font-black text-xs truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
+                                                            </div>
+                                                            <iframe srcDoc={resolvedPreview} className="w-full min-h-[500px] border-none" title="Live Preview" />
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className="flex flex-col">
-                                            <div className="p-6 bg-muted/20 border-b space-y-1">
-                                                <span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span>
-                                                <p className="font-black text-sm">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
+                                    </motion.div>
+                                )}
+
+                                {/* STEP 3: SIMULATION STUDIO */}
+                                {step === 3 && (
+                                    <motion.div key="step3" {...stepTransition} className="absolute inset-0 flex flex-col bg-slate-50">
+                                        <div className="p-6 border-b bg-background flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 shadow-sm z-10">
+                                            <div className="flex items-center gap-6">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="p-2 bg-primary/10 rounded-xl"><MonitorPlay className="h-5 w-5 text-primary" /></div>
+                                                    <div>
+                                                        <h3 className="text-sm font-black uppercase tracking-tight">Simulation Studio</h3>
+                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Live data record binding</p>
+                                                    </div>
+                                                </div>
+                                                <Separator orientation="vertical" className="h-10 hidden sm:block" />
+                                                <div className="flex items-center gap-3">
+                                                    <Select value={simEntity} onValueChange={(v: any) => { setSimEntity(v); setSimRecordId('none'); }}>
+                                                        <SelectTrigger className="h-10 w-[160px] rounded-xl bg-muted/20 border-none font-black text-[10px] uppercase tracking-widest"><SelectValue placeholder="Pick Source..." /></SelectTrigger>
+                                                        <SelectContent className="rounded-xl">
+                                                            <SelectItem value="none">Empty State</SelectItem>
+                                                            <SelectItem value="School">School Directory</SelectItem>
+                                                            <SelectItem value="Meeting">Meeting Record</SelectItem>
+                                                            <SelectItem value="Survey">Survey Result</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    {simEntity !== 'none' && (
+                                                        <Select value={simRecordId} onValueChange={setSimRecordId}>
+                                                            <SelectTrigger className="h-10 w-[200px] rounded-xl bg-muted/20 border-none font-bold text-xs"><SelectValue placeholder="Pick Record..." /></SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="none">Select Instance...</SelectItem>
+                                                                {simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                {simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
+                                                                {simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <iframe srcDoc={resolvedPreview} className="w-full min-h-[600px] border-none" title="Email Preview" />
+
+                                            <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border">
+                                                <Button 
+                                                    variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} 
+                                                    size="sm" 
+                                                    className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase"
+                                                    onClick={() => setPreviewDevice('desktop')}
+                                                >
+                                                    <Monitor className="h-3.5 w-3.5" /> Desktop
+                                                </Button>
+                                                <Button 
+                                                    variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} 
+                                                    size="sm" 
+                                                    className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase"
+                                                    onClick={() => setPreviewDevice('mobile')}
+                                                >
+                                                    <PhoneIcon className="h-3.5 w-3.5" /> Mobile
+                                                </Button>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+
+                                        <div className="flex-1 overflow-auto p-8 flex justify-center">
+                                            <div className={cn(
+                                                "transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
+                                                previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl",
+                                                channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center"
+                                            )}>
+                                                {isSimLoading && (
+                                                    <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
+                                                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p>
+                                                    </div>
+                                                )}
+
+                                                {channel === 'sms' ? (
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700">
+                                                        <div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div>
+                                                        <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner">
+                                                            <div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" />
+                                                            <p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview}</p>
+                                                        </div>
+                                                        <div className="pt-8 border-t border-white/5 text-center">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview.length / 160)} SMS Segments</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000">
+                                                        <div className="p-8 bg-muted/20 border-b space-y-2">
+                                                            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span>
+                                                            <p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p>
+                                                        </div>
+                                                        <iframe srcDoc={resolvedPreview} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
                 ) : (
                     <ScrollArea className="h-full">
                         <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 pb-32">
-                            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm">
+                            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
                                 <div className="relative flex-grow w-full">
                                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                                    <Input placeholder="Search templates..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                                    <Input placeholder="Filter blueprints..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
                                 </div>
                                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40"><SelectValue /></SelectTrigger>
                                     <SelectContent className="rounded-xl">
-                                        <SelectItem value="all">All Contexts</SelectItem>
+                                        <SelectItem value="all">Global Hub</SelectItem>
                                         <SelectItem value="general">General</SelectItem>
                                         <SelectItem value="meetings">Meetings</SelectItem>
                                         <SelectItem value="surveys">Surveys</SelectItem>
-                                        <SelectItem value="forms">Doc Signing</SelectItem>
+                                        <SelectItem value="forms">Forms</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -609,7 +830,7 @@ export default function MessageTemplatesPage() {
                                         <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50">
                                             <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20">
                                                 <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Delete?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button>
+                                                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button>
                                             </div>
                                             <CardHeader className="p-6 pb-4">
                                                 <div className="flex items-center gap-4">
@@ -621,13 +842,13 @@ export default function MessageTemplatesPage() {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                        <p className="text-[10px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
+                                                        <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
                                                     </div>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="px-6 pb-6 space-y-6">
                                                 <div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">
-                                                    &ldquo;{template.blocks?.length ? `${template.blocks.length} Content Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;
+                                                    &ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;
                                                 </div>
                                                 <div className="flex flex-wrap gap-2">
                                                     {template.variables.slice(0, 4).map(v => (
@@ -635,7 +856,7 @@ export default function MessageTemplatesPage() {
                                                             &#123;&#123;{v}&#125;&#125;
                                                         </Badge>
                                                     ))}
-                                                    {template.variables.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4} more</Badge>}
+                                                    {template.variables.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}
                                                 </div>
                                             </CardContent>
                                         </Card>
@@ -643,7 +864,7 @@ export default function MessageTemplatesPage() {
                                 ) : (
                                     <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4">
                                         <FileType className="h-16 w-16 text-muted-foreground/20" />
-                                        <p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No templates defined in this context.</p>
+                                        <p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p>
                                     </div>
                                 )}
                             </div>
