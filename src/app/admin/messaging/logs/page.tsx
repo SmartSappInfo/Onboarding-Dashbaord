@@ -36,6 +36,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { fetchSmsStatusAction } from '@/lib/mnotify-actions';
 import { fetchEmailStatusAction } from '@/lib/resend-actions';
 import { useToast } from '@/hooks/use-toast';
