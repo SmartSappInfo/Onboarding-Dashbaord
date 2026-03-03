@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -282,6 +283,7 @@ export default function MessageTemplatesPage() {
     const [category, setCategory] = React.useState<MessageTemplate['category']>('general');
     const [channel, setChannel] = React.useState<'sms' | 'email'>('email');
     const [subject, setSubject] = React.useState('');
+    const [previewText, setPreviewText] = React.useState('');
     const [body, setBody] = React.useState('');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -426,6 +428,7 @@ export default function MessageTemplatesPage() {
             category,
             channel,
             subject: channel === 'email' ? subject.trim() : undefined,
+            previewText: channel === 'email' ? previewText.trim() : undefined,
             body: body.trim(),
             blocks: channel === 'email' && editorMode === 'builder' ? blocks : undefined,
             isActive: true,
@@ -453,6 +456,7 @@ export default function MessageTemplatesPage() {
         setName('');
         setBody('');
         setSubject('');
+        setPreviewText('');
         setBlocks([]);
         setCategory('general');
         setChannel('email');
@@ -468,6 +472,7 @@ export default function MessageTemplatesPage() {
         setCategory(template.category);
         setChannel(template.channel);
         setSubject(template.subject || '');
+        setPreviewText(template.previewText || '');
         setBody(template.body || '');
         setBlocks(template.blocks || []);
         setEditorMode(template.blocks?.length ? 'builder' : 'code');
@@ -543,13 +548,13 @@ export default function MessageTemplatesPage() {
                                 {/* STEP 1: CONFIGURATION */}
                                 {step === 1 && (
                                     <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-8 overflow-y-auto">
-                                        <div className="max-w-2xl mx-auto space-y-8">
+                                        <div className="max-w-2xl mx-auto space-y-8 pb-20">
                                             <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b p-8">
                                                     <div className="flex items-center gap-4">
                                                         <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
                                                         <div>
-                                                            <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Medium</CardTitle>
+                                                            <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Parameters</CardTitle>
                                                             <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters for this blueprint.</CardDescription>
                                                         </div>
                                                     </div>
@@ -581,6 +586,38 @@ export default function MessageTemplatesPage() {
                                                             </div>
                                                         </div>
                                                     </div>
+
+                                                    {channel === 'email' && (
+                                                        <div className="space-y-8 pt-8 border-t border-dashed">
+                                                            <div className="flex items-center gap-2">
+                                                                <Monitor className="h-4 w-4 text-primary" />
+                                                                <h3 className="text-xs font-black uppercase tracking-[0.2em] text-primary">Inbox Perspective</h3>
+                                                            </div>
+                                                            
+                                                            <div className="space-y-6">
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Line</Label>
+                                                                    <Input 
+                                                                        value={subject} 
+                                                                        onChange={e => setSubject(e.target.value)} 
+                                                                        placeholder="e.g. Welcome to {{school_name}}" 
+                                                                        className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-6" 
+                                                                    />
+                                                                </div>
+                                                                
+                                                                <div className="space-y-2">
+                                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Preview Text (Preheader)</Label>
+                                                                    <Input 
+                                                                        value={previewText} 
+                                                                        onChange={e => setPreviewText(e.target.value)} 
+                                                                        placeholder="Brief summary that appears in the inbox preview..." 
+                                                                        className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium text-sm px-6" 
+                                                                    />
+                                                                    <p className="text-[9px] font-bold text-muted-foreground/60 px-1 uppercase tracking-tighter">This text appears after the subject line in most email clients.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </CardContent>
                                                 <CardFooter className="bg-muted/30 p-8 border-t justify-end">
                                                     <Button size="lg" onClick={() => handleStepClick(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group">
@@ -685,11 +722,6 @@ export default function MessageTemplatesPage() {
                                                 <div className="max-w-3xl mx-auto p-8 pb-32">
                                                     {channel === 'email' && editorMode === 'builder' ? (
                                                         <div className="space-y-8">
-                                                            <div className="space-y-2">
-                                                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Header</Label>
-                                                                <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl rounded-2xl bg-white border-none shadow-xl focus:ring-1 focus:ring-primary/20" />
-                                                            </div>
-                                                            
                                                             <div className="flex flex-wrap gap-2 p-2 bg-background/80 backdrop-blur-md border rounded-2xl shadow-sm mb-4 sticky top-0 z-10 ring-1 ring-black/5">
                                                                 <Button variant="ghost" size="sm" onClick={() => handleAddBlock('heading')} className="h-8 text-[9px] font-black uppercase"><Heading1 className="h-3.5 w-3.5 mr-1.5" /> Title</Button>
                                                                 <Button variant="ghost" size="sm" onClick={() => handleAddBlock('text')} className="h-8 text-[9px] font-black uppercase"><Type className="h-3.5 w-3.5 mr-1.5" /> Text</Button>
@@ -724,12 +756,6 @@ export default function MessageTemplatesPage() {
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-6">
-                                                            {channel === 'email' && (
-                                                                <div className="space-y-2">
-                                                                    <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Subject Header</Label>
-                                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Email subject..." className="h-14 font-black text-xl rounded-2xl bg-white border-none shadow-xl" />
-                                                                </div>
-                                                            )}
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">
                                                                     {channel === 'sms' ? 'Handset Payload' : editorMode === 'code' ? 'HTML Payload' : 'Text Payload'}

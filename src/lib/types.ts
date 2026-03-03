@@ -428,6 +428,7 @@ export interface MessageTemplate {
   category: 'forms' | 'surveys' | 'meetings' | 'general';
   channel: 'sms' | 'email';
   subject?: string;
+  previewText?: string;
   body: string; 
   blocks?: MessageBlock[]; 
   styleId?: string;
@@ -446,6 +447,7 @@ export interface MessageLog {
   channel: 'sms' | 'email';
   recipient: string;
   subject?: string;
+  previewText?: string;
   body: string;
   status: 'sent' | 'failed' | 'scheduled';
   error?: string;

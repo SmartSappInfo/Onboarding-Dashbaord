@@ -63,8 +63,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedBody = resolveVariables(template.body, finalVariables);
     }
 
-    // 4. Resolve Subject (Email only)
+    // 4. Resolve Subject & Preview Text (Email only)
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
+    let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
 
     // 5. Apply Style Wrapper (Email only - for legacy compatibility)
     if (template.channel === 'email' && template.styleId && !template.blocks?.length) {
@@ -113,6 +114,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       channel: sender.channel,
       recipient,
       subject: resolvedSubject || null,
+      previewText: resolvedPreviewText || null,
       body: resolvedBody,
       status: scheduledAt ? 'scheduled' : 'sent',
       sentAt: scheduledAt || new Date().toISOString(),
