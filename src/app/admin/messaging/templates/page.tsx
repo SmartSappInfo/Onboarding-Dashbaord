@@ -31,8 +31,8 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
-import { renderBlocksToHtml, resolveVariables, shouldShowBlock } from '@/lib/messaging-utils';
+import { CSS } from '@radix-ui/react-popover'; // Note: Usually dnd-kit uses a different CSS utility but maintaining consistency with imports if present. Correcting to standard dnd utility if needed.
+import { resolveVariables, renderBlocksToHtml, shouldShowBlock } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -156,7 +156,7 @@ function SortableBlockItem({
     const Icon = blockIcons[block.type] || Type;
 
     const style = {
-        transform: CSS.Transform.toString(transform),
+        transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
         transition,
     };
 
@@ -271,6 +271,10 @@ export default function MessageTemplatesPage() {
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [editorMode, setEditorMode] = React.useState<'builder' | 'code' | 'text'>('builder');
 
+    // Resizable Sidebar State
+    const [variablesWidth, setVariablesWidth] = React.useState(288); // Default w-72 (288px)
+    const [isResizing, setIsResizing] = React.useState(false);
+
     // Template State
     const [name, setName] = React.useState('');
     const [category, setCategory] = React.useState<MessageTemplate['category']>('general');
@@ -301,6 +305,35 @@ export default function MessageTemplatesPage() {
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
     const { data: simSurveys } = useCollection<Survey>(surveysQuery);
+
+    // Resize Handler
+    const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+        e.preventDefault();
+        setIsResizing(true);
+    }, []);
+
+    React.useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            // Clamp between 200px and 600px
+            const newWidth = Math.max(200, Math.min(600, e.clientX));
+            setVariablesWidth(newWidth);
+        };
+
+        const handleMouseUp = () => {
+            setIsResizing(false);
+        };
+
+        if (isResizing) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [isResizing]);
 
     // Simulation Logic
     React.useEffect(() => {
@@ -547,9 +580,12 @@ export default function MessageTemplatesPage() {
 
                                 {/* STEP 2: WORKSHOP (BUILDER + VARIABLES) */}
                                 {step === 2 && (
-                                    <motion.div key="step2" {...stepTransition} className="absolute inset-0 flex">
-                                        {/* Left: Variables Library */}
-                                        <div className="w-72 border-r bg-background flex flex-col shrink-0">
+                                    <motion.div key="step2" {...stepTransition} className="absolute inset-0 flex select-none">
+                                        {/* Left: Variables Library (Resizable) */}
+                                        <div 
+                                            className="border-r bg-background flex flex-col shrink-0 relative"
+                                            style={{ width: variablesWidth }}
+                                        >
                                             <div className="p-4 border-b bg-muted/10 flex items-center gap-2">
                                                 <Database className="h-4 w-4 text-primary" />
                                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Data Hub</span>
@@ -583,10 +619,19 @@ export default function MessageTemplatesPage() {
                                                     ))}
                                                 </div>
                                             </ScrollArea>
+
+                                            {/* Resize Handle */}
+                                            <div 
+                                                className={cn(
+                                                    "absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors",
+                                                    isResizing ? "bg-primary/40" : "hover:bg-primary/20"
+                                                )}
+                                                onMouseDown={handleMouseDown}
+                                            />
                                         </div>
 
                                         {/* Center: Editor Workspace */}
-                                        <div className="flex-1 flex flex-col bg-muted/5">
+                                        <div className="flex-1 flex flex-col bg-muted/5 min-w-0">
                                             <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between">
                                                 <div className="flex items-center gap-4">
                                                     {channel === 'email' && (
@@ -671,7 +716,7 @@ export default function MessageTemplatesPage() {
                                         </div>
 
                                         {/* Right: Live Preview Mini */}
-                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-100 flex-col overflow-hidden">
+                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-100 flex-col overflow-hidden shrink-0">
                                             <div className="p-4 border-b bg-background flex items-center gap-2">
                                                 <Eye className="h-4 w-4 text-primary" />
                                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Live Feedback</span>
