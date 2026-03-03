@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,7 +24,7 @@ import {
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool,
-    Palette, EyeOff
+    Palette, EyeOff, CopyPlus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -42,7 +41,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
-import { syncVariableRegistry } from '@/lib/messaging-actions';
+import { cloneTemplate } from '@/lib/template-actions';
 import { MediaSelect } from '../../schools/components/media-select';
 
 const blockIcons: Record<string, React.ElementType> = {
@@ -397,6 +396,7 @@ export default function MessageTemplatesPage() {
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
     const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'tags' | 'properties'>('blocks');
+    const [cloningId, setCloningId] = React.useState<string | null>(null);
 
     // Resizable Sidebar State
     const [variablesWidth, setVariablesWidth] = React.useState(320); 
@@ -456,7 +456,6 @@ export default function MessageTemplatesPage() {
 
     const handleEditorTabChange = (mode: 'designer' | 'code') => {
         if (mode === 'designer' && editorMode === 'code') {
-            // Attempt to re-hydrate blocks from code (metadata or heuristics)
             const hydrated = parseHtmlToBlocks(body);
             if (hydrated.length > 0) {
                 setBlocks(hydrated);
@@ -575,12 +574,10 @@ export default function MessageTemplatesPage() {
         }
         setIsSubmitting(true);
 
-        // Extract variables from content
         const contentForExtraction = `${subject} ${body} ${JSON.stringify(blocks)}`;
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
-        // SANITIZATION: Strictly ensure no undefined values are sent to Firestore
         const templateData: any = {
             name: name.trim(),
             category,
@@ -614,6 +611,20 @@ export default function MessageTemplatesPage() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+
+    const handleCloneClick = async (template: MessageTemplate) => {
+        if (!user) return;
+        setCloningId(template.id);
+        toast({ title: 'Protocol Cloning', description: `Creating replica of "${template.name}"...` });
+        
+        const result = await cloneTemplate(template.id, user.uid);
+        if (result.success) {
+            toast({ title: 'Clone Successful', description: 'New protocol initialized in directory.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+        }
+        setCloningId(null);
     };
 
     const resetForm = () => {
@@ -659,7 +670,6 @@ export default function MessageTemplatesPage() {
     const resolvedPreview = React.useMemo(() => {
         let finalBody = resolveVariables(body, simVariables);
         
-        // Apply Style Wrapper in preview
         if (channel === 'email' && styleId !== 'none') {
             const selectedStyle = styles?.find(s => s.id === styleId);
             if (selectedStyle && selectedStyle.htmlWrapper.includes('{{content}}')) {
@@ -675,7 +685,6 @@ export default function MessageTemplatesPage() {
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
-    // Filter hidden variables out of the studio tags list
     const filteredVars = variables?.filter(v => (v.category === 'general' || v.category === category) && !v.hidden) || [];
 
     const selectedBlock = React.useMemo(() => blocks.find(b => b.id === selectedBlockId), [blocks, selectedBlockId]);
@@ -759,13 +768,11 @@ export default function MessageTemplatesPage() {
             <div className="shrink-0 p-4 sm:p-6 md:p-8 border-b bg-background shadow-sm z-20">
                 <div className="flex items-center justify-between">
                     <div>
-                        {!isAdding && (
-                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                                <Link href="/admin/messaging">
-                                    <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                                </Link>
-                            </Button>
-                        )}
+                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
+                            <Link href="/admin/messaging">
+                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
+                            </Link>
+                        </Button>
                         <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
                             {isAdding ? (editingTemplate ? 'Editing Protocol' : 'Designing New Blueprint') : 'Institutional Template Hub'}
@@ -1070,10 +1077,36 @@ export default function MessageTemplatesPage() {
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50">
-                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button></div>
-                                        <CardHeader className="p-6 pb-4"><div className="flex items-center gap-4"><div className={cn("p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>{template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle><p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p></div></div></CardHeader>
-                                        <CardContent className="px-6 pb-6 space-y-6"><div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">&ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;</div><div className="flex flex-wrap gap-2">{(template.variables || []).slice(0, 4).map(v => (<Badge key={v} variant="outline" className="text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm bg-white border-primary/10 text-primary">&#123;&#123;{v}&#125;&#125;</Badge>))}{template.variables?.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}</div></CardContent>
+                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[400px]">
+                                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className={cn("h-9 w-9 rounded-xl hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} onClick={() => handleCloneClick(template)} disabled={!!cloningId}><CopyPlus className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button></div>
+                                        
+                                        <div className="flex-1 overflow-hidden relative bg-muted/10 border-b">
+                                            {template.channel === 'email' ? (
+                                                <div className="w-full h-full p-2 origin-top transform scale-[0.6] select-none pointer-events-none overflow-hidden">
+                                                    <iframe 
+                                                        srcDoc={template.body} 
+                                                        className="w-[160%] h-[160%] border-none bg-white rounded-lg shadow-inner pointer-events-none" 
+                                                        title="preview"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="p-6 flex flex-col justify-center h-full gap-4">
+                                                    <div className="flex items-center justify-between opacity-20"><Zap className="h-4 w-4" /><span className="text-[8px] font-black uppercase">SMS Protocol</span></div>
+                                                    <div className="p-4 bg-[#0A1427] text-white rounded-2xl shadow-xl border border-white/5"><p className="text-[10px] font-bold leading-relaxed line-clamp-6 italic opacity-80">&ldquo;{template.body}&rdquo;</p></div>
+                                                </div>
+                                            )}
+                                            <div className="absolute inset-0 bg-transparent z-10" />
+                                        </div>
+
+                                        <CardHeader className="p-6 shrink-0 bg-background">
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn("p-2 rounded-xl border shadow-sm", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>{template.channel === 'sms' ? <Smartphone className="h-4 w-4" /> : <Mail className="h-4 w-4" />}</div>
+                                                <div className="min-w-0 flex-1">
+                                                    <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
+                                                    <p className="text-[8px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-0.5">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
+                                                </div>
+                                            </div>
+                                        </CardHeader>
                                     </Card>
                                 )) : <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4"><FileType className="h-16 w-16 text-muted-foreground/20" /><p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p></div>}
                             </div>
