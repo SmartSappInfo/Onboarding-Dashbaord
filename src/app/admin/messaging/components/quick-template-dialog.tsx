@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -204,6 +203,13 @@ export default function QuickTemplateDialog({
         setAiPrompt('');
         setShowAiInput(false);
         if (!fixedSourceId) setSelectedSurveyId(undefined);
+    };
+
+    const handleOpenChange = (isOpen: boolean) => {
+        if (!isOpen) {
+            reset();
+        }
+        onOpenChange(isOpen);
     };
 
     const VariableSection = ({ title, icon: Icon, items }: { title: string, icon: any, items: VariableDefinition[] }) => {
