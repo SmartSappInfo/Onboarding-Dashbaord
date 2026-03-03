@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -10,15 +11,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle } from 'lucide-react';
 import type { SurveyResultRule, SurveyResultPage, MessageTemplate, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@nd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { useParams } from 'next/navigation';
 
-function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, templates?: MessageTemplate[], profiles?: SenderProfile[] }) {
+function SortableRuleItem({ id, index, pages, remove, templates, profiles, surveyId }: { id: string, index: number, pages: SurveyResultPage[], remove: (i: number) => void, templates?: MessageTemplate[], profiles?: SenderProfile[], surveyId?: string }) {
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
@@ -197,6 +199,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { i
                 onOpenChange={(o) => !o && setQuickCreateChannel(null)}
                 channel={quickCreateChannel || 'email'}
                 category="surveys"
+                fixedSourceId={surveyId}
                 onCreated={(id) => {
                     if (quickCreateChannel === 'email') {
                         setValue(`resultRules.${index}.emailTemplateId`, id, { shouldDirty: true });
@@ -211,12 +214,14 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles }: { i
 
 export default function ResultRuleManager() {
     const { control, watch } = useFormContext();
+    const params = useParams();
     const firestore = useFirestore();
     const { fields, append, remove, move } = useFieldArray({
         control,
         name: 'resultRules',
     });
 
+    const surveyId = params?.id as string;
     const resultPages = watch('resultPages') || [];
     const sensors = useSensors(useSensor(PointerSensor));
 
@@ -267,6 +272,7 @@ export default function ResultRuleManager() {
                                     remove={remove} 
                                     templates={templates || []}
                                     profiles={profiles || []}
+                                    surveyId={surveyId}
                                 />
                             ))}
                         </div>
