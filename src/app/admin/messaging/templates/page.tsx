@@ -25,7 +25,7 @@ import {
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool,
-    Palette
+    Palette, EyeOff
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -924,19 +924,6 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </div>
                                             </ScrollArea>
-                                        </div>
-
-                                        <div className="hidden xl:flex w-[400px] border-l bg-slate-50 flex-col overflow-hidden shrink-0">
-                                            <div className="p-4 border-b bg-background flex items-center justify-between"><div className="flex items-center gap-2"><Eye className="h-4 w-4 text-primary" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">High Fidelity Feed</span></div><Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary">Live Resolution</Badge></div>
-                                            <div className="flex-1 overflow-auto p-6 bg-muted/30">
-                                                <div className={cn("w-full transition-all duration-700 shadow-2xl rounded-3xl overflow-hidden border-4 border-white bg-white", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-6")}>
-                                                    {channel === 'sms' ? (
-                                                        <div className="space-y-6"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-4 w-4" /><span className="text-[8px] font-black text-white uppercase tracking-widest">SMS Mock</span></div><div className="p-4 bg-white/5 border border-white/10 rounded-xl relative"><div className="absolute -left-2 top-6 w-4 h-4 bg-[#0A1427] border-l border-b border-white/10 rotate-45" /><p className="text-xs text-white/90 font-bold whitespace-pre-wrap">{resolvedPreview}</p></div></div>
-                                                    ) : (
-                                                        <div className="flex flex-col"><div className="p-4 bg-muted/20 border-b space-y-1"><span className="text-[8px] font-black text-muted-foreground uppercase tracking-widest opacity-40">Resolved Subject</span><p className="font-black text-[10px] truncate">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview} className="w-full min-h-[500px] border-none" title="Live Preview" /></div>
-                                                    )}
-                                                </div>
-                                            </div>
                                         </div>
                                     </motion.div>
                                 )}
