@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -587,7 +586,8 @@ export default function MessageTemplatesPage() {
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
-    const filteredVars = variables?.filter(v => v.category === 'general' || v.category === category) || [];
+    // FILTER HIDDEN VARIABLES
+    const filteredVars = variables?.filter(v => (v.category === 'general' || v.category === category) && !v.hidden) || [];
 
     const selectedBlock = React.useMemo(() => blocks.find(b => b.id === selectedBlockId), [blocks, selectedBlockId]);
 

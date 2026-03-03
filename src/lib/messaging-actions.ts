@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -45,7 +44,7 @@ export async function syncVariableRegistry() {
 
     staticVariables.forEach(v => {
       const ref = variablesCol.doc(v.key);
-      batch.set(ref, v);
+      batch.set(ref, v, { merge: true }); // USE MERGE: Preserve hidden status and manual tweaks
       varsToKeep.add(v.key);
     });
 
@@ -69,7 +68,7 @@ export async function syncVariableRegistry() {
           entity: 'SurveyResponse',
           path: q.id,
           type: 'string'
-        } as Omit<VariableDefinition, 'id'>);
+        } as Omit<VariableDefinition, 'id'>, { merge: true });
       });
     });
 
@@ -95,7 +94,7 @@ export async function syncVariableRegistry() {
           entity: 'Submission',
           path: f.id,
           type: 'string'
-        } as Omit<VariableDefinition, 'id'>);
+        } as Omit<VariableDefinition, 'id'>, { merge: true });
       });
     });
 
@@ -130,6 +129,22 @@ export async function upsertConstantVariable(data: Partial<VariableDefinition>) 
             updatedAt: new Date().toISOString()
         };
         await adminDb.collection('messaging_variables').doc(id).set(finalData, { merge: true });
+        revalidatePath('/admin/messaging/variables');
+        return { success: true };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Updates the global visibility of a variable.
+ */
+export async function updateVariableVisibility(id: string, hidden: boolean) {
+    try {
+        await adminDb.collection('messaging_variables').doc(id).update({ 
+            hidden,
+            updatedAt: new Date().toISOString()
+        });
         revalidatePath('/admin/messaging/variables');
         return { success: true };
     } catch (e: any) {

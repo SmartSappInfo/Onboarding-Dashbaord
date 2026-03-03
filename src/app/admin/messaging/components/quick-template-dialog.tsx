@@ -77,7 +77,8 @@ export default function QuickTemplateDialog({
 
     const contextVariables = React.useMemo(() => {
         if (!variables) return [];
-        const filtered = variables.filter(v => v.category === 'general' || v.category === category);
+        // FILTER HIDDEN VARIABLES
+        const filtered = variables.filter(v => (v.category === 'general' || v.category === category) && !v.hidden);
         const uniqueMap = new Map();
         filtered.forEach(v => {
             if (!uniqueMap.has(v.key)) uniqueMap.set(v.key, v);

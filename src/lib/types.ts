@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -247,6 +246,7 @@ export interface Survey {
   adminAlertSpecificUserIds?: string[];
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
+  automationMessagingEnabled?: boolean;
 }
 
 export interface SurveyResponse {
@@ -498,4 +498,5 @@ export interface VariableDefinition {
   path: string; 
   type: 'string' | 'number' | 'boolean' | 'date';
   constantValue?: string; 
+  hidden?: boolean;
 }
