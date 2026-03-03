@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
 import { triggerInternalNotification } from '@/lib/notification-engine';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -708,6 +709,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const [isSubmitDisabled, setIsSubmitDisabled] = React.useState(false);
     const [currentPageIndex, setCurrentPageIndex] = React.useState(0);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [lastSubmissionId, setLastSubmissionId] = React.useState<string | null>(null);
 
     // Automation Status Tracking
     const [automationStatuses, setAutomationStatuses] = React.useState<AutomationStatus[]>([]);
@@ -788,7 +790,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 const optIndex = q.options?.indexOf(answer);
                 if (optIndex !== undefined && optIndex !== -1) total += (q.optionScores?.[optIndex] || 0);
             } else if (q.type === 'checkboxes') {
-                const selected = q.allowOther ? answer.options : answer;
+                const selected = q.allowOther ? (answer?.options || []) : (Array.isArray(answer) ? answer : []);
                 if (Array.isArray(selected)) {
                     selected.forEach(val => {
                         const optIndex = q.options?.indexOf(val);
@@ -825,21 +827,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         setAutomationStatuses(prev => prev.map(s => s.id === id ? { ...s, status, error } : s));
     };
 
-    const onInvalid = (errors: any) => {
-        const data = form.getValues();
-        const missing = validateAllRequired(data);
-        if (missing.length > 0) {
-            if (!isAllSectionsStrict) { setMissingFields(missing); setShowMissingFieldsModal(true); }
-            else {
-                const first = missing[0];
-                if (first.pageIndex !== -1 && first.pageIndex !== currentPageIndex) setCurrentPageIndex(first.pageIndex);
-                setTimeout(() => document.getElementById(first.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
-            }
+    const handleAcknowledgeSuccess = () => {
+        setIsStatusModalOpen(false);
+        const score = calculateScore(form.getValues());
+        if (survey.scoringEnabled && lastSubmissionId) {
+            router.push(`/surveys/${survey.slug}/result/${lastSubmissionId}`);
         } else {
-            const firstErrorId = Object.keys(errors)[0];
-            const pageIdx = pages.findIndex(p => p.some(el => el.id === firstErrorId));
-            if (pageIdx !== -1 && pageIdx !== currentPageIndex) setCurrentPageIndex(pageIdx);
-            setTimeout(() => document.getElementById(firstErrorId)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+            onSubmitted();
         }
     };
 
@@ -857,13 +851,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         if (!firestore) return;
         setIsSubmitting(true);
         
+        const score = calculateScore(data);
+        const outcome = resolveOutcome(score);
+
         // 1. Initialize statuses
         const initialTasks: AutomationStatus[] = [
             { id: 'db', label: 'Database Persistence', status: 'pending', icon: Zap },
         ];
-
-        const score = calculateScore(data);
-        const outcome = resolveOutcome(score);
 
         if (survey.webhookEnabled && survey.webhookId) {
             initialTasks.push({ id: 'webhook', label: 'Webhook Dispatch', status: 'pending', icon: Globe });
@@ -875,10 +869,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
 
         if (respondentEmail && outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
-            initialTasks.push({ id: 'email_ack', label: 'Respondent Email', status: 'pending', icon: Mail });
+            initialTasks.push({ id: 'email_ack', label: 'Email Completion (Outcome)', status: 'pending', icon: Mail });
         }
         if (respondentPhone && outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
-            initialTasks.push({ id: 'sms_ack', label: 'Respondent SMS', status: 'pending', icon: Smartphone });
+            initialTasks.push({ id: 'sms_ack', label: 'SMS Completion (Outcome)', status: 'pending', icon: Smartphone });
         }
         if (survey.adminAlertsEnabled) {
             initialTasks.push({ id: 'admin_alert', label: 'Admin Team Alerts', status: 'pending', icon: Bell });
@@ -914,6 +908,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         try {
             // Task 1: DB Save
             const docRef = await addDoc(responsesCollection, responseData);
+            setLastSubmissionId(docRef.id);
             updateAutomationStatus('db', 'success');
 
             // Concurrent Automation Execution
@@ -1074,19 +1069,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 const el = document.getElementById(first.id);
                 if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.querySelector('input, select, textarea, button')?.focus(); }
             }, 1000);
-        }
-    };
-
-    const handleAcknowledgeSuccess = () => {
-        setIsStatusModalOpen(false);
-        const score = calculateScore(form.getValues());
-        const outcome = resolveOutcome(score);
-        if (survey.scoringEnabled && outcome) {
-            router.push(`/surveys/${survey.slug}/result/${automationStatuses[0].id === 'db' ? 'auto' : ''}`); // submission ID is actually needed here
-            // But for simplicity in the UX flow, we can just trigger the onSubmitted which handles outcome redirect if score is present
-            onSubmitted();
-        } else {
-            onSubmitted();
         }
     };
 
@@ -1261,7 +1243,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             {isSubmitting ? (
                                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Working...</>
                             ) : (
-                                <><Check className="mr-2 h-5 w-5" /> Continue</>
+                                <><Check className="mr-2 h-5 w-5" /> Continue to Results</>
                             )}
                         </Button>
                     </DialogFooter>
