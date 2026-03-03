@@ -441,6 +441,59 @@ export async function seedMessaging(firestore: Firestore): Promise<number> {
     return profiles.length + 1 + templates.length;
 }
 
+export async function seedMessageLogs(firestore: Firestore): Promise<number> {
+  await clearCollection(firestore, 'message_logs');
+  const batch = writeBatch(firestore);
+  const logsCol = collection(firestore, 'message_logs');
+
+  const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+  const templatesSnap = await getDocs(collection(firestore, 'message_templates'));
+  const profilesSnap = await getDocs(collection(firestore, 'sender_profiles'));
+
+  if (templatesSnap.empty || profilesSnap.empty) return 0;
+
+  const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
+  const templates = templatesSnap.docs.map(d => ({ id: d.id, ...d.data() } as MessageTemplate));
+  const profiles = profilesSnap.docs.map(d => ({ id: d.id, ...d.data() } as SenderProfile));
+
+  let count = 0;
+  // Create 30 logs
+  for (let i = 0; i < 30; i++) {
+    const template = templates[i % templates.length];
+    const profile = profiles.find(p => p.channel === template.channel) || profiles[0];
+    const school = schools.length > 0 ? schools[i % schools.length] : null;
+    
+    const sentAt = subDays(new Date(), i % 10).toISOString();
+    const status = i % 10 === 0 ? 'failed' : (i % 15 === 0 ? 'scheduled' : 'sent');
+    
+    const log: Omit<MessageLog, 'id'> = {
+      title: template.name,
+      templateId: template.id,
+      templateName: template.name,
+      senderProfileId: profile.id,
+      senderName: profile.name,
+      channel: template.channel,
+      recipient: template.channel === 'email' ? (school?.email || `user${i}@example.com`) : (school?.phone || `02400000${i}`),
+      subject: template.channel === 'email' ? (template.subject || 'Notification') : undefined,
+      body: template.body,
+      status: status as any,
+      sentAt,
+      variables: { school_name: school?.name || 'SmartSapp' },
+      schoolId: school?.id || null,
+      providerId: `prov_${Math.random().toString(36).substr(2, 9)}`,
+      providerStatus: status === 'sent' ? 'delivered' : (status === 'failed' ? 'rejected' : 'queued'),
+      openedCount: template.channel === 'email' && status === 'sent' ? Math.floor(Math.random() * 5) : 0,
+      clickedCount: template.channel === 'email' && status === 'sent' ? Math.floor(Math.random() * 2) : 0,
+    };
+
+    batch.set(doc(logsCol), log);
+    count++;
+  }
+
+  await batch.commit();
+  return count;
+}
+
 const surveyData = [
     {
       internalName: 'Comprehensive Feedback Survey',
