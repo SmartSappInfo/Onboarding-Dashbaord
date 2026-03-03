@@ -39,7 +39,9 @@ import {
     ChevronDown,
     Layers,
     Eye,
-    EyeOff
+    EyeOff,
+    AlertCircle,
+    ChevronRight
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -59,6 +61,7 @@ import {
     AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 export default function VariableRegistryPage() {
     const firestore = useFirestore();
@@ -73,6 +76,9 @@ export default function VariableRegistryPage() {
     const [constLabel, setConstLabel] = React.useState('');
     const [constValue, setConstValue] = React.useState('');
     const [isSavingConst, setIsSavingConst] = React.useState(false);
+
+    // Diagnostic State
+    const [isBrokenModalOpen, setIsBrokenModalOpen] = React.useState(false);
 
     const varsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -94,8 +100,8 @@ export default function VariableRegistryPage() {
         if (!templates) return map;
 
         templates.forEach(t => {
-            const combinedContent = `${t.subject || ''} ${t.body}`;
-            const matches = combinedContent.match(/\{\{(.*?)\}\}/g);
+            const contentForExtraction = `${t.subject || ''} ${t.body} ${JSON.stringify(t.blocks || [])}`;
+            const matches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
             if (matches) {
                 matches.forEach(match => {
                     const key = match.replace(/\{\{|\}\}/g, '').trim();
@@ -285,21 +291,39 @@ export default function VariableRegistryPage() {
     };
 
     const healthMetrics = React.useMemo(() => {
-        if (!variables || !templates) return { used: 0, unused: 0, usedPercentage: 0, broken: 0 };
+        if (!variables || !templates) return { used: 0, unused: 0, usedPercentage: 0, broken: 0, brokenItems: [] };
         const usedKeys = new Set(usageMap.keys());
         const registryKeys = new Set(variables.map(v => v.key));
-        let broken = 0;
+        
+        const brokenItems: { key: string, templates: { id: string, name: string }[] }[] = [];
+        const brokenMap = new Map<string, { id: string, name: string }[]>();
+
         templates.forEach(t => {
-            const combinedContent = `${t.subject || ''} ${t.body}`;
-            const matches = combinedContent.match(/\{\{(.*?)\}\}/g);
+            const contentForExtraction = `${t.subject || ''} ${t.body} ${JSON.stringify(t.blocks || [])}`;
+            const matches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
             if (matches) {
-                if (matches.some(match => !registryKeys.has(match.replace(/\{\{|\}\}/g, '').trim()))) broken++;
+                matches.forEach(match => {
+                    const key = match.replace(/\{\{|\}\}/g, '').trim();
+                    if (!registryKeys.has(key)) {
+                        if (!brokenMap.has(key)) brokenMap.set(key, []);
+                        const existing = brokenMap.get(key)!;
+                        if (!existing.find(item => item.id === t.id)) {
+                            existing.push({ id: t.id, name: t.name });
+                        }
+                    }
+                });
             }
         });
+
+        brokenMap.forEach((tmpls, key) => {
+            brokenItems.push({ key, templates: tmpls });
+        });
+
         return { 
             used: usedKeys.size, 
             unused: variables.length - usedKeys.size, 
-            broken: broken,
+            broken: brokenItems.length,
+            brokenItems,
             usedPercentage: variables.length > 0 ? Math.round((usedKeys.size / variables.length) * 100) : 0
         };
     }, [variables, templates, usageMap]);
@@ -353,24 +377,35 @@ export default function VariableRegistryPage() {
                                         <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Active Usage</span>
                                         <span className="text-2xl font-black tabular-nums text-emerald-600">{healthMetrics.used}</span>
                                     </div>
-                                    <div className="flex justify-between items-end">
+                                    <button 
+                                        type="button"
+                                        onClick={() => healthMetrics.broken > 0 && setIsBrokenModalOpen(true)}
+                                        className={cn(
+                                            "w-full flex justify-between items-end transition-all rounded-lg p-1 -m-1",
+                                            healthMetrics.broken > 0 ? "hover:bg-rose-50" : "cursor-default"
+                                        )}
+                                    >
                                         <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Broken Contexts</span>
-                                        <span className={cn("text-2xl font-black tabular-nums", healthMetrics.broken > 0 ? "text-rose-600 animate-pulse" : "text-slate-300")}>
+                                        <span className={cn("text-2xl font-black tabular-nums flex items-center gap-1", healthMetrics.broken > 0 ? "text-rose-600 animate-pulse" : "text-slate-300")}>
                                             {healthMetrics.broken}
+                                            {healthMetrics.broken > 0 && <ChevronRight className="h-4 w-4" />}
                                         </span>
-                                    </div>
+                                    </button>
                                 </div>
                                 
                                 {healthMetrics.broken > 0 && (
-                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3">
+                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3 shadow-sm">
                                         <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
-                                        <p className="text-[9px] font-bold text-rose-800 leading-relaxed uppercase tracking-tighter">
-                                            Warning: {healthMetrics.broken} template(s) contain tags that no longer exist in the registry.
-                                        </p>
+                                        <div className="space-y-1">
+                                            <p className="text-[9px] font-black text-rose-900 uppercase tracking-tighter">Integrity Failure Detected</p>
+                                            <p className="text-[9px] font-bold text-rose-800/70 leading-relaxed uppercase tracking-tighter">
+                                                {healthMetrics.broken} tag(s) exist in templates but are missing from your registry.
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
 
-                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3">
+                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-sm">
                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
                                     <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
                                         Hiding a variable removes it from design sidebars but preserves its logic in existing templates.
@@ -426,6 +461,71 @@ export default function VariableRegistryPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Broken Context Audit Dialog */}
+            <Dialog open={isBrokenModalOpen} onOpenChange={setIsBrokenModalOpen}>
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-rose-50 border-b border-rose-100 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
+                                <ShieldAlert className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight text-rose-900">Broken Registry Audit</DialogTitle>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-rose-700 opacity-70">Detecting technical tags missing from data hub</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-hidden flex flex-col bg-white">
+                        <ScrollArea className="h-[400px]">
+                            <div className="p-6">
+                                <Table>
+                                    <TableHeader className="bg-muted/30">
+                                        <TableRow className="hover:bg-transparent">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 pl-6">Technical Tag</TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Impact Scope</TableHead>
+                                            <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest py-4">Action</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {healthMetrics.brokenItems.map((item) => (
+                                            <TableRow key={item.key} className="group hover:bg-rose-50/30 transition-colors">
+                                                <TableCell className="pl-6 py-4">
+                                                    <code className="text-xs font-mono font-black text-rose-600 bg-rose-50 px-2.5 py-1 rounded-lg border border-rose-100">
+                                                        {"{{" + item.key + "}}"}
+                                                    </code>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-1">
+                                                        <span className="text-[10px] font-black uppercase text-muted-foreground">Used in {item.templates.length} templates:</span>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {item.templates.map(t => (
+                                                                <Badge key={t.id} variant="outline" className="text-[8px] h-4 font-bold bg-white">{t.name}</Badge>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-6">
+                                                    <Button variant="ghost" size="sm" className="h-8 rounded-xl font-bold gap-2 text-[10px] uppercase hover:bg-primary/10 hover:text-primary transition-all" asChild>
+                                                        <Link href="/admin/messaging/templates">
+                                                            Fix in Studio <ChevronRight className="h-3 w-3" />
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        </ScrollArea>
+                    </div>
+
+                    <DialogFooter className="p-6 bg-muted/30 border-t shrink-0">
+                        <Button onClick={() => setIsBrokenModalOpen(false)} className="w-full h-12 rounded-xl font-black uppercase tracking-widest shadow-lg">Acknowledge Audit</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Constant Editor Dialog */}
             <Dialog open={isAddingConstant} onOpenChange={(o) => { if(!o) { setIsAddingConstant(false); setEditingConst(null); setConstKey(''); setConstLabel(''); setConstValue(''); } }}>
