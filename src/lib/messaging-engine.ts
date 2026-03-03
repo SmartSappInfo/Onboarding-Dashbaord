@@ -147,6 +147,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     // 10. Create Audit Log
     const logData: Omit<MessageLog, 'id'> = {
+      title: template.name,
       templateId: template.id,
       templateName: template.name,
       senderProfileId: sender.id,

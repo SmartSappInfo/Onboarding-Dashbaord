@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -66,7 +65,8 @@ export default function MessageLogsPage() {
         return logs.filter(l => 
             l.recipient.toLowerCase().includes(s) || 
             l.templateName?.toLowerCase().includes(s) ||
-            l.subject?.toLowerCase().includes(s)
+            l.subject?.toLowerCase().includes(s) ||
+            l.title?.toLowerCase().includes(s)
         );
     }, [logs, searchTerm]);
 
@@ -156,7 +156,7 @@ export default function MessageLogsPage() {
                             <div className="relative flex-grow max-w-md">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                 <Input 
-                                    placeholder="Search recipient or template..." 
+                                    placeholder="Search title, recipient, or subject..." 
                                     className="pl-10 h-10 rounded-xl bg-background border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" 
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
@@ -173,6 +173,7 @@ export default function MessageLogsPage() {
                                 <TableRow>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest pl-6">Timestamp</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Medium</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Title / Protocol</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Recipient</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Engagement</TableHead>
                                     <TableHead className="text-[10px] font-black uppercase tracking-widest">Gateway Status</TableHead>
@@ -185,6 +186,7 @@ export default function MessageLogsPage() {
                                         <TableRow key={i}>
                                             <TableCell className="pl-6"><Skeleton className="h-4 w-24" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                             <TableCell><Skeleton className="h-4 w-40" /></TableCell>
                                             <TableCell><Skeleton className="h-6 w-16 rounded-full" /></TableCell>
@@ -201,6 +203,12 @@ export default function MessageLogsPage() {
                                                 <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-tighter">
                                                     {log.channel === 'email' ? <Mail className="h-3 w-3 text-blue-500" /> : <Smartphone className="h-3 w-3 text-orange-500" />}
                                                     {log.channel}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex flex-col max-w-[200px]">
+                                                    <span className="font-black text-xs truncate text-foreground">{log.title || log.templateName}</span>
+                                                    {log.subject && <span className="text-[9px] font-bold text-muted-foreground/60 truncate italic">{log.subject}</span>}
                                                 </div>
                                             </TableCell>
                                             <TableCell className="font-bold text-xs truncate max-w-[150px]">{log.recipient}</TableCell>
@@ -243,7 +251,7 @@ export default function MessageLogsPage() {
                                     ))
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-48 text-center">
+                                        <TableCell colSpan={7} className="h-48 text-center">
                                             <div className="flex flex-col items-center justify-center gap-2 opacity-30">
                                                 <History className="h-10 w-10" />
                                                 <p className="text-xs font-black uppercase tracking-widest">No logs recorded</p>
@@ -323,23 +331,23 @@ export default function MessageLogsPage() {
                                                 <p className="text-2xl font-black text-blue-900">{selectedLog.clickedCount || 0}</p>
                                             </div>
                                         </CardContent>
-                                    </Card>
+                                    </div>
                                 </div>
                             )}
 
                             {/* Metadata Grid */}
                             <div className="grid grid-cols-2 gap-8 bg-muted/20 p-6 rounded-3xl border border-border/50">
                                 <div className="space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Recipient</Label>
-                                    <p className="font-black text-foreground break-all">{selectedLog?.recipient}</p>
+                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Message Title / Protocol</Label>
+                                    <p className="font-black text-foreground uppercase">{selectedLog?.title || selectedLog?.templateName}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Execution Time</Label>
                                     <p className="font-bold text-xs uppercase">{selectedLog && format(new Date(selectedLog.sentAt), 'PPPP p')}</p>
                                 </div>
                                 <div className="space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Authority (Sender)</Label>
-                                    <p className="text-sm font-black text-primary uppercase">{selectedLog?.senderName}</p>
+                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Recipient</Label>
+                                    <p className="text-sm font-black text-primary truncate max-w-full">{selectedLog?.recipient}</p>
                                 </div>
                                 <div className="space-y-1 text-right">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Live Sync</Label>

@@ -449,6 +449,7 @@ export interface MessageTemplate {
 
 export interface MessageLog {
   id: string;
+  title?: string;
   templateId: string;
   templateName: string;
   senderProfileId: string;
