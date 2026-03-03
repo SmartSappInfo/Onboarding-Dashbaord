@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -382,7 +381,7 @@ export default function MessageTemplatesPage() {
     // Data Queries
     const schoolsQuery = useMemoFirebase(() => (firestore && simEntity === 'School') ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore, simEntity]);
     const meetingsQuery = useMemoFirebase(() => (firestore && simEntity === 'Meeting') ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore, simEntity]);
-    const surveysQuery = useMemoFirebase(() => (firestore && simEntity === 'Survey') ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore, simEntity]);
+    const simSurveysQuery = useMemoFirebase(() => (firestore && simEntity === 'Survey') ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore, simEntity]);
     const pdfsQuery = useMemoFirebase(() => (firestore && simEntity === 'Submission') ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore, simEntity]);
 
     const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_templates'), orderBy('createdAt', 'desc')) : null, [firestore]);
@@ -394,7 +393,7 @@ export default function MessageTemplatesPage() {
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: simSurveys } = useCollection<Survey>(surveysQuery);
+    const { data: simSurveys } = useCollection<Survey>(simSurveysQuery);
     const { data: simPdfs } = useCollection<PDFForm>(pdfsQuery);
 
     // Sync Designer -> Code
@@ -1011,7 +1010,7 @@ export default function MessageTemplatesPage() {
                                     <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50">
                                         <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all z-20"><Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10 text-primary" onClick={() => handleEditClick(template)}><Pencil className="h-4 w-4" /></Button><Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:bg-destructive/10 rounded-xl" onClick={async () => { if(confirm('Are you sure?')) await deleteDoc(doc(firestore!, 'message_templates', template.id))}}><Trash2 className="h-4 w-4" /></Button></div>
                                         <CardHeader className="p-6 pb-4"><div className="flex items-center gap-4"><div className={cn("p-3 rounded-2xl border shadow-sm transition-transform group-hover:scale-110 group-hover:rotate-3 duration-500", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>{template.channel === 'sms' ? <Smartphone className="h-5 w-5" /> : <Mail className="h-5 w-5" />}</div><div className="min-w-0 flex-1"><CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle><p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p></div></div></CardHeader>
-                                        <CardContent className="px-6 pb-6 space-y-6"><div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">&ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;</div><div className="flex flex-wrap gap-2">{template.variables.slice(0, 4).map(v => (<Badge key={v} variant="outline" className="text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm bg-white border-primary/10 text-primary">&#123;&#123;{v}&#125;&#125;</Badge>))}{template.variables.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}</div></CardContent>
+                                        <CardContent className="px-6 pb-6 space-y-6"><div className="p-5 bg-muted/20 rounded-[1.5rem] border border-dashed border-border/50 text-[13px] text-muted-foreground/80 italic line-clamp-3 min-h-[5.5rem] leading-relaxed shadow-inner">&ldquo;{template.blocks?.length ? `${template.blocks.length} Structural Blocks` : (template.body || '').replace(/<[^>]*>?/gm, '')}&rdquo;</div><div className="flex flex-wrap gap-2">{(template.variables || []).slice(0, 4).map(v => (<Badge key={v} variant="outline" className="text-[9px] h-6 font-black uppercase tracking-tight px-2.5 rounded-lg shadow-sm bg-white border-primary/10 text-primary">&#123;&#123;{v}&#125;&#125;</Badge>))}{template.variables?.length > 4 && <Badge variant="ghost" className="text-[9px] font-black opacity-40">+{template.variables.length - 4}</Badge>}</div></CardContent>
                                     </Card>
                                 )) : <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4"><FileType className="h-16 w-16 text-muted-foreground/20" /><p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p></div>}
                             </div>
