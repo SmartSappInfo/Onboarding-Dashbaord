@@ -368,7 +368,7 @@ export default function MessageTemplatesPage() {
     const stylesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_styles'), orderBy('name', 'asc')) : null, [firestore]);
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
-    const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: variables, isLoading: areVariablesLoading } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
@@ -758,11 +758,11 @@ export default function MessageTemplatesPage() {
                                                             <div className="space-y-6">
                                                                 <div className="space-y-2">
                                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Subject Line</Label>
-                                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Welcome to {{school_name}}" className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg px-6" />
+                                                                    <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Welcome to {{school_name}}" className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold text-lg px-6" />
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Preview Text (Preheader)</Label>
-                                                                    <Input value={previewText} onChange={e => setPreviewText(e.target.value)} placeholder="Brief summary..." className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-medium text-sm px-6" />
+                                                                    <Input value={previewText} onChange={e => setPreviewText(e.target.value)} placeholder="Brief summary..." className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-medium text-sm px-6" />
                                                                 </div>
                                                             </div>
                                                         </div>
