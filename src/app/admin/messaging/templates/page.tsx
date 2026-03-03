@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, MessageStyle } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, PDFForm } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,10 +19,10 @@ import { Separator } from '@/components/ui/separator';
 import { 
     FileType, Plus, Trash2, Mail, Smartphone, X, Loader2, ArrowLeft, ArrowRight,
     Code, Eye, Sparkles, Check, Pencil, Database, Zap, Trophy, 
-    MonitorPlay, Palette, Layout, Wand2, Info, Copy, GripVertical, 
+    MonitorPlay, Layout, Wand2, Info, Copy, GripVertical, 
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
     Square, List, PlusCircle, ArrowUp, ArrowDown, AlignLeft, 
-    AlignCenter, AlignRight, Bold, Italic, Underline, Save, Search,
+    AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2
 } from 'lucide-react';
@@ -30,8 +31,8 @@ import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
-import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { resolveVariables, renderBlocksToHtml, shouldShowBlock } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
@@ -287,7 +288,7 @@ export default function MessageTemplatesPage() {
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Simulation State
-    const [simEntity, setSimEntity] = React.useState<'School' | 'Meeting' | 'Survey' | 'none'>('none');
+    const [simEntity, setSimEntity] = React.useState<'School' | 'Meeting' | 'Survey' | 'Submission' | 'none'>('none');
     const [simRecordId, setSimRecordId] = React.useState('none');
     const [simVariables, setSimVariables] = React.useState<Record<string, any>>({});
     const [isSimLoading, setIsSimLoading] = React.useState(false);
@@ -301,12 +302,14 @@ export default function MessageTemplatesPage() {
     const schoolsQuery = useMemoFirebase(() => (firestore && simEntity === 'School') ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore, simEntity]);
     const meetingsQuery = useMemoFirebase(() => (firestore && simEntity === 'Meeting') ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, [firestore, simEntity]);
     const surveysQuery = useMemoFirebase(() => (firestore && simEntity === 'Survey') ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore, simEntity]);
+    const pdfsQuery = useMemoFirebase(() => (firestore && simEntity === 'Submission') ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore, simEntity]);
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: simSurveys } = useCollection<Survey>(surveysQuery);
+    const { data: simSurveys } = useCollection<Survey>(simSurveysQuery);
+    const { data: simPdfs } = useCollection<PDFForm>(pdfsQuery);
 
     // Resize Handler
     const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
@@ -317,7 +320,6 @@ export default function MessageTemplatesPage() {
     React.useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
-            // Clamp between 200px and 600px
             const newWidth = Math.max(200, Math.min(600, e.clientX));
             setVariablesWidth(newWidth);
         };
@@ -346,7 +348,7 @@ export default function MessageTemplatesPage() {
             }
             setIsSimLoading(true);
             try {
-                let entityType = simEntity === 'Survey' ? 'SurveyResponse' : simEntity;
+                let entityType = simEntity === 'Survey' ? 'SurveyResponse' : simEntity === 'Submission' ? 'Submission' : simEntity;
                 let id = simRecordId;
                 let parentId = undefined;
 
@@ -354,6 +356,12 @@ export default function MessageTemplatesPage() {
                     const respSnap = await getDocs(query(collection(firestore, `surveys/${simRecordId}/responses`), limit(1)));
                     if (!respSnap.empty) {
                         id = respSnap.docs[0].id;
+                        parentId = simRecordId;
+                    }
+                } else if (simEntity === 'Submission') {
+                    const subSnap = await getDocs(query(collection(firestore, `pdfs/${simRecordId}/submissions`), limit(1)));
+                    if (!subSnap.empty) {
+                        id = subSnap.docs[0].id;
                         parentId = simRecordId;
                     }
                 }
@@ -372,6 +380,9 @@ export default function MessageTemplatesPage() {
                     }
                     if (simEntity === 'Survey' && result.data.answers) {
                         result.data.answers.forEach((a: any) => { vars[a.questionId] = a.value; });
+                    }
+                    if (simEntity === 'Submission' && result.data.formData) {
+                        Object.entries(result.data.formData).forEach(([k, v]) => { vars[k] = v; });
                     }
                     setSimVariables(vars);
                 }
@@ -558,7 +569,7 @@ export default function MessageTemplatesPage() {
                                                                     <SelectItem value="general">General Broadcast</SelectItem>
                                                                     <SelectItem value="meetings">Meeting Logistics</SelectItem>
                                                                     <SelectItem value="surveys">Survey Intelligence</SelectItem>
-                                                                    <SelectItem value="forms">Doc Signing Actions</SelectItem>
+                                                                    <SelectItem value="forms">Doc Signing</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
@@ -791,6 +802,7 @@ export default function MessageTemplatesPage() {
                                                             <SelectItem value="School">School Directory</SelectItem>
                                                             <SelectItem value="Meeting">Meeting Record</SelectItem>
                                                             <SelectItem value="Survey">Survey Result</SelectItem>
+                                                            <SelectItem value="Submission">Doc Signing Submission</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                     {simEntity !== 'none' && (
@@ -801,6 +813,7 @@ export default function MessageTemplatesPage() {
                                                                 {simEntity === 'School' && simSchools?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                                                 {simEntity === 'Meeting' && simMeetings?.map(m => <SelectItem key={m.id} value={m.id}>{m.schoolName} - {m.type.name}</SelectItem>)}
                                                                 {simEntity === 'Survey' && simSurveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>)}
+                                                                {simEntity === 'Submission' && simPdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                                                             </SelectContent>
                                                         </Select>
                                                     )}
@@ -882,7 +895,7 @@ export default function MessageTemplatesPage() {
                                         <SelectItem value="general">General</SelectItem>
                                         <SelectItem value="meetings">Meetings</SelectItem>
                                         <SelectItem value="surveys">Surveys</SelectItem>
-                                        <SelectItem value="forms">Forms</SelectItem>
+                                        <SelectItem value="forms">Doc Signing</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -907,7 +920,7 @@ export default function MessageTemplatesPage() {
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <CardTitle className="text-lg font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                        <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category}</p>
+                                                        <p className="text-[9px] uppercase font-bold tracking-widest text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
                                                     </div>
                                                 </div>
                                             </CardHeader>
