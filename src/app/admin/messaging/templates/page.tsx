@@ -4,7 +4,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, PDFForm, MessageStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,8 @@ import {
     Square, List, ListOrdered, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
-    Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool
+    Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool,
+    Palette
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -40,6 +41,8 @@ import { fetchContextualData } from '@/lib/messaging-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
+import AiChatEditor from '../components/ai-chat-editor';
+import { syncVariableRegistry } from '@/lib/messaging-actions';
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -342,6 +345,7 @@ export default function MessageTemplatesPage() {
     const [previewText, setPreviewText] = React.useState('');
     const [body, setBody] = React.useState('');
     const [blocks, setBlocks] = React.useState<MessageBlock[]>([]);
+    const [styleId, setStyleId] = React.useState<string>('none');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // Simulation State
@@ -361,9 +365,11 @@ export default function MessageTemplatesPage() {
 
     const templatesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_templates'), orderBy('createdAt', 'desc')) : null, [firestore]);
     const varsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'messaging_variables')) : null, [firestore]);
+    const stylesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'message_styles'), orderBy('name', 'asc')) : null, [firestore]);
 
     const { data: templates, isLoading: isLoadingTemplates } = useCollection<MessageTemplate>(templatesQuery);
     const { data: variables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: simSchools } = useCollection<School>(schoolsQuery);
     const { data: simMeetings } = useCollection<Meeting>(meetingsQuery);
     const { data: simSurveys } = useCollection<Survey>(surveysQuery);
@@ -500,6 +506,7 @@ export default function MessageTemplatesPage() {
             previewText: channel === 'email' ? previewText.trim() : undefined,
             body: body.trim(),
             blocks: channel === 'email' ? blocks : undefined,
+            styleId: channel === 'email' && styleId !== 'none' ? styleId : null,
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
@@ -527,6 +534,7 @@ export default function MessageTemplatesPage() {
         setSubject('');
         setPreviewText('');
         setBlocks([]);
+        setStyleId('none');
         setCategory('general');
         setChannel('email');
         setSimEntity('none');
@@ -546,6 +554,7 @@ export default function MessageTemplatesPage() {
         setPreviewText(template.previewText || '');
         setBody(template.body || '');
         setBlocks(template.blocks || []);
+        setStyleId(template.styleId || 'none');
         setEditorMode(template.blocks?.length ? 'designer' : 'code');
         setIsAdding(true);
         setStep(1);
@@ -560,8 +569,18 @@ export default function MessageTemplatesPage() {
     };
 
     const resolvedPreview = React.useMemo(() => {
-        return resolveVariables(body, simVariables);
-    }, [body, simVariables]);
+        let finalBody = resolveVariables(body, simVariables);
+        
+        // Apply Style Wrapper in preview
+        if (channel === 'email' && styleId !== 'none') {
+            const selectedStyle = styles?.find(s => s.id === styleId);
+            if (selectedStyle && selectedStyle.htmlWrapper.includes('{{content}}')) {
+                finalBody = selectedStyle.htmlWrapper.replace('{{content}}', finalBody);
+            }
+        }
+        
+        return finalBody;
+    }, [body, simVariables, channel, styleId, styles]);
 
     const filteredTemplates = templates?.filter(t => 
         (categoryFilter === 'all' || t.category === categoryFilter) &&
@@ -648,7 +667,7 @@ export default function MessageTemplatesPage() {
 
     return (
         <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
-            <div className="shrink-0 p-4 sm:p-6 flex items-center justify-between border-b bg-background shadow-sm z-20">
+            <div className="shrink-0 p-4 sm:p-6 md:p-8 flex items-center justify-between border-b bg-background shadow-sm z-20">
                 <div>
                     <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
@@ -740,7 +759,7 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </CardContent>
                                                 <CardFooter className="bg-muted/30 p-8 border-t justify-end">
-                                                    <Button size="lg" onClick={() => handleStepChange(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group">
+                                                    <Button size="lg" onClick={() => handleStepChange(2)} disabled={!name} className="px-12 rounded-2xl font-black h-14 uppercase tracking-widest group shadow-xl">
                                                         Continue to Workshop <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
                                                     </Button>
                                                 </CardFooter>
@@ -838,6 +857,20 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-2">
+                                                    {channel === 'email' && (
+                                                        <div className="flex items-center gap-2 mr-2">
+                                                            <Label className="text-[10px] font-black uppercase text-muted-foreground">Style Wrapper:</Label>
+                                                            <Select value={styleId} onValueChange={setStyleId}>
+                                                                <SelectTrigger className="h-9 w-40 rounded-xl bg-muted/20 border-none font-bold text-xs">
+                                                                    <SelectValue placeholder="Standard Shell" />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">No Wrapper (Raw)</SelectItem>
+                                                                    {styles?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    )}
                                                     <Button variant="ghost" size="sm" onClick={() => setIsFullScreen(!isFullScreen)} className={cn("h-9 rounded-xl font-bold gap-2 text-xs", isFullScreen && "text-primary bg-primary/5")}>{isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}{isFullScreen ? 'Exit Zen Mode' : 'Zen Mode'}</Button>
                                                     <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs border-primary/20 hover:bg-primary/5 text-primary"><Eye className="h-4 w-4" /> Simulation Studio</Button>
                                                 </div>
