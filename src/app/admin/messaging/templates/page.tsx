@@ -580,19 +580,23 @@ export default function MessageTemplatesPage() {
         const varMatches = contentForExtraction.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
-        const templateData = {
+        // SANITIZATION: Strictly ensure no undefined values are sent to Firestore
+        const templateData: any = {
             name: name.trim(),
             category,
             channel,
-            subject: channel === 'email' ? subject.trim() : undefined,
-            previewText: channel === 'email' ? previewText.trim() : undefined,
             body: body.trim(),
-            blocks: channel === 'email' ? blocks : undefined,
-            styleId: channel === 'email' && styleId !== 'none' ? styleId : null,
             variables: variableList,
             isActive: true,
             updatedAt: new Date().toISOString(),
         };
+
+        if (channel === 'email') {
+            templateData.subject = subject.trim();
+            templateData.previewText = previewText.trim();
+            templateData.blocks = blocks;
+            templateData.styleId = styleId !== 'none' ? styleId : null;
+        }
 
         try {
             if (editingTemplate) {

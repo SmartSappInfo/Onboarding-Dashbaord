@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -134,25 +135,34 @@ export default function QuickTemplateDialog({
         const varMatches = `${subject} ${body} ${JSON.stringify(blocks)}`.match(/\{\{(.*?)\}\}/g);
         const variableList = varMatches ? [...new Set(varMatches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
 
+        // SANITIZATION: Strictly ensure no undefined values are sent to Firestore
+        const templateData: any = {
+            name: name.trim(),
+            category,
+            channel,
+            body: body.trim(),
+            variables: variableList,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        if (channel === 'email') {
+            templateData.subject = subject.trim();
+            if (blocks && blocks.length > 0) {
+                templateData.blocks = blocks;
+            }
+        }
+
         try {
-            const docRef = await addDoc(collection(firestore, 'message_templates'), {
-                name: name.trim(),
-                category,
-                channel,
-                subject: channel === 'email' ? subject.trim() : undefined,
-                body: body.trim(),
-                blocks: channel === 'email' && blocks.length > 0 ? blocks : undefined,
-                variables: variableList,
-                isActive: true,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-            });
+            const docRef = await addDoc(collection(firestore, 'message_templates'), templateData);
 
             toast({ title: 'Template Created' });
             onCreated(docRef.id);
             reset();
             onOpenChange(false);
         } catch (e) {
+            console.error("Quick Create Failed:", e);
             toast({ variant: 'destructive', title: 'Failed to create template' });
         } finally {
             setIsSubmitting(false);
@@ -253,7 +263,7 @@ export default function QuickTemplateDialog({
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{channel === 'email' ? 'Email Body' : 'SMS Message'}</Label>
-                                        {blocks.length > 0 && <Badge className="bg-emerald-500/10 text-emerald-600 border-none text-[8px] font-black uppercase h-5">Block System Active</Badge>}
+                                        {blocks.length > 0 && <Badge className="bg-emerald-50/10 text-emerald-600 border-none text-[8px] font-black uppercase h-5">Block System Active</Badge>}
                                     </div>
                                     <Textarea 
                                         ref={bodyRef}
