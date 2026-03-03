@@ -19,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -894,10 +894,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        // Comprehensive Variable Harvesting
+        // Comprehensive Variable Harvesting (Flat Map for Engine)
         const variables: Record<string, any> = {
             survey_title: survey.title,
-            score: score || 0,
+            score: score !== undefined ? score : 0,
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
@@ -905,14 +905,27 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             schoolName: survey.schoolName || 'SmartSapp'
         };
 
-        // Map all form answers to variables
+        // Map every single form answer to its ID as a technical tag
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
             if (val !== undefined) {
-                const resolvedVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                let resolvedVal = '';
+                if (q.type === 'checkboxes') {
+                    const selected = q.allowOther ? (val?.options || []) : (Array.isArray(val) ? val : []);
+                    resolvedVal = selected.join(', ');
+                    if (q.allowOther && val?.other) {
+                        resolvedVal += resolvedVal ? `, Other: ${val.other}` : val.other;
+                    }
+                } else if (q.type === 'date' && val) {
+                    const d = val instanceof Date ? val : new Date(val);
+                    resolvedVal = isValid(d) ? format(d, 'PPP') : String(val);
+                } else {
+                    resolvedVal = String(val);
+                }
+                
                 variables[q.id] = resolvedVal;
                 
-                // Aliasing for common institutional tags
+                // Smart Aliasing for common institutional tags if not already set
                 const cleanTitle = q.title.toLowerCase();
                 if (cleanTitle.includes('name') && !variables.contact_name) variables.contact_name = resolvedVal;
                 if ((cleanTitle.includes('phone') || cleanTitle.includes('contact')) && !variables.contact_phone) variables.contact_phone = resolvedVal;
@@ -931,6 +944,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             // Task 1: Save Submission
             const docRef = await addDoc(responsesCollection, responseData);
             setLastSubmissionId(docRef.id);
+            variables.submission_id = docRef.id;
             updateAutomationStatus('db', 'success');
 
             const automationPromises = [];
@@ -948,9 +962,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             body: JSON.stringify({ 
                                 ...variables, 
                                 answers: cleanedData, 
-                                submission_id: docRef.id,
+                                raw_score: score,
                                 survey_id: survey.id,
-                                school_id: survey.schoolId
+                                school_id: survey.schoolId,
+                                result_url: typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}` : ''
                             }) 
                         });
                         if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -1033,7 +1048,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             // Task 5: Activity Log (Always Mandatory)
             logActivity({
                 schoolId: survey.schoolId || '',
-                userId: null,
+                userId: null, 
                 type: 'form_submission',
                 source: 'public',
                 description: `Respondent completed survey: "${survey.title}"`,
