@@ -192,7 +192,7 @@ export interface SurveyResultBlock {
     listStyle?: 'ordered' | 'unordered';
     style?: {
         textAlign?: 'left' | 'center' | 'right';
-        variant?: 'default' | 'outline' | 'destructive' | 'secondary' | 'ghost' | 'link';
+        variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
         color?: string;
         backgroundColor?: string;
         padding?: string;
@@ -254,6 +254,8 @@ export interface Survey {
   adminAlertEmailTemplateId?: string;
   adminAlertSmsTemplateId?: string;
   automationMessagingEnabled?: boolean;
+  schoolId?: string | null;
+  schoolName?: string | null;
 }
 
 export interface SurveyResponse {

@@ -1,8 +1,7 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School } from './types';
 import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
@@ -64,17 +63,41 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (!template.isActive) throw new Error(`Template "${template.name}" is inactive.`);
     if (template.channel !== sender.channel) throw new Error(`Channel mismatch: ${template.channel} vs ${sender.channel}.`);
 
-    // 3. Resolve Global Constants
+    // 3. Initialize Final Variables with passed values
     const finalVariables = { ...variables };
+
+    // 4. Resolve School Context if schoolId is provided (High Priority)
+    if (schoolId) {
+        const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
+        if (schoolSnap.exists) {
+            const schoolData = schoolSnap.data() as School;
+            const schoolVars = {
+                school_name: schoolData.name,
+                school_initials: schoolData.initials,
+                school_location: schoolData.location,
+                school_phone: schoolData.phone,
+                school_email: schoolData.email,
+                school_contact_name: schoolData.contactPerson,
+            };
+            // Merge school vars without overwriting already present keys (e.g. if the form already provided school_name)
+            Object.entries(schoolVars).forEach(([k, v]) => {
+                if (finalVariables[k] === undefined) finalVariables[k] = v;
+            });
+            // Fallback for contact_name if not provided by form
+            if (finalVariables.contact_name === undefined) finalVariables.contact_name = schoolData.contactPerson;
+        }
+    }
+
+    // 5. Resolve Global Constants (Lowest Priority - only if key is missing)
     const constantsSnap = await adminDb.collection('messaging_variables').where('source', '==', 'constant').get();
     constantsSnap.forEach(doc => {
         const v = doc.data() as VariableDefinition;
-        if (v.constantValue !== undefined) {
+        if (v.constantValue !== undefined && finalVariables[v.key] === undefined) {
             finalVariables[v.key] = v.constantValue;
         }
     });
 
-    // 4. Render Body
+    // 6. Render Body
     let resolvedBody = '';
     if (template.channel === 'email' && template.blocks && template.blocks.length > 0) {
         resolvedBody = renderBlocksToHtml(template.blocks, finalVariables);
@@ -82,11 +105,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         resolvedBody = resolveVariables(template.body, finalVariables);
     }
 
-    // 5. Resolve Metadata (Email only)
+    // 7. Resolve Metadata (Email only)
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
 
-    // 6. Apply Legacy Style Wrapper (if no blocks)
+    // 8. Apply Legacy Style Wrapper (if no blocks)
     if (template.channel === 'email' && template.styleId && !template.blocks?.length) {
       const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
       if (styleSnap.exists) {
@@ -97,7 +120,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
       }
     }
 
-    // 7. Perform Delivery
+    // 9. Perform Delivery
     let providerId = null;
     let providerStatus = null;
 
@@ -122,7 +145,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerId = providerResponse?.id;
     }
 
-    // 8. Create Audit Log
+    // 10. Create Audit Log
     const logData: Omit<MessageLog, 'id'> = {
       templateId: template.id,
       templateName: template.name,
@@ -149,7 +172,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
-    // 9. Sync Activity Timeline
+    // 11. Sync Activity Timeline
     await logActivity({
         schoolId: (logData.schoolId as string) || '',
         userId: null, 

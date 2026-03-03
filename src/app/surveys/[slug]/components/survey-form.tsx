@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -568,8 +567,8 @@ const evaluateCondition = (answer: any, operator: SurveyLogicBlock['rules'][0]['
     switch (operator) {
         case 'isEqualTo': return strAnswer === String(targetValue);
         case 'isNotEqualTo': return strAnswer !== String(targetValue);
-        case 'contains': return strAnswer.includes(String(targetValue));
-        case 'doesNotContain': return !strAnswer.includes(String(targetValue));
+        case 'contains': return strAnswer.toLowerCase().includes(String(targetValue).toLowerCase());
+        case 'doesNotContain': return !strAnswer.toLowerCase().includes(String(targetValue).toLowerCase());
         case 'startsWith': return strAnswer.startsWith(String(targetValue));
         case 'doesNotStartWith': return !strAnswer.startsWith(String(targetValue));
         case 'endsWith': return strAnswer.endsWith(String(targetValue));
@@ -862,32 +861,31 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
-        // Better contact harvesting (Check specific types AND labels as fallback)
+        // Smart Identification of respondent info
         const emailQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'email' || q.title.toLowerCase().includes('email'));
         const phoneQuestion = survey.elements.filter(isQuestion).find(q => q.type === 'phone' || q.title.toLowerCase().includes('phone') || q.title.toLowerCase().includes('contact'));
         
         const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
         const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
 
-        // Initialize status tracker
+        // Initialize status tracker with rich labels
         const initialTasks: AutomationStatus[] = [
-            { id: 'db', label: 'Institutional Persistence', status: 'pending', icon: Zap },
+            { id: 'db', label: 'Persistent State Sync', status: 'pending', icon: Zap },
         ];
 
         if (survey.webhookEnabled && survey.webhookId) {
             initialTasks.push({ id: 'webhook', label: 'Cloud Webhook Gateway', status: 'pending', icon: Globe });
         }
 
-        // We always show these tasks in the tracker, but they might be marked as 'skipped' if no contact provided
         if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
-            initialTasks.push({ id: 'email_ack', label: 'Email Confirmation (Respondent)', status: 'pending', icon: Mail });
+            initialTasks.push({ id: 'email_ack', label: 'Email Result Delivery', status: 'pending', icon: Mail });
         }
         if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
-            initialTasks.push({ id: 'sms_ack', label: 'SMS Confirmation (Respondent)', status: 'pending', icon: Smartphone });
+            initialTasks.push({ id: 'sms_ack', label: 'SMS Result Delivery', status: 'pending', icon: Smartphone });
         }
         
         if (survey.adminAlertsEnabled) {
-            initialTasks.push({ id: 'admin_alert', label: 'Internal Team Notification', status: 'pending', icon: Bell });
+            initialTasks.push({ id: 'admin_alert', label: 'Administrative Alerting', status: 'pending', icon: Bell });
         }
 
         setAutomationStatuses(initialTasks);
@@ -896,19 +894,29 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
+        // Comprehensive Variable Harvesting
         const variables: Record<string, any> = {
             survey_title: survey.title,
             score: score || 0,
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
+            schoolId: survey.schoolId || '',
+            schoolName: survey.schoolName || 'SmartSapp'
         };
 
-        // Deep harvesting: Map all form answers to technical tags
+        // Map all form answers to variables
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
             if (val !== undefined) {
-                variables[q.id] = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                const resolvedVal = typeof val === 'object' ? JSON.stringify(val) : String(val);
+                variables[q.id] = resolvedVal;
+                
+                // Aliasing for common institutional tags
+                const cleanTitle = q.title.toLowerCase();
+                if (cleanTitle.includes('name') && !variables.contact_name) variables.contact_name = resolvedVal;
+                if ((cleanTitle.includes('phone') || cleanTitle.includes('contact')) && !variables.contact_phone) variables.contact_phone = resolvedVal;
+                if (cleanTitle.includes('email') && !variables.contact_email) variables.contact_email = resolvedVal;
             }
         });
 
@@ -920,14 +928,14 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         form.control.disabled = true;
 
         try {
-            // Task 1: Persistent Save
+            // Task 1: Save Submission
             const docRef = await addDoc(responsesCollection, responseData);
             setLastSubmissionId(docRef.id);
             updateAutomationStatus('db', 'success');
 
             const automationPromises = [];
 
-            // Webhook Pipeline
+            // Task 2: Webhook Dispatch
             if (survey.webhookEnabled && survey.webhookId) {
                 const webhookTask = async () => {
                     try {
@@ -941,7 +949,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                 ...variables, 
                                 answers: cleanedData, 
                                 submission_id: docRef.id,
-                                survey_id: survey.id
+                                survey_id: survey.id,
+                                school_id: survey.schoolId
                             }) 
                         });
                         if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -953,11 +962,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Respondent Acknowledgment (Outcome Specific)
+            // Task 3: Respondent Logic-Based Messaging (Result Specific)
             if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     if (!respondentEmail) {
-                        updateAutomationStatus('email_ack', 'skipped', 'No email address detected in form data.');
+                        updateAutomationStatus('email_ack', 'skipped', 'No email address found.');
                         return;
                     }
                     try {
@@ -965,7 +974,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             templateId: outcome.emailTemplateId!, 
                             senderProfileId: outcome.emailSenderProfileId || 'default', 
                             recipient: String(respondentEmail), 
-                            variables 
+                            variables,
+                            schoolId: survey.schoolId || undefined
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('email_ack', 'success');
@@ -979,7 +989,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
                 const smsTask = async () => {
                     if (!respondentPhone) {
-                        updateAutomationStatus('sms_ack', 'skipped', 'No phone number detected in form data.');
+                        updateAutomationStatus('sms_ack', 'skipped', 'No phone number found.');
                         return;
                     }
                     try {
@@ -987,7 +997,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             templateId: outcome.smsTemplateId!, 
                             senderProfileId: outcome.smsSenderProfileId || 'default', 
                             recipient: String(respondentPhone), 
-                            variables 
+                            variables,
+                            schoolId: survey.schoolId || undefined
                         });
                         if (!res.success) throw new Error(res.error);
                         updateAutomationStatus('sms_ack', 'success');
@@ -998,12 +1009,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(smsTask());
             }
 
-            // Administrative Notifications
+            // Task 4: Administrative Alerting
             if (survey.adminAlertsEnabled) {
                 const adminTask = async () => {
                     try {
                         await triggerInternalNotification({
-                            schoolId: '',
+                            schoolId: survey.schoolId || '',
                             notifyManager: survey.adminAlertNotifyManager,
                             specificUserIds: survey.adminAlertSpecificUserIds,
                             emailTemplateId: survey.adminAlertEmailTemplateId,
@@ -1019,9 +1030,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(adminTask());
             }
 
-            // Mandatory System Activity Audit
+            // Task 5: Activity Log (Always Mandatory)
             logActivity({
-                schoolId: '',
+                schoolId: survey.schoolId || '',
                 userId: null,
                 type: 'form_submission',
                 source: 'public',

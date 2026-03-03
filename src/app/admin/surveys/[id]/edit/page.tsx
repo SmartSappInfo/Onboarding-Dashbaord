@@ -2,16 +2,16 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
+import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Settings2, Share2, Sparkles
+    Check, Loader2, Palette, Layout, Eye, X, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Settings2, Share2, Sparkles, Building
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage } from '@/lib/types';
+import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -144,6 +144,8 @@ const formSchema = z.object({
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
   automationMessagingEnabled: z.boolean().default(false),
+  schoolId: z.string().optional().nullable(),
+  schoolName: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -217,6 +219,12 @@ export default function EditSurveyPage() {
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
 
+    const schoolsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
+    }, [firestore]);
+    const { data: schools } = useCollection<School>(schoolsQuery);
+
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -248,6 +256,8 @@ export default function EditSurveyPage() {
             adminAlertNotifyManager: false,
             adminAlertSpecificUserIds: [],
             automationMessagingEnabled: false,
+            schoolId: null,
+            schoolName: null,
         }
     });
 
@@ -295,6 +305,8 @@ export default function EditSurveyPage() {
                 adminAlertEmailTemplateId: survey.adminAlertEmailTemplateId || '',
                 adminAlertSmsTemplateId: survey.adminAlertSmsTemplateId || '',
                 automationMessagingEnabled: survey.automationMessagingEnabled || false,
+                schoolId: survey.schoolId || null,
+                schoolName: survey.schoolName || null,
             });
 
             if (firestore) {
@@ -597,6 +609,40 @@ export default function EditSurveyPage() {
                                             <Card className="shadow-sm border-none ring-1 ring-border">
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Organization</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-6">
+                                                    <FormField control={form.control} name="schoolId" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target School</FormLabel>
+                                                            <Select 
+                                                                onValueChange={(val) => {
+                                                                    const school = schools?.find(s => s.id === val);
+                                                                    field.onChange(val);
+                                                                    setValue('schoolName', school ? school.name : null);
+                                                                }} 
+                                                                value={field.value || 'none'}
+                                                            >
+                                                                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                                                                    <SelectValue placeholder="Link to a school..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">General (Global Survey)</SelectItem>
+                                                                    {schools?.map(school => (
+                                                                        <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormDescription className="text-[9px] uppercase tracking-tighter mt-1">Links this survey to a specific school context for better variable resolution.</FormDescription>
+                                                        </FormItem>
+                                                    )} />
+                                                </CardContent>
+                                            </Card>
+                                            <Card className="shadow-sm border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+                                                    <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
                                                         <CardTitle className="text-lg font-black uppercase tracking-tight">Branding</CardTitle>
                                                     </div>
@@ -682,7 +728,8 @@ export default function EditSurveyPage() {
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="status" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="slug" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Identifier</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
