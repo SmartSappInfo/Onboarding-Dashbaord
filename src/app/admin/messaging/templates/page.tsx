@@ -22,7 +22,8 @@ import {
     Heading1, Type, Image as ImageIcon, Video, MousePointer2, Quote, 
     Square, List, PlusCircle, ArrowUp, ArrowDown, AlignLeft, 
     AlignCenter, AlignRight, Bold, Italic, Underline, Save, Search,
-    Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon
+    Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
+    Maximize2, Minimize2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -31,7 +32,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { CSS } from '@radix-ui/react-popover'; // Note: Usually dnd-kit uses a different CSS utility but maintaining consistency with imports if present. Correcting to standard dnd utility if needed.
+import { CSS } from '@dnd-kit/utilities';
 import { resolveVariables, renderBlocksToHtml, shouldShowBlock } from '@/lib/messaging-utils';
 import { format } from 'date-fns';
 import { fetchContextualData } from '@/lib/messaging-actions';
@@ -270,6 +271,7 @@ export default function MessageTemplatesPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [editorMode, setEditorMode] = React.useState<'builder' | 'code' | 'text'>('builder');
+    const [isFullScreen, setIsFullScreen] = React.useState(false);
 
     // Resizable Sidebar State
     const [variablesWidth, setVariablesWidth] = React.useState(288); // Default w-72 (288px)
@@ -446,6 +448,7 @@ export default function MessageTemplatesPage() {
         setSimEntity('none');
         setSimRecordId('none');
         setStep(1);
+        setIsFullScreen(false);
     };
 
     const handleEditClick = (template: MessageTemplate) => {
@@ -580,7 +583,14 @@ export default function MessageTemplatesPage() {
 
                                 {/* STEP 2: WORKSHOP (BUILDER + VARIABLES) */}
                                 {step === 2 && (
-                                    <motion.div key="step2" {...stepTransition} className="absolute inset-0 flex select-none">
+                                    <motion.div 
+                                        key="step2" 
+                                        {...stepTransition} 
+                                        className={cn(
+                                            "absolute inset-0 flex select-none bg-background transition-all duration-500",
+                                            isFullScreen && "fixed inset-0 z-[100] h-screen w-screen"
+                                        )}
+                                    >
                                         {/* Left: Variables Library (Resizable) */}
                                         <div 
                                             className="border-r bg-background flex flex-col shrink-0 relative"
@@ -631,8 +641,8 @@ export default function MessageTemplatesPage() {
                                         </div>
 
                                         {/* Center: Editor Workspace */}
-                                        <div className="flex-1 flex flex-col bg-muted/5 min-w-0">
-                                            <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between">
+                                        <div className="flex-1 flex flex-col bg-muted/5 min-w-0 relative">
+                                            <div className="p-4 border-b bg-background shrink-0 flex items-center justify-between z-20 shadow-sm">
                                                 <div className="flex items-center gap-4">
                                                     {channel === 'email' && (
                                                         <Tabs value={editorMode} onValueChange={(v: any) => setEditorMode(v)} className="w-fit">
@@ -644,9 +654,20 @@ export default function MessageTemplatesPage() {
                                                         </Tabs>
                                                     )}
                                                 </div>
-                                                <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs">
-                                                    <Eye className="h-4 w-4" /> Final Simulation
-                                                </Button>
+                                                <div className="flex items-center gap-2">
+                                                    <Button 
+                                                        variant="ghost" 
+                                                        size="sm" 
+                                                        onClick={() => setIsFullScreen(!isFullScreen)} 
+                                                        className={cn("h-9 rounded-xl font-bold gap-2 text-xs", isFullScreen && "text-primary bg-primary/5")}
+                                                    >
+                                                        {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                                                        {isFullScreen ? 'Exit Full Screen' : 'Zen Mode'}
+                                                    </Button>
+                                                    <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-9 rounded-xl font-bold gap-2 text-xs">
+                                                        <Eye className="h-4 w-4" /> Final Simulation
+                                                    </Button>
+                                                </div>
                                             </div>
 
                                             <ScrollArea className="flex-1">
