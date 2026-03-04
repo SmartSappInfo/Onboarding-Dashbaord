@@ -30,7 +30,7 @@ import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -467,6 +467,13 @@ export default function MessageTemplatesPage() {
             }
         }
     }, [blocks, channel, editorMode, body]);
+
+    // SMS Sidebar Logic: Force Tags tab
+    React.useEffect(() => {
+        if (channel === 'sms' && sidebarTab !== 'tags') {
+            setSidebarTab('tags');
+        }
+    }, [channel, sidebarTab]);
 
     const handleCodeChange = (newHtml: string) => {
         setBody(newHtml);
@@ -941,43 +948,52 @@ export default function MessageTemplatesPage() {
                                         <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300" style={{ width: variablesWidth }}>
                                             <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                                 <div className="px-2 py-2 border-b bg-muted/10 shrink-0">
-                                                    <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
-                                                        <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
-                                                        <TabsTrigger value="tags" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
-                                                        <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Props</TabsTrigger>
-                                                    </TabsList>
-                                                </div>
-                                                <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
-                                                    <ScrollArea className="flex-1 h-full">
-                                                        <div className="p-4 pt-2 space-y-8">
-                                                            <div className="space-y-4">
-                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Core Typography</h3>
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <BlockLibraryTile icon={Heading1} label="Heading" onClick={() => handleAddBlock('heading', 'h1')} />
-                                                                    <BlockLibraryTile icon={Type} label="Subheading" onClick={() => handleAddBlock('heading', 'h2')} />
-                                                                    <BlockLibraryTile icon={PenTool} label="Content" onClick={() => handleAddBlock('text')} />
-                                                                    <BlockLibraryTile icon={Quote} label="Quote" onClick={() => handleAddBlock('quote')} />
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-4">
-                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Media & Interaction</h3>
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <BlockLibraryTile icon={ImageIcon} label="Image" onClick={() => handleAddBlock('image')} />
-                                                                    <BlockLibraryTile icon={MousePointer2} label="Button" onClick={() => handleAddBlock('button')} />
-                                                                    <BlockLibraryTile icon={List} label="List" onClick={() => handleAddBlock('list')} />
-                                                                    <BlockLibraryTile icon={Trophy} label="Score Card" onClick={() => handleAddBlock('score-card')} />
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-4">
-                                                                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Structural</h3>
-                                                                <div className="grid grid-cols-2 gap-3">
-                                                                    <BlockLibraryTile icon={Square} label="Divider" onClick={() => handleAddBlock('divider')} />
-                                                                    <BlockLibraryTile icon={Layout} label="Footer" onClick={() => handleAddBlock('footer')} />
-                                                                </div>
-                                                            </div>
+                                                    {channel === 'email' ? (
+                                                        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/50 p-1 rounded-xl">
+                                                            <TabsTrigger value="blocks" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Layout className="h-3 w-3" /> Blocks</TabsTrigger>
+                                                            <TabsTrigger value="tags" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Database className="h-3 w-3" /> Tags</TabsTrigger>
+                                                            <TabsTrigger value="properties" className="text-[9px] font-black uppercase tracking-widest gap-1.5"><Settings className="h-3 w-3" /> Props</TabsTrigger>
+                                                        </TabsList>
+                                                    ) : (
+                                                        <div className="flex items-center gap-2 px-2 h-10">
+                                                            <Database className="h-4 w-4 text-primary" />
+                                                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Contextual Registry</span>
                                                         </div>
-                                                    </ScrollArea>
-                                                </TabsContent>
+                                                    )}
+                                                </div>
+                                                {channel === 'email' && (
+                                                    <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                        <ScrollArea className="flex-1 h-full">
+                                                            <div className="p-4 pt-2 space-y-8">
+                                                                <div className="space-y-4">
+                                                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Core Typography</h3>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <BlockLibraryTile icon={Heading1} label="Heading" onClick={() => handleAddBlock('heading', 'h1')} />
+                                                                        <BlockLibraryTile icon={Type} label="Subheading" onClick={() => handleAddBlock('heading', 'h2')} />
+                                                                        <BlockLibraryTile icon={PenTool} label="Content" onClick={() => handleAddBlock('text')} />
+                                                                        <BlockLibraryTile icon={Quote} label="Quote" onClick={() => handleAddBlock('quote')} />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-4">
+                                                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Media & Interaction</h3>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <BlockLibraryTile icon={ImageIcon} label="Image" onClick={() => handleAddBlock('image')} />
+                                                                        <BlockLibraryTile icon={MousePointer2} label="Button" onClick={() => handleAddBlock('button')} />
+                                                                        <BlockLibraryTile icon={List} label="List" onClick={() => handleAddBlock('list')} />
+                                                                        <BlockLibraryTile icon={Trophy} label="Score Card" onClick={() => handleAddBlock('score-card')} />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-4">
+                                                                    <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Structural</h3>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <BlockLibraryTile icon={Square} label="Divider" onClick={() => handleAddBlock('divider')} />
+                                                                        <BlockLibraryTile icon={Layout} label="Footer" onClick={() => handleAddBlock('footer')} />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </TabsContent>
+                                                )}
                                                 <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
@@ -1007,23 +1023,25 @@ export default function MessageTemplatesPage() {
                                                         </div>
                                                     </ScrollArea>
                                                 </TabsContent>
-                                                <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
-                                                    <ScrollArea className="flex-1 h-full">
-                                                        <div className="p-4 pt-2">
-                                                            {selectedBlock ? (
-                                                                <div className="space-y-4">
-                                                                    <div className="flex items-center gap-3 pb-4 border-b">
-                                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg">{React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}</div>
-                                                                        <div><h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p></div>
+                                                {channel === 'email' && (
+                                                    <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                        <ScrollArea className="flex-1 h-full">
+                                                            <div className="p-4 pt-2">
+                                                                {selectedBlock ? (
+                                                                    <div className="space-y-4">
+                                                                        <div className="flex items-center gap-3 pb-4 border-b">
+                                                                            <div className="p-2 bg-primary text-white rounded-xl shadow-lg">{React.createElement(blockIcons[selectedBlock.type] || Type, { className: "h-5 w-5" })}</div>
+                                                                            <div><h3 className="font-black uppercase text-xs tracking-widest">{selectedBlock.type}</h3><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-tighter">Configuration</p></div>
+                                                                        </div>
+                                                                        <GlobalBlockInspector block={selectedBlock} variables={variables || []} onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, ...u } : b))} />
                                                                     </div>
-                                                                    <GlobalBlockInspector block={selectedBlock} variables={variables || []} onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === selectedBlock.id ? { ...b, ...u } : b))} />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="py-20 text-center space-y-4"><div className="mx-auto w-12 h-12 rounded-2xl bg-muted/50 border flex items-center justify-center text-muted-foreground/30"><Layout className="h-6 w-6" /></div><p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit its properties</p></div>
-                                                            )}
-                                                        </div>
-                                                    </ScrollArea>
-                                                </TabsContent>
+                                                                ) : (
+                                                                    <div className="py-20 text-center space-y-4"><div className="mx-auto w-12 h-12 rounded-2xl bg-muted/50 border flex items-center justify-center text-muted-foreground/30"><Layout className="h-6 w-6" /></div><p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit its properties</p></div>
+                                                                )}
+                                                            </div>
+                                                        </ScrollArea>
+                                                    </TabsContent>
+                                                )}
                                             </Tabs>
                                             <div className={cn("absolute -right-1 top-0 bottom-0 w-2 cursor-col-resize z-50 transition-colors", isResizing ? "bg-primary/40" : "hover:bg-primary/20")} onMouseDown={handleMouseDown} />
                                         </div>
@@ -1089,11 +1107,14 @@ export default function MessageTemplatesPage() {
                                                         <div className="space-y-6">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{channel === 'sms' ? 'Handset Payload' : 'Source Code Editor'}</Label>
-                                                                <div className="p-1 rounded-[2.5rem] bg-slate-900 shadow-2xl">
+                                                                <div className={cn("p-1 rounded-[2.5rem] shadow-2xl", channel === 'email' ? "bg-slate-900" : "bg-slate-200")}>
                                                                     <Textarea 
                                                                         value={body} 
                                                                         onChange={e => handleCodeChange(e.target.value)} 
-                                                                        className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 bg-slate-900 border-none text-blue-400 focus-visible:ring-0 shadow-none selection:bg-blue-500/30"
+                                                                        className={cn(
+                                                                            "min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 border-none shadow-none focus-visible:ring-0 selection:bg-blue-500/30",
+                                                                            channel === 'email' ? "bg-slate-900 text-blue-400" : "bg-white text-slate-900"
+                                                                        )}
                                                                         placeholder={channel === 'sms' ? "Hi {{contact_name}}..." : "<html><body>...</body></html>"}
                                                                     />
                                                                 </div>
@@ -1128,10 +1149,10 @@ export default function MessageTemplatesPage() {
                                             <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border"><Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('desktop')}><Monitor className="h-3.5 w-3.5" /> Desktop</Button><Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('mobile')}><PhoneIcon className="h-3.5 w-3.5" /> Mobile</Button></div>
                                         </div>
                                         <div className="flex-1 overflow-auto p-8 flex justify-center">
-                                            <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center")}>
+                                            <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-slate-50 border-slate-200 p-12 flex flex-col justify-center items-center")}>
                                                 {isSimLoading && <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p></div>}
                                                 {channel === 'sms' ? (
-                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(currentTemplateData, simVariables)}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview(currentTemplateData, simVariables).length / 160)} SMS Segments</span></div></div>
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-primary h-6 w-6" /><span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl"><div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" /><p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(currentTemplateData, simVariables)}</p></div><div className="pt-8 border-t border-slate-100 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-slate-300">~ {Math.ceil(resolvedPreview(currentTemplateData, simVariables).length / 160)} SMS Segments</span></div></div>
                                                 ) : (
                                                     <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview(currentTemplateData, simVariables)} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
                                                 )}
@@ -1177,7 +1198,7 @@ export default function MessageTemplatesPage() {
                                         </div>
                                         
                                         {/* PREVIEW CANVAS */}
-                                        <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-start p-1.5">
+                                        <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-center p-1.5">
                                             {template.channel === 'email' ? (
                                                 <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex justify-center">
                                                     <div className="absolute inset-0 transform origin-top scale-[0.45] w-[222%] h-[222%] pointer-events-none p-4">
@@ -1189,16 +1210,16 @@ export default function MessageTemplatesPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="w-full h-full bg-[#0A1427] rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
-                                                    <div className="absolute -right-4 -top-4 opacity-5 rotate-12">
+                                                <div className="w-full h-full bg-slate-50 rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100">
+                                                    <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
                                                         <Zap size={120} />
                                                     </div>
-                                                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl shadow-xl backdrop-blur-sm">
-                                                        <p className="text-[9px] font-bold text-white/80 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
+                                                    <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
+                                                        <p className="text-[9px] font-bold text-slate-900 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
                                                     </div>
-                                                    <div className="flex items-center justify-between opacity-20 border-t border-white/10 pt-3">
-                                                        <SmartSappIcon className="h-3.5 w-3.5" variant="white" />
-                                                        <span className="text-[7px] font-black uppercase tracking-widest text-white">Handset Simulator</span>
+                                                    <div className="flex items-center justify-between opacity-20 border-t border-slate-200 pt-3">
+                                                        <SmartSappIcon className="h-3.5 w-3.5" variant="primary" />
+                                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-900">Handset Simulator</span>
                                                     </div>
                                                 </div>
                                             )}
@@ -1242,15 +1263,15 @@ export default function MessageTemplatesPage() {
                         <div className={cn(
                             "transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
                             previewDevice === 'mobile' ? "w-[375px] h-full" : "w-full max-w-4xl",
-                            previewTemplate?.channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center"
+                            previewTemplate?.channel === 'sms' && "bg-slate-50 border-slate-200 p-12 flex flex-col justify-center items-center"
                         )}>
                             {previewTemplate?.channel === 'sms' ? (
                                 <div className="w-full max-w-sm space-y-10">
                                     <div className="flex items-center justify-between opacity-20">
-                                        <Zap className="text-white h-6 w-6" />
-                                        <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink</span>
+                                        <Zap className="text-primary h-6 w-6" />
+                                        <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SMS Uplink</span>
                                     </div>
-                                    <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p></div>
+                                    <div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl"><div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" /><p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p></div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full bg-white">

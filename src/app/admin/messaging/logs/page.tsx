@@ -394,10 +394,10 @@ export default function MessageLogsPage() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-[#0A1427] rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-white/5 group transition-all hover:scale-[1.02]">
-                                        <div className="absolute -left-2 top-10 w-4 h-4 bg-[#0A1427] rotate-45 rounded-sm border-l border-b border-white/10 group-hover:border-primary/30 transition-colors" />
-                                        <p className="text-sm text-white/90 leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
-                                        <div className="mt-6 pt-4 border-t border-white/5 flex justify-between text-[8px] font-black uppercase tracking-widest text-white/20">
+                                    <div className="bg-slate-50 rounded-[2.5rem] p-8 relative max-w-sm mx-auto shadow-2xl border border-slate-200 group transition-all hover:scale-[1.02]">
+                                        <div className="absolute -left-2 top-10 w-4 h-4 bg-slate-50 rotate-45 rounded-sm border-l border-b border-slate-200 group-hover:border-primary/30 transition-colors" />
+                                        <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{selectedLog?.body}</p>
+                                        <div className="mt-6 pt-4 border-t border-slate-200 flex justify-between text-[8px] font-black uppercase tracking-widest text-slate-300">
                                             <span>Chars: {selectedLog?.body.length}</span>
                                             <span>Handset Mock-up</span>
                                         </div>

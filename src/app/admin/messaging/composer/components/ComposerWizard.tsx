@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -476,7 +475,6 @@ export default function ComposerWizard() {
                                 <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                                     <Sparkles className="h-6 w-6" />
                                 </div>
-                                inverse:
                                 <div>
                                     <CardTitle className="text-2xl font-black uppercase tracking-tight">Channel & Logic</CardTitle>
                                     <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Identify the communication protocol.</CardDescription>
@@ -1088,13 +1086,13 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
         return (
             <div className={cn(
                 "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700 p-8",
-                template.channel === 'email' ? "bg-white border-blue-50" : "bg-[#0A1427] border-slate-800"
+                template.channel === 'email' ? "bg-white border-blue-50" : "bg-white border-slate-200"
             )}>
                 <div className="flex items-center gap-2 mb-4 text-emerald-600">
                     <Wand2 className="h-4 w-4" />
                     <span className="text-[10px] font-black uppercase tracking-widest">AI Polished Draft</span>
                 </div>
-                <div className={cn("whitespace-pre-wrap font-medium leading-relaxed", template.channel === 'sms' ? "text-white/90 text-sm" : "text-slate-700 prose prose-sm max-w-none")} dangerouslySetInnerHTML={{ __html: resolveVariables(variables.ai_refined_body, combinedVars) }} />
+                <div className={cn("whitespace-pre-wrap font-medium leading-relaxed", template.channel === 'sms' ? "text-slate-900 text-sm" : "text-slate-700 prose prose-sm max-w-none")} dangerouslySetInnerHTML={{ __html: resolveVariables(variables.ai_refined_body, combinedVars) }} />
             </div>
         );
     }
@@ -1106,7 +1104,7 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
     return (
         <div className={cn(
             "rounded-[3rem] border-2 overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.14)] transition-all duration-700",
-            template.channel === 'email' ? "bg-white border-blue-50" : "bg-[#0A1427] border-slate-800 max-w-sm mx-auto"
+            template.channel === 'email' ? "bg-white border-blue-50" : "bg-slate-50 border-slate-200 max-w-sm mx-auto"
         )}>
             {template.channel === 'email' ? (
                 <div className="flex flex-col h-[450px]">
@@ -1122,15 +1120,15 @@ function MessagePreviewer({ template, variables }: { template: MessageTemplate, 
             ) : (
                 <div className="p-10 space-y-8">
                     <div className="flex items-center justify-between">
-                        <SmartSappIcon className="h-8 w-8 text-white opacity-20" />
-                        <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em]">SMS Gateway Simulator</p>
+                        <SmartSappIcon className="h-8 w-8 text-primary opacity-20" />
+                        <p className="text-[10px] font-black text-primary/40 uppercase tracking-[0.3em]">SMS Gateway Simulator</p>
                     </div>
-                    <div className="p-6 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner">
-                        <div className="absolute -left-2.5 top-8 w-5 h-5 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" />
-                        <p className="text-sm text-white/95 leading-relaxed font-bold whitespace-pre-wrap">{resolvedBody}</p>
+                    <div className="p-6 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
+                        <div className="absolute -left-2.5 top-8 w-5 h-5 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
+                        <p className="text-sm text-slate-900 leading-relaxed font-bold whitespace-pre-wrap">{resolvedBody}</p>
                     </div>
-                    <div className="pt-6 text-center border-t border-white/5">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedBody.length / 160)} SMS Segment(s)</span>
+                    <div className="pt-6 text-center border-t border-slate-200">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">~ {Math.ceil(resolvedBody.length / 160)} SMS Segment(s)</span>
                     </div>
                 </div>
             )}
