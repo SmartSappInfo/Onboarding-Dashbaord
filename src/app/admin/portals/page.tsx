@@ -19,12 +19,18 @@ import {
     Zap, 
     LayoutList,
     Building,
-    CheckCircle2
+    CheckCircle2,
+    PlusCircle,
+    TooltipProvider,
+    Tooltip,
+    TooltipTrigger,
+    TooltipContent
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { SmartSappIcon } from '@/components/icons';
 
 export default function PublicPortalsPage() {
     const firestore = useFirestore();
@@ -44,32 +50,29 @@ export default function PublicPortalsPage() {
         firestore ? query(collection(firestore, 'meetings'), orderBy('meetingTime', 'desc')) : null, 
     [firestore]);
 
-    const schoolsQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, 
-    [firestore]);
-
     const { data: surveys, isLoading: isLoadingSurveys } = useCollection<Survey>(surveysQuery);
     const { data: pdfs, isLoading: isLoadingPdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: meetings, isLoading: isLoadingMeetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
 
     const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
 
     // Filter Logic
-    const filteredSurveys = surveys?.filter(s => 
+    const filteredSurveys = React.useMemo(() => surveys?.filter(s => 
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        s.schoolName?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+        s.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        s.internalName?.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [], [surveys, searchTerm]);
 
-    const filteredPdfs = pdfs?.filter(p => 
+    const filteredPdfs = React.useMemo(() => pdfs?.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         p.schoolName?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+    ) || [], [pdfs, searchTerm]);
 
-    const filteredMeetings = meetings?.filter(m => 
+    const filteredMeetings = React.useMemo(() => meetings?.filter(m => 
         m.schoolName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        m.type.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+        m.type?.name?.toLowerCase().includes(searchTerm.toLowerCase())
+    ) || [], [meetings, searchTerm]);
 
     const handleCopy = (path: string) => {
         if (typeof window === 'undefined') return;
@@ -100,7 +103,10 @@ export default function PublicPortalsPage() {
                     </div>
                 </div>
                 <div className="mt-4 space-y-1">
-                    <CardTitle className="text-base font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{title}</CardTitle>
+                    <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{title}</CardTitle>
+                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    </div>
                     {school && (
                         <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                             <Building className="h-3 w-3" /> {school}
@@ -109,7 +115,7 @@ export default function PublicPortalsPage() {
                 </div>
             </CardHeader>
             <CardContent className="px-5 pb-5 mt-auto pt-4">
-                <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm">
+                <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm transition-all active:scale-95">
                     <a href={path} target="_blank" rel="noopener noreferrer">
                         Launch Portal <ExternalLink className="h-3.5 w-3.5" />
                     </a>
@@ -199,16 +205,19 @@ export default function PublicPortalsPage() {
                             <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
                                 <SectionHeader title="Session Meeting Rooms" badge={filteredMeetings.length} icon={Calendar} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    {filteredMeetings.map(m => (
-                                        <PortalCard 
-                                            key={m.id} 
-                                            title={m.type.name} 
-                                            school={m.schoolName} 
-                                            path={`/meetings/${m.type.slug}/${m.schoolSlug}`} 
-                                            icon={Calendar} 
-                                            color="bg-purple-600" 
-                                        />
-                                    ))}
+                                    {filteredMeetings.map(m => {
+                                        const typeSlug = m.type?.slug || 'parent-engagement';
+                                        return (
+                                            <PortalCard 
+                                                key={m.id} 
+                                                title={m.type?.name || 'Session'} 
+                                                school={m.schoolName} 
+                                                path={`/meetings/${typeSlug}/${m.schoolSlug}`} 
+                                                icon={Calendar} 
+                                                color="bg-purple-600" 
+                                            />
+                                        );
+                                    })}
                                 </div>
                             </section>
                         )}
