@@ -227,7 +227,7 @@ export async function seedSurveys(firestore: Firestore): Promise<number> {
   const surveysCollection = collection(firestore, 'surveys');
   surveyData.forEach((survey) => {
     const docRef = doc(surveysCollection);
-    const slug = survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+    const slug = survey.slug || survey.title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     batch.set(docRef, { ...survey, slug, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });
   });
   await batch.commit();
@@ -496,13 +496,25 @@ export async function seedMessageLogs(firestore: Firestore): Promise<number> {
 
 const surveyData = [
     {
-      internalName: 'Comprehensive Feedback Survey',
-      title: 'Comprehensive Feedback Survey',
-      description: 'Please provide your valuable feedback to help us improve our services.',
+      internalName: 'Parent Engagement Survey',
+      title: 'Parent Experience Questionnaire',
+      description: 'Help us improve your child\'s school journey by sharing your thoughts on our digital services.',
+      slug: 'parents-survey',
       status: 'published',
       elements: [
         { id: 'q_name', type: 'text', title: 'What is your full name?', isRequired: true },
-        { id: 'q_rating', type: 'rating', title: 'How would you rate your overall experience (1-5 stars)?', isRequired: true },
+        { id: 'q_rating', type: 'rating', title: 'How would you rate the school\'s digital communication?', isRequired: true },
+      ],
+    },
+    {
+      internalName: 'School Administrator Survey',
+      title: 'Institutional Onboarding Assessment',
+      description: 'Tell us about your school\'s current management systems and onboarding goals.',
+      slug: 'schools-survey',
+      status: 'published',
+      elements: [
+        { id: 'q_school_name', type: 'text', title: 'Official School Name', isRequired: true },
+        { id: 'q_tech_stack', type: 'multiple-choice', title: 'Primary current management system?', options: ['Manual/Paper', 'Excel Spreadsheets', 'Cloud Software', 'In-house System'], isRequired: true },
       ],
     }
 ];

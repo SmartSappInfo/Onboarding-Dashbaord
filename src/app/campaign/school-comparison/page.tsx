@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { SmartSappLogo } from '@/components/icons';
-import { ArrowRight, Users, Building2 } from 'lucide-react';
+import { ArrowRight, Users, Building2, Zap } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import LightRays from '@/components/LightRays';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,21 +38,21 @@ export default function SchoolComparisonPage() {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12">
+      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12 py-12">
         {/* Header Section */}
         <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
           <Link href="/" className="inline-block hover:scale-105 transition-transform">
             <SmartSappLogo className="h-10 mx-auto" />
           </Link>
           <div className="space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Pre-Onboarding Experience</h2>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tight text-foreground leading-tight">
-              Hey there! Quick question...
+            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Onboarding Experience</h2>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground leading-tight">
+              Welcome! <br className="sm:hidden" /> Who are you?
             </h1>
           </div>
           <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed px-4">
-            We&apos;ve got <span className="text-primary font-bold">cool stuff for both</span>, but different experiences. 
-            Help us show you the good stuff made just for you.
+            We've customized our tools to fit your specific role. <br className="hidden sm:inline" />
+            <span className="text-primary font-bold">Choose your path</span> to get started.
           </p>
         </div>
 
@@ -62,28 +61,30 @@ export default function SchoolComparisonPage() {
           {/* Parent Option */}
           <SelectionCard
             title="I'm a Parent / Student"
-            description="Access your child's records, pay fees, and stay connected with school activities. Join the digital family today."
+            description="Secure your child's education, manage payments, and stay connected with real-time updates from your school."
             href="/surveys/parents-survey"
             image={parentImg!}
             icon={Users}
             delay={0.2}
             color="from-orange-500 to-rose-500"
+            label="FOR FAMILIES"
           />
 
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
-            description="Manage your institution, automate billing, and enhance security for your students with our complete management suite."
+            description="Modernize your institution with automated billing, secure attendance, and professional parent communication tools."
             href="/surveys/schools-survey"
             image={schoolImg!}
             icon={Building2}
             delay={0.4}
             color="from-blue-600 to-indigo-600"
+            label="FOR INSTITUTIONS"
           />
         </div>
       </div>
 
-      <footer className="relative z-10 mt-20 text-center">
+      <footer className="relative z-10 mt-12 pb-12 text-center">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
           &copy; {new Date().getFullYear()} SmartSapp Onboarding Hub
         </p>
@@ -92,7 +93,7 @@ export default function SchoolComparisonPage() {
   );
 }
 
-function SelectionCard({ title, description, href, image, icon: Icon, delay, color }: {
+function SelectionCard({ title, description, href, image, icon: Icon, delay, color, label }: {
   title: string;
   description: string;
   href: string;
@@ -100,6 +101,7 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
   icon: any;
   delay: number;
   color: string;
+  label: string;
 }) {
   return (
     <motion.div
@@ -123,8 +125,14 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
             />
             <div className={cn("absolute inset-0 bg-gradient-to-t opacity-60 group-hover:opacity-80 transition-opacity", color)} />
             
+            <div className="absolute top-6 left-6">
+                <Badge variant="outline" className="bg-white/20 backdrop-blur-md text-white border-white/20 text-[8px] font-black tracking-widest uppercase py-1 px-3">
+                    {label}
+                </Badge>
+            </div>
+
             <div className="absolute inset-0 flex flex-col justify-end p-8">
-              <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl w-fit mb-4 border border-white/20">
+              <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl w-fit mb-4 border border-white/20 shadow-xl">
                 <Icon className="h-6 w-6 text-white" />
               </div>
               <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight uppercase tracking-tighter">{title}</h3>
@@ -138,9 +146,10 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
             </p>
             
             <div className="flex items-center gap-3 text-primary font-black uppercase text-[10px] tracking-[0.2em] pt-4">
-              Enter My Experience
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300">
+              Enter Experience
+              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
                 <ArrowRight className="h-5 w-5" />
+                <div className="absolute inset-0 rounded-2xl bg-primary animate-ping opacity-20" />
               </div>
             </div>
           </CardContent>
