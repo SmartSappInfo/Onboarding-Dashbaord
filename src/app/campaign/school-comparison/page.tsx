@@ -9,6 +9,7 @@ import { ArrowRight, Users, Building2, Zap } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import LightRays from '@/components/LightRays';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 /**
