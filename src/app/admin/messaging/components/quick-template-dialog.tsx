@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -398,7 +397,7 @@ export default function QuickTemplateDialog({
                 </div>
 
                 <DialogFooter className="p-6 bg-muted/30 border-t shrink-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                    <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
                     <Button 
                         onClick={handleCreate} 
                         disabled={isSubmitting || !name || (blocks.length === 0 && !body)}

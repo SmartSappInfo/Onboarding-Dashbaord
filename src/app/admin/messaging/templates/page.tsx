@@ -719,7 +719,7 @@ export default function MessageTemplatesPage() {
     };
 
     const resolvedPreview = React.useCallback((tmpl: MessageTemplate | null, vars: Record<string, any>) => {
-        if (!tmpl) return '';
+        if (!tmpl || !tmpl.body) return '';
         let finalBody = resolveVariables(tmpl.body, vars);
         
         if (tmpl.channel === 'email' && tmpl.styleId && tmpl.styleId !== 'none') {
@@ -922,7 +922,8 @@ export default function MessageTemplatesPage() {
                                                 </CardFooter>
                                             </Card>
                                         </div>
-                                    )}
+                                    </motion.div>
+                                )}
 
                                 {step === 2 && (
                                     <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>

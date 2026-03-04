@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle } from 'lucide-react';
+import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
 import type { SurveyResultRule, SurveyResultPage, MessageTemplate, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
