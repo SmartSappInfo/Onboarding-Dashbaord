@@ -159,7 +159,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                 </div>
             );
         case 'divider':
-            return <Separator className="my-6 sm:my-8" />;
+            return <hr className="w-full my-8 border-t-2 border-slate-200" />;
         case 'score-card':
             return <ScoreCard score={score} maxScore={maxScore} style={block.style} />;
         default:
