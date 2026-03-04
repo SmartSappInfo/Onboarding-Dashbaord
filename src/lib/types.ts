@@ -138,7 +138,7 @@ export interface SurveyQuestion {
   noScore?: number;
   autoAdvance?: boolean;
   style?: {
-    textAlign?: 'left' | 'center' | 'right';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
   };
 }
 
@@ -156,7 +156,7 @@ export interface SurveyLayoutBlock {
   validateBeforeNext?: boolean;
   variant?: 'h1' | 'h2' | 'h3';
   style?: {
-    textAlign?: 'left' | 'center' | 'right';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
   };
 }
 
@@ -191,7 +191,7 @@ export interface SurveyResultBlock {
     items?: string[];
     listStyle?: 'ordered' | 'unordered';
     style?: {
-        textAlign?: 'left' | 'center' | 'right';
+        textAlign?: 'left' | 'center' | 'right' | 'justify';
         variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
         color?: string;
         backgroundColor?: string;
@@ -421,7 +421,7 @@ export interface MessageBlock {
     matchType: 'all' | 'any';
   };
   style?: {
-    textAlign?: 'left' | 'center' | 'right';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
     variant?: 'default' | 'outline' | 'secondary' | 'destructive' | 'ghost' | 'link';
     color?: string;
     backgroundColor?: string;

@@ -10,7 +10,7 @@ import {
     Plus, Trash2, Layout, GripVertical, Heading1, AlignLeft, AlignCenter, AlignRight, 
     Type, Image as ImageIcon, Video, Quote, Square, MousePointer2, Eye, Copy, 
     ArrowRight, ArrowUp, ArrowDown, Trophy as TrophyIcon, PlusCircle, Bold, Italic, Underline,
-    List, ListOrdered
+    List, ListOrdered, AlignJustify
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -61,7 +61,7 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
                             {page.blocks.map(block => (
                                 <div key={block.id} className={cn(
                                     "w-full",
-                                    block.style?.textAlign === 'center' ? 'text-center flex flex-col items-center' : block.style?.textAlign === 'right' ? 'text-right flex flex-col items-end' : 'text-left'
+                                    block.style?.textAlign === 'center' ? 'text-center flex flex-col items-center' : block.style?.textAlign === 'right' ? 'text-right flex flex-col items-end' : block.style?.textAlign === 'justify' ? 'text-justify' : 'text-left'
                                 )}>
                                     {block.type === 'heading' && (
                                         block.variant === 'h1' ? <h1 className="text-4xl font-black tracking-tight">{block.title}</h1> :
@@ -72,11 +72,11 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
                                     {block.type === 'list' && (
                                         block.listStyle === 'ordered' ? (
                                             <ol className="list-decimal list-inside space-y-2 text-lg font-medium text-slate-700">
-                                                {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                                                {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
                                             </ol>
                                         ) : (
                                             <ul className="list-disc list-inside space-y-2 text-lg font-medium text-slate-700">
-                                                {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                                                {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
                                             </ul>
                                         )
                                     )}
@@ -114,19 +114,30 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
     const block: SurveyResultBlock = useWatch({ name: `resultPages.${pageIndex}.blocks.${blockIndex}` });
 
     const applyFormatting = (tag: string) => {
-        const fieldName = `resultPages.${pageIndex}.blocks.${blockIndex}.${block.type === 'heading' || block.type === 'button' ? 'title' : 'content'}`;
+        const isList = block.type === 'list';
+        const fieldName = isList 
+            ? `resultPages.${pageIndex}.blocks.${blockIndex}.items`
+            : `resultPages.${pageIndex}.blocks.${blockIndex}.${block.type === 'heading' || block.type === 'button' ? 'title' : 'content'}`;
+        
         const input = document.activeElement as HTMLTextAreaElement | HTMLInputElement;
         if (!input || !['TEXTAREA', 'INPUT'].includes(input.tagName)) return;
 
         const start = input.selectionStart || 0;
         const end = input.selectionEnd || 0;
-        const text = getValues(fieldName) || '';
+        
+        const currentVal = getValues(fieldName);
+        const text = isList ? (currentVal as string[]).join('\n') : (currentVal || '');
         
         const selectedText = text.substring(start, end);
         if (!selectedText) return;
 
         const newText = text.substring(0, start) + `<${tag}>${selectedText}</${tag}>` + text.substring(end);
-        setValue(fieldName, newText, { shouldDirty: true });
+        
+        if (isList) {
+            setValue(fieldName, newText.split('\n'), { shouldDirty: true });
+        } else {
+            setValue(fieldName, newText, { shouldDirty: true });
+        }
         
         setTimeout(() => {
             input.focus();
@@ -154,6 +165,9 @@ function ResultFormattingToolbar({ pageIndex, blockIndex, minimal }: { pageIndex
             </Button>
             <Button type="button" variant={block.style?.textAlign === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'right', { shouldDirty: true })}>
                 <AlignRight className="h-3.5 w-3.5" />
+            </Button>
+            <Button type="button" variant={block.style?.textAlign === 'justify' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.style.textAlign`, 'justify', { shouldDirty: true })}>
+                <AlignJustify className="h-3.5 w-3.5" />
             </Button>
         </div>
     );
@@ -223,7 +237,7 @@ function BlockInspector({ pageIndex, blockIndex }: { pageIndex: number, blockInd
                                 value={block.items?.join('\n') || ''}
                                 onChange={(e) => setValue(`resultPages.${pageIndex}.blocks.${blockIndex}.items`, e.target.value.split('\n'), { shouldDirty: true })}
                                 className="min-h-[200px] text-sm rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 font-medium"
-                                placeholder="Pasting a list works here..."
+                                placeholder="Pasting a list works here too..."
                             />
                         </div>
                     </div>
@@ -329,7 +343,7 @@ function SortableResultBlock({
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <TooltipProvider>
                             {/* Formatting and Level Controls Group */}
-                            {['heading', 'text', 'quote', 'button'].includes(block.type) && (
+                            {['heading', 'text', 'quote', 'button', 'list'].includes(block.type) && (
                                 <div className="flex items-center">
                                     <ResultFormattingToolbar pageIndex={pageIndex} blockIndex={index} minimal />
                                     {block.type === 'heading' && (

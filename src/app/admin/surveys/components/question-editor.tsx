@@ -14,7 +14,8 @@ import {
     Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, 
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon
+    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon,
+    AlignJustify
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import * as React from 'react';
@@ -51,7 +52,7 @@ const RichTextEditor = ({
     onChange: (val: string) => void; 
     placeholder?: string;
     className?: string;
-    textAlign?: 'left' | 'center' | 'right';
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
 }) => {
     const editorRef = React.useRef<HTMLDivElement>(null);
 
@@ -84,7 +85,7 @@ const RichTextEditor = ({
             onKeyDown={handleKeyDown}
             className={cn(
                 "min-h-[1em] outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
-                textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left',
+                textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
                 className
             )}
             data-placeholder={placeholder}
@@ -138,8 +139,8 @@ const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'a
 
 function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: { 
     fieldName: string;
-    alignValue?: 'left' | 'center' | 'right';
-    onAlignChange?: (val: 'left' | 'center' | 'right') => void;
+    alignValue?: 'left' | 'center' | 'right' | 'justify';
+    onAlignChange?: (val: 'left' | 'center' | 'right' | 'justify') => void;
     minimal?: boolean;
 }) {
     const applyStyle = (cmd: string) => {
@@ -168,6 +169,9 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
                     </Button>
                     <Button type="button" variant={alignValue === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('right')}>
                         <AlignRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button type="button" variant={alignValue === 'justify' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('justify')}>
+                        <AlignJustify className="h-3.5 w-3.5" />
                     </Button>
                 </>
             )}
@@ -695,7 +699,7 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChang
                 <Star
                     key={star}
                     className={cn(
-                        'w-8 h-8 cursor-pointer',
+                        'w-10 h-10 cursor-pointer',
                         star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
                         disabled ? 'cursor-not-allowed opacity-50' : ''
                     )}
@@ -1053,7 +1057,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                 <div className="flex items-center space-x-2">
                                                                     <RadioGroupItem 
                                                                         value="Yes" 
-                                                                        id={`${question.id}-yes`} 
+                                                                        id={`${element.id}-yes`} 
                                                                         className="size-5 border-2" 
                                                                         onClick={(e) => {
                                                                             if (field.value === 'Yes') {
@@ -1062,12 +1066,12 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                             }
                                                                         }}
                                                                     />
-                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${question.id}-yes`}>Yes</Label>
+                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-yes`}>Yes</Label>
                                                                 </div>
                                                                 <div className="flex items-center space-x-2">
                                                                     <RadioGroupItem 
                                                                         value="No" 
-                                                                        id={`${question.id}-no`} 
+                                                                        id={`${element.id}-no`} 
                                                                         className="size-5 border-2" 
                                                                         onClick={(e) => {
                                                                             if (field.value === 'No') {
@@ -1076,7 +1080,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                                             }
                                                                         }}
                                                                     />
-                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${question.id}-no`}>No</Label>
+                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${element.id}-no`}>No</Label>
                                                                 </div>
                                                             </RadioGroup>
                                                             {enableScoring && (
@@ -1098,7 +1102,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} />;
+                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />;
                                                 case 'file-upload':
                                                     return (
                                                         <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-muted/20">

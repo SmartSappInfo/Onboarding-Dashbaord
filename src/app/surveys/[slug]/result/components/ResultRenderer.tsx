@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -96,7 +95,8 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
     const containerClasses = cn(
         "w-full my-5 sm:my-6 px-2 sm:px-0",
         alignment === 'center' && "text-center flex flex-col items-center",
-        alignment === 'right' && "text-right flex flex-col items-end"
+        alignment === 'right' && "text-right flex flex-col items-end",
+        alignment === 'justify' && "text-justify"
     );
 
     switch (block.type) {
@@ -119,11 +119,11 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
                 <div className={containerClasses}>
                     {block.listStyle === 'ordered' ? (
                         <ol className="list-decimal list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
-                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                            {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
                         </ol>
                     ) : (
                         <ul className="list-disc list-inside space-y-3 text-lg font-medium text-slate-700 dark:text-slate-300 text-left">
-                            {block.items?.map((item, i) => <li key={i}>{item}</li>)}
+                            {block.items?.map((item, i) => <li key={i} dangerouslySetInnerHTML={{ __html: item }} />)}
                         </ul>
                     )}
                 </div>

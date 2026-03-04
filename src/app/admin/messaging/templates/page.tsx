@@ -24,7 +24,7 @@ import {
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool,
-    Palette, EyeOff, CopyPlus
+    Palette, EyeOff, CopyPlus, AlignJustify
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
@@ -77,31 +77,33 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
     const resolvedContent = resolveVariables(block.content || '', simulationVars);
     const resolvedUrl = resolveVariables(block.url || '', simulationVars);
 
+    const alignmentClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : align === 'justify' ? 'text-justify' : 'text-left';
+
     switch (block.type) {
         case 'heading': {
             const Tag = block.variant || 'h2';
             const sizeClass = Tag === 'h1' ? "text-3xl" : Tag === 'h2' ? "text-2xl" : "text-lg";
             return (
-                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full", alignmentClass)}>
                     <Tag className={cn("font-black tracking-tight leading-tight m-0", sizeClass)}>{resolvedTitle || 'New Heading'}</Tag>
                 </div>
             );
         }
         case 'text':
             return (
-                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full", alignmentClass)}>
                     <p className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap">{resolvedContent || 'New paragraph content...'}</p>
                 </div>
             );
         case 'button':
             return (
-                <div className={cn("w-full py-4", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full py-4", alignmentClass)}>
                     <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">{resolvedTitle || 'Click Me'}</Button>
                 </div>
             );
         case 'image':
             return (
-                <div className={cn("w-full py-2", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full py-2", alignmentClass)}>
                     {resolvedUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border bg-muted shadow-inner">
                             <img src={resolvedUrl} alt="block" className="w-full h-full object-cover" />
@@ -116,7 +118,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             );
         case 'video':
             return (
-                <div className={cn("w-full py-2", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full py-2", alignmentClass)}>
                     {resolvedUrl ? (
                         <div className="w-full">
                             <iframe 
@@ -135,7 +137,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             );
         case 'quote':
             return (
-                <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-lg leading-relaxed text-slate-700", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-lg leading-relaxed text-slate-700", alignmentClass)}>
                     <Quote className="h-6 w-6 text-primary/20 mb-2" />
                     {resolvedContent || 'Quote content...'}
                 </div>
@@ -143,7 +145,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
         case 'list':
             const ListTag = block.listStyle === 'ordered' ? 'ol' : 'ul';
             return (
-                <div className={cn("w-full", align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left')}>
+                <div className={cn("w-full", alignmentClass)}>
                     <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal text-left" : "list-disc text-left", "list-inside")}>
                         {(block.items || ['New point...']).map((item, i) => (
                             <li key={item + i}>{resolveVariables(item, simulationVars)}</li>
@@ -372,15 +374,16 @@ function GlobalBlockInspector({
                     <div className="pt-6 border-t border-dashed">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block ml-1">Paragraph Alignment</Label>
                         <div className="flex gap-1 bg-muted/30 p-1 rounded-[1.25rem] border shadow-inner">
-                            {(['left', 'center', 'right'] as const).map(a => (
+                            {(['left', 'center', 'right', 'justify'] as const).map(a => (
                                 <Button 
                                     key={a}
                                     type="button" 
                                     variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
                                     className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")} 
                                     onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
+                                    title={a.charAt(0).toUpperCase() + a.slice(1)}
                                 >
-                                    {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : <AlignRight className="h-4 w-4" />}
+                                    {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : a === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignJustify className="h-4 w-4" />}
                                 </Button>
                             ))}
                         </div>
@@ -657,7 +660,7 @@ export default function MessageTemplatesPage() {
         } else {
             toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
         }
-        setCloningId(null);
+        cloningId && setCloningId(null);
     };
 
     const handleDelete = async () => {

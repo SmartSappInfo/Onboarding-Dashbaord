@@ -31,9 +31,11 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
+        const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left';
+        
         return (
             <Card>
-                <CardContent className={cn("pt-6", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+                <CardContent className={cn("pt-6", alignmentClass)}>
                     <Label className="text-base font-semibold block leading-tight">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {question.isRequired && <span className="text-destructive ml-1">*</span>}
@@ -49,7 +51,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                         )}
                         {question.type === 'multiple-choice' && (
                             <RadioGroup disabled className="space-y-2">
-                                {question.options?.map(opt => <div key={opt} className={cn("flex items-center space-x-2", textAlign === 'center' && 'justify-center')}><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}
+                                {question.options?.map(opt => <div key={opt} className={cn("flex items-start space-x-2", textAlign === 'center' && 'justify-center')}><RadioGroupItem value={opt} /><Label>{opt}</Label></div>)}
                             </RadioGroup>
                         )}
                         {question.type === 'checkboxes' && (
@@ -78,7 +80,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
 
     const block = element as SurveyLayoutBlock;
     const textAlign = block.style?.textAlign || 'left';
-    const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left';
+    const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left';
 
     switch (block.type) {
         case 'section': 
@@ -96,7 +98,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         }
         case 'description': 
             return <div className={cn("text-muted-foreground my-4", alignmentClass)} dangerouslySetInnerHTML={{ __html: block.text || '' }} />;
-        case 'divider': return <hr className="my-8" />;
+        case 'divider': return <hr className="my-8 border-t-2" />;
         case 'image': return block.url ? <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' && 'mx-auto max-w-2xl')}><Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" /></div> : null;
         case 'video': return block.url ? <div className={cn("my-6", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} /></div> : null;
         case 'audio': return block.url ? <audio controls src={block.url} className="w-full my-6" /> : null;

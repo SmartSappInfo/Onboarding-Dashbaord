@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
@@ -32,9 +31,11 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
     if (isQuestion(element)) {
         const question = element;
         const textAlign = question.style?.textAlign || 'left';
+        const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left';
+
         return (
             <Card>
-                <CardContent className={cn("pt-6", textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left')}>
+                <CardContent className={cn("pt-6", alignmentClass)}>
                     <Label className="text-base font-semibold block leading-tight">
                         <span dangerouslySetInnerHTML={{ __html: question.title }} />
                         {question.isRequired && <span className="text-destructive ml-1">*</span>}
@@ -79,14 +80,14 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
 
     const block = element as SurveyLayoutBlock;
     const textAlign = block.style?.textAlign || 'left';
-    const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : 'text-left';
+    const alignmentClass = textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left';
 
     switch (block.type) {
         case 'section': 
             return (
                 <div className="my-12 pt-4 border-t-4 border-dashed border-border text-center">
-                    <h2 id={block.id} className="text-3xl font-bold">{block.title}</h2>
-                    {block.description && <p className="text-muted-foreground mt-2">{block.description}</p>}
+                    <h2 id={block.id} className="text-3xl font-bold" dangerouslySetInnerHTML={{ __html: block.title || '' }} />
+                    {block.description && <div className="text-muted-foreground mt-2" dangerouslySetInnerHTML={{ __html: block.description }} />}
                     {block.renderAsPage && <Badge variant="outline" className="mt-4 mx-auto block w-fit">New Page</Badge>}
                 </div>
             );
@@ -97,7 +98,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
         }
         case 'description': 
             return <div className={cn("text-muted-foreground my-4", alignmentClass)} dangerouslySetInnerHTML={{ __html: block.text || '' }} />;
-        case 'divider': return <hr className="my-8" />;
+        case 'divider': return <hr className="my-8 border-t-2" />;
         case 'image': return block.url ? <div className={cn("relative aspect-video my-6 rounded-lg overflow-hidden", textAlign === 'center' && 'mx-auto max-w-2xl')}><Image src={block.url} alt={block.title || 'Survey Image'} layout="fill" objectFit="contain" /></div> : null;
         case 'video': return block.url ? <div className={cn("my-6", textAlign === 'center' && 'mx-auto max-w-2xl')}><VideoEmbed url={block.url} /></div> : null;
         case 'audio': return block.url ? <audio controls src={block.url} className="w-full my-6" /> : null;
