@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -47,14 +46,13 @@ export default function SchoolComparisonPage() {
             <SmartSappLogo className="h-10 mx-auto" />
           </Link>
           <div className="space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">Onboarding Experience</h2>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground leading-tight">
-              Welcome! <br className="sm:hidden" /> Who are you?
+            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">WELCOME</h2>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground leading-tight px-4">
+              Which of the following <br className="hidden md:block" /> best describes?
             </h1>
           </div>
           <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed px-4">
-            We've customized our tools to fit your specific role. <br className="hidden sm:inline" />
-            <span className="text-primary font-bold">Choose your path</span> to get started.
+            Choose your path to get the best experience
           </p>
         </div>
 
@@ -63,7 +61,7 @@ export default function SchoolComparisonPage() {
           {/* Parent Option */}
           <SelectionCard
             title="I'm a Parent / Student"
-            description="Secure your child's education, manage payments, and stay connected with real-time updates from your school."
+            description="I want to know if my child is in the right school"
             href="/surveys/parents-survey"
             image={parentImg}
             icon={Users}
@@ -75,7 +73,7 @@ export default function SchoolComparisonPage() {
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
-            description="Modernize your institution with automated billing, secure attendance, and professional parent communication tools."
+            description="I want to make my school the preferred choice for parents"
             href="/surveys/schools-survey"
             image={schoolImg}
             icon={Building2}
@@ -145,12 +143,12 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
 
           {/* Content Container */}
           <CardContent className="p-8 space-y-6 flex-grow flex flex-col justify-between bg-white dark:bg-card">
-            <p className="text-muted-foreground font-medium text-base leading-relaxed">
+            <p className="text-muted-foreground font-semibold text-lg leading-relaxed">
               {description}
             </p>
             
             <div className="flex items-center gap-3 text-primary font-black uppercase text-[10px] tracking-[0.2em] pt-4">
-              Enter Experience
+              Get Started
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
                 <ArrowRight className="h-5 w-5" />
                 <div className="absolute inset-0 rounded-2xl bg-primary animate-ping opacity-20" />
