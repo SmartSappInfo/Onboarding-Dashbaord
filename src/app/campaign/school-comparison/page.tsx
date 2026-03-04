@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -5,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { SmartSappLogo } from '@/components/icons';
-import { ArrowRight, Users, Building2, Zap } from 'lucide-react';
+import { ArrowRight, Users, Building2 } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import LightRays from '@/components/LightRays';
 import { Card, CardContent } from '@/components/ui/card';
@@ -19,8 +20,8 @@ import { cn } from '@/lib/utils';
  */
 
 export default function SchoolComparisonPage() {
-  const parentImg = PlaceHolderImages.find(img => img.id === 'campaign-parent')?.imageUrl;
-  const schoolImg = PlaceHolderImages.find(img => img.id === 'campaign-school')?.imageUrl;
+  const parentImg = PlaceHolderImages.find(img => img.id === 'campaign-parent')?.imageUrl || 'https://picsum.photos/seed/parent/600/800';
+  const schoolImg = PlaceHolderImages.find(img => img.id === 'campaign-school')?.imageUrl || 'https://picsum.photos/seed/admin/600/800';
 
   return (
     <div className="relative min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-8 overflow-hidden selection:bg-primary/20">
@@ -64,7 +65,7 @@ export default function SchoolComparisonPage() {
             title="I'm a Parent / Student"
             description="Secure your child's education, manage payments, and stay connected with real-time updates from your school."
             href="/surveys/parents-survey"
-            image={parentImg!}
+            image={parentImg}
             icon={Users}
             delay={0.2}
             color="from-orange-500 to-rose-500"
@@ -76,7 +77,7 @@ export default function SchoolComparisonPage() {
             title="I'm a School Owner / Staff"
             description="Modernize your institution with automated billing, secure attendance, and professional parent communication tools."
             href="/surveys/schools-survey"
-            image={schoolImg!}
+            image={schoolImg}
             icon={Building2}
             delay={0.4}
             color="from-blue-600 to-indigo-600"
@@ -117,13 +118,15 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
         <Card className="overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card/80 backdrop-blur-xl h-full flex flex-col ring-1 ring-white/10 group-hover:ring-primary/30 transition-all duration-500">
           {/* Image Container */}
           <div className="relative h-64 sm:h-80 overflow-hidden shrink-0">
-            <Image
-              src={image}
-              alt={title}
-              fill
-              className="object-cover transition-transform duration-700 group-hover:scale-110"
-              data-ai-hint="selection profile"
-            />
+            {image && (
+              <Image
+                src={image}
+                alt={title}
+                fill
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
+                data-ai-hint="selection profile"
+              />
+            )}
             <div className={cn("absolute inset-0 bg-gradient-to-t opacity-60 group-hover:opacity-80 transition-opacity", color)} />
             
             <div className="absolute top-6 left-6">
