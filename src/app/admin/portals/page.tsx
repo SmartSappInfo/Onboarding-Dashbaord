@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Survey, PDFForm, Meeting, School } from '@/lib/types';
+import type { Survey, PDFForm, Meeting } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,10 +16,9 @@ import {
     FileText, 
     Calendar, 
     Zap, 
-    LayoutList,
     Building,
-    CheckCircle2,
-    PlusCircle
+    PlusCircle,
+    LayoutList
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -32,6 +31,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { SmartSappIcon } from '@/components/icons';
+
+/**
+ * @fileOverview Public Portals Registry (Launchpad).
+ * A centralized, searchable command center for all live entry points.
+ * Only authorized admins can access this page to launch or copy public URLs.
+ */
 
 export default function PublicPortalsPage() {
     const firestore = useFirestore();
@@ -57,7 +62,7 @@ export default function PublicPortalsPage() {
 
     const isLoading = isLoadingSurveys || isLoadingPdfs || isLoadingMeetings;
 
-    // Filter Logic
+    // Filter Logic: Cross-category search
     const filteredSurveys = React.useMemo(() => surveys?.filter(s => 
         s.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
         s.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,13 +84,16 @@ export default function PublicPortalsPage() {
         if (typeof window === 'undefined') return;
         const url = `${window.location.origin}${path}`;
         navigator.clipboard.writeText(url);
-        toast({ title: 'Link Copied', description: 'Public portal URL is ready to share.' });
+        toast({ 
+            title: 'Link Copied', 
+            description: 'Public portal URL is ready to share.',
+        });
     };
 
     const PortalCard = ({ title, school, path, icon: Icon, color }: { title: string, school?: string, path: string, icon: any, color: string }) => (
         <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full">
             <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
-            <CardHeader className="p-5 pb-3">
+            <CardHeader className="p-5 pb-3 text-left">
                 <div className="flex items-start justify-between gap-4">
                     <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-background transition-colors">
                         <Icon className={cn("h-5 w-5", color.replace('bg-', 'text-'))} />
@@ -137,7 +145,7 @@ export default function PublicPortalsPage() {
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="max-w-7xl mx-auto space-y-12 pb-32">
+            <div className="max-w-7xl mx-auto space-y-12 pb-32 text-left">
                 
                 {/* Header Control Hub */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -146,7 +154,7 @@ export default function PublicPortalsPage() {
                             <Globe className="h-10 w-10 text-primary" />
                             Launchpad Registry
                         </h1>
-                        <p className="text-muted-foreground font-medium text-lg mt-1">Single source of truth for all live public portals.</p>
+                        <p className="text-muted-foreground font-medium text-lg mt-1">Single source of truth for all live system entry points.</p>
                     </div>
                     <div className="relative w-full md:w-[400px]">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -183,7 +191,14 @@ export default function PublicPortalsPage() {
                                 <SectionHeader title="Intelligent Surveys" badge={filteredSurveys.length} icon={ClipboardList} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredSurveys.map(s => (
-                                        <PortalCard key={s.id} title={s.title} school={s.schoolName || 'SmartSapp'} path={`/surveys/${s.slug}`} icon={ClipboardList} color="bg-blue-500" />
+                                        <PortalCard 
+                                            key={s.id} 
+                                            title={s.title} 
+                                            school={s.schoolName || 'SmartSapp'} 
+                                            path={`/surveys/${s.slug}`} 
+                                            icon={ClipboardList} 
+                                            color="bg-blue-500" 
+                                        />
                                     ))}
                                 </div>
                             </section>
@@ -195,7 +210,14 @@ export default function PublicPortalsPage() {
                                 <SectionHeader title="Doc Signing Portals" badge={filteredPdfs.length} icon={FileText} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredPdfs.map(p => (
-                                        <PortalCard key={p.id} title={p.publicTitle || p.name} school={p.schoolName || 'SmartSapp'} path={`/forms/${p.slug || p.id}`} icon={FileText} color="bg-orange-500" />
+                                        <PortalCard 
+                                            key={p.id} 
+                                            title={p.publicTitle || p.name} 
+                                            school={p.schoolName || 'SmartSapp'} 
+                                            path={`/forms/${p.slug || p.id}`} 
+                                            icon={FileText} 
+                                            color="bg-orange-500" 
+                                        />
                                     ))}
                                 </div>
                             </section>
