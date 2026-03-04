@@ -652,7 +652,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pag
                                     <p className={cn(
                                         "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8 transition-colors",
                                         isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block group-hover:opacity-100",
-                                        isCompleted && iIsInvalid && "text-destructive opacity-100"
+                                        isCompleted && isInvalid && "text-destructive opacity-100"
                                     )}>
                                         {title}
                                     </p>
