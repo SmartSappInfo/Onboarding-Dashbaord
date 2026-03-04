@@ -45,15 +45,15 @@
     },
     {
       "id": "campaign-parent",
-      "description": "A parent and child using a tablet together.",
-      "imageUrl": "https://picsum.photos/seed/parent-child/600/800",
-      "imageHint": "parent child"
+      "description": "Parent and student persona image for the selection gateway.",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772640713723-quiz-parents-option.webp?alt=media&token=f12c5050-a23a-47ff-9a01-e9d41d1e0363",
+      "imageHint": "parent student"
     },
     {
       "id": "campaign-school",
-      "description": "A school administrator smiling at a laptop.",
-      "imageUrl": "https://picsum.photos/seed/school-owner/600/800",
-      "imageHint": "school owner"
+      "description": "School owner and staff persona image for the selection gateway.",
+      "imageUrl": "https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772640713710-quiz-parents-option.webp?alt=media&token=77d85e23-5c11-4dbf-ad0b-babed59c4366",
+      "imageHint": "school staff"
     }
   ]
 }
