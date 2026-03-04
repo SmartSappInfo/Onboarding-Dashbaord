@@ -962,7 +962,7 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </div>
                                                 {channel === 'email' && (
-                                                    <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                    <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
                                                         <ScrollArea className="flex-1 h-full">
                                                             <div className="p-4 pt-2 space-y-8">
                                                                 <div className="space-y-4">
@@ -994,7 +994,7 @@ export default function MessageTemplatesPage() {
                                                         </ScrollArea>
                                                     </TabsContent>
                                                 )}
-                                                <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => {
@@ -1024,7 +1024,7 @@ export default function MessageTemplatesPage() {
                                                     </ScrollArea>
                                                 </TabsContent>
                                                 {channel === 'email' && (
-                                                    <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
+                                                    <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
                                                         <ScrollArea className="flex-1 h-full">
                                                             <div className="p-4 pt-2">
                                                                 {selectedBlock ? (
@@ -1107,7 +1107,7 @@ export default function MessageTemplatesPage() {
                                                         <div className="space-y-6">
                                                             <div className="space-y-2">
                                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{channel === 'sms' ? 'Handset Payload' : 'Source Code Editor'}</Label>
-                                                                <div className={cn("p-1 rounded-[2.5rem] shadow-2xl", channel === 'email' ? "bg-slate-900" : "bg-slate-200")}>
+                                                                <div className={cn("p-1 rounded-[2.5rem] shadow-2xl transition-colors", channel === 'email' ? "bg-slate-900" : "bg-slate-100 border border-slate-200")}>
                                                                     <Textarea 
                                                                         value={body} 
                                                                         onChange={e => handleCodeChange(e.target.value)} 
@@ -1149,10 +1149,22 @@ export default function MessageTemplatesPage() {
                                             <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border"><Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('desktop')}><Monitor className="h-3.5 w-3.5" /> Desktop</Button><Button variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('mobile')}><PhoneIcon className="h-3.5 w-3.5" /> Mobile</Button></div>
                                         </div>
                                         <div className="flex-1 overflow-auto p-8 flex justify-center">
-                                            <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-slate-50 border-slate-200 p-12 flex flex-col justify-center items-center")}>
+                                            <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "p-12 flex flex-col justify-center items-center")}>
                                                 {isSimLoading && <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p></div>}
                                                 {channel === 'sms' ? (
-                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-primary h-6 w-6" /><span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl"><div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" /><p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(currentTemplateData, simVariables)}</p></div><div className="pt-8 border-t border-slate-100 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-slate-300">~ {Math.ceil(resolvedPreview(currentTemplateData, simVariables).length / 160)} SMS Segments</span></div></div>
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700">
+                                                        <div className="flex items-center justify-between opacity-20">
+                                                            <Zap className="text-primary h-6 w-6" />
+                                                            <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SMS Uplink Simulation</span>
+                                                        </div>
+                                                        <div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
+                                                            <div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
+                                                            <p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(currentTemplateData, simVariables)}</p>
+                                                        </div>
+                                                        <div className="pt-8 border-t border-slate-100 text-center">
+                                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">~ {Math.ceil(resolvedPreview(currentTemplateData, simVariables).length / 160)} SMS Segments</span>
+                                                        </div>
+                                                    </div>
                                                 ) : (
                                                     <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview(currentTemplateData, simVariables)} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
                                                 )}
@@ -1210,7 +1222,7 @@ export default function MessageTemplatesPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="w-full h-full bg-slate-50 rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100">
+                                                <div className="w-full h-full bg-white rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 shadow-inner">
                                                     <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
                                                         <Zap size={120} />
                                                     </div>
@@ -1263,7 +1275,7 @@ export default function MessageTemplatesPage() {
                         <div className={cn(
                             "transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative",
                             previewDevice === 'mobile' ? "w-[375px] h-full" : "w-full max-w-4xl",
-                            previewTemplate?.channel === 'sms' && "bg-slate-50 border-slate-200 p-12 flex flex-col justify-center items-center"
+                            previewTemplate?.channel === 'sms' && "p-12 flex flex-col justify-center items-center"
                         )}>
                             {previewTemplate?.channel === 'sms' ? (
                                 <div className="w-full max-w-sm space-y-10">
@@ -1271,7 +1283,10 @@ export default function MessageTemplatesPage() {
                                         <Zap className="text-primary h-6 w-6" />
                                         <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">SMS Uplink</span>
                                     </div>
-                                    <div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl"><div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" /><p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p></div>
+                                    <div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
+                                        <div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
+                                        <p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p>
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full bg-white">
