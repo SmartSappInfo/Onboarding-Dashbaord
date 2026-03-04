@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -338,6 +337,8 @@ function GlobalBlockInspector({
                                     <SelectItem value="outline">Branded Outline</SelectItem>
                                     <SelectItem value="secondary">Soft Gray</SelectItem>
                                     <SelectItem value="destructive">Warning Red</SelectItem>
+                                    <SelectItem value="ghost">Invisible Ghost</SelectItem>
+                                    <SelectItem value="link">Simple Link</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -551,6 +552,28 @@ export default function MessageTemplatesPage() {
         resolveSimData();
     }, [simEntity, simRecordId, firestore]);
 
+    /**
+     * Constructs a safe template object from local state for previews.
+     * Prevents null pointer exceptions during creation of new templates.
+     */
+    const currentTemplateData = React.useMemo(() => {
+        return {
+            name,
+            category,
+            channel,
+            subject,
+            previewText,
+            body,
+            blocks,
+            styleId,
+            isActive: true,
+            variables: [],
+            createdAt: '',
+            updatedAt: '',
+            id: editingTemplate?.id || 'new'
+        } as MessageTemplate;
+    }, [name, category, channel, subject, previewText, body, blocks, styleId, editingTemplate]);
+
     const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1'|'h2'|'h3') => {
         const newBlock: MessageBlock = {
             id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
@@ -695,12 +718,13 @@ export default function MessageTemplatesPage() {
         setStep(target);
     };
 
-    const resolvedPreview = React.useCallback((tmpl: MessageTemplate, vars: Record<string, any>) => {
+    const resolvedPreview = React.useCallback((tmpl: MessageTemplate | null, vars: Record<string, any>) => {
+        if (!tmpl) return '';
         let finalBody = resolveVariables(tmpl.body, vars);
         
         if (tmpl.channel === 'email' && tmpl.styleId && tmpl.styleId !== 'none') {
             const selectedStyle = styles?.find(s => s.id === tmpl.styleId);
-            if (selectedStyle && selectedStyle.htmlWrapper.includes('{{content}}')) {
+            if (selectedStyle && selectedStyle.htmlWrapper && selectedStyle.htmlWrapper.includes('{{content}}')) {
                 finalBody = selectedStyle.htmlWrapper.replace('{{content}}', finalBody);
             }
         }
@@ -898,8 +922,7 @@ export default function MessageTemplatesPage() {
                                                 </CardFooter>
                                             </Card>
                                         </div>
-                                    </motion.div>
-                                )}
+                                    )}
 
                                 {step === 2 && (
                                     <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
@@ -1085,9 +1108,9 @@ export default function MessageTemplatesPage() {
                                             <div className={cn("transition-all duration-700 bg-white shadow-2xl rounded-[2.5rem] overflow-hidden border-8 border-white relative", previewDevice === 'mobile' ? "w-[375px] h-[667px]" : "w-full max-w-4xl", channel === 'sms' && "bg-[#0A1427] border-slate-800 p-12 flex flex-col justify-center items-center")}>
                                                 {isSimLoading && <div className="absolute inset-0 z-50 bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-[10px] font-black uppercase tracking-[0.3em] text-primary">Synchronizing Data Hub...</p></div>}
                                                 {channel === 'sms' ? (
-                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(editingTemplate!, simVariables)}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview(editingTemplate!, simVariables).length / 160)} SMS Segments</span></div></div>
+                                                    <div className="w-full max-w-sm space-y-10 animate-in zoom-in-95 duration-700"><div className="flex items-center justify-between opacity-20"><Zap className="text-white h-6 w-6" /><span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink Simulation</span></div><div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(currentTemplateData, simVariables)}</p></div><div className="pt-8 border-t border-white/5 text-center"><span className="text-[9px] font-black uppercase tracking-widest text-white/20">~ {Math.ceil(resolvedPreview(currentTemplateData, simVariables).length / 160)} SMS Segments</span></div></div>
                                                 ) : (
-                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview(editingTemplate!, simVariables)} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
+                                                    <div className="flex flex-col h-full animate-in fade-in duration-1000"><div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(subject, simVariables) || '(No Subject)'}</p></div><iframe srcDoc={resolvedPreview(currentTemplateData, simVariables)} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" /></div>
                                                 )}
                                             </div>
                                         </div>

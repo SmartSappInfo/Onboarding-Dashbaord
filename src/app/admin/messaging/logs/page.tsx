@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
     History, ArrowLeft, Mail, Smartphone, CheckCircle2, XCircle, 
     Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck,
-    FileText, MousePointer2, Wand2, ArrowRight
+    FileText, MousePointer2, Wand2, ArrowRight, Lock, AlertTriangle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
