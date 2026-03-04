@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -18,7 +19,10 @@ import {
     Zap, 
     Building,
     PlusCircle,
-    LayoutList
+    LayoutList,
+    Activity,
+    CheckCircle2,
+    Target
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -113,18 +117,18 @@ export default function PublicPortalsPage() {
                 </div>
                 <div className="mt-4 space-y-1">
                     <div className="flex items-center gap-2">
-                        <CardTitle className="text-base font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{title}</CardTitle>
+                        <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight uppercase tracking-tight">{title}</CardTitle>
                         <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                     </div>
                     {school && (
-                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-muted-foreground uppercase tracking-[0.15em]">
                             <Building className="h-3 w-3" /> {school}
                         </div>
                     )}
                 </div>
             </CardHeader>
             <CardContent className="px-5 pb-5 mt-auto pt-4">
-                <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm transition-all active:scale-95">
+                <Button asChild className="w-full h-10 rounded-xl font-bold gap-2 shadow-sm transition-all active:scale-95 uppercase text-[10px] tracking-widest">
                     <a href={path} target="_blank" rel="noopener noreferrer">
                         Launch Portal <ExternalLink className="h-3.5 w-3.5" />
                     </a>
@@ -143,6 +147,18 @@ export default function PublicPortalsPage() {
         </div>
     );
 
+    const StatCard = ({ label, value, icon: Icon }: { label: string, value: number, icon: any }) => (
+        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+            <CardContent className="p-5 flex items-center gap-4">
+                <div className="p-3 bg-muted/50 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
+                <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Total {label}</p>
+                    <p className="text-2xl font-black tabular-nums tracking-tighter">{isLoading ? '...' : value}</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
+
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-7xl mx-auto space-y-12 pb-32 text-left">
@@ -150,9 +166,9 @@ export default function PublicPortalsPage() {
                 {/* Header Control Hub */}
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div>
-                        <h1 className="text-4xl font-black tracking-tight flex items-center gap-4 text-foreground uppercase">
+                        <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
                             <Globe className="h-10 w-10 text-primary" />
-                            Launchpad Registry
+                            Public Launchpad
                         </h1>
                         <p className="text-muted-foreground font-medium text-lg mt-1">Single source of truth for all live system entry points.</p>
                     </div>
@@ -167,6 +183,14 @@ export default function PublicPortalsPage() {
                     </div>
                 </div>
 
+                {/* Registry Analytics Dashboard */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <StatCard label="Live Surveys" value={surveys?.length || 0} icon={ClipboardList} />
+                    <StatCard label="Doc Portals" value={pdfs?.length || 0} icon={FileText} />
+                    <StatCard label="Meeting Rooms" value={meetings?.length || 0} icon={Calendar} />
+                    <StatCard label="System Nodes" value={3} icon={Zap} />
+                </div>
+
                 {isLoading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         {Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
@@ -179,8 +203,9 @@ export default function PublicPortalsPage() {
                             <section>
                                 <SectionHeader title="Core System Nodes" icon={Zap} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                                    <PortalCard title="Public Home & Welcome" path="/" icon={SmartSappIcon} color="bg-slate-900" />
-                                    <PortalCard title="New School Onboarding" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
+                                    <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
+                                    <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
+                                    <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />
                                 </div>
                             </section>
                         )}
@@ -226,7 +251,7 @@ export default function PublicPortalsPage() {
                         {/* 4. Meeting Rooms */}
                         {filteredMeetings.length > 0 && (
                             <section className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-                                <SectionHeader title="Session Meeting Rooms" badge={filteredMeetings.length} icon={Calendar} />
+                                <SectionHeader title="Meeting Session Rooms" badge={filteredMeetings.length} icon={Calendar} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     {filteredMeetings.map(m => {
                                         const typeSlug = m.type?.slug || 'parent-engagement';
