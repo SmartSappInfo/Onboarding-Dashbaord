@@ -19,7 +19,7 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info } from 'lucide-react';
+import { CalendarIcon, Star, Upload, File as FileIcon, X, Check, Loader2, ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, Info } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -652,7 +652,7 @@ function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pag
                                     <p className={cn(
                                         "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8 transition-colors",
                                         isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block group-hover:opacity-100",
-                                        isCompleted && isInvalid && "text-destructive opacity-100"
+                                        isCompleted && iIsInvalid && "text-destructive opacity-100"
                                     )}>
                                         {title}
                                     </p>
@@ -1217,8 +1217,8 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
                  <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
                     {isMultiPage && currentPageIndex > 0 && (
-                        <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-muted-foreground hover:text-foreground w-full sm:w-auto text-base uppercase tracking-tight" onClick={handlePrev} disabled={isSubmitting}>
-                            Previous
+                        <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-muted-foreground hover:text-foreground w-full sm:w-auto text-base uppercase tracking-tight gap-2" onClick={handlePrev} disabled={isSubmitting}>
+                            <ArrowLeft className="h-5 w-5" /> Back
                         </Button>
                     )}
                      {isMultiPage && currentPageIndex < pages.length - 1 && (
@@ -1228,7 +1228,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                      )}
                     {currentPageIndex === pages.length - 1 && (
                         <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
-                            {isSubmitting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</> : isSubmitDisabled ? 'Submission Disabled' : 'Submit Survey'}
+                            {isSubmitting ? (
+                                <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
+                            ) : isSubmitDisabled ? (
+                                'Submission Disabled'
+                            ) : (
+                                'Submit Survey'
+                            )}
                         </Button>
                     )}
                 </div>

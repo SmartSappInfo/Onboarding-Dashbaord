@@ -50,6 +50,7 @@ import {
     Layers,
     Wand2,
     ArrowRight,
+    ArrowLeft,
     FileText,
     ClipboardList,
     Calendar,
@@ -956,7 +957,9 @@ export default function ComposerWizard() {
                             </div>
                         </CardContent>
                         <CardFooter className="justify-between bg-muted/30 p-8 border-t">
-                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12">Previous</Button>
+                            <Button type="button" variant="ghost" onClick={handlePrev} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
+                                <ArrowLeft className="h-4 w-4" /> Back
+                            </Button>
                             <Button type="button" onClick={handleNext} disabled={!getValues('senderProfileId') || (watchedMode === 'single' ? !getValues('recipient') : !csvData.length)} className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 transition-all group">
                                 Review Blueprint <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                             </Button>
@@ -1017,7 +1020,9 @@ export default function ComposerWizard() {
                             </div>
                         </CardContent>
                         <CardFooter className="justify-between bg-muted/30 p-10 border-t">
-                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12">Edit Blueprint</Button>
+                            <Button type="button" variant="ghost" onClick={handlePrev} disabled={isSubmitting} className="font-black rounded-xl uppercase tracking-widest text-xs px-8 h-12 gap-2">
+                                <ArrowLeft className="h-4 w-4" /> Back
+                            </Button>
                             <Button type="submit" size="lg" disabled={isSubmitting} className="px-20 font-black shadow-2xl h-20 gap-5 bg-primary text-white hover:bg-primary/90 rounded-[2rem] transition-all active:scale-95 text-xl uppercase tracking-[0.2em] shadow-primary/30">
                                 {isSubmitting ? <Loader2 className="h-8 w-8 animate-spin" /> : <Sparkles className="h-8 w-8" />}
                                 {watchedMode === 'single' ? 'Launch Dispatch' : 'Execute Broadcast'}

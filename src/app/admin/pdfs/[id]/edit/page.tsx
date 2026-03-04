@@ -106,7 +106,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                                     isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+                                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
                             </div>
                             <p className={cn(
                                 'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
@@ -926,8 +926,8 @@ export default function EditPdfPage() {
                     </Button>
                     <div className="flex items-center gap-4">
                         {step > 1 && (
-                            <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12">
-                                Previous
+                            <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2">
+                                <ArrowLeft className="h-4 w-4" /> Back
                             </Button>
                         )}
                         {step < 3 ? (

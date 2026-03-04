@@ -369,8 +369,8 @@ export default function NewSurveyPage() {
             </Button>
             <div className="flex items-center gap-4">
                 {step > 1 && (
-                    <Button type="button" variant="outline" onClick={handlePrev} className="font-bold border-border/50 rounded-xl px-6 h-12">
-                        Previous
+                    <Button type="button" variant="outline" onClick={handlePrev} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2">
+                        <ArrowLeft className="h-4 w-4" /> Back
                     </Button>
                 )}
                 {step < 4 ? (

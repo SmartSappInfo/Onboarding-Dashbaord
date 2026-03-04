@@ -7,7 +7,7 @@ import type { Survey, SurveyResponse, SurveyElement, SurveyQuestion, SurveyResul
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, FileText, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
@@ -177,9 +177,16 @@ export default function ResponseDetailPage() {
                             <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
                                 <ChevronsLeft className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack} aria-label="Previous">
-                                <ChevronLeft className="h-4 w-4" />
-                            </Button>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack}>
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Back</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
                             <span className="text-xs font-bold text-muted-foreground tabular-nums w-16 text-center">
                                 {currentIndex + 1} / {totalResponses}
                             </span>
