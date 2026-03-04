@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Palette, Layout, Eye, X, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Settings2, Share2, Sparkles, Building
+    Check, Loader2, Palette, Layout, Eye, X, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Settings2, Share2, Sparkles, Building, AlertCircle
 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
@@ -130,6 +130,7 @@ const formSchema = z.object({
   webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   webhookId: z.string().optional(),
   webhookEnabled: z.boolean().default(false),
+  showDebugProcessingModal: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -244,6 +245,7 @@ export default function EditSurveyPage() {
             webhookUrl: "",
             webhookId: "",
             webhookEnabled: false,
+            showDebugProcessingModal: false,
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -291,6 +293,7 @@ export default function EditSurveyPage() {
                 webhookUrl: survey.webhookUrl || '',
                 webhookId: survey.webhookId || '',
                 webhookEnabled: survey.webhookEnabled || false,
+                showDebugProcessingModal: survey.showDebugProcessingModal || false,
                 scoringEnabled: survey.scoringEnabled || false,
                 maxScore: survey.maxScore || 100,
                 resultRules: survey.resultRules || [],
@@ -733,6 +736,33 @@ export default function EditSurveyPage() {
                                                     )} />
                                                 </div>
                                                 <Separator />
+                                                <div className={cn(
+                                                    "rounded-2xl border-2 transition-all duration-300",
+                                                    watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                                                )}>
+                                                    <div className="flex items-center justify-between p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                                                <AlertCircle className="h-4 w-4" />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <Label className="text-sm font-black uppercase tracking-tight">Debug Mode</Label>
+                                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Show detailed automation processing modal</p>
+                                                            </div>
+                                                        </div>
+                                                        <Controller
+                                                            name="showDebugProcessingModal"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <Switch 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
+                                                                />
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <Separator />
                                                 <WebhookManager />
                                             </CardContent>
                                         </Card>
@@ -746,10 +776,8 @@ export default function EditSurveyPage() {
                             )}
                         </AnimatePresence>
                     </form>
-                </div>
+                </FormProvider>
             </div>
-
-            <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={scrollToError} />
-        </FormProvider>
+        </div>
     );
 }

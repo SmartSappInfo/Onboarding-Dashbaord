@@ -25,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Sparkles } from 'lucide-react';
+import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Sparkles, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
@@ -127,6 +127,7 @@ const formSchema = z.object({
   webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   webhookId: z.string().optional(),
   webhookEnabled: z.boolean().default(false),
+  showDebugProcessingModal: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
@@ -230,6 +231,7 @@ export default function NewSurveyPage() {
             webhookUrl: '',
             webhookId: '',
             webhookEnabled: false,
+            showDebugProcessingModal: false,
             scoringEnabled: false,
             maxScore: 100,
             resultRules: [],
@@ -474,6 +476,40 @@ export default function NewSurveyPage() {
                                             <Card className="shadow-sm border-none ring-1 ring-border">
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div>
+                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Organization</CardTitle>
+                                                    </div>
+                                                </CardHeader>
+                                                <CardContent className="p-6 space-y-6">
+                                                    <FormField control={form.control} name="schoolId" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target School</FormLabel>
+                                                            <Select 
+                                                                onValueChange={(val) => {
+                                                                    const school = schools?.find(s => s.id === val);
+                                                                    field.onChange(val);
+                                                                    setValue('schoolName', school ? school.name : null);
+                                                                }} 
+                                                                value={field.value || 'none'}
+                                                            >
+                                                                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
+                                                                    <SelectValue placeholder="Link to a school..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-xl">
+                                                                    <SelectItem value="none">General (Global Survey)</SelectItem>
+                                                                    {schools?.map(school => (
+                                                                        <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                            <FormDescription className="text-[9px] uppercase tracking-tighter mt-1">Links this survey to a specific school context for better variable resolution.</FormDescription>
+                                                        </FormItem>
+                                                    )} />
+                                                </CardContent>
+                                            </Card>
+                                            <Card className="shadow-sm border-none ring-1 ring-border">
+                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
+                                                    <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
                                                         <CardTitle className="text-lg font-black uppercase tracking-tight">Branding</CardTitle>
                                                     </div>
@@ -556,11 +592,39 @@ export default function NewSurveyPage() {
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="status" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem></SelectContent></Select></FormItem>
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem></SelectContent></Select></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="slug" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Extension</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
                                                     )} />
+                                                </div>
+                                                <Separator />
+                                                <div className={cn(
+                                                    "rounded-2xl border-2 transition-all duration-300",
+                                                    watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                                                )}>
+                                                    <div className="flex items-center justify-between p-4">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
+                                                                <AlertCircle className="h-4 w-4" />
+                                                            </div>
+                                                            <div className="space-y-0.5">
+                                                                <Label className="text-sm font-black uppercase tracking-tight">Debug Mode</Label>
+                                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Show detailed automation processing modal</p>
+                                                            </div>
+                                                        </div>
+                                                        <Controller
+                                                            name="showDebugProcessingModal"
+                                                            control={form.control}
+                                                            render={({ field }) => (
+                                                                <Switch 
+                                                                    checked={field.value} 
+                                                                    onCheckedChange={field.onChange} 
+                                                                />
+                                                            )}
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <Separator />
                                                 <WebhookManager />

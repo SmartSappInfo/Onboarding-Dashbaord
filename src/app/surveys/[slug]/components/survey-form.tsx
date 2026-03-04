@@ -897,7 +897,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         }
 
         setAutomationStatuses(initialTasks);
-        setIsStatusModalOpen(true);
+        
+        // Respect the admin's preference for the processing modal
+        if (survey.showDebugProcessingModal) {
+            setIsStatusModalOpen(true);
+        }
 
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
@@ -940,7 +944,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             }
         });
 
-        const cleanedData = Object.fromEntries(Object.entries(serializedData).filter(([_, v]) => v !== undefined && v !== null));
+        const cleanedData = Object.fromEntries(Object.entries(cleanedData).filter(([_, v]) => v !== undefined && v !== null));
         const answers = Object.entries(cleanedData).map(([questionId, value]) => ({ questionId, value }));
         const responseData = { surveyId: survey.id, submittedAt: new Date().toISOString(), answers, score };
         const responsesCollection = collection(firestore, `surveys/${survey.id}/responses`);
@@ -950,12 +954,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         try {
             // Task 1: Save Submission
             const docRef = await addDoc(responsesCollection, responseData);
-            setLastSubmissionId(docRef.id);
-            variables.submission_id = docRef.id;
+            const submissionId = docRef.id;
+            setLastSubmissionId(submissionId);
+            variables.submission_id = submissionId;
             
             // Populate Dynamic Result URL
             if (typeof window !== 'undefined') {
-                variables.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
+                variables.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${submissionId}`;
             }
             
             updateAutomationStatus('db', 'success');
@@ -1069,6 +1074,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
             await Promise.allSettled(automationPromises);
             setIsSubmitting(false);
+
+            // If not showing the debug modal, redirect automatically now that automations are done
+            if (!survey.showDebugProcessingModal) {
+                if (survey.scoringEnabled) {
+                    router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                } else {
+                    onSubmitted();
+                }
+            }
 
         } catch (error: any) {
             updateAutomationStatus('db', 'failed', error.message);

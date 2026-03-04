@@ -247,6 +247,7 @@ export interface Survey {
   showSurveyTitles?: boolean;
   webhookId?: string;
   webhookEnabled?: boolean;
+  showDebugProcessingModal?: boolean;
   adminAlertsEnabled?: boolean;
   adminAlertChannel?: 'email' | 'sms' | 'both';
   adminAlertNotifyManager?: boolean;
@@ -471,6 +472,20 @@ export interface MessageLog {
   attachmentCount?: number;
   openedCount?: number;
   clickedCount?: number;
+}
+
+export interface MessageJob {
+  id: string;
+  templateId: string;
+  senderProfileId: string;
+  channel: 'sms' | 'email';
+  createdBy: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed';
+  totalRecipients: number;
+  processed: number;
+  success: number;
+  failed: number;
+  createdAt: string;
 }
 
 export interface MessageJob {
