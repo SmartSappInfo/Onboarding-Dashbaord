@@ -32,7 +32,8 @@ import {
     ClipboardList,
     Building,
     Globe,
-    Zap
+    Zap,
+    Trophy
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -90,8 +91,9 @@ export default function QuickTemplateDialog({
 
     // Filtered & Grouped Variables Logic
     const groupedVariables = React.useMemo(() => {
-        if (!allVariables) return { survey: [], core: [], constants: [] };
+        if (!allVariables) return { result: [], survey: [], core: [], constants: [] };
 
+        const resultVars: VariableDefinition[] = [];
         const surveyVars: VariableDefinition[] = [];
         const coreVars: VariableDefinition[] = [];
         const constantVars: VariableDefinition[] = [];
@@ -99,21 +101,25 @@ export default function QuickTemplateDialog({
         allVariables.forEach(v => {
             if (v.hidden) return;
 
-            // 1. Survey-Specific Data
-            if (v.source === 'survey' && v.sourceId === selectedSurveyId) {
+            // 1. Result Specific System Tags (Computed after completion)
+            if (v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key)) {
+                resultVars.push(v);
+            }
+            // 2. Question-Specific Data
+            else if (v.source === 'survey' && v.sourceId === selectedSurveyId) {
                 surveyVars.push(v);
             }
-            // 2. Institutional Core Data
+            // 3. Institutional Core Data
             else if (v.source === 'static') {
                 coreVars.push(v);
             }
-            // 3. Manual Constants
+            // 4. Manual Constants
             else if (v.source === 'constant') {
                 constantVars.push(v);
             }
         });
 
-        return { survey: surveyVars, core: coreVars, constants: constantVars };
+        return { result: resultVars, survey: surveyVars, core: coreVars, constants: constantVars };
     }, [allVariables, selectedSurveyId]);
 
     const handleAiArchitect = async () => {
@@ -121,6 +127,7 @@ export default function QuickTemplateDialog({
         setIsAiProcessing(true);
         try {
             const availableKeys = [
+                ...groupedVariables.result.map(v => v.key),
                 ...groupedVariables.survey.map(v => v.key),
                 ...groupedVariables.core.map(v => v.key),
                 ...groupedVariables.constants.map(v => v.key)
@@ -217,13 +224,16 @@ export default function QuickTemplateDialog({
         onOpenChange(isOpen);
     };
 
-    const VariableSection = ({ title, icon: Icon, items }: { title: string, icon: any, items: VariableDefinition[] }) => {
+    const VariableSection = ({ title, icon: Icon, items, badge }: { title: string, icon: any, items: VariableDefinition[], badge?: string }) => {
         if (items.length === 0) return null;
         return (
             <div className="space-y-3 pt-4 first:pt-0">
-                <div className="flex items-center gap-2 px-1">
-                    <Icon className="h-3 w-3 text-primary opacity-60" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">{title}</span>
+                <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center gap-2">
+                        <Icon className="h-3 w-3 text-primary opacity-60" />
+                        <span className="text-[9px] font-black uppercase tracking-widest text-primary/60">{title}</span>
+                    </div>
+                    {badge && <Badge variant="outline" className="text-[7px] h-4 font-black uppercase border-primary/20 bg-primary/5 text-primary">{badge}</Badge>}
                 </div>
                 <div className="space-y-2">
                     {items.map(v => (
@@ -374,6 +384,7 @@ export default function QuickTemplateDialog({
                         
                         <ScrollArea className="flex-1 -mx-2 px-2">
                             <div className="space-y-8 pb-20 divide-y divide-primary/5">
+                                <VariableSection title="Submission Metrics" icon={Trophy} items={groupedVariables.result} badge="Results Only" />
                                 <VariableSection title="Dynamic Survey Data" icon={ClipboardList} items={groupedVariables.survey} />
                                 <VariableSection title="Institutional Tags" icon={Building} items={groupedVariables.core} />
                                 <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} />

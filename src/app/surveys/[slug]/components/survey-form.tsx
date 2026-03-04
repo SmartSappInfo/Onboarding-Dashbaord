@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -862,8 +861,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
-        // --- Respondent Identification Logic ---
-        // We scan for specific types OR titles that imply contact info
+        // Respondent Identification
         const emailQuestion = survey.elements.filter(isQuestion).find(q => 
             q.type === 'email' || 
             q.title.toLowerCase().includes('email address') ||
@@ -879,7 +877,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
         const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
 
-        // Initialize status tracker with rich labels
         const initialTasks: AutomationStatus[] = [
             { id: 'db', label: 'Persistent State Sync', status: 'pending', icon: Zap },
         ];
@@ -905,10 +902,11 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        // Comprehensive Variable Harvesting (Flat Map for Engine)
+        // Comprehensive Variable Harvesting
         const variables: Record<string, any> = {
             survey_title: survey.title,
-            score: score !== undefined ? score : 0,
+            survey_score: score !== undefined ? score : 0,
+            score: score !== undefined ? score : 0, // Legacy support
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
@@ -935,8 +933,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 }
                 
                 variables[q.id] = resolvedVal;
-                
-                // Smart Aliasing for common institutional tags if not already set
                 const cleanTitle = q.title.toLowerCase();
                 if (cleanTitle.includes('name') && !variables.contact_name) variables.contact_name = resolvedVal;
                 if ((cleanTitle.includes('phone') || cleanTitle.includes('contact')) && !variables.contact_phone) variables.contact_phone = resolvedVal;
@@ -956,6 +952,12 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             const docRef = await addDoc(responsesCollection, responseData);
             setLastSubmissionId(docRef.id);
             variables.submission_id = docRef.id;
+            
+            // Populate Dynamic Result URL
+            if (typeof window !== 'undefined') {
+                variables.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}`;
+            }
+            
             updateAutomationStatus('db', 'success');
 
             const automationPromises = [];
@@ -975,8 +977,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                 answers: cleanedData, 
                                 raw_score: score,
                                 survey_id: survey.id,
-                                school_id: survey.schoolId,
-                                result_url: typeof window !== 'undefined' ? `${window.location.origin}/surveys/${survey.slug}/result/${docRef.id}` : ''
+                                school_id: survey.schoolId
                             }) 
                         });
                         if (!res.ok) throw new Error(`Status ${res.status}`);
@@ -988,7 +989,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Task 3: Respondent Logic-Based Messaging (Outcome Specific)
+            // Task 3: Respondent Logic-Based Messaging
             if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     if (!respondentEmail) {
@@ -1056,7 +1057,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(adminTask());
             }
 
-            // Task 5: Activity Log (Always Mandatory for Audit)
+            // Task 5: Activity Log
             logActivity({
                 schoolId: survey.schoolId || '',
                 userId: null, 

@@ -29,7 +29,7 @@ export async function syncVariableRegistry() {
     const batch = adminDb.batch();
 
     // 2. STATIC CORE VARIABLES (Always Sync/Update)
-    // We've expanded these to include focal person data for smarter targeting.
+    // Expanded to include Survey Result specific tags.
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
       { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
       { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
@@ -40,11 +40,17 @@ export async function syncVariableRegistry() {
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
+      
+      // Dynamic Result Tags (Always available for survey templates)
+      { key: 'survey_score', label: 'Respondent Score', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'score', type: 'number' },
+      { key: 'max_score', label: 'Survey Max Points', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'maxScore', type: 'number' },
+      { key: 'outcome_label', label: 'Logic Result Name', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'outcome.label', type: 'string' },
+      { key: 'result_url', label: 'Public Result Link', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'resultUrl', type: 'string' },
     ];
 
     staticVariables.forEach(v => {
       const ref = variablesCol.doc(v.key);
-      batch.set(ref, v, { merge: true }); // USE MERGE: Preserve hidden status and manual tweaks
+      batch.set(ref, v, { merge: true }); 
       varsToKeep.add(v.key);
     });
 
@@ -98,7 +104,7 @@ export async function syncVariableRegistry() {
       });
     });
 
-    // 5. PURGE ORPHANS: Delete variables that are no longer in the "keep" set
+    // 5. PURGE ORPHANS
     existingVarIds.forEach(id => {
       if (!varsToKeep.has(id)) {
         batch.delete(variablesCol.doc(id));
