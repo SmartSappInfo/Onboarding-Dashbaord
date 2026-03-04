@@ -22,7 +22,8 @@ import {
     LayoutList,
     Activity,
     CheckCircle2,
-    Target
+    Target,
+    GraduationCap
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -188,7 +189,7 @@ export default function PublicPortalsPage() {
                     <StatCard label="Live Surveys" value={surveys?.length || 0} icon={ClipboardList} />
                     <StatCard label="Doc Portals" value={pdfs?.length || 0} icon={FileText} />
                     <StatCard label="Meeting Rooms" value={meetings?.length || 0} icon={Calendar} />
-                    <StatCard label="System Nodes" value={3} icon={Zap} />
+                    <StatCard label="System Nodes" value={4} icon={Zap} />
                 </div>
 
                 {isLoading ? (
@@ -204,6 +205,7 @@ export default function PublicPortalsPage() {
                                 <SectionHeader title="Core System Nodes" icon={Zap} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
+                                    <PortalCard title="Choice Selection Page" path="/campaign/school-comparison" icon={GraduationCap} color="bg-orange-500" />
                                     <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
                                     <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />
                                 </div>
