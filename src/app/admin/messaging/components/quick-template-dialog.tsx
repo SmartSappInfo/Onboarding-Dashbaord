@@ -91,43 +91,46 @@ export default function QuickTemplateDialog({
 
     // Filtered & Grouped Variables Logic
     const groupedVariables = React.useMemo(() => {
-        if (!allVariables) return { survey: [], core: [], constants: [] };
+        if (!allVariables) return { survey: [], metrics: [], core: [], constants: [] };
 
         const surveyVars: VariableDefinition[] = [];
+        const metricVars: VariableDefinition[] = [];
         const coreVars: VariableDefinition[] = [];
         const constantVars: VariableDefinition[] = [];
 
         allVariables.forEach(v => {
             if (v.hidden) return;
 
-            // 1. Dynamic Survey Data: Combine question-specific data and result-specific metrics
+            // 1. Core Metrics (survey_score, max_score, outcome_label, result_url)
             const isResultMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key);
+            
+            // 2. Question-specific context
             const isQuestionFromSurvey = v.source === 'survey' && v.sourceId === selectedSurveyId;
 
-            if (isResultMetric || isQuestionFromSurvey) {
+            if (isResultMetric) {
+                metricVars.push(v);
+            } else if (isQuestionFromSurvey) {
+                surveyVars.push(v);
+            } else if (v.category === category && v.source === 'survey' && !selectedSurveyId) {
+                // If in survey mode but no survey picked, show all survey questions as possibilities
                 surveyVars.push(v);
             }
-            // 2. Institutional Core Data
-            else if (v.source === 'static' && v.entity !== 'SurveyResponse') {
+            // 3. Institutional Core Data
+            else if (v.source === 'static' && v.category === 'general') {
                 coreVars.push(v);
             }
-            // 3. Manual Constants
+            // 4. Manual Constants
             else if (v.source === 'constant') {
                 constantVars.push(v);
             }
         });
 
-        // Sort survey variables so metrics always appear together
-        surveyVars.sort((a, b) => {
-            const aIsMetric = a.entity === 'SurveyResponse';
-            const bIsMetric = b.entity === 'SurveyResponse';
-            if (aIsMetric && !bIsMetric) return -1;
-            if (!aIsMetric && bIsMetric) return 1;
-            return a.label.localeCompare(b.label);
-        });
+        // Alphabetical sorts
+        surveyVars.sort((a, b) => a.label.localeCompare(b.label));
+        metricVars.sort((a, b) => a.label.localeCompare(b.label));
 
-        return { survey: surveyVars, core: coreVars, constants: constantVars };
-    }, [allVariables, selectedSurveyId]);
+        return { survey: surveyVars, metrics: metricVars, core: coreVars, constants: constantVars };
+    }, [allVariables, selectedSurveyId, category]);
 
     const handleAiArchitect = async () => {
         if (!aiPrompt.trim()) return;
@@ -135,6 +138,7 @@ export default function QuickTemplateDialog({
         try {
             const availableKeys = [
                 ...groupedVariables.survey.map(v => v.key),
+                ...groupedVariables.metrics.map(v => v.key),
                 ...groupedVariables.core.map(v => v.key),
                 ...groupedVariables.constants.map(v => v.key)
             ];
@@ -372,7 +376,7 @@ export default function QuickTemplateDialog({
                                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Contextual Registry</span>
                             </div>
                             
-                            {!fixedSourceId && (
+                            {!fixedSourceId && category === 'surveys' && (
                                 <div className="space-y-1.5">
                                     <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">Source Survey Filter</Label>
                                     <Select value={selectedSurveyId || 'none'} onValueChange={setSelectedSurveyId}>
@@ -390,12 +394,17 @@ export default function QuickTemplateDialog({
                         
                         <ScrollArea className="flex-1 -mx-2 px-2">
                             <div className="space-y-8 pb-20 divide-y divide-primary/5">
-                                <VariableSection title="Dynamic Survey Data" icon={ClipboardList} items={groupedVariables.survey} />
+                                {category === 'surveys' && (
+                                    <>
+                                        <VariableSection title="Submission Metrics" icon={Trophy} items={groupedVariables.metrics} badge="Real-time" />
+                                        <VariableSection title="Dynamic Survey Data" icon={ClipboardList} items={groupedVariables.survey} />
+                                    </>
+                                )}
                                 <VariableSection title="Institutional Tags" icon={Building} items={groupedVariables.core} />
                                 <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} />
                                 
-                                {groupedVariables.survey.length === 0 && !selectedSurveyId && (
-                                    <div className="py-10 text-center opacity-40 space-y-2">
+                                {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId && (
+                                    <div className="py-10 text-center opacity-40 space-y-2 border-t mt-4 pt-4">
                                         <Info className="h-6 w-6 mx-auto" />
                                         <p className="text-[9px] font-black uppercase tracking-tighter">Select a survey to view<br/>question-specific tags</p>
                                     </div>

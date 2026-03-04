@@ -137,7 +137,7 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             );
         case 'quote':
             return (
-                <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-lg leading-relaxed text-slate-700", alignmentClass)}>
+                <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
                     <Quote className="h-6 w-6 text-primary/20 mb-2" />
                     {resolvedContent || 'Quote content...'}
                 </div>
@@ -736,7 +736,19 @@ export default function MessageTemplatesPage() {
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
-    const filteredVars = variables?.filter(v => (v.category === 'general' || v.category === category) && !v.hidden) || [];
+    const filteredVars = React.useMemo(() => {
+        if (!variables) return [];
+        const result = variables.filter(v => (v.category === 'general' || v.category === category) && !v.hidden);
+        
+        // Prioritize specific survey metrics at the top
+        return result.sort((a, b) => {
+            const aIsMetric = a.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(a.key);
+            const bIsMetric = b.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(b.key);
+            if (aIsMetric && !bIsMetric) return -1;
+            if (!aIsMetric && bIsMetric) return 1;
+            return a.label.localeCompare(b.label);
+        });
+    }, [variables, category]);
 
     const selectedBlock = React.useMemo(() => blocks.find(b => b.id === selectedBlockId), [blocks, selectedBlockId]);
 
@@ -969,13 +981,24 @@ export default function MessageTemplatesPage() {
                                                 <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex">
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
-                                                            {filteredVars.length > 0 ? filteredVars.map(v => (
-                                                                <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group">
-                                                                    <div className="flex items-center justify-between mb-1"><span className="text-[8px] font-black uppercase text-muted-foreground group-hover:text-primary transition-colors">{v.sourceName || 'Core'}</span><Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" /></div>
-                                                                    <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
-                                                                    <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
-                                                                </button>
-                                                            )) : (
+                                                            {filteredVars.length > 0 ? filteredVars.map(v => {
+                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key);
+                                                                return (
+                                                                    <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className={cn(
+                                                                        "w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group",
+                                                                        isMetric && "bg-primary/5 border-primary/10 shadow-inner"
+                                                                    )}>
+                                                                        <div className="flex items-center justify-between mb-1">
+                                                                            <span className={cn("text-[8px] font-black uppercase tracking-widest", isMetric ? "text-primary" : "text-muted-foreground opacity-60")}>
+                                                                                {isMetric ? 'Metric' : (v.sourceName || 'Core')}
+                                                                            </span>
+                                                                            <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
+                                                                        </div>
+                                                                        <p className="text-xs font-bold truncate text-foreground/80">{v.label}</p>
+                                                                        <code className="text-[9px] font-mono text-primary/60 mt-1 block">{"{{" + v.key + "}}"}</code>
+                                                                    </button>
+                                                                );
+                                                            }) : (
                                                                 <div className="py-20 text-center opacity-30 px-4">
                                                                     <Database className="h-8 w-8 mx-auto mb-2" />
                                                                     <p className="text-[10px] font-black uppercase tracking-widest">No tags found</p>
@@ -1231,10 +1254,7 @@ export default function MessageTemplatesPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full bg-white">
-                                    <div className="p-8 bg-muted/20 border-b space-y-2">
-                                        <span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Subject Line</span>
-                                        <p className="font-black text-xl text-foreground">{previewTemplate?.subject || '(No Subject)'}</p>
-                                    </div>
+                                    <div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Subject Line</span><p className="font-black text-xl text-foreground">{previewTemplate?.subject || '(No Subject)'}</p></div>
                                     <iframe srcDoc={resolvedPreview(previewTemplate!, {})} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" />
                                 </div>
                             )}
