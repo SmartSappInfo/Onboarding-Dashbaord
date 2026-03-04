@@ -372,7 +372,16 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
             const optionValue = watch(`elements.${questionIndex}.options.${index}`);
             return (
               <div key={field.id} className="flex items-center gap-2">
-                <RadioGroupItem value={optionValue} id={`${field.id}-radio`} />
+                <RadioGroupItem 
+                    value={optionValue} 
+                    id={`${field.id}-radio`} 
+                    onClick={(e) => {
+                        if (defaultValue === optionValue) {
+                            e.preventDefault();
+                            handleDefaultChange(undefined);
+                        }
+                    }}
+                />
                 <div className="flex-1 space-y-1">
                     <Controller
                     name={`elements.${questionIndex}.options.${index}`}
@@ -690,7 +699,7 @@ const StarRatingInput = ({ value, onChange, disabled }: { value: number, onChang
                         star <= value ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300',
                         disabled ? 'cursor-not-allowed opacity-50' : ''
                     )}
-                    onClick={() => !disabled && onChange(star)}
+                    onClick={() => !disabled && onChange(value === star ? 0 : star)}
                 />
             ))}
         </div>
@@ -1041,8 +1050,34 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     return (
                                                         <div className="space-y-4">
                                                             <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="Yes" /><Label className="font-bold">Yes</Label></div>
-                                                                <div className="flex items-center space-x-2"><RadioGroupItem value="No" /><Label className="font-bold">No</Label></div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <RadioGroupItem 
+                                                                        value="Yes" 
+                                                                        id={`${question.id}-yes`} 
+                                                                        className="size-5 border-2" 
+                                                                        onClick={(e) => {
+                                                                            if (field.value === 'Yes') {
+                                                                                e.preventDefault();
+                                                                                field.onChange(undefined);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${question.id}-yes`}>Yes</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <RadioGroupItem 
+                                                                        value="No" 
+                                                                        id={`${question.id}-no`} 
+                                                                        className="size-5 border-2" 
+                                                                        onClick={(e) => {
+                                                                            if (field.value === 'No') {
+                                                                                e.preventDefault();
+                                                                                field.onChange(undefined);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                    <Label className="font-bold cursor-pointer" htmlFor={`${question.id}-no`}>No</Label>
+                                                                </div>
                                                             </RadioGroup>
                                                             {enableScoring && (
                                                                 <div className="flex gap-4 items-center rounded-xl border border-primary/20 bg-muted/20 p-4 shadow-xs mt-4">

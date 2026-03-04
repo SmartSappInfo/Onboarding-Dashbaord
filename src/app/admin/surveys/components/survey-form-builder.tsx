@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -97,16 +96,6 @@ export default function SurveyFormBuilder() {
             }
             if (type === 'checkboxes') {
                 (newElement as SurveyQuestion).allowOther = false;
-            }
-            if (type === 'date') {
-                (newElement as SurveyQuestion).defaultValue = new Date();
-            }
-            if (type === 'time') {
-                const now = new Date();
-                const hours = String(now.getHours()).padStart(2, '0');
-                const minutes = String(now.getMinutes()).padStart(2, '0');
-                const seconds = String(now.getSeconds()).padStart(2, '0');
-                (newElement as SurveyQuestion).defaultValue = `${hours}:${minutes}:${seconds}`;
             }
         } else if (type === 'logic') {
             (newElement as any).rules = [{
