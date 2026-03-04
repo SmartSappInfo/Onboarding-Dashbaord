@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -20,12 +19,14 @@ import {
     LayoutList,
     Building,
     CheckCircle2,
-    PlusCircle,
-    TooltipProvider,
-    Tooltip,
-    TooltipTrigger,
-    TooltipContent
+    PlusCircle
 } from 'lucide-react';
+import { 
+    TooltipProvider, 
+    Tooltip, 
+    TooltipTrigger, 
+    TooltipContent 
+} from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
