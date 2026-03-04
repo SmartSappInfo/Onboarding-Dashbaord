@@ -336,37 +336,41 @@ export default function MessageLogsPage() {
                             )}
 
                             {/* Metadata Grid */}
-                            <div className="grid grid-cols-2 gap-8 bg-muted/20 p-6 rounded-3xl border border-border/50">
-                                <div className="space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Message Title / Protocol</Label>
-                                    <p className="font-black text-foreground uppercase">{selectedLog?.title || selectedLog?.templateName}</p>
-                                </div>
-                                <div className="space-y-1 text-right">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Execution Time</Label>
-                                    <p className="font-bold text-xs uppercase">{selectedLog && format(new Date(selectedLog.sentAt), 'PPPP p')}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Recipient</Label>
-                                    <p className="text-sm font-black text-primary truncate max-w-full">{selectedLog?.recipient}</p>
-                                </div>
-                                <div className="space-y-1 text-right">
-                                    <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Live Sync</Label>
-                                    <div className="flex justify-end pt-1">
-                                        {selectedLog?.providerId && (
-                                            <Button 
-                                                variant="outline" 
-                                                size="sm" 
-                                                className="h-8 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 bg-white" 
-                                                onClick={handleSyncStatus}
-                                                disabled={isSyncing}
-                                            >
-                                                <RefreshCw className={cn("h-3 w-3 text-primary", isSyncing && "animate-spin")} />
-                                                Refresh Status
-                                            </Button>
-                                        )}
+                            <Card className="bg-muted/20 border border-border/50 rounded-3xl overflow-hidden shadow-inner">
+                                <CardContent className="p-6">
+                                    <div className="grid grid-cols-2 gap-8">
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Message Title / Protocol</Label>
+                                            <p className="font-black text-foreground uppercase">{selectedLog?.title || selectedLog?.templateName}</p>
+                                        </div>
+                                        <div className="space-y-1 text-right">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Execution Time</Label>
+                                            <p className="font-bold text-xs uppercase">{selectedLog && format(new Date(selectedLog.sentAt), 'PPPP p')}</p>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Recipient</Label>
+                                            <p className="text-sm font-black text-primary truncate max-w-full">{selectedLog?.recipient}</p>
+                                        </div>
+                                        <div className="space-y-1 text-right">
+                                            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Live Sync</Label>
+                                            <div className="flex justify-end pt-1">
+                                                {selectedLog?.providerId && (
+                                                    <Button 
+                                                        variant="outline" 
+                                                        size="sm" 
+                                                        className="h-8 rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 bg-white" 
+                                                        onClick={handleSyncStatus}
+                                                        disabled={isSyncing}
+                                                    >
+                                                        <RefreshCw className={cn("h-3 w-3 text-primary", isSyncing && "animate-spin")} />
+                                                        Refresh Status
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
+                                </CardContent>
+                            </Card>
 
                             <Separator className="opacity-50" />
 

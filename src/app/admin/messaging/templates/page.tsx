@@ -304,11 +304,11 @@ function GlobalBlockInspector({
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Items (One per line)</Label>
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">List Items (One per line)</Label>
                             <Textarea 
                                 value={block.items?.join('\n') || ''}
                                 onChange={e => onUpdate({ items: e.target.value.split('\n') })}
-                                className="min-h-[200px] rounded-2xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 p-4 leading-relaxed"
+                                className="min-h-[200px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
                                 placeholder="Pasting a list works here too..."
                             />
                         </div>
@@ -552,10 +552,6 @@ export default function MessageTemplatesPage() {
         resolveSimData();
     }, [simEntity, simRecordId, firestore]);
 
-    /**
-     * Constructs a safe template object from local state for previews.
-     * Prevents null pointer exceptions during creation of new templates.
-     */
     const currentTemplateData = React.useMemo(() => {
         return {
             name,
@@ -1128,8 +1124,8 @@ export default function MessageTemplatesPage() {
                                 <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="all">Global Hub</SelectItem><SelectItem value="general">General</SelectItem><SelectItem value="meetings">Meetings</SelectItem><SelectItem value="surveys">Surveys</SelectItem><SelectItem value="forms">Doc Signing</SelectItem></SelectContent></Select>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-[2.5rem]" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-[2.5rem] overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
+                                {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-2xl" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
+                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
                                         {/* MANAGEMENT HEADROOM */}
                                         <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-muted/5 group-hover:bg-background transition-colors duration-500">
                                             <div className="flex items-center gap-1.5">
@@ -1157,7 +1153,7 @@ export default function MessageTemplatesPage() {
                                         {/* PREVIEW CANVAS */}
                                         <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-start p-1.5">
                                             {template.channel === 'email' ? (
-                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-2xl shadow-inner">
+                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex justify-center">
                                                     <div className="absolute inset-0 transform origin-top scale-[0.45] w-[222%] h-[222%] pointer-events-none p-4">
                                                         <iframe 
                                                             srcDoc={template.body} 
@@ -1167,7 +1163,7 @@ export default function MessageTemplatesPage() {
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="w-full h-full bg-[#0A1427] rounded-2xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+                                                <div className="w-full h-full bg-[#0A1427] rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
                                                     <div className="absolute -right-4 -top-4 opacity-5 rotate-12">
                                                         <Zap size={120} />
                                                     </div>
@@ -1228,10 +1224,7 @@ export default function MessageTemplatesPage() {
                                         <Zap className="text-white h-6 w-6" />
                                         <span className="text-[10px] font-black text-white uppercase tracking-[0.3em]">SMS Uplink</span>
                                     </div>
-                                    <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner">
-                                        <div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" />
-                                        <p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p>
-                                    </div>
+                                    <div className="p-8 bg-white/5 border border-white/10 rounded-[2rem] relative shadow-inner"><div className="absolute -left-3 top-10 w-6 h-6 bg-[#0A1427] border-l border-b border-white/10 rotate-45 rounded-sm" /><p className="text-lg text-white/95 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p></div>
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full bg-white">
@@ -1252,7 +1245,7 @@ export default function MessageTemplatesPage() {
             </Dialog>
 
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
-                <AlertDialogContent className="rounded-[2rem]">
+                <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Delete Protocol?</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium">
