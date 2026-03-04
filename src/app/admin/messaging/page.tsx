@@ -185,7 +185,7 @@ export default function MessagingHubPage() {
                             <ArrowRight className="h-5 w-5 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300 text-primary" />
                         </CardTitle>
                     </div>
-                    <CardDescription className="text-xs leading-relaxed font-bold uppercase tracking-widest text-muted-foreground opacity-70">
+                    <CardDescription className="text-xs leading-relaxed font-bold text-muted-foreground opacity-70">
                         {mod.description}
                     </CardDescription>
                 </CardHeader>
