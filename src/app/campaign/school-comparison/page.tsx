@@ -23,7 +23,7 @@ export default function SchoolComparisonPage() {
   const schoolImg = PlaceHolderImages.find(img => img.id === 'campaign-school')?.imageUrl || 'https://picsum.photos/seed/admin/600/800';
 
   return (
-    <div className="relative min-h-screen bg-background flex flex-col items-center justify-center p-4 sm:p-8 overflow-hidden selection:bg-primary/20">
+    <div className="relative min-h-screen bg-background flex flex-col items-center justify-center overflow-hidden selection:bg-primary/20">
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 opacity-40">
         <LightRays
@@ -39,7 +39,7 @@ export default function SchoolComparisonPage() {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12 py-12">
+      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12 py-12 px-4 sm:px-8">
         {/* Header Section */}
         <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
           <Link href="/" className="inline-block hover:scale-105 transition-transform">
@@ -47,12 +47,12 @@ export default function SchoolComparisonPage() {
           </Link>
           <div className="space-y-3">
             <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">WELCOME</h2>
-            <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground leading-tight px-4">
-              Which of the following <br className="hidden md:block" /> best describes?
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4">
+              Which of the following <br className="hidden md:block" /> best describes you?
             </h1>
           </div>
           <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed px-4">
-            Choose your path to get the best experience
+            Choose your path to get the <span className="text-primary font-bold">best experience</span>
           </p>
         </div>
 
@@ -73,7 +73,7 @@ export default function SchoolComparisonPage() {
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
-            description="I want to make my school the preferred choice for parents"
+            description="I want to make my school the preferred choice"
             href="/surveys/schools-survey"
             image={schoolImg}
             icon={Building2}
@@ -84,10 +84,9 @@ export default function SchoolComparisonPage() {
         </div>
       </div>
 
-      <footer className="relative z-10 mt-12 pb-12 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">
-          &copy; {new Date().getFullYear()} SmartSapp Onboarding Hub
-        </p>
+      <footer className="relative z-10 mt-12 py-12 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t w-full border-border/50">
+          <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+          <p>&copy; {new Date().getFullYear()} SmartSapp</p>
       </footer>
     </div>
   );
