@@ -4,18 +4,19 @@
 import * as React from 'react';
 import { useParams, useRouter } from "next/navigation";
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyElement, SurveyQuestion, SurveyResultRule } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { doc, collection, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ArrowLeft, FileText, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info } from "lucide-react";
+import { ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight, Trophy, Target, Info } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -62,6 +63,7 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
     return <p className="text-base font-medium">{String(answerValue)}</p>;
 }
 
+import { FileText } from 'lucide-react';
 
 export default function ResponseDetailPage() {
     const params = useParams();
@@ -162,13 +164,8 @@ export default function ResponseDetailPage() {
 
     return (
         <div className="w-full max-w-3xl mx-auto px-4 pb-20">
-            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8 border-b">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                        <History className="h-3.5 w-3.5" />
-                        Navigation Context
-                    </div>
-
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8">
+                <div className="flex justify-end items-center">
                     {allResponses && totalResponses > 0 && currentIndex !== -1 && (
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
