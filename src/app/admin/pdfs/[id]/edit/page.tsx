@@ -1,9 +1,8 @@
-
 'use client';
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
@@ -96,7 +95,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                 return (
                     <React.Fragment key={step.name}>
                         <button 
-                            type="button"
+                            type="button" 
                             onClick={() => onStepClick(stepNum)}
                             className="flex flex-col items-center group outline-none"
                             disabled={index === steps.length - 1 && currentStep < 3}
@@ -226,7 +225,7 @@ export default function EditPdfPage() {
 
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
-  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
+  // Phase 2: Navigation Entity Resolution
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   React.useEffect(() => {
