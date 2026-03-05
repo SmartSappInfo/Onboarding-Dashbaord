@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle, ArrowUp, ArrowDown } from 'lucide-react';
+import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
 import type { SurveyResultRule, SurveyResultPage, MessageTemplate, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
@@ -23,7 +23,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
-    const [quickCreateChannel, setQuickCreateChannel] = React.useState<'email' | 'sms' | null>(null);
+    const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms', templateId?: string } | null>(null);
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -34,6 +34,9 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
     const emailTemplates = templates?.filter(t => t.channel === 'email' && t.isActive);
     const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
     const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
+
+    const selectedEmailId = watch(`resultRules.${index}.emailTemplateId`);
+    const selectedSmsId = watch(`resultRules.${index}.smsTemplateId`);
 
     return (
         <div ref={setNodeRef} style={style} className="flex flex-col gap-4 p-6 border-2 rounded-2xl bg-card group relative hover:border-primary/30 transition-all shadow-sm">
@@ -92,15 +95,28 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                 <Mail className="h-4 w-4" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Email Completion</span>
                             </div>
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-blue-600 gap-1 rounded-lg"
-                                onClick={() => setQuickCreateChannel('email')}
-                            >
-                                <PlusCircle className="h-3 w-3" /> New Template
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                {selectedEmailId && selectedEmailId !== 'none' && (
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100"
+                                        onClick={() => setActiveTemplateConfig({ channel: 'email', templateId: selectedEmailId })}
+                                    >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                    </Button>
+                                )}
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-blue-600 gap-1 rounded-lg hover:bg-blue-100"
+                                    onClick={() => setActiveTemplateConfig({ channel: 'email' })}
+                                >
+                                    <PlusCircle className="h-3 w-3" /> New
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-3">
                             <Controller
@@ -118,7 +134,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     </Select>
                                 )}
                             />
-                            {watch(`resultRules.${index}.emailTemplateId`) && watch(`resultRules.${index}.emailTemplateId`) !== 'none' && (
+                            {selectedEmailId && selectedEmailId !== 'none' && (
                                 <Controller
                                     name={`resultRules.${index}.emailSenderProfileId`}
                                     control={control}
@@ -145,15 +161,28 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                 <Smartphone className="h-4 w-4" />
                                 <span className="text-[10px] font-black uppercase tracking-widest">SMS Completion</span>
                             </div>
-                            <Button 
-                                type="button" 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-orange-600 gap-1 rounded-lg"
-                                onClick={() => setQuickCreateChannel('sms')}
-                            >
-                                <PlusCircle className="h-3 w-3" /> New Template
-                            </Button>
+                            <div className="flex items-center gap-1">
+                                {selectedSmsId && selectedSmsId !== 'none' && (
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100"
+                                        onClick={() => setActiveTemplateConfig({ channel: 'sms', templateId: selectedSmsId })}
+                                    >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                    </Button>
+                                )}
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-orange-600 gap-1 rounded-lg hover:bg-orange-100"
+                                    onClick={() => setActiveTemplateConfig({ channel: 'sms' })}
+                                >
+                                    <PlusCircle className="h-3 w-3" /> New
+                                </Button>
+                            </div>
                         </div>
                         <div className="space-y-3">
                             <Controller
@@ -171,7 +200,7 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     </Select>
                                 )}
                             />
-                            {watch(`resultRules.${index}.smsTemplateId`) && watch(`resultRules.${index}.smsTemplateId`) !== 'none' && (
+                            {selectedSmsId && selectedSmsId !== 'none' && (
                                 <Controller
                                     name={`resultRules.${index}.smsSenderProfileId`}
                                     control={control}
@@ -193,20 +222,23 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                 </div>
             </div>
 
-            <QuickTemplateDialog 
-                open={!!quickCreateChannel}
-                onOpenChange={(o) => !o && setQuickCreateChannel(null)}
-                channel={quickCreateChannel || 'email'}
-                category="surveys"
-                fixedSourceId={surveyId}
-                onCreated={(id) => {
-                    if (quickCreateChannel === 'email') {
-                        setValue(`resultRules.${index}.emailTemplateId`, id, { shouldDirty: true });
-                    } else {
-                        setValue(`resultRules.${index}.smsTemplateId`, id, { shouldDirty: true });
-                    }
-                }}
-            />
+            {activeTemplateConfig && (
+                <QuickTemplateDialog 
+                    open={!!activeTemplateConfig}
+                    onOpenChange={(o) => !o && setActiveTemplateConfig(null)}
+                    channel={activeTemplateConfig.channel}
+                    category="surveys"
+                    fixedSourceId={surveyId}
+                    templateId={activeTemplateConfig.templateId}
+                    onCreated={(id) => {
+                        if (activeTemplateConfig.channel === 'email') {
+                            setValue(`resultRules.${index}.emailTemplateId`, id, { shouldDirty: true });
+                        } else {
+                            setValue(`resultRules.${index}.smsTemplateId`, id, { shouldDirty: true });
+                        }
+                    }}
+                />
+            )}
         </div>
     );
 }

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy, addDoc, where } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 import type { MessageTemplate, VariableDefinition, MessageBlock, Survey } from '@/lib/types';
 import {
     Dialog,
@@ -33,7 +33,9 @@ import {
     Building,
     Globe,
     Zap,
-    Trophy
+    Trophy,
+    Save,
+    CopyPlus
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -46,6 +48,7 @@ interface QuickTemplateDialogProps {
     category: MessageTemplate['category'];
     channel: MessageTemplate['channel'];
     fixedSourceId?: string; // If provided, locks the dialog to a specific survey
+    templateId?: string; // If provided, loads existing template for editing
 }
 
 export default function QuickTemplateDialog({ 
@@ -54,7 +57,8 @@ export default function QuickTemplateDialog({
     onCreated, 
     category, 
     channel,
-    fixedSourceId
+    fixedSourceId,
+    templateId
 }: QuickTemplateDialogProps) {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -67,6 +71,7 @@ export default function QuickTemplateDialog({
     const [isAiProcessing, setIsAiProcessing] = React.useState(false);
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [showAiInput, setShowAiInput] = React.useState(false);
+    const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
     
     // Context Selection
     const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | undefined>(fixedSourceId);
@@ -88,6 +93,30 @@ export default function QuickTemplateDialog({
 
     const { data: surveys } = useCollection<Survey>(surveysQuery);
     const { data: allVariables } = useCollection<VariableDefinition>(varsQuery);
+
+    // Load Template if templateId is provided
+    React.useEffect(() => {
+        if (open && templateId && firestore) {
+            const loadTemplate = async () => {
+                setIsLoadingTemplate(true);
+                try {
+                    const docSnap = await getDoc(doc(firestore, 'message_templates', templateId));
+                    if (docSnap.exists()) {
+                        const data = docSnap.data() as MessageTemplate;
+                        setName(data.name);
+                        setSubject(data.subject || '');
+                        setBody(data.body);
+                        setBlocks(data.blocks || []);
+                    }
+                } catch (e) {
+                    toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template.' });
+                } finally {
+                    setIsLoadingTemplate(false);
+                }
+            };
+            loadTemplate();
+        }
+    }, [open, templateId, firestore, toast]);
 
     // Filtered & Grouped Variables Logic
     const groupedVariables = React.useMemo(() => {
@@ -180,7 +209,7 @@ export default function QuickTemplateDialog({
         }
     };
 
-    const handleCreate = async () => {
+    const handleCommit = async (mode: 'update' | 'new') => {
         if (!name || (!body && blocks.length === 0) || !firestore) return;
         setIsSubmitting(true);
 
@@ -194,7 +223,6 @@ export default function QuickTemplateDialog({
             body: body.trim(),
             variables: variableList,
             isActive: true,
-            createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
 
@@ -206,12 +234,22 @@ export default function QuickTemplateDialog({
         }
 
         try {
-            const docRef = await addDoc(collection(firestore, 'message_templates'), templateData);
-            onCreated(docRef.id);
+            if (mode === 'update' && templateId) {
+                await updateDoc(doc(firestore, 'message_templates', templateId), templateData);
+                onCreated(templateId);
+                toast({ title: 'Template Updated' });
+            } else {
+                const docRef = await addDoc(collection(firestore, 'message_templates'), {
+                    ...templateData,
+                    createdAt: new Date().toISOString(),
+                });
+                onCreated(docRef.id);
+                toast({ title: 'Template Created' });
+            }
             reset();
             onOpenChange(false);
         } catch (e) {
-            toast({ variant: 'destructive', title: 'Failed to create template' });
+            toast({ variant: 'destructive', title: 'Operation Failed' });
         } finally {
             setIsSubmitting(false);
         }
@@ -275,24 +313,35 @@ export default function QuickTemplateDialog({
                                 {channel === 'email' ? <Mail className="h-6 w-6" /> : <Smartphone className="h-6 w-6" />}
                             </div>
                             <div>
-                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Quick Template Studio</DialogTitle>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+                                    {templateId ? 'Template Editor' : 'Quick Template Studio'}
+                                </DialogTitle>
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Drafting {channel} protocol for {category}</DialogDescription>
                             </div>
                         </div>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
-                            onClick={() => setShowAiInput(!showAiInput)}
-                        >
-                            <Sparkles className="h-4 w-4" />
-                            {showAiInput ? 'Designer Mode' : 'Draft with AI'}
-                        </Button>
+                        {!templateId && (
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                                onClick={() => setShowAiInput(!showAiInput)}
+                            >
+                                <Sparkles className="h-4 w-4" />
+                                {showAiInput ? 'Designer Mode' : 'Draft with AI'}
+                            </Button>
+                        )}
                     </div>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
-                    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background">
+                    <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-background relative">
+                        {isLoadingTemplate && (
+                            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
+                                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Loading Protocol...</p>
+                            </div>
+                        )}
+
                         {showAiInput ? (
                             <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="p-10 rounded-[3rem] bg-primary/5 border-2 border-dashed border-primary/20 space-y-8">
@@ -421,16 +470,30 @@ export default function QuickTemplateDialog({
                     </div>
                 </div>
 
-                <DialogFooter className="p-6 bg-muted/30 border-t shrink-0">
+                <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
                     <Button variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
-                    <Button 
-                        onClick={handleCreate} 
-                        disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
-                        className="px-16 rounded-2xl font-black shadow-2xl h-12 uppercase tracking-widest text-sm transition-all active:scale-95"
-                    >
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
-                        Commit Protocol
-                    </Button>
+                    
+                    <div className="flex-grow shrink-0 flex gap-3 sm:justify-end">
+                        {templateId && (
+                            <Button 
+                                variant="outline"
+                                onClick={() => handleCommit('new')} 
+                                disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+                                className="rounded-xl font-bold border-primary/20 text-primary hover:bg-primary/5 h-12 px-6 gap-2"
+                            >
+                                <CopyPlus className="h-4 w-4" />
+                                Save as New
+                            </Button>
+                        )}
+                        <Button 
+                            onClick={() => handleCommit(templateId ? 'update' : 'new')} 
+                            disabled={isSubmitting || !name || (blocks.length === 0 && !body)}
+                            className="px-16 rounded-2xl font-black shadow-2xl h-12 uppercase tracking-widest text-sm transition-all active:scale-95 flex-grow sm:flex-grow-0"
+                        >
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : templateId ? <Save className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
+                            {templateId ? 'Update Current' : 'Commit Protocol'}
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
