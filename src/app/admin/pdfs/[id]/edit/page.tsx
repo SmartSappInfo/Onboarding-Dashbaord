@@ -151,6 +151,7 @@ export default function EditPdfPage() {
   const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
   const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
   const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
+  const [hasInitialized, setHasInitialized] = React.useState(false);
 
   const storageKey = `pdf-autosave-${pdfId}`;
 
@@ -224,7 +225,7 @@ export default function EditPdfPage() {
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
   React.useEffect(() => {
-    if (pdf && !form.formState.isDirty) {
+    if (pdf && !hasInitialized) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
       setFields(initialFields);
       setNamingFieldId(pdf.namingFieldId || null);
@@ -262,6 +263,7 @@ export default function EditPdfPage() {
       };
 
       reset(initialData);
+      setHasInitialized(true);
 
       // Check for localStorage recovery
       const savedData = localStorage.getItem(storageKey);
@@ -291,7 +293,7 @@ export default function EditPdfPage() {
           }
       }
     }
-  }, [pdf, reset, resetHistory, pdfId, storageKey, toast]);
+  }, [pdf, reset, resetHistory, pdfId, storageKey, toast, hasInitialized]);
 
   // Handle Autosave to LocalStorage
   React.useEffect(() => {
@@ -962,6 +964,7 @@ export default function EditPdfPage() {
             onOpenChange={setIsQuickCreateOpen}
             channel="email"
             category="forms"
+            fixedSourceId={pdfId}
             onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })}
         />
 

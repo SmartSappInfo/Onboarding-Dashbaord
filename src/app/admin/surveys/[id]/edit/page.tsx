@@ -214,6 +214,7 @@ export default function EditSurveyPage() {
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
     const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
+    const [hasInitialized, setHasInitialized] = React.useState(false);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -272,7 +273,7 @@ export default function EditSurveyPage() {
     const watchedPatternColor = watch('patternColor');
 
     React.useEffect(() => {
-        if (survey && !form.formState.isDirty) {
+        if (survey && !hasInitialized) {
             const VALID_PATTERNS = ['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient'];
             const pattern = survey.backgroundPattern && VALID_PATTERNS.includes(survey.backgroundPattern) 
                 ? survey.backgroundPattern 
@@ -321,8 +322,9 @@ export default function EditSurveyPage() {
                     setValue('resultPages', pages);
                 });
             }
+            setHasInitialized(true);
         }
-    }, [survey, reset, firestore, surveyId, setValue]);
+    }, [survey, reset, firestore, surveyId, setValue, hasInitialized]);
 
     const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
         const parsed: ValidationError[] = [];
