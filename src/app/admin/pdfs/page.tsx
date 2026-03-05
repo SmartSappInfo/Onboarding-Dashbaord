@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { format } from 'date-fns';
 import Link from 'next/link';
@@ -40,14 +40,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, Filter, ShieldCheck } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -67,6 +67,9 @@ export default function PdfFormsPage() {
 
   const { data: pdfs, isLoading } = useCollection<PDFForm>(pdfsQuery);
   
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb('Doc Signing Studio');
+
   const handleDelete = async () => {
     if (!formToDelete || !user) return;
     
@@ -81,13 +84,10 @@ export default function PdfFormsPage() {
     
     setFormToDelete(null);
     setIsDeleting(false);
-  }
+  };
 
   const handleStatusChange = async (pdf: PDFForm, status: PDFForm['status']) => {
-    if (!user) {
-        toast({ variant: 'destructive', title: 'You must be logged in.' });
-        return;
-    }
+    if (!user) return;
     const result = await updatePdfFormStatus(pdf.id, status, user.uid);
     if (result.success) {
         toast({ title: 'Status Updated', description: `"${pdf.name}" status set to ${status}.` });
@@ -104,30 +104,30 @@ export default function PdfFormsPage() {
       default:
         return 'secondary';
     }
-  }
+  };
 
-  const filteredPdfs = pdfs?.filter(p => 
-    (statusFilter === 'all' || p.status === statusFilter) &&
-    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  const filteredPdfs = useMemo(() => {
+    if (!pdfs) return [];
+    return pdfs.filter(p => 
+      (statusFilter === 'all' || p.status === statusFilter) &&
+      (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [pdfs, searchTerm, statusFilter]);
 
   const renderActions = (pdf: PDFForm) => (
     <div className="flex items-center justify-end gap-1">
-      <TooltipProvider>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors rounded-lg"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 if (typeof window !== 'undefined') {
                   const url = `${window.location.origin}/forms/${pdf.slug || pdf.id}`;
                   navigator.clipboard.writeText(url);
-                  toast({
-                    title: "Link Copied",
-                    description: "Public form URL copied to clipboard.",
-                  });
+                  toast({ title: "Link Copied" });
                 }
               }}
             >
@@ -135,9 +135,7 @@ export default function PdfFormsPage() {
               <span className="sr-only">Copy link</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Copy Public Link</p>
-          </TooltipContent>
+          <TooltipContent>Copy Public Link</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -148,9 +146,7 @@ export default function PdfFormsPage() {
               </a>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>View Public Page</p>
-          </TooltipContent>
+          <TooltipContent>View Public Page</TooltipContent>
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
@@ -164,11 +160,8 @@ export default function PdfFormsPage() {
               <span className="sr-only">Edit fields</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            <p>Map Fields</p>
-          </TooltipContent>
+          <TooltipContent>Map Fields</TooltipContent>
         </Tooltip>
-      </TooltipProvider>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors rounded-lg">
@@ -208,40 +201,43 @@ export default function PdfFormsPage() {
   );
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+    <TooltipProvider>
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
         <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 text-left">
                 <div>
                     <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Secure Document Studio</h1>
-                    <p className="text-muted-foreground font-medium text-sm mt-1">Transform static PDF templates into secure, interactive digital signing experiences for parents and staff.</p>
+                    <p className="text-muted-foreground font-medium text-sm mt-1">Transform static PDF templates into secure, interactive digital signing experiences.</p>
                 </div>
                 <div className="flex justify-end items-center shrink-0">
                     <UploadPDFButton />
                 </div>
             </div>
             
-            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
-                <div className="relative flex-grow w-full">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                    <Input 
-                        placeholder="Search document titles..." 
-                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" 
-                        value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)} 
-                    />
-                </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                        <SelectItem value="all">Global Hub</SelectItem>
-                        <SelectItem value="published">Published</SelectItem>
-                        <SelectItem value="draft">Drafts</SelectItem>
-                        <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                </Select>
-            </div>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
+                <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+                    <div className="relative flex-grow w-full">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                        <Input 
+                            placeholder="Search document titles..." 
+                            className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                        />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">Global Hub</SelectItem>
+                            <SelectItem value="published">Published</SelectItem>
+                            <SelectItem value="draft">Drafts</SelectItem>
+                            <SelectItem value="archived">Archived</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </CardContent>
+            </Card>
 
             <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
             <Table>
@@ -249,7 +245,7 @@ export default function PdfFormsPage() {
                 <TableRow>
                     <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Document Title</TableHead>
                     <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
-                    <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Field Points</TableHead>
+                    <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Fields</TableHead>
                     <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Signed Recs</TableHead>
                     <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
                     <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
@@ -286,7 +282,7 @@ export default function PdfFormsPage() {
                                 </Link>
                             </Button>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">{format(new Date(pdf.createdAt), "MMM d, yyyy")}</TableCell>
+                        <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">{pdf.createdAt ? format(new Date(pdf.createdAt), "MMM d, yyyy") : '—'}</TableCell>
                         <TableCell className="text-right pr-6">
                         {renderActions(pdf)}
                         </TableCell>
@@ -308,7 +304,7 @@ export default function PdfFormsPage() {
         </div>
       </div>
 
-      <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
+      <AlertDialog open={!!formToDelete} onOpenChange={(isOpen) => !isOpen && setFormToDelete(null)}>
         <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle className="font-black">Delete Document?</AlertDialogTitle>
