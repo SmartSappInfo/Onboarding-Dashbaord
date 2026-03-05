@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon, Pencil, TextCursorInput } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon, Pencil, TextCursorInput, Eye } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import RenameMediaDialog from './rename-media-dialog';
