@@ -5,7 +5,7 @@ import Image from 'next/image';
 import type { MediaAsset } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Pencil, Check, X, Loader2 } from 'lucide-react';
+import { ExternalLink, Pencil, Check, X, Loader2, FileText } from 'lucide-react';
 import { updateMediaName } from '@/lib/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
@@ -60,19 +60,19 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                             onChange={e => setNewName(e.target.value)}
                             onKeyDown={e => e.key === 'Enter' && handleRename()}
                             autoFocus
-                            className="h-9 rounded-lg font-black text-lg bg-background border-primary/20"
+                            className="h-10 rounded-xl font-bold text-lg bg-background border-primary/20 shadow-inner"
                         />
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600" onClick={handleRename} disabled={isSaving}>
+                        <Button size="icon" variant="ghost" className="h-9 w-9 text-emerald-600 hover:bg-emerald-50" onClick={handleRename} disabled={isSaving}>
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                         </Button>
-                        <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground" onClick={() => setIsEditing(false)} disabled={isSaving}>
+                        <Button size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground hover:bg-muted" onClick={() => setIsEditing(false)} disabled={isSaving}>
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                 ) : (
-                    <div className="flex items-center gap-2 group">
-                        <DialogTitle className="truncate text-xl font-black uppercase tracking-tight">{asset.name}</DialogTitle>
-                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setIsEditing(true)}>
+                    <div className="flex items-center gap-2 group cursor-pointer" onClick={() => setIsEditing(true)}>
+                        <DialogTitle className="truncate text-xl font-bold text-foreground leading-tight">{asset.name}</DialogTitle>
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
                             <Pencil className="h-3 w-3 text-muted-foreground" />
                         </Button>
                     </div>
@@ -80,7 +80,7 @@ export default function MediaPreviewDialog({ asset, open, onOpenChange }: MediaP
                 {asset.type === 'link' && asset.linkDescription ? (
                     <DialogDescription className="text-xs font-medium line-clamp-1 mt-1">{asset.linkDescription}</DialogDescription>
                 ) : (
-                    <DialogDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-1">
+                    <DialogDescription className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 mt-1.5">
                         {asset.type} Asset · {asset.mimeType || 'Registry Entry'}
                     </DialogDescription>
                 )}

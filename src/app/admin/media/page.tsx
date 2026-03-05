@@ -14,7 +14,13 @@ import MediaAssetCard from './components/media-asset-card';
 import UploadButton from './components/upload-button';
 import AddLinkButton from './components/add-link-button';
 
-const TABS = ['images', 'videos', 'audio', 'documents', 'links'];
+const TABS = [
+  { id: 'images', label: 'Images' },
+  { id: 'videos', label: 'Videos' },
+  { id: 'audio', label: 'Audio' },
+  { id: 'documents', label: 'Documents' },
+  { id: 'links', label: 'Links' },
+];
 
 export default function MediaLibraryPage() {
   const firestore = useFirestore();
@@ -82,11 +88,11 @@ export default function MediaLibraryPage() {
                         <TabsList className="bg-muted/30 h-12 p-1 rounded-2xl border w-full">
                             {TABS.map(tab => (
                                 <TabsTrigger 
-                                    key={tab} 
-                                    value={tab} 
-                                    className="rounded-xl font-black uppercase text-[9px] tracking-widest px-4 data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                                    key={tab.id} 
+                                    value={tab.id} 
+                                    className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all"
                                 >
-                                    {tab}
+                                    {tab.label}
                                 </TabsTrigger>
                             ))}
                         </TabsList>

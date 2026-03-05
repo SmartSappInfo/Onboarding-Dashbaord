@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon, Pencil, TextCursorInput, Eye } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon, Eye, TextCursorInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
 import RenameMediaDialog from './rename-media-dialog';
@@ -140,8 +140,8 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
             )}
           </div>
           <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white">
-            <p className="text-xs font-black uppercase tracking-tight truncate">{asset.name}</p>
-            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">{asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
+            <p className="text-sm font-bold truncate leading-tight">{asset.name}</p>
+            <p className="text-[9px] font-bold text-gray-300 uppercase tracking-widest mt-1 opacity-80">{asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
           </div>
           <div className="absolute top-2 right-2">
             <DropdownMenu modal={false}>
