@@ -7,31 +7,10 @@ import SurveyForm from './survey-form';
 import { SmartSappLogo } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import SurveyLoader from '../../components/survey-loader';
 
 interface SurveyDisplayProps {
     survey: Survey;
-}
-
-function SurveyFormSkeleton() {
-    return (
-        <div className="space-y-8">
-            <div className="space-y-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-10 w-full" />
-            </div>
-            <div className="space-y-4">
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-20 w-full" />
-            </div>
-            <div className="space-y-4">
-                <Skeleton className="h-6 w-1/2" />
-                <Skeleton className="h-10 w-1/2" />
-            </div>
-            <div className="flex justify-end">
-                <Skeleton className="h-12 w-32" />
-            </div>
-        </div>
-    );
 }
 
 const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPattern'], color?: string }) => {
@@ -115,6 +94,10 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     
     const bgColor = survey.backgroundColor || '#F1F5F9';
 
+    if (!isMounted) {
+        return <SurveyLoader label="Initializing Blueprint..." />;
+    }
+
     if (isSubmitted) {
         return (
             <div className="light min-h-screen flex flex-col relative" style={{ backgroundColor: bgColor }}>
@@ -195,11 +178,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
                         </div>
                     )}
 
-                    {isMounted ? (
-                        <SurveyForm survey={survey} onSubmitted={() => setIsSubmitted(true)} />
-                    ) : (
-                        <SurveyFormSkeleton />
-                    )}
+                    <SurveyForm survey={survey} onSubmitted={() => setIsSubmitted(true)} />
                 </div>
             </main>
             <footer className="py-8 text-center text-xs sm:text-sm text-muted-foreground relative z-10">
