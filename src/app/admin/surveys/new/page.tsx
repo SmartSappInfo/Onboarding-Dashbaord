@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -133,6 +132,7 @@ const formSchema = z.object({
   webhookEnabled: z.boolean().default(false),
   showDebugProcessingModal: z.boolean().default(false),
   scoringEnabled: z.boolean().default(false),
+  scoreDisplayMode: z.enum(['points', 'percentage']).default('points'),
   maxScore: z.number().min(0).default(100),
   resultRules: z.array(z.any()).default([]),
   resultPages: z.array(z.any()).default([]),
@@ -243,6 +243,7 @@ export default function NewSurveyPage() {
             webhookEnabled: false,
             showDebugProcessingModal: false,
             scoringEnabled: false,
+            scoreDisplayMode: 'points',
             maxScore: 100,
             resultRules: [],
             resultPages: [],
@@ -439,7 +440,7 @@ export default function NewSurveyPage() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
-                                                        <div><CardTitle className="text-lg font-black uppercase tracking-tight">Survey Details</CardTitle></div>
+                                                        <div><CardTitle className="text-sm font-black uppercase tracking-tight">Survey Details</CardTitle></div>
                                                     </div>
                                                     <SurveyPreviewButton variant="outline" size="sm" className="h-8 rounded-xl font-bold border-primary/20">
                                                         <Eye className="mr-2 h-3 w-3" /> Preview Cover
@@ -594,7 +595,7 @@ export default function NewSurveyPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                                         <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
                                             <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-black uppercase tracking-tight">Publish Logic</CardTitle></div></div>
+                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-sm font-black uppercase tracking-tight">Publish Logic</CardTitle></div></div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

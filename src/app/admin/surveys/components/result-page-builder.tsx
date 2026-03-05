@@ -44,7 +44,7 @@ const blockIcons: Record<string, React.ElementType> = {
     'score-card': TrophyIcon,
 };
 
-function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number }) {
+function PagePreviewModal({ open, onOpenChange, page, maxScore, displayMode }: { open: boolean, onOpenChange: (o: boolean) => void, page: SurveyResultPage, maxScore: number, displayMode: 'points' | 'percentage' }) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50">
@@ -88,8 +88,15 @@ function PagePreviewModal({ open, onOpenChange, page, maxScore }: { open: boolea
                                         <Card className="w-full bg-primary text-white border-none shadow-xl rounded-3xl p-8 flex flex-col items-center text-center">
                                             <Badge variant="outline" className="mb-4 bg-white/10 text-white border-white/20 px-4 py-1.5 text-[10px] font-black tracking-widest uppercase">Sample Result</Badge>
                                             <div className="flex flex-col gap-1">
-                                                <span className="text-7xl font-black tabular-nums tracking-tighter">{(maxScore * 0.85).toFixed(0)}</span>
-                                                <span className="text-lg font-bold opacity-60 uppercase tracking-widest">out of {maxScore}</span>
+                                                <div className="flex items-center justify-center">
+                                                    <span className="text-7xl font-black tabular-nums tracking-tighter">
+                                                        {displayMode === 'percentage' ? '85' : (maxScore * 0.85).toFixed(0)}
+                                                    </span>
+                                                    {displayMode === 'percentage' && <span className="text-4xl font-black ml-1">%</span>}
+                                                </div>
+                                                <span className="text-lg font-bold opacity-60 uppercase tracking-widest">
+                                                    {displayMode === 'percentage' ? 'Overall Accuracy' : `out of ${maxScore} points`}
+                                                </span>
                                             </div>
                                             <div className="mt-6 w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
                                                 <div className="h-full bg-white w-[85%]" />
@@ -340,7 +347,7 @@ function SortableResultBlock({
                         </div>
                         <span>{blockType} Block</span>
                     </div>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                         <TooltipProvider>
                             {/* Formatting and Level Controls Group */}
                             {['heading', 'text', 'quote', 'button', 'list'].includes(block.type) && (
@@ -497,6 +504,7 @@ export default function ResultPageBuilder() {
         name: 'resultPages',
     });
     const maxScore = watch('maxScore') || 100;
+    const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
     const [previewPageIdx, setPreviewPageIdx] = React.useState<number | null>(null);
 
     return (
@@ -575,6 +583,7 @@ export default function ResultPageBuilder() {
                     onOpenChange={(o) => !o && setPreviewPageIdx(null)} 
                     page={pages[previewPageIdx] as any}
                     maxScore={maxScore}
+                    displayMode={scoreDisplayMode}
                 />
             )}
         </div>

@@ -20,19 +20,23 @@ interface ResultRendererProps {
     page: SurveyResultPage | null;
 }
 
-function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number, style?: any }) {
-    const [displayScore, setDisplayScore] = React.useState(0);
+function ScoreCard({ score, maxScore, style, displayMode = 'points' }: { score: number, maxScore: number, style?: any, displayMode?: 'points' | 'percentage' }) {
+    const [displayValue, setDisplayValue] = React.useState(0);
     const hasCelebrated = React.useRef(false);
+
+    const isPercentage = displayMode === 'percentage';
+    const targetValue = isPercentage ? Math.round((score / maxScore) * 100) : score;
 
     React.useEffect(() => {
         let start = 0;
         const duration = 2000;
-        const increment = score / (duration / 16);
+        const frames = duration / 16;
+        const increment = targetValue / frames;
         
         const timer = setInterval(() => {
             start += increment;
-            if (start >= score) {
-                setDisplayScore(score);
+            if (start >= targetValue) {
+                setDisplayValue(targetValue);
                 clearInterval(timer);
                 if (!hasCelebrated.current && style?.animate !== false) {
                     confetti({
@@ -44,12 +48,12 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
                     hasCelebrated.current = true;
                 }
             } else {
-                setDisplayScore(Math.floor(start));
+                setDisplayValue(Math.floor(start));
             }
         }, 16);
 
         return () => clearInterval(timer);
-    }, [score, style?.animate]);
+    }, [targetValue, style?.animate]);
 
     return (
         <Card className="relative overflow-hidden bg-primary text-white border-none shadow-2xl rounded-2xl sm:rounded-3xl p-6 sm:p-10 my-6 sm:my-8">
@@ -62,13 +66,18 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
             </motion.div>
             
             <CardContent className="relative z-10 flex flex-col items-center text-center p-0">
-                <Badge variant="outline" className="mb-6 sm:mb-8 bg-white/10 text-white border-white/20 px-4 py-1.5 text-xs font-bold tracking-widest uppercase">Your Result</Badge>
+                <Badge variant="outline" className="mb-6 sm:mb-8 bg-white/10 text-white border-white/20 px-4 py-1.5 text-xs font-bold tracking-widest uppercase">Assessment Result</Badge>
                 
                 <div className="flex flex-col gap-1">
-                    <span className="text-6xl sm:text-7xl md:text-8xl font-bold tabular-nums tracking-tighter">
-                        {displayScore}
+                    <div className="flex items-center justify-center">
+                        <span className="text-6xl sm:text-7xl md:text-8xl font-bold tabular-nums tracking-tighter">
+                            {displayValue}
+                        </span>
+                        {isPercentage && <span className="text-4xl sm:text-5xl font-black ml-1">%</span>}
+                    </div>
+                    <span className="text-base sm:text-lg font-bold opacity-60 uppercase tracking-wide">
+                        {isPercentage ? 'Overall Accuracy' : `out of ${maxScore} points`}
                     </span>
-                    <span className="text-base sm:text-lg font-bold opacity-60 uppercase tracking-wide">out of {maxScore} points</span>
                 </div>
 
                 <div className="w-full max-w-lg mx-auto">
@@ -89,7 +98,7 @@ function ScoreCard({ score, maxScore, style }: { score: number, maxScore: number
     );
 }
 
-function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, score: number, maxScore: number }) {
+function BlockRenderer({ block, score, maxScore, displayMode }: { block: SurveyResultBlock, score: number, maxScore: number, displayMode?: 'points' | 'percentage' }) {
     const alignment = block.style?.textAlign || 'left';
     
     const containerClasses = cn(
@@ -161,7 +170,7 @@ function BlockRenderer({ block, score, maxScore }: { block: SurveyResultBlock, s
         case 'divider':
             return <hr className="w-full my-8 border-t-2 border-slate-200" />;
         case 'score-card':
-            return <ScoreCard score={score} maxScore={maxScore} style={block.style} />;
+            return <ScoreCard score={score} maxScore={maxScore} style={block.style} displayMode={displayMode} />;
         default:
             return null;
     }
@@ -192,6 +201,7 @@ export default function ResultRenderer({ survey, response, page }: ResultRendere
                         block={block} 
                         score={response.score || 0} 
                         maxScore={survey.maxScore || 100} 
+                        displayMode={survey.scoreDisplayMode}
                     />
                 ))}
             </div>

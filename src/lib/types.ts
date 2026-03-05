@@ -240,6 +240,7 @@ export interface Survey {
   thankYouTitle?: string;
   thankYouDescription?: string;
   scoringEnabled?: boolean;
+  scoreDisplayMode?: 'points' | 'percentage';
   maxScore?: number;
   resultRules?: SurveyResultRule[];
   startButtonText?: string;

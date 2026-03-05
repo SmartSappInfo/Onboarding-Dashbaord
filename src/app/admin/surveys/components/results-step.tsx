@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { useFormContext } from 'react-hook-form';
+import { useFormContext, Controller } from 'react-hook-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BrainCircuit, Layout, Trophy, ArrowRight, Sparkles } from 'lucide-react';
+import { BrainCircuit, Layout, Trophy, ArrowRight, Sparkles, Percent, Hash } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import ResultRuleManager from './result-rule-manager';
 import ResultPageBuilder from './result-page-builder';
@@ -20,6 +20,8 @@ function LogicSimulator() {
     const rules = watch('resultRules') || [];
     const pages = watch('resultPages') || [];
     const scoringEnabled = watch('scoringEnabled');
+    const maxScore = watch('maxScore') || 100;
+    const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
 
     if (!scoringEnabled) return null;
 
@@ -28,6 +30,10 @@ function LogicSimulator() {
         .find((r: any) => testScore >= (r.minScore || 0) && testScore <= (r.maxScore || 0));
     
     const matchedPage = pages.find((p: any) => p.id === matchedRule?.pageId);
+
+    const formattedValue = scoreDisplayMode === 'percentage' 
+        ? `${Math.round((testScore / maxScore) * 100)}%` 
+        : `${testScore} PTS`;
 
     return (
         <Card className="bg-primary/5 border-primary/20 mb-8 overflow-hidden relative">
@@ -43,7 +49,7 @@ function LogicSimulator() {
             <CardContent>
                 <div className="flex flex-col sm:flex-row items-center gap-4">
                     <div className="w-full sm:w-32">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Test Score</Label>
+                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Test Score (Points)</Label>
                         <Input 
                             type="number" 
                             value={testScore} 
@@ -55,7 +61,7 @@ function LogicSimulator() {
                         <ArrowRight className="h-6 w-6 text-muted-foreground/30" />
                     </div>
                     <div className="flex-grow w-full">
-                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Matching Result</Label>
+                        <Label className="text-[10px] font-bold uppercase mb-1 block text-muted-foreground">Public Perspective ({scoreDisplayMode})</Label>
                         <div className={cn(
                             "h-12 flex items-center px-4 rounded-md border transition-all",
                             matchedRule ? "bg-background border-primary shadow-sm" : "bg-muted/50 border-dashed"
@@ -65,6 +71,7 @@ function LogicSimulator() {
                                     <div className="flex items-center gap-2">
                                         <Trophy className="h-4 w-4 text-yellow-500" />
                                         <span className="font-bold text-foreground truncate max-w-[150px]">{matchedRule.label}</span>
+                                        <Badge className="ml-2 font-black tabular-nums bg-emerald-50 text-emerald-600 border-emerald-100">{formattedValue}</Badge>
                                     </div>
                                     <Badge variant="outline" className="ml-2 font-bold bg-primary/10 text-primary border-primary/20">
                                         → {matchedPage?.name || 'Default Result'}
@@ -82,8 +89,9 @@ function LogicSimulator() {
 }
 
 export default function ResultsStep() {
-    const { watch, setValue } = useFormContext();
+    const { watch, setValue, control } = useFormContext();
     const scoringEnabled = watch('scoringEnabled');
+    const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
 
     return (
         <div className="space-y-8">
@@ -103,19 +111,55 @@ export default function ResultsStep() {
                     </div>
                 </CardHeader>
                 {scoringEnabled && (
-                    <CardContent>
-                        <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
-                            <div className="grid gap-1.5 flex-1">
-                                <Label htmlFor="max-score" className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Total Possible Score</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input 
-                                        id="max-score" 
-                                        type="number" 
-                                        value={watch('maxScore')} 
-                                        onChange={(e) => setValue('maxScore', parseInt(e.target.value, 10) || 0, { shouldDirty: true })}
-                                        className="max-w-[120px] font-bold text-lg" 
+                    <CardContent className="space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                            <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
+                                <div className="grid gap-1.5 flex-1">
+                                    <Label htmlFor="max-score" className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Total Possible Score</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input 
+                                            id="max-score" 
+                                            type="number" 
+                                            value={watch('maxScore')} 
+                                            onChange={(e) => setValue('maxScore', parseInt(e.target.value, 10) || 0, { shouldDirty: true })}
+                                            className="max-w-[120px] font-bold text-lg rounded-xl" 
+                                        />
+                                        <span className="text-xs text-muted-foreground font-medium italic">Max points available.</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 p-4 rounded-xl border bg-muted/30">
+                                <div className="grid gap-1.5 flex-1">
+                                    <Label className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Score Presentation</Label>
+                                    <Controller
+                                        name="scoreDisplayMode"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <div className="grid grid-cols-2 gap-2 bg-background p-1 rounded-xl border shadow-inner">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('points')}
+                                                    className={cn(
+                                                        "h-9 rounded-lg font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2",
+                                                        field.value === 'points' ? "bg-primary text-white shadow-md" : "text-muted-foreground opacity-60 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <Hash className="h-3 w-3" /> Points
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => field.onChange('percentage')}
+                                                    className={cn(
+                                                        "h-9 rounded-lg font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2",
+                                                        field.value === 'percentage' ? "bg-primary text-white shadow-md" : "text-muted-foreground opacity-60 hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <Percent className="h-3 w-3" /> Percent
+                                                </button>
+                                            </div>
+                                        )}
                                     />
-                                    <span className="text-sm text-muted-foreground font-medium italic">Total points available across all questions.</span>
                                 </div>
                             </div>
                         </div>
@@ -126,11 +170,11 @@ export default function ResultsStep() {
             <LogicSimulator />
 
             <Tabs defaultValue="logic" className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="logic" className="gap-2 font-bold py-3">
+                <TabsList className="grid w-full grid-cols-2 h-12 bg-muted/50 p-1 border">
+                    <TabsTrigger value="logic" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
                         <BrainCircuit className="h-4 w-4" /> Outcome Logic
                     </TabsTrigger>
-                    <TabsTrigger value="pages" className="gap-2 font-bold py-3">
+                    <TabsTrigger value="pages" className="gap-2 font-bold py-3 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
                         <Layout className="h-4 w-4" /> Result Pages
                     </TabsTrigger>
                 </TabsList>
