@@ -10,6 +10,7 @@ import { updateMediaName } from '@/lib/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MediaPreviewDialogProps {
   asset: MediaAsset;
