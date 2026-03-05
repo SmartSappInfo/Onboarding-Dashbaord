@@ -204,18 +204,6 @@ export default function MessagingHubPage() {
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="mb-12">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                        <MessageSquareText className="h-6 w-6" />
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">
-                        Messaging Centre
-                    </h1>
-                </div>
-                <p className="text-muted-foreground text-lg font-medium">Control and monitor all manual and automated school communications.</p>
-            </div>
-
             <Tabs defaultValue="overview" className="space-y-12">
                 <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
                     <TabsTrigger value="overview" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6">Hub Overview</TabsTrigger>

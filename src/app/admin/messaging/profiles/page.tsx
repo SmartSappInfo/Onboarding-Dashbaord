@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -227,20 +226,8 @@ export default function SenderProfilesPage() {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                        <Link href="/admin/messaging">
-                            <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                        </Link>
-                    </Button>
-                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                        <Fingerprint className="h-8 w-8 text-primary" />
-                        Sender Profiles
-                    </h1>
-                    <p className="text-muted-foreground">Define your organization&apos;s authorized sending identities.</p>
-                </div>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+            <div className="mb-8 flex items-center justify-end">
                 <Button onClick={() => setIsAdding(!isAdding)}>
                     {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                     {isAdding ? 'Cancel' : 'Add Profile'}

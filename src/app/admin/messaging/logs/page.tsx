@@ -133,22 +133,7 @@ export default function MessageLogsPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="mb-8 flex items-center justify-between">
-                <div>
-                    <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                        <Link href="/admin/messaging">
-                            <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                        </Link>
-                    </Button>
-                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                        <History className="h-8 w-8 text-primary" />
-                        Communication Logs
-                    </h1>
-                    <p className="text-muted-foreground font-medium uppercase text-[10px] tracking-widest mt-1">Audit trail of all organization dispatches.</p>
-                </div>
-            </div>
-
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="grid gap-6">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                     <CardHeader className="pb-3 border-b bg-muted/10">

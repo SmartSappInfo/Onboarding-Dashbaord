@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -188,23 +187,11 @@ export default function MessageStylesPage() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-            <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-                <div>
-                    <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                        <Link href="/admin/messaging">
-                            <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                        </Link>
-                    </Button>
-                    <h1 className="text-3xl font-black tracking-tight flex items-center gap-3 text-foreground">
-                        <Palette className="h-8 w-8 text-primary" />
-                        Visual Styles
-                    </h1>
-                    <p className="text-muted-foreground">Manage HTML wrappers for branded email communications.</p>
-                </div>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+            <div className="mb-8 flex items-center justify-end flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                     <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-10 px-4 gap-2 font-bold shadow-lg">
-                        <Sparkles className="h-4 w-4" /> Create with AI
+                        <OpenSparkles className="h-4 w-4" /> Create with AI
                     </RainbowButton>
                     <Button onClick={() => { setIsAdding(!isAdding); if(!isAdding) { setName(''); setHtmlWrapper('<html>\n  <body style="font-family: sans-serif; padding: 20px;">\n    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">\n      {{content}}\n    </div>\n  </body>\n</html>'); } }} variant="outline" className="font-bold">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}

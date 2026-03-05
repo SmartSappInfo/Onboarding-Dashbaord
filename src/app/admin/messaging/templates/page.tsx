@@ -835,40 +835,36 @@ export default function MessageTemplatesPage() {
 
     return (
         <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
-            <div className="shrink-0 p-4 sm:p-6 md:p-8 border-b bg-background shadow-sm z-20">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                            <Link href="/admin/messaging">
-                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                            </Link>
-                        </Button>
-                        <h1 className="text-2xl font-black tracking-tight text-foreground uppercase">Template Studio</h1>
-                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                            {isAdding ? (editingTemplate ? 'Editing Protocol' : 'Designing New Blueprint') : 'Institutional Template Hub'}
-                        </p>
-                    </div>
-                    {!isAdding ? (
+            {!isAdding && (
+                <div className="shrink-0 p-4 sm:p-6 md:p-8 border-b bg-background shadow-sm z-20">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-primary/10 rounded-xl">
+                                <FileType className="h-5 w-5 text-primary" />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest leading-none">
+                                Institutional Template Hub
+                            </p>
+                        </div>
                         <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8 h-11 transition-all active:scale-95">
                             <Plus className="mr-2 h-5 w-5" /> New Template
                         </Button>
-                    ) : (
-                        <div className="flex items-center gap-3">
-                            <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold h-11">Discard</Button>
-                            <Button onClick={handleSave} disabled={isSubmitting || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95">
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                Commit Changes
-                            </Button>
-                        </div>
-                    )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             <div className="flex-1 overflow-hidden flex flex-col">
                 {isAdding ? (
                     <div className="flex-1 flex flex-col overflow-hidden">
-                        <div className="bg-background border-b pt-6 shrink-0">
+                        <div className="bg-background border-b pt-6 shrink-0 flex items-center justify-between px-8">
                             <Stepper currentStep={step} onStepClick={handleStepChange} />
+                            <div className="flex items-center gap-3 pb-6">
+                                <Button variant="ghost" onClick={() => setIsAdding(false)} className="font-bold h-11">Discard</Button>
+                                <Button onClick={handleSave} disabled={isSubmitting || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95">
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                    Commit Changes
+                                </Button>
+                            </div>
                         </div>
 
                         <div className="flex-1 relative overflow-hidden">

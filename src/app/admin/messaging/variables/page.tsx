@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -331,19 +330,7 @@ export default function VariableRegistryPage() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-6xl mx-auto space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-black uppercase text-[10px] tracking-widest h-8">
-                            <Link href="/admin/messaging">
-                                <ArrowLeft className="mr-2 h-3 w-3" /> Back to Messaging Hub
-                            </Link>
-                        </Button>
-                        <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                            <Database className="h-8 w-8 text-primary" />
-                            Variable Registry
-                        </h1>
-                        <p className="text-muted-foreground font-medium">Manage and audit institutional data points available for messaging.</p>
-                    </div>
+                <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={() => setIsAddingConstant(true)} className="rounded-xl font-black h-12 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
                             <Plus className="h-5 w-5" /> New Constant
