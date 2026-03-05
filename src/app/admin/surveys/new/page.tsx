@@ -6,7 +6,7 @@ import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, usePathname } from 'next/navigation';
-import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, setDoc, doc, query, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -24,22 +24,25 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { MediaSelect } from '../../schools/components/media-select';
+import { ModuleSelect } from '../components/ModuleSelect';
+import { ZoneSelect } from '../components/ZoneSelect';
+import { FocalPersonManager } from '../components/FocalPersonManager';
+import { logActivity } from '@/lib/activity-logger';
+import { type UserProfile, type School, type SurveyElement, type SurveyQuestion } from '@/lib/types';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Sparkles, AlertCircle, Building } from 'lucide-react';
+import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
-import type { SurveyElement, SurveyQuestion, SurveyResultPage, School } from '@/lib/types';
 import ResultsStep from '../components/results-step';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import WebhookManager from '../components/webhook-manager';
-import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
+import { syncVariableRegistry } from '@/lib/messaging-actions';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -362,6 +365,10 @@ export default function NewSurveyPage() {
             }
 
             toast({ title: 'Survey Initialized' });
+            
+            // Trigger Variable Registry sync
+            syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
+
             router.push('/admin/surveys');
         } catch (e) {
             console.error(e);
@@ -593,7 +600,7 @@ export default function NewSurveyPage() {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="status" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem></SelectContent></Select></FormItem>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="slug" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Extension</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
