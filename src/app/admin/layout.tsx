@@ -74,7 +74,6 @@ const navItems = [
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
-
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -86,39 +85,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
-
-  const pageTitle = React.useMemo(() => {
-    const segments = pathname.split('/').filter(Boolean);
-    const last = segments[segments.length - 1];
-
-    const segmentMap: Record<string, string> = {
-      admin: 'Operational Hub',
-      schools: 'Schools Directory',
-      pipeline: 'Onboarding Pipeline',
-      meetings: 'Session Registry',
-      portals: 'Public Portals',
-      media: 'Media Repository',
-      surveys: 'Survey Intelligence',
-      pdfs: 'Doc Signing Studio',
-      messaging: 'Communications Center',
-      activities: 'Platform Audit Trail',
-      users: 'Team Access Control',
-      profile: 'Account Settings',
-      settings: 'System Configuration',
-    };
-
-    if (pathname.startsWith('/admin/settings')) return 'System Configuration';
-    if (pathname.startsWith('/admin/users')) return 'Team Management';
-    if (pathname.startsWith('/admin/profile')) return 'Account Profile';
-    
-    return segmentMap[last] || segmentMap[segments[1]] || 'Onboarding Workspace';
-  }, [pathname]);
-
-  React.useEffect(() => {
-    if (pageTitle) {
-      document.title = `${pageTitle} — SmartSapp`;
-    }
-  }, [pageTitle]);
 
   React.useEffect(() => {
     if (isUserLoading) {

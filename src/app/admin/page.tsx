@@ -5,6 +5,12 @@ import DashboardGrid from "./components/DashboardGrid";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, CalendarPlus, FilePlus, Upload } from "lucide-react";
 import Link from "next/link";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Operational Hub',
+  description: 'Monitor onboarding velocity, institutional distribution, and system-wide engagement metrics.',
+};
 
 async function DashboardData() {
   const data = await getDashboardData();

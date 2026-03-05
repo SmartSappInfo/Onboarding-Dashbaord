@@ -4,8 +4,29 @@ import { Toaster } from '@/components/ui/toaster';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'Welcome To SmartSapp Family',
-  description: 'Onboarding for SmartsApp Schools',
+  title: {
+    default: 'Welcome To SmartSapp Family',
+    template: '%s — SmartSapp',
+  },
+  description: 'Onboarding for SmartsApp Schools - Child Security, Parents\' Convenience, Smarter Schools.',
+  openGraph: {
+    title: 'SmartSapp Onboarding',
+    description: 'Automating the SmartSapp institutional onboarding experience.',
+    images: [
+      {
+        url: 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772732878319-Onboarding%20Meta%20image.webp?alt=media&token=f74f6912-135d-4b5e-b784-609017e6bb12',
+        width: 1200,
+        height: 630,
+        alt: 'SmartSapp Onboarding',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'SmartSapp Onboarding',
+    description: 'Automating the SmartSapp institutional onboarding experience.',
+    images: ['https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1772732878319-Onboarding%20Meta%20image.webp?alt=media&token=f74f6912-135d-4b5e-b784-609017e6bb12'],
+  },
 };
 
 export default function RootLayout({
