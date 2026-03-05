@@ -66,40 +66,43 @@ export default function MediaLibraryPage() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* Workspace Hub Header */}
-        <div className="flex flex-col gap-6">
-            <div className="flex justify-end items-center gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+            <div>
+                <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Media Repository</h1>
+                <p className="text-muted-foreground font-medium text-sm mt-1">Centralized digital asset library for school logos, brochures, and promotional content.</p>
+            </div>
+            <div className="flex justify-end items-center gap-3 shrink-0">
                 <AddLinkButton />
                 <UploadButton />
             </div>
-            
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-3xl overflow-hidden bg-card">
-                <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
-                    <div className="relative flex-grow w-full">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                        <Input 
-                            placeholder="Filter your assets..." 
-                            className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
-                        />
-                    </div>
-                    <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
-                        <TabsList className="bg-muted/30 h-12 p-1 rounded-2xl border w-full">
-                            {TABS.map(tab => (
-                                <TabsTrigger 
-                                    key={tab.id} 
-                                    value={tab.id} 
-                                    className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all"
-                                >
-                                    {tab.label}
-                                </TabsTrigger>
-                            ))}
-                        </TabsList>
-                    </Tabs>
-                </CardContent>
-            </Card>
         </div>
+
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-3xl overflow-hidden bg-card">
+            <CardContent className="p-4 flex flex-col md:flex-row items-center gap-4">
+                <div className="relative flex-grow w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                    <Input 
+                        placeholder="Filter your assets..." 
+                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold text-sm shadow-none focus:ring-1 focus:ring-primary/20" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                    />
+                </div>
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="shrink-0 w-full md:w-auto">
+                    <TabsList className="bg-muted/30 h-12 p-1 rounded-2xl border w-full">
+                        {TABS.map(tab => (
+                            <TabsTrigger 
+                                key={tab.id} 
+                                value={tab.id} 
+                                className="rounded-xl font-bold text-[11px] tracking-wide px-6 data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:shadow-md transition-all"
+                            >
+                                {tab.label}
+                            </TabsTrigger>
+                        ))}
+                    </TabsList>
+                </Tabs>
+            </CardContent>
+        </Card>
 
         {/* Content Area */}
         <div className="min-h-[600px]">

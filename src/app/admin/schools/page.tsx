@@ -133,17 +133,23 @@ export default function SchoolsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="flex flex-col gap-6 mb-8">
-            <div className="flex justify-end items-center">
-                <Button asChild className="rounded-xl font-bold shadow-lg">
-                    <Link href="/admin/schools/new">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add New School
-                    </Link>
-                </Button>
+        <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Institutional Directory</h1>
+                    <p className="text-muted-foreground font-medium text-sm mt-1">Manage and monitor all schools in the SmartSapp network and their implementation status.</p>
+                </div>
+                <div className="flex justify-end items-center shrink-0">
+                    <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+                        <Link href="/admin/schools/new">
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Initialize New School
+                        </Link>
+                    </Button>
+                </div>
             </div>
             
-            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
                 <CardContent className="p-4 flex flex-wrap items-center gap-4">
                     <div className="flex-1 min-w-[200px]">
                         <Input placeholder="Search name..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-medium" />
@@ -179,95 +185,95 @@ export default function SchoolsPage() {
                     </Select>
                 </CardContent>
             </Card>
-        </div>
-        
-        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="w-[80px]"></TableHead>
-                <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">School Name <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
-                <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                <TableHead><Button variant="ghost" onClick={() => handleSort('stage.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
-                <TableHead className="text-right pr-6"><span className="text-[10px] font-bold uppercase tracking-widest">Actions</span></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
-                ))
-              ) : sortedSchools.length > 0 ? (
-                sortedSchools.map((school) => (
-                  <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
-                    <TableCell className="pl-6">
-                      <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-                        <AvatarImage src={school.logoUrl} alt={school.name} />
-                        <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-black text-sm text-foreground">
-                      <Link href={`/admin/schools/${school.id}`} className="hover:text-primary hover:underline transition-colors">{school.name}</Link>
-                    </TableCell>
-                    <TableCell className="text-center">
-                        <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
-                    </TableCell>
-                    <TableCell><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><MapPin className="h-3 w-3" /> {school.zone?.name || 'Unassigned'}</div></TableCell>
-                    <TableCell>
-                      <Badge style={{ backgroundColor: school.stage?.color || '#ccc', color: 'white' }} className="text-[10px] font-bold uppercase border-none h-6">{school.stage?.name || 'Welcome'}</Badge>
-                    </TableCell>
-                    <TableCell className="text-xs font-medium text-muted-foreground">
-                      {school.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <div className="flex items-center justify-end gap-1 transition-opacity">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageSchool(school)}>
-                                    <Workflow className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Change Stage</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningSchool(school)}>
-                                    <UserPlus className="h-4 w-4" />
-                                </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Assign User</TooltipContent>
-                        </Tooltip>
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
-                                <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl w-48">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground px-3">Management</DropdownMenuLabel>
-                            <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.phone || school.email || ''}`}>
-                                    <Send className="mr-2 h-4 w-4" /> Send Message
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setSchoolToDelete(school)}><Trash2 className="mr-2 h-4 w-4" /> Delete School</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found matching your current filters.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
+            
+            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+                <Table>
+                    <TableHeader className="bg-muted/30">
+                    <TableRow>
+                        <TableHead className="w-[80px]"></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">School Name <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead className="text-center"><span className="text-[10px] font-bold uppercase tracking-widest">Status</span></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('zone.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Zone <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('stage.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Pipeline Stage <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead><Button variant="ghost" onClick={() => handleSort('assignedTo.name')} className="font-bold text-[10px] uppercase tracking-widest p-0 h-auto">Assigned To <ArrowUpDown className="ml-2 h-3 w-3"/></Button></TableHead>
+                        <TableHead className="text-right pr-6"><span className="text-[10px] font-bold uppercase tracking-widest">Actions</span></TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {isLoading ? (
+                        Array.from({ length: 5 }).map((_, i) => (
+                        <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+                        ))
+                    ) : sortedSchools.length > 0 ? (
+                        sortedSchools.map((school) => (
+                        <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
+                            <TableCell className="pl-6">
+                            <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                                <AvatarImage src={school.logoUrl} alt={school.name} />
+                                <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
+                            </Avatar>
+                            </TableCell>
+                            <TableCell className="font-black text-sm text-foreground">
+                            <Link href={`/admin/schools/${school.id}`} className="hover:text-primary hover:underline transition-colors">{school.name}</Link>
+                            </TableCell>
+                            <TableCell className="text-center">
+                                <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
+                            </TableCell>
+                            <TableCell><div className="flex items-center gap-2 text-xs font-bold text-muted-foreground"><MapPin className="h-3 w-3" /> {school.zone?.name || 'Unassigned'}</div></TableCell>
+                            <TableCell>
+                            <Badge style={{ backgroundColor: school.stage?.color || '#ccc', color: 'white' }} className="text-[10px] font-bold uppercase border-none h-6">{school.stage?.name || 'Welcome'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                            {school.assignedTo?.name || <span className="italic opacity-50">Unassigned</span>}
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                            <div className="flex items-center justify-end gap-1 transition-opacity">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setChangingStageSchool(school)}>
+                                            <Workflow className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Change Stage</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => setAssigningSchool(school)}>
+                                            <UserPlus className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Assign User</TooltipContent>
+                                </Tooltip>
+                                <DropdownMenu modal={false}>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl w-48">
+                                    <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground px-3">Management</DropdownMenuLabel>
+                                    <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.phone || school.email || ''}`}>
+                                            <Send className="mr-2 h-4 w-4" /> Send Message
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setSchoolToDelete(school)}><Trash2 className="mr-2 h-4 w-4" /> Delete School</DropdownMenuItem>
+                                </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                    ) : (
+                        <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found matching your current filters.</TableCell></TableRow>
+                    )}
+                    </TableBody>
+                </Table>
+            </div>
         </div>
       </div>
       <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>

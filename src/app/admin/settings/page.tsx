@@ -73,88 +73,95 @@ export default function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5">
-      <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
-        <CardHeader className="bg-muted/30 border-b pb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-primary/10 rounded-xl">
-                <Database className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-                <CardTitle className="text-lg font-black uppercase tracking-tight">System Infrastructure</CardTitle>
-                <CardDescription className="text-xs font-medium">Core system management and data initialization tools.</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-10">
-          <div>
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Structural Configuration</h3>
-              <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" size="sm" onClick={() => handleSeed('stages')} disabled={seedingStatus.stages === 'seeding'} className="rounded-xl font-bold">
-                    {seedingStatus.stages === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
-                    Seed Stages
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleSeed('modules')} disabled={seedingStatus.modules === 'seeding'} className="rounded-xl font-bold">
-                    {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
-                    Seed Modules
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
-                    {seedingStatus.zones === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4 text-primary" />}
-                    Seed Zones
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'} className="rounded-xl font-bold">
-                    {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
-                    Update Avatars
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'} className="rounded-xl font-bold">
-                    {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
-                    Reset Layout
-                  </Button>
-              </div>
-          </div>
+      <div className="max-w-7xl mx-auto space-y-12">
+        <div>
+            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">System Configuration</h1>
+            <p className="text-muted-foreground font-medium text-sm mt-1">Initialize system data, reset layouts, and configure core platform modules and organizational zones.</p>
+        </div>
 
-          <div>
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Sample Operations Data</h3>
-              <div className="flex flex-wrap gap-3">
-                  <Button onClick={() => handleSeed('schools')} disabled={seedingStatus.schools === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.schools === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SchoolIcon className="mr-2 h-4 w-4" />}
-                    Migrate Schools
-                  </Button>
-                  <Button onClick={() => handleSeed('meetings')} disabled={seedingStatus.meetings === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
-                    Seed Meetings
-                  </Button>
-                  <Button onClick={() => handleSeed('media')} disabled={seedingStatus.media === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.media === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Film className="mr-2 h-4 w-4" />}
-                    Seed Media
-                  </Button>
-                  <Button onClick={() => handleSeed('surveys')} disabled={seedingStatus.surveys === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardList className="mr-2 h-4 w-4" />}
-                    Seed Surveys
-                  </Button>
-                  <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                    Seed Doc Signing
-                  </Button>
-                  <Button onClick={() => handleSeed('messaging')} disabled={seedingStatus.messaging === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.messaging === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
-                    Seed Messaging
-                  </Button>
-                  <Button onClick={() => handleSeed('logs')} disabled={seedingStatus.logs === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.logs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                    Seed Message Logs
-                  </Button>
-                  <Button onClick={() => handleSeed('activities')} disabled={seedingStatus.activities === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                    {seedingStatus.activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
-                    Seed Activity Feed
-                  </Button>
-              </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <ModuleEditor />
-        <ZoneEditor />
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+            <CardHeader className="bg-muted/30 border-b pb-6">
+            <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl">
+                    <Database className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                    <CardTitle className="text-lg font-black uppercase tracking-tight">System Infrastructure</CardTitle>
+                    <CardDescription className="text-xs font-medium">Core system management and data initialization tools.</CardDescription>
+                </div>
+            </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-10">
+            <div>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Structural Configuration</h3>
+                <div className="flex flex-wrap gap-3">
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('stages')} disabled={seedingStatus.stages === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.stages === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Stages
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('modules')} disabled={seedingStatus.modules === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Modules
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.zones === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Zones
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        Update Avatars
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        Reset Layout
+                    </Button>
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Sample Operations Data</h3>
+                <div className="flex flex-wrap gap-3">
+                    <Button onClick={() => handleSeed('schools')} disabled={seedingStatus.schools === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.schools === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SchoolIcon className="mr-2 h-4 w-4" />}
+                        Migrate Schools
+                    </Button>
+                    <Button onClick={() => handleSeed('meetings')} disabled={seedingStatus.meetings === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                        Seed Meetings
+                    </Button>
+                    <Button onClick={() => handleSeed('media')} disabled={seedingStatus.media === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.media === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Film className="mr-2 h-4 w-4" />}
+                        Seed Media
+                    </Button>
+                    <Button onClick={() => handleSeed('surveys')} disabled={seedingStatus.surveys === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.surveys === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ClipboardList className="mr-2 h-4 w-4" />}
+                        Seed Surveys
+                    </Button>
+                    <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                        Seed Doc Signing
+                    </Button>
+                    <Button onClick={() => handleSeed('messaging')} disabled={seedingStatus.messaging === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.messaging === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
+                        Seed Messaging
+                    </Button>
+                    <Button onClick={() => handleSeed('logs')} disabled={seedingStatus.logs === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.logs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
+                        Seed Message Logs
+                    </Button>
+                    <Button onClick={() => handleSeed('activities')} disabled={seedingStatus.activities === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.activities === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <History className="mr-2 h-4 w-4" />}
+                        Seed Activity Feed
+                    </Button>
+                </div>
+            </div>
+            </CardContent>
+        </Card>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <ModuleEditor />
+            <ZoneEditor />
+        </div>
       </div>
     </div>
   );

@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2, Send } from 'lucide-react';
+import { MoreHorizontal, Copy, ExternalLink, Edit, Trash2, Send, PlusCircle, Calendar as CalendarIcon } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import {
   AlertDialog,
@@ -234,137 +234,154 @@ export default function MeetingsPage() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
-          <div className="w-full max-w-xs">
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="h-10 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
-                <SelectValue placeholder="Filter by type..." />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="all">All Meeting Types</SelectItem>
-                {MEETING_TYPES.map(type => (
-                  <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <Button asChild className="rounded-xl font-bold shadow-lg">
-            <Link href="/admin/meetings/new">Add New Meeting</Link>
-          </Button>
-        </div>
-        
-        {/* Desktop Table View */}
-        <div className="hidden md:block rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="w-[80px]"></TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">School Name</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Type</TableHead>
-                <TableHead className="w-[250px] text-[10px] font-bold uppercase tracking-widest py-4">Meeting Time</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Public Status</TableHead>
-                <TableHead className="w-[160px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest py-4">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filteredMeetings && filteredMeetings.length > 0 ? (
-                filteredMeetings.map((meeting) => {
-                  const type = meeting.type || MEETING_TYPES[0];
-                  const logoUrl = schoolLogoMap.get(meeting.schoolId);
-                  return (
-                    <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
-                      <TableCell className="pl-6">
-                        <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-                          <AvatarImage src={logoUrl} alt={meeting.schoolName} />
-                          <AvatarFallback className="font-bold text-xs">{getInitials(meeting.schoolName)}</AvatarFallback>
-                        </Avatar>
-                      </TableCell>
-                      <TableCell className="font-black text-sm text-foreground">
-                        <Link href={`/admin/meetings/${meeting.id}/edit`} className="hover:text-primary hover:underline transition-colors">
-                            {meeting.schoolName}
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+        <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Session Registry</h1>
+                    <p className="text-muted-foreground font-medium text-sm mt-1">Coordinate and manage upcoming parent engagement sessions and staff training workshops.</p>
+                </div>
+                <div className="flex justify-end items-center shrink-0">
+                    <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
+                        <Link href="/admin/meetings/new">
+                            <PlusCircle className="mr-2 h-5 w-5" />
+                            Schedule New Session
                         </Link>
-                      </TableCell>
-                      <TableCell><Badge variant="secondary" className="text-[10px] font-bold uppercase">{type.name}</Badge></TableCell>
-                      <TableCell className="text-xs font-medium text-muted-foreground">
-                        {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP · p") : 'Not set'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                          <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">Portal Active</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right pr-6">
-                        {renderActions(meeting)}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
+                    </Button>
+                </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-4">
+                <Card className="flex-1 min-w-[280px] max-w-sm border-none shadow-sm ring-1 ring-border rounded-xl bg-card overflow-hidden">
+                    <CardContent className="p-2">
+                        <Select value={typeFilter} onValueChange={setTypeFilter}>
+                            <SelectTrigger className="h-10 rounded-lg bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                <SelectValue placeholder="Filter by type..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                                <SelectItem value="all">All Meeting Types</SelectItem>
+                                {MEETING_TYPES.map(type => (
+                                <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </CardContent>
+                </Card>
+            </div>
+            
+            {/* Desktop Table View */}
+            <div className="hidden md:block rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+            <Table>
+                <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">
-                    No meetings found matching your current filters.
-                  </TableCell>
+                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">School Name</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Type</TableHead>
+                    <TableHead className="w-[250px] text-[10px] font-bold uppercase tracking-widest py-4">Meeting Time</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Public Status</TableHead>
+                    <TableHead className="w-[160px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest py-4">Actions</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        
-        {/* Mobile Card View */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
-            {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)
-            ) : filteredMeetings && filteredMeetings.length > 0 ? (
-                filteredMeetings.map((meeting) => {
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell className="pl-6"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                    </TableRow>
+                    ))
+                ) : filteredMeetings && filteredMeetings.length > 0 ? (
+                    filteredMeetings.map((meeting) => {
                     const type = meeting.type || MEETING_TYPES[0];
                     const logoUrl = schoolLogoMap.get(meeting.schoolId);
                     return (
-                        <Card key={meeting.id} className="overflow-hidden border-border/50 shadow-sm transition-all hover:shadow-md rounded-2xl bg-card">
-                            <CardHeader className="p-5 pb-3">
-                                <div className="flex items-start justify-between">
-                                    <div className="flex items-center gap-3 min-w-0">
-                                      <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm shrink-0">
-                                        <AvatarImage src={logoUrl} alt={meeting.schoolName} />
-                                        <AvatarFallback className="font-bold text-xs">{getInitials(meeting.schoolName)}</AvatarFallback>
-                                      </Avatar>
-                                      <div className="min-w-0">
-                                          <Link href={`/admin/meetings/${meeting.id}/edit`} className="block group">
-                                            <CardTitle className="text-base font-black truncate group-hover:text-primary transition-colors leading-tight">{meeting.schoolName}</CardTitle>
-                                          </Link>
-                                          <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
-                                            {meeting.meetingTime ? format(new Date(meeting.meetingTime), "MMM d · p") : 'Not set'}
-                                          </CardDescription>
-                                      </div>
+                        <TableRow key={meeting.id} className="group hover:bg-muted/30 transition-colors">
+                        <TableCell className="pl-6">
+                            <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
+                            <AvatarImage src={logoUrl} alt={meeting.schoolName} />
+                            <AvatarFallback className="font-bold text-xs">{getInitials(meeting.schoolName)}</AvatarFallback>
+                            </Avatar>
+                        </TableCell>
+                        <TableCell className="font-black text-sm text-foreground">
+                            <Link href={`/admin/meetings/${meeting.id}/edit`} className="hover:text-primary hover:underline transition-colors">
+                                {meeting.schoolName}
+                            </Link>
+                        </TableCell>
+                        <TableCell><Badge variant="secondary" className="text-[10px] font-bold uppercase">{type.name}</Badge></TableCell>
+                        <TableCell className="text-xs font-medium text-muted-foreground">
+                            {meeting.meetingTime ? format(new Date(meeting.meetingTime), "PPP · p") : 'Not set'}
+                        </TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                            <span className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">Portal Active</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                            {renderActions(meeting)}
+                        </TableCell>
+                        </TableRow>
+                    )
+                    })
+                ) : (
+                    <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">
+                        No sessions recorded in registry.
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+            </div>
+            
+            {/* Mobile Card View */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:hidden">
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)
+                ) : filteredMeetings && filteredMeetings.length > 0 ? (
+                    filteredMeetings.map((meeting) => {
+                        const type = meeting.type || MEETING_TYPES[0];
+                        const logoUrl = schoolLogoMap.get(meeting.schoolId);
+                        return (
+                            <Card key={meeting.id} className="overflow-hidden border-border/50 shadow-sm transition-all hover:shadow-md rounded-2xl bg-card">
+                                <CardHeader className="p-5 pb-3">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                        <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm shrink-0">
+                                            <AvatarImage src={logoUrl} alt={meeting.schoolName} />
+                                            <AvatarFallback className="font-bold text-xs">{getInitials(meeting.schoolName)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                            <Link href={`/admin/meetings/${meeting.id}/edit`} className="block group">
+                                                <CardTitle className="text-base font-black truncate group-hover:text-primary transition-colors leading-tight">{meeting.schoolName}</CardTitle>
+                                            </Link>
+                                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
+                                                {meeting.meetingTime ? format(new Date(meeting.meetingTime), "MMM d · p") : 'Not set'}
+                                            </CardDescription>
+                                        </div>
+                                        </div>
                                     </div>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="px-5 pb-4">
-                                <Badge variant="secondary" className="text-[10px] font-bold uppercase">{type.name}</Badge>
-                            </CardContent>
-                            <CardFooter className="bg-muted/30 p-3 flex justify-end">
-                                {renderActions(meeting)}
-                            </CardFooter>
-                        </Card>
-                    );
-                })
-            ) : (
-                <div className="col-span-full py-20 text-center border-2 border-dashed rounded-2xl bg-muted/20">
-                    <p className="text-muted-foreground font-medium">No meetings found.</p>
-                </div>
-            )}
+                                </CardHeader>
+                                <CardContent className="px-5 pb-4">
+                                    <Badge variant="secondary" className="text-[10px] font-bold uppercase">{type.name}</Badge>
+                                </CardContent>
+                                <CardFooter className="bg-muted/30 p-3 flex justify-end">
+                                    {renderActions(meeting)}
+                                </CardFooter>
+                            </Card>
+                        );
+                    })
+                ) : (
+                    <div className="col-span-full py-20 text-center border-2 border-dashed rounded-2xl bg-muted/20">
+                        <CalendarIcon className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                        <p className="text-muted-foreground font-black uppercase text-[10px] tracking-widest">No meetings found.</p>
+                    </div>
+                )}
+            </div>
         </div>
       </div>
 

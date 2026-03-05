@@ -16,30 +16,30 @@ import { useIsMobile } from '@/hooks/use-mobile';
  */
 
 const segmentMap: Record<string, string> = {
-  admin: 'Dashboard',
-  schools: 'Schools',
-  pipeline: 'Pipeline',
-  meetings: 'Meetings',
+  admin: 'Operational Hub',
+  schools: 'Schools Directory',
+  pipeline: 'Onboarding Pipeline',
+  meetings: 'Session Registry',
   portals: 'Public Portals',
-  media: 'Media',
-  surveys: 'Surveys',
-  pdfs: 'Doc Signing',
-  messaging: 'Messaging Centre',
-  activities: 'Activities',
-  users: 'Team Management',
-  profile: 'Profile',
-  settings: 'Settings',
-  new: 'New',
-  edit: 'Edit',
-  results: 'Results',
-  composer: 'Composer',
-  logs: 'Message Logs',
-  scheduled: 'Scheduled Queue',
-  variables: 'Variable Registry',
+  media: 'Media Repository',
+  surveys: 'Survey Intelligence',
+  pdfs: 'Doc Signing Studio',
+  messaging: 'Communications Centre',
+  activities: 'Platform Audit Trail',
+  users: 'Team Access Control',
+  profile: 'Account Profile',
+  settings: 'System Configuration',
+  new: 'Initialization',
+  edit: 'Design Studio',
+  results: 'Analytics',
+  composer: 'Message Composer',
+  logs: 'Audit Logs',
+  scheduled: 'Delivery Queue',
+  variables: 'Contextual Registry',
   styles: 'Visual Styles',
   profiles: 'Sender Profiles',
   ai: 'AI Architect',
-  submissions: 'Submissions',
+  submissions: 'Records',
 };
 
 export function BreadcrumbNav() {
@@ -78,7 +78,7 @@ export function BreadcrumbNav() {
   };
 
   if (pathname === '/admin') {
-    return <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground opacity-40">Operational Hub</span>;
+    return <span className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground opacity-40">System Dashboard</span>;
   }
 
   return (
@@ -96,7 +96,7 @@ export function BreadcrumbNav() {
       
       <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] font-black uppercase tracking-widest overflow-hidden">
         {displayItems.map((item, index) => {
-          // Hide 'admin' (Dashboard) segment in breadcrumbs if we're deeper
+          // Hide 'admin' segment in breadcrumbs if we're deeper
           if (item.path === '/admin' && segments.length > 1) return null;
 
           const showSeparator = index > (segments[0] === 'admin' ? 1 : 0);

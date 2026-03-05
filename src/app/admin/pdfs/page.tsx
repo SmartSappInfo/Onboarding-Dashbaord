@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -41,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, Filter } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, Filter, ShieldCheck } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
@@ -210,9 +209,15 @@ export default function PdfFormsPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="flex flex-col gap-6 mb-8">
-            <div className="flex justify-end items-center">
-                <UploadPDFButton />
+        <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Secure Document Studio</h1>
+                    <p className="text-muted-foreground font-medium text-sm mt-1">Transform static PDF templates into secure, interactive digital signing experiences for parents and staff.</p>
+                </div>
+                <div className="flex justify-end items-center shrink-0">
+                    <UploadPDFButton />
+                </div>
             </div>
             
             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
@@ -237,70 +242,71 @@ export default function PdfFormsPage() {
                     </SelectContent>
                 </Select>
             </div>
-        </div>
 
-        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Document Title</TableHead>
-                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
-                <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Field Points</TableHead>
-                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Signed Recs</TableHead>
-                <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
-                <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20 mx-auto rounded-full" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filteredPdfs.length > 0 ? (
-                filteredPdfs.map((pdf) => (
-                  <TableRow key={pdf.id} className="group hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-bold pl-6">
-                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
-                        {pdf.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={getStatusVariant(pdf.status)} className="capitalize text-[9px] font-black rounded-full px-2.5">{pdf.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center font-black text-sm tabular-nums opacity-60">{pdf.fields?.length || 0}</TableCell>
-                    <TableCell className="text-center">
-                        <Button variant="link" asChild className="h-auto p-0 font-black text-sm hover:text-primary">
-                            <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
-                                <SubmissionCount pdfId={pdf.id} />
-                            </Link>
-                        </Button>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">{format(new Date(pdf.createdAt), "MMM d, yyyy")}</TableCell>
-                    <TableCell className="text-right pr-6">
-                       {renderActions(pdf)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
+            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+            <Table>
+                <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableCell colSpan={6} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3 opacity-30">
-                        <FileText className="h-12 w-12" />
-                        <p className="font-black uppercase tracking-widest text-xs">No active documents found</p>
-                    </div>
-                  </TableCell>
+                    <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Document Title</TableHead>
+                    <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
+                    <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Field Points</TableHead>
+                    <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Signed Recs</TableHead>
+                    <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
+                    <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 mx-auto rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                    </TableRow>
+                    ))
+                ) : filteredPdfs.length > 0 ? (
+                    filteredPdfs.map((pdf) => (
+                    <TableRow key={pdf.id} className="group hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-bold pl-6">
+                        <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
+                            {pdf.name}
+                        </Link>
+                        </TableCell>
+                        <TableCell className="text-center">
+                        <Badge variant={getStatusVariant(pdf.status)} className="capitalize text-[9px] font-black rounded-full px-2.5">{pdf.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center font-black text-sm tabular-nums opacity-60">{pdf.fields?.length || 0}</TableCell>
+                        <TableCell className="text-center">
+                            <Button variant="link" asChild className="h-auto p-0 font-black text-sm hover:text-primary">
+                                <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
+                                    <SubmissionCount pdfId={pdf.id} />
+                                </Link>
+                            </Button>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">{format(new Date(pdf.createdAt), "MMM d, yyyy")}</TableCell>
+                        <TableCell className="text-right pr-6">
+                        {renderActions(pdf)}
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                    <TableCell colSpan={6} className="h-64 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3 opacity-30">
+                            <FileText className="h-12 w-12" />
+                            <p className="font-black uppercase tracking-widest text-xs">No active documents found</p>
+                        </div>
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+            </div>
         </div>
+      </div>
 
       <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
         <AlertDialogContent className="rounded-2xl">
@@ -319,6 +325,6 @@ export default function PdfFormsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </TooltipProvider>
   );
 }

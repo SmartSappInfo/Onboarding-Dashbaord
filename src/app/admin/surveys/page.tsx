@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
+import Link from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import { collection, orderBy, query, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
@@ -12,7 +11,7 @@ import { cloneSurvey } from '@/lib/survey-actions';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -294,20 +293,26 @@ export default function SurveysPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="flex flex-col gap-6 mb-8">
-            <div className="flex justify-end items-center gap-3">
-                <RainbowButton asChild className="h-11 rounded-xl font-black">
-                    <Link href="/admin/surveys/new/ai">
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Launch AI Architect
-                    </Link>
-                </RainbowButton>
-                <Button asChild className="h-11 rounded-xl font-bold shadow-lg">
-                    <Link href="/admin/surveys/new">
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    New Survey
-                    </Link>
-                </Button>
+        <div className="max-w-7xl mx-auto space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Survey Intelligence</h1>
+                    <p className="text-muted-foreground font-medium text-sm mt-1">Manage intelligent, logic-driven feedback forms and behavioral assessments.</p>
+                </div>
+                <div className="flex justify-end items-center gap-3 shrink-0">
+                    <RainbowButton asChild className="h-11 rounded-xl font-black">
+                        <Link href="/admin/surveys/new/ai">
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        AI Architect
+                        </Link>
+                    </RainbowButton>
+                    <Button asChild className="h-11 rounded-xl font-bold shadow-lg">
+                        <Link href="/admin/surveys/new">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        New Survey
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
@@ -332,79 +337,79 @@ export default function SurveysPage() {
                     </SelectContent>
                 </Select>
             </div>
-        </div>
-        
-        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30">
-                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 pl-6">Blueprint Title</TableHead>
-                <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-widest py-4 text-center">Status</TableHead>
-                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Responses</TableHead>
-                <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
-                <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20 mx-auto" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
-                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
-                  </TableRow>
-                ))
-              ) : filteredTemplates.length > 0 ? (
-                filteredTemplates.map((survey) => (
-                  <TableRow key={survey.id} className="group hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-bold pl-6">
-                      <div className="flex items-center gap-2">
-                        <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
-                          {survey.internalName || survey.title}
-                        </Link>
-                        {survey.scoringEnabled && (
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-black gap-1">
-                                        <Trophy className="h-2.5 w-2.5" />
-                                        Scored
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>This survey uses the intelligent scoring engine.</TooltipContent>
-                            </Tooltip>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center"><Badge variant={getStatusVariant(survey.status)} className="capitalize text-[9px] font-black uppercase rounded-full px-2.5">{survey.status}</Badge></TableCell>
-                    <TableCell className="text-center">
-                        <Button variant="link" asChild className="font-black text-sm h-auto p-0 hover:text-primary">
-                            <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
-                                <SurveyResponseCount surveyId={survey.id} />
-                            </Link>
-                        </Button>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">
-                      {survey.createdAt ? format(new Date(survey.createdAt), "MMM d, yyyy") : '—'}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                       {renderActions(survey)}
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-64 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3 opacity-30">
-                        <PlusCircle className="h-12 w-12" />
-                        <p className="font-black uppercase tracking-widest text-xs">No active blueprints found</p>
-                    </div>
-                  </TableCell>
+            
+            <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+            <Table>
+                <TableHeader>
+                <TableRow className="bg-muted/30">
+                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4 pl-6">Blueprint Title</TableHead>
+                    <TableHead className="w-[120px] text-[10px] font-black uppercase tracking-widest py-4 text-center">Status</TableHead>
+                    <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Responses</TableHead>
+                    <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
+                    <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </TableHeader>
+                <TableBody>
+                {isLoading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 mx-auto" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-10 mx-auto" /></TableCell>
+                        <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell className="text-right pr-6"><Skeleton className="h-8 w-32 ml-auto" /></TableCell>
+                    </TableRow>
+                    ))
+                ) : filteredTemplates.length > 0 ? (
+                    filteredTemplates.map((survey) => (
+                    <TableRow key={survey.id} className="group hover:bg-muted/30 transition-colors">
+                        <TableCell className="font-bold pl-6">
+                        <div className="flex items-center gap-2">
+                            <Link href={`/admin/surveys/${survey.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
+                            {survey.internalName || survey.title}
+                            </Link>
+                            {survey.scoringEnabled && (
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-black gap-1">
+                                            <Trophy className="h-2.5 w-2.5" />
+                                            Scored
+                                        </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>This survey uses the intelligent scoring engine.</TooltipContent>
+                                </Tooltip>
+                            )}
+                        </div>
+                        </TableCell>
+                        <TableCell className="text-center"><Badge variant={getStatusVariant(survey.status)} className="capitalize text-[9px] font-black uppercase rounded-full px-2.5">{survey.status}</Badge></TableCell>
+                        <TableCell className="text-center">
+                            <Button variant="link" asChild className="font-black text-sm h-auto p-0 hover:text-primary">
+                                <Link href={`/admin/surveys/${survey.id}/results?view=responses`}>
+                                    <SurveyResponseCount surveyId={survey.id} />
+                                </Link>
+                            </Button>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">
+                        {survey.createdAt ? format(new Date(survey.createdAt), "MMM d, yyyy") : '—'}
+                        </TableCell>
+                        <TableCell className="text-right pr-6">
+                        {renderActions(survey)}
+                        </TableCell>
+                    </TableRow>
+                    ))
+                ) : (
+                    <TableRow>
+                    <TableCell colSpan={5} className="h-64 text-center">
+                        <div className="flex flex-col items-center justify-center gap-3 opacity-30">
+                            <ClipboardList className="h-12 w-12" />
+                            <p className="font-black uppercase tracking-widest text-xs">No active blueprints found</p>
+                        </div>
+                    </TableCell>
+                    </TableRow>
+                )}
+                </TableBody>
+            </Table>
+            </div>
         </div>
       </div>
       <AlertDialog open={!!surveyToDelete} onOpenChange={(open) => !open && setSurveyToDelete(null)}>

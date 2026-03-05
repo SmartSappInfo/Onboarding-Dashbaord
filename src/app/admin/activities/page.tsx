@@ -53,12 +53,18 @@ export default function ActivitiesPage() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-5xl mx-auto space-y-8">
-                <div className="flex justify-end">
-                    {hasActiveFilters && (
-                        <Button variant="ghost" onClick={clearFilters} className="text-xs font-black uppercase tracking-widest gap-2 h-8 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all">
-                            <X className="h-3 w-3" /> Clear All Filters
-                        </Button>
-                    )}
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Platform Audit Trail</h1>
+                        <p className="text-muted-foreground font-medium text-sm mt-1">Comprehensive chronological log of all user actions, system events, and interactions.</p>
+                    </div>
+                    <div className="flex justify-end shrink-0">
+                        {hasActiveFilters && (
+                            <Button variant="ghost" onClick={clearFilters} className="text-xs font-black uppercase tracking-widest gap-2 h-8 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all">
+                                <X className="h-3 w-3" /> Clear All Filters
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
@@ -141,7 +147,7 @@ export default function ActivitiesPage() {
 
                 <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[600px]">
                     <div className="mb-8 flex items-center gap-3">
-                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Audit Log</Badge>
+                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Live Timeline</Badge>
                         <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                     </div>
                     <ActivityTimeline 
