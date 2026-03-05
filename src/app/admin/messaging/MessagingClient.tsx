@@ -203,11 +203,6 @@ export default function MessagingClient() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-7xl mx-auto space-y-12">
-                <div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Communications Center</h1>
-                    <p className="text-muted-foreground font-medium text-sm mt-1">Centralized messaging infrastructure for multi-channel SMS and Email dispatches.</p>
-                </div>
-
                 <Tabs defaultValue="overview" className="space-y-12">
                     <TabsList className="bg-background border shadow-sm h-12 p-1 rounded-xl">
                         <TabsTrigger value="overview" className="rounded-lg font-black uppercase text-[10px] tracking-widest px-6">Hub Overview</TabsTrigger>

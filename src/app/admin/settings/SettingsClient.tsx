@@ -73,11 +73,6 @@ export default function SettingsClient() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5">
       <div className="max-w-7xl mx-auto space-y-12">
-        <div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">System Configuration</h1>
-            <p className="text-muted-foreground font-medium text-sm mt-1">Initialize system data, reset layouts, and configure core platform modules and organizational zones.</p>
-        </div>
-
         <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
             <CardHeader className="bg-muted/30 border-b pb-6">
             <div className="flex items-center gap-3">

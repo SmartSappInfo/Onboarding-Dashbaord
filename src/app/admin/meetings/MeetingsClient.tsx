@@ -238,11 +238,7 @@ export default function MeetingsClient() {
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
         <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                <div>
-                    <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Session Registry</h1>
-                    <p className="text-muted-foreground font-medium text-sm mt-1">Coordinate and manage upcoming parent engagement sessions and staff training workshops.</p>
-                </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center shrink-0">
                     <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
                         <Link href="/admin/meetings/new">

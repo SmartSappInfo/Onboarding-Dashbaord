@@ -82,11 +82,6 @@ export default function UsersClient() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-7xl mx-auto space-y-8">
-        <div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Team Access Control</h1>
-            <p className="text-muted-foreground font-medium text-sm mt-1">Manage administrative authorization status, profile attributes, and organizational branding.</p>
-        </div>
-
         <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
             <Table>
             <TableHeader className="bg-muted/30">

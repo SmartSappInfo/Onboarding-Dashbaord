@@ -140,11 +140,6 @@ export default function ProfileClient() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
      <div className="max-w-2xl mx-auto space-y-8">
-        <div>
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Account Profile</h1>
-            <p className="text-muted-foreground font-medium text-sm mt-1">Update your personal identity, contact details, and platform notification preferences.</p>
-        </div>
-
         <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
             <CardHeader className="bg-muted/30 border-b pb-6">
                 <div className="flex items-center gap-3">

@@ -8,12 +8,7 @@ import { Workflow, ListChecks } from 'lucide-react';
 export default function PipelineClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="shrink-0 p-4 sm:p-6 md:p-8 bg-background border-b shadow-sm">
-        <div className="max-w-7xl mx-auto">
-            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Onboarding Pipeline</h1>
-            <p className="text-muted-foreground font-medium text-sm mt-1">Visual Kanban management for tracking school progression from initial signup to go-live.</p>
-        </div>
-      </div>
+      <div className="shrink-0 p-4 sm:p-6 md:p-8 bg-background border-b shadow-sm" />
       <Tabs defaultValue="board" className="flex h-full flex-col">
         <div className="shrink-0 border-b p-4">
           <TabsList className="bg-muted/50 p-1 rounded-xl">

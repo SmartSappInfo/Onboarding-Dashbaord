@@ -21,11 +21,7 @@ export default async function AdminDashboardPage() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
             <div className="max-w-7xl mx-auto space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Operational Hub</h1>
-                        <p className="text-muted-foreground font-medium text-sm mt-1">Monitor onboarding velocity, institutional distribution, and system-wide engagement metrics.</p>
-                    </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 shrink-0">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1">Quick Actions:</h3>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
