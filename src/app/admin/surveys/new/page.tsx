@@ -246,7 +246,7 @@ export default function NewSurveyPage() {
         },
     });
 
-    const { getValues, watch, setValue } = form;
+    const { getValues, watch, setValue, trigger } = form;
     const watchedBgColor = watch('backgroundColor');
     const watchedPattern = watch('backgroundPattern');
     const watchedPatternColor = watch('patternColor');
@@ -303,7 +303,7 @@ export default function NewSurveyPage() {
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
-        const isStepValid = await form.trigger(fieldsToValidate);
+        const isStepValid = await trigger(fieldsToValidate);
         
         if (!isStepValid) {
             if (step === 2) {
@@ -320,10 +320,10 @@ export default function NewSurveyPage() {
         }
 
         if (step === 1) {
-            const title = form.getValues('title');
-            if (title && !form.getValues('slug')) {
+            const title = getValues('title');
+            if (title && !getValues('slug')) {
                 const slug = title.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-                form.setValue('slug', slug, { shouldValidate: true });
+                setValue('slug', slug, { shouldValidate: true });
             }
         }
         
@@ -406,25 +406,26 @@ export default function NewSurveyPage() {
     };
     
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                <div className="mb-8 flex justify-between items-end">
-                    <div>
-                        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
-                            <Link href="/admin/surveys">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Directory
-                            </Link>
-                        </Button>
-                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Create New Survey</h1>
+        <FormProvider {...form}>
+            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
+                    <div className="mb-8 flex justify-between items-end">
+                        <div>
+                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
+                                <Link href="/admin/surveys">
+                                    <ArrowLeft className="mr-2 h-4 w-4" />
+                                    Back to Directory
+                                </Link>
+                            </Button>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Create New Survey</h1>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <AiChatEditor className="h-9" />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <AiChatEditor className="h-9" />
-                    </div>
-                </div>
 
-                <FormProvider {...form}>
                     <Stepper currentStep={step} onStepClick={setStep} />
+
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
@@ -632,7 +633,7 @@ export default function NewSurveyPage() {
                                         </Card>
 
                                         <div className="space-y-8">
-                                            <InternalNotificationConfig prefix="adminAlert" />
+                                            <InternalNotificationConfig prefix="adminAlert" category="surveys" />
                                         </div>
                                     </div>
                                     {renderFooter()}
@@ -640,8 +641,15 @@ export default function NewSurveyPage() {
                             )}
                         </AnimatePresence>
                     </form>
-                </FormProvider>
+                </div>
             </div>
-        </div>
+
+            <ValidationErrorModal 
+                open={isErrorModalOpen}
+                onOpenChange={setIsErrorModalOpen}
+                errors={validationErrors}
+                onFix={scrollToError}
+            />
+        </FormProvider>
     );
 }

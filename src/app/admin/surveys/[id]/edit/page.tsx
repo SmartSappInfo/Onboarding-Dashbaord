@@ -42,6 +42,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../../components/ai-chat-editor';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
+import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -212,6 +213,7 @@ export default function EditSurveyPage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
+    const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -768,7 +770,7 @@ export default function EditSurveyPage() {
                                         </Card>
 
                                         <div className="space-y-8">
-                                            <InternalNotificationConfig prefix="adminAlert" />
+                                            <InternalNotificationConfig prefix="adminAlert" category="surveys" />
                                         </div>
                                     </div>
                                     {renderFooter()}
@@ -776,8 +778,24 @@ export default function EditSurveyPage() {
                             )}
                         </AnimatePresence>
                     </form>
-                </FormProvider>
+                </div>
             </div>
-        </div>
+
+            <ValidationErrorModal 
+                open={isErrorModalOpen}
+                onOpenChange={setIsErrorModalOpen}
+                errors={validationErrors}
+                onFix={scrollToError}
+            />
+
+            <QuickTemplateDialog 
+                open={isQuickCreateOpen}
+                onOpenChange={setIsQuickCreateOpen}
+                channel="email"
+                category="surveys"
+                fixedSourceId={surveyId}
+                onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })}
+            />
+        </FormProvider>
     );
 }
