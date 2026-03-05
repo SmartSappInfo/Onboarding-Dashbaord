@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { getDashboardData } from "@/lib/dashboard";
 import { DashboardSkeleton } from "./components/DashboardSkeleton";
-import DashboardGrid from "./DashboardGrid";
+import DashboardGrid from "./components/DashboardGrid";
 import { Button } from "@/components/ui/button";
 import { PlusCircle, CalendarPlus, FilePlus, Upload } from "lucide-react";
 import Link from "next/link";
@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
                 <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
                     <div>
                         <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Operational Hub</h1>
-                        <p className="text-muted-foreground font-medium text-sm mt-1">High-level overview of school onboarding, performance metrics, and recent dispatches.</p>
+                        <p className="text-muted-foreground font-medium text-sm mt-1">Monitor onboarding velocity, institutional distribution, and system-wide engagement metrics.</p>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 shrink-0">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1">Quick Actions:</h3>
