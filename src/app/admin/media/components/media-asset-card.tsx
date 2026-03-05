@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -29,9 +28,10 @@ import {
 } from "@/components/ui/alert-dialog"
 
 import { Button } from '@/components/ui/button';
-import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon } from 'lucide-react';
+import { MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, Link as LinkIcon, Pencil, TextCursorInput } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
+import RenameMediaDialog from './rename-media-dialog';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
 
 interface MediaAssetCardProps {
@@ -44,6 +44,7 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
   const firestore = useFirestore();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isRenameOpen, setIsRenameOpen] = useState(false);
 
   const handleMainClick = () => {
     if (onCardClick) {
@@ -120,10 +121,10 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
 
   return (
     <>
-      <Card className="group relative overflow-hidden rounded-lg">
+      <Card className="group relative overflow-hidden rounded-2xl border-border/50 hover:shadow-xl transition-all duration-500 bg-card">
         <CardContent className="p-0">
           <div
-            className="aspect-square w-full bg-muted flex items-center justify-center cursor-pointer"
+            className="aspect-square w-full bg-muted/50 flex items-center justify-center cursor-pointer overflow-hidden"
             onClick={handleMainClick}
           >
             {hasPreviewImage && previewSrc ? (
@@ -132,35 +133,43 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
                 alt={asset.name}
                 fill
                 sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-                className="object-cover transition-transform group-hover:scale-105"
+                className="object-cover transition-transform duration-700 group-hover:scale-110"
               />
             ) : (
                 <AssetIcon />
             )}
           </div>
-          <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/70 to-transparent p-2 text-white">
-            <p className="text-xs font-medium truncate">{asset.name}</p>
-            <p className="text-xs text-gray-300">{asset.width && asset.height ? `${asset.width}x${asset.height} - ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
+          <div className="absolute bottom-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 text-white">
+            <p className="text-xs font-black uppercase tracking-tight truncate">{asset.name}</p>
+            <p className="text-[10px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">{asset.width && asset.height ? `${asset.width}x${asset.height} · ` : ''}{format(new Date(asset.createdAt), 'MMM d, yyyy')}</p>
           </div>
-          <div className="absolute top-1 right-1">
+          <div className="absolute top-2 right-2">
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-white bg-black/30 hover:bg-black/50 hover:text-white">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-white bg-black/20 hover:bg-black/60 backdrop-blur-md rounded-xl border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
                   <MoreVertical size={16} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleCopyUrl}>
-                  <Copy className="mr-2 h-4 w-4" />
+              <DropdownMenuContent align="end" className="rounded-xl w-48">
+                <DropdownMenuItem onClick={handleMainClick} className="gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span>View Details</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setIsRenameOpen(true)} className="gap-2">
+                  <TextCursorInput className="h-4 w-4" />
+                  <span>Rename</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleCopyUrl} className="gap-2">
+                  <Copy className="h-4 w-4" />
                   <span>Copy URL</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground"
+                  className="text-destructive focus:bg-destructive focus:text-white gap-2"
                   onClick={() => setIsDeleteDialogOpen(true)}
                 >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  <span>Delete</span>
+                  <Trash2 className="h-4 w-4" />
+                  <span>Delete Asset</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -169,21 +178,22 @@ export default function MediaAssetCard({ asset, onCardClick }: MediaAssetCardPro
       </Card>
       
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the asset <span className="font-bold">{asset.name}</span> from the library.
+            <AlertDialogTitle className="font-black uppercase tracking-tight">Delete Asset?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium">
+              This will permanently remove <span className="font-bold text-foreground">"{asset.name}"</span> from the library. Any emails or forms referencing this URL may break.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>Continue</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Confirm Deletion</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <MediaPreviewDialog asset={asset} open={isPreviewOpen} onOpenChange={setIsPreviewOpen} />
+      <RenameMediaDialog asset={asset} open={isRenameOpen} onOpenChange={setIsRenameOpen} />
     </>
   );
 }
