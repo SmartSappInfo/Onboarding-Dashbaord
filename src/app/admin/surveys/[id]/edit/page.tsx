@@ -577,6 +577,9 @@ export default function EditSurveyPage() {
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
                                                         <div><CardTitle className="text-lg font-black uppercase tracking-tight">Survey Details</CardTitle></div>
                                                     </div>
+                                                    <SurveyPreviewButton variant="outline" size="sm" className="h-8 rounded-xl font-bold border-primary/20">
+                                                        <Eye className="mr-2 h-3 w-3" /> Preview Cover
+                                                    </SurveyPreviewButton>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
@@ -681,7 +684,7 @@ export default function EditSurveyPage() {
                                                             )} />
                                                         </div>
                                                         <FormField control={form.control} name="backgroundPattern" render={({ field }) => (
-                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Style</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
+                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Style</FormLabel><Select onValueChange={field.onChange} value={field.value || 'none'}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
                                                         )} />
                                                         <div className="space-y-2">
                                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Design Preview</Label>

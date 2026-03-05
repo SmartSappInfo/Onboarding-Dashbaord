@@ -654,7 +654,7 @@ export default function EditPdfPage() {
                                                             name="backgroundPattern"
                                                             control={form.control}
                                                             render={({ field }) => (
-                                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                                                     <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
                                                                         <SelectValue placeholder="Pattern Style..." />
                                                                     </SelectTrigger>

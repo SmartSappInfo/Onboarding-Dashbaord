@@ -22,14 +22,14 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { MediaSelect } from '../../schools/components/media-select';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Sparkles, AlertCircle } from 'lucide-react';
+import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, Sparkles, AlertCircle, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
-import type { SurveyElement, SurveyQuestion, SurveyResultPage } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveyResultPage, School } from '@/lib/types';
 import ResultsStep from '../components/results-step';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -202,6 +202,12 @@ export default function NewSurveyPage() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
+
+    const schoolsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
+    }, [firestore]);
+    const { data: schools } = useCollection<School>(schoolsQuery);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -438,6 +444,9 @@ export default function NewSurveyPage() {
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
                                                         <div><CardTitle className="text-lg font-black uppercase tracking-tight">Survey Details</CardTitle></div>
                                                     </div>
+                                                    <SurveyPreviewButton variant="outline" size="sm" className="h-8 rounded-xl font-bold border-primary/20">
+                                                        <Eye className="mr-2 h-3 w-3" /> Preview Cover
+                                                    </SurveyPreviewButton>
                                                 </div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
@@ -542,7 +551,7 @@ export default function NewSurveyPage() {
                                                             )} />
                                                         </div>
                                                         <FormField control={form.control} name="backgroundPattern" render={({ field }) => (
-                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Style</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
+                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Style</FormLabel><Select onValueChange={field.onChange} value={field.value || 'none'}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
                                                         )} />
                                                         <div className="space-y-2">
                                                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Design Preview</Label>
