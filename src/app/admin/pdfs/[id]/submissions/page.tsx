@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -411,18 +412,6 @@ export default function SubmissionsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10">
-        <div className="space-y-1 min-w-0 mb-6">
-          <Button variant="ghost" size="sm" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground" onClick={() => router.push('/admin/pdfs')}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">Back to Documents</span>
-            <span className="sm:hidden">Back</span>
-          </Button>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground truncate pr-4" title={pdf?.name}>
-            {isLoadingPdf ? <Skeleton className="h-10 w-64" /> : `Submissions: ${pdf?.name}`}
-          </h1>
-          <p className="text-muted-foreground text-xs sm:text-sm font-medium">Manage and export signed document records.</p>
-        </div>
-
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             <Card className="bg-card shadow-sm border-border/50 rounded-xl">

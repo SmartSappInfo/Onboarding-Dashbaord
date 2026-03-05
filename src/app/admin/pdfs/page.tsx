@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -40,12 +41,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, Filter } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 export default function PdfFormsPage() {
   const firestore = useFirestore();
@@ -55,6 +58,8 @@ export default function PdfFormsPage() {
 
   const [formToDelete, setFormToDelete] = useState<PDFForm | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const pdfsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -102,78 +107,85 @@ export default function PdfFormsPage() {
     }
   }
 
+  const filteredPdfs = pdfs?.filter(p => 
+    (statusFilter === 'all' || p.status === statusFilter) &&
+    (p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.publicTitle?.toLowerCase().includes(searchTerm.toLowerCase()))
+  ) || [];
+
   const renderActions = (pdf: PDFForm) => (
     <div className="flex items-center justify-end gap-1">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const url = `${window.location.origin}/forms/${pdf.slug || pdf.id}`;
-                navigator.clipboard.writeText(url);
-                toast({
-                  title: "Link Copied",
-                  description: "Public form URL copied to clipboard.",
-                });
-              }
-            }}
-          >
-            <Copy className="h-4 w-4" />
-            <span className="sr-only">Copy link</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Copy Public Link</p>
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" asChild>
-            <a href={`/forms/${pdf.slug || pdf.id}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-              <span className="sr-only">View public page</span>
-            </a>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>View Public Page</p>
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors"
-            onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}
-          >
-            <Edit className="h-4 w-4" />
-            <span className="sr-only">Edit fields</span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Map Fields</p>
-        </TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors rounded-lg"
+              onClick={() => {
+                if (typeof window !== 'undefined') {
+                  const url = `${window.location.origin}/forms/${pdf.slug || pdf.id}`;
+                  navigator.clipboard.writeText(url);
+                  toast({
+                    title: "Link Copied",
+                    description: "Public form URL copied to clipboard.",
+                  });
+                }
+              }}
+            >
+              <Copy className="h-4 w-4" />
+              <span className="sr-only">Copy link</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Copy Public Link</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors rounded-lg" asChild>
+              <a href={`/forms/${pdf.slug || pdf.id}`} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="h-4 w-4" />
+                <span className="sr-only">View public page</span>
+              </a>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>View Public Page</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors rounded-lg"
+              onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}
+            >
+              <Edit className="h-4 w-4" />
+              <span className="sr-only">Edit fields</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Map Fields</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors">
+          <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors rounded-lg">
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="rounded-xl w-48">
+          <DropdownMenuLabel className="text-[10px] uppercase font-black px-3 py-2 text-muted-foreground tracking-widest">Management</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/edit`)}>
             <Edit className="mr-2 h-4 w-4" />
-            <span>Map Fields</span>
+            <span>Design Studio</span>
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/submissions`)}>
             <BarChart2 className="mr-2 h-4 w-4" />
-            <span>View Responses</span>
+            <span>Submission Records</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
@@ -189,7 +201,7 @@ export default function PdfFormsPage() {
             onClick={() => setFormToDelete(pdf)}
           >
             <Trash2 className="mr-2 h-4 w-4" />
-            <span>Delete</span>
+            <span>Delete Document</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -197,72 +209,92 @@ export default function PdfFormsPage() {
   );
 
   return (
-    <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8">
-        <div className="flex items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 className="text-2xl font-bold tracking-tight">Doc Signing</h1>
-                <p className="text-muted-foreground">Manage your documents for signing and filling.</p>
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+        <div className="flex flex-col gap-6 mb-8">
+            <div className="flex justify-end items-center">
+                <UploadPDFButton />
             </div>
-            <UploadPDFButton />
+            
+            <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
+                <div className="relative flex-grow w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                    <Input 
+                        placeholder="Search document titles..." 
+                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                    />
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                        <SelectItem value="all">Global Hub</SelectItem>
+                        <SelectItem value="published">Published</SelectItem>
+                        <SelectItem value="draft">Drafts</SelectItem>
+                        <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
         </div>
 
-        {/* Desktop Table View */}
-        <div className="hidden md:block rounded-lg border bg-card text-card-foreground shadow-sm overflow-x-auto">
+        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
           <Table>
-            <TableHeader>
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[100px] text-center">Fields</TableHead>
-                <TableHead className="w-[120px] text-center">Responses</TableHead>
-                <TableHead className="w-[180px] hidden md:table-cell">Created At</TableHead>
-                <TableHead className="w-[160px] text-right">Actions</TableHead>
+                <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Document Title</TableHead>
+                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Status</TableHead>
+                <TableHead className="w-[100px] text-center text-[10px] font-black uppercase tracking-widest py-4">Field Points</TableHead>
+                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-4">Signed Recs</TableHead>
+                <TableHead className="w-[180px] hidden md:table-cell text-[10px] font-black uppercase tracking-widest py-4">Created At</TableHead>
+                <TableHead className="w-[160px] text-right text-[10px] font-black uppercase tracking-widest py-4 pr-6">Management</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="pl-6"><Skeleton className="h-5 w-3/4" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20 mx-auto rounded-full" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-8 mx-auto" /></TableCell>
                     <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-full" /></TableCell>
-                    <TableCell className="text-right"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : pdfs && pdfs.length > 0 ? (
-                pdfs.map((pdf) => (
-                  <TableRow key={pdf.id}>
-                    <TableCell className="font-medium">
-                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline">
+              ) : filteredPdfs.length > 0 ? (
+                filteredPdfs.map((pdf) => (
+                  <TableRow key={pdf.id} className="group hover:bg-muted/30 transition-colors">
+                    <TableCell className="font-bold pl-6">
+                      <Link href={`/admin/pdfs/${pdf.id}/edit`} className="hover:underline hover:text-primary transition-colors text-sm">
                         {pdf.name}
                       </Link>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(pdf.status)} className="capitalize">{pdf.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-center font-medium">{pdf.fields?.length || 0}</TableCell>
                     <TableCell className="text-center">
-                        <Button variant="link" asChild className="h-auto p-0 font-semibold">
+                      <Badge variant={getStatusVariant(pdf.status)} className="capitalize text-[9px] font-black rounded-full px-2.5">{pdf.status}</Badge>
+                    </TableCell>
+                    <TableCell className="text-center font-black text-sm tabular-nums opacity-60">{pdf.fields?.length || 0}</TableCell>
+                    <TableCell className="text-center">
+                        <Button variant="link" asChild className="h-auto p-0 font-black text-sm hover:text-primary">
                             <Link href={`/admin/pdfs/${pdf.id}/submissions`}>
                                 <SubmissionCount pdfId={pdf.id} />
                             </Link>
                         </Button>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{format(new Date(pdf.createdAt), "PPP")}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell className="hidden md:table-cell text-[10px] font-bold text-muted-foreground uppercase">{format(new Date(pdf.createdAt), "MMM d, yyyy")}</TableCell>
+                    <TableCell className="text-right pr-6">
                        {renderActions(pdf)}
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-semibold">No Documents Yet</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
+                  <TableCell colSpan={6} className="h-64 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3 opacity-30">
+                        <FileText className="h-12 w-12" />
+                        <p className="font-black uppercase tracking-widest text-xs">No active documents found</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}
@@ -270,83 +302,23 @@ export default function PdfFormsPage() {
           </Table>
         </div>
 
-        {/* Mobile Card View */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:hidden">
-            {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-64 w-full rounded-xl" />)
-            ) : pdfs && pdfs.length > 0 ? (
-                pdfs.map((pdf) => (
-                    <Card key={pdf.id} className="group overflow-hidden border-border shadow-sm transition-all hover:shadow-md rounded-xl">
-                        <CardHeader className="p-6 pb-4">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1 min-w-0 flex-1">
-                                    <Link href={`/admin/pdfs/${pdf.id}/edit`} className="block group/title">
-                                        <CardTitle className="text-xl font-black leading-tight tracking-tight group-hover/title:text-primary transition-colors decoration-primary/30 underline-offset-4 hover:underline truncate" title={pdf.name}>
-                                            {pdf.name}
-                                        </CardTitle>
-                                    </Link>
-                                    <CardDescription className="text-muted-foreground font-medium flex items-center gap-1.5">
-                                        Created: {format(new Date(pdf.createdAt), "MMM d, yyyy")}
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        
-                        <CardContent className="px-6 pb-6">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-muted/50 border border-border transition-colors">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Fields</span>
-                                    <span className="text-2xl font-black text-foreground">{pdf.fields?.length || 0}</span>
-                                </div>
-                                <Link 
-                                    href={`/admin/pdfs/${pdf.id}/submissions`}
-                                    className="flex flex-col items-center justify-center p-4 rounded-xl bg-muted/50 border border-border transition-colors hover:bg-primary/5 hover:border-primary/20 group/stat"
-                                >
-                                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover/stat:text-primary mb-1">Responses</span>
-                                    <span className="text-2xl font-black text-primary">
-                                        <SubmissionCount pdfId={pdf.id} />
-                                    </span>
-                                </Link>
-                            </div>
-                        </CardContent>
-                        
-                        <CardFooter className="flex items-center justify-between border-t bg-muted/30 p-3">
-                            <Badge variant={getStatusVariant(pdf.status)} className={cn(
-                                "capitalize px-3 py-1 text-[10px] font-bold tracking-wider rounded-full",
-                                pdf.status === 'published' ? "bg-primary hover:bg-primary/90 text-primary-foreground border-none shadow-sm" : ""
-                            )}>
-                                {pdf.status}
-                            </Badge>
-                            {renderActions(pdf)}
-                        </CardFooter>
-                    </Card>
-                ))
-            ) : (
-                <div className="col-span-full text-center py-20 border-2 border-dashed rounded-xl bg-muted/50">
-                    <FileText className="mx-auto h-12 w-12 text-muted-foreground" />
-                    <h3 className="mt-4 text-lg font-bold">No Documents Yet</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">Upload your first document to get started.</p>
-                </div>
-            )}
-        </div>
-      </div>
-       <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
-        <AlertDialogContent>
+      <AlertDialog open={!!formToDelete} onOpenChange={(open) => !open && setFormToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the document <span className="font-bold">"{formToDelete?.name}"</span> and its associated file.
+            <AlertDialogTitle className="font-black">Delete Document?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium">
+              This will permanently remove the document <span className="font-bold text-foreground">"{formToDelete?.name}"</span> and its associated file. Public signing links will be broken.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
-              {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Delete
+            <AlertDialogCancel className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Confirm Deletion
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </TooltipProvider>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -552,19 +553,8 @@ export default function EditSurveyPage() {
         <FormProvider {...form}>
             <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                    <div className="mb-8 flex justify-between items-end">
-                        <div>
-                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
-                                <Link href="/admin/surveys">
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Back to Directory
-                                </Link>
-                            </Button>
-                            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Configure Survey</h1>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <AiChatEditor className="h-9" />
-                        </div>
+                    <div className="mb-8 flex justify-end items-center">
+                        <AiChatEditor className="h-9" />
                     </div>
 
                     <Stepper currentStep={step} onStepClick={handleStepChange} />
@@ -740,7 +730,7 @@ export default function EditSurveyPage() {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="status" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem></SelectContent></Select></FormItem>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="slug" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Extension</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>

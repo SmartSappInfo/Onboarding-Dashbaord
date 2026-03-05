@@ -1,9 +1,10 @@
+
 'use client';
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -489,16 +490,7 @@ export default function EditPdfPage() {
         <div className="h-full flex flex-col bg-muted/30">
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                    <div className="mb-8 flex justify-between items-end">
-                        <div>
-                            <Button asChild variant="ghost" type="button" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground">
-                                <Link href="/admin/pdfs">
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Back to Library
-                                </Link>
-                            </Button>
-                            <h1 className="text-3xl font-black tracking-tight text-foreground">Configure Document</h1>
-                        </div>
+                    <div className="mb-8 flex justify-end items-center">
                         {step === 2 && (
                             <div className="flex items-center gap-3 pb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                                 {autosaveStatus === 'saving' ? (

@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -140,10 +141,7 @@ export default function ResponseDetailPage() {
     if (isLoading) {
         return (
             <div className="w-full max-w-3xl mx-auto p-4 md:p-6 lg:p-8">
-                <Skeleton className="h-10 w-full mb-6" />
-                <Skeleton className="h-10 w-3/4 mb-2" />
-                <Skeleton className="h-5 w-1/2 mb-8" />
-                <div className="space-y-6">
+                <div className="space-y-6 pt-12">
                     <Skeleton className="h-24 w-full" />
                     <Skeleton className="h-24 w-full" />
                     <Skeleton className="h-24 w-full" />
@@ -155,11 +153,7 @@ export default function ResponseDetailPage() {
     if (!survey || !response) {
         return (
             <div className="text-center py-20">
-                <p>Response or survey not found.</p>
-                 <Button variant="outline" onClick={() => router.back()} className="mt-4">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back
-                </Button>
+                <p className="font-medium text-muted-foreground">Response record could not be resolved.</p>
             </div>
         );
     }
@@ -168,36 +162,42 @@ export default function ResponseDetailPage() {
 
     return (
         <div className="w-full max-w-3xl mx-auto px-4 pb-20">
-            <div className="sticky top-14 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-4 border-b">
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm -mx-6 px-6 py-3 mb-8 border-b">
                 <div className="flex justify-between items-center">
-                    <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/surveys/${surveyId}/results?view=responses`)}>
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">All Responses</span>
-                        <span className="sm:hidden">Back</span>
-                    </Button>
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                        <History className="h-3.5 w-3.5" />
+                        Navigation Context
+                    </div>
 
                     {allResponses && totalResponses > 0 && currentIndex !== -1 && (
                         <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
+                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(0)} disabled={!canGoBack} aria-label="First">
                                 <ChevronsLeft className="h-4 w-4" />
                             </Button>
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
-                                        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack}>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex - 1)} disabled={!canGoBack}>
                                             <ChevronLeft className="h-4 w-4" />
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent side="top">Back</TooltipContent>
+                                    <TooltipContent side="top">Previous Submission</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                            <span className="text-xs font-bold text-muted-foreground tabular-nums w-16 text-center">
-                                {currentIndex + 1} / {totalResponses}
+                            <span className="text-[10px] font-black text-primary tabular-nums w-20 text-center bg-primary/5 border border-primary/10 rounded-md py-1">
+                                {currentIndex + 1} OF {totalResponses}
                             </span>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(currentIndex + 1)} disabled={!canGoForward} aria-label="Next">
-                                <ChevronRight className="h-4 w-4" />
-                            </Button>
-                            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigateToResponse(totalResponses - 1)} disabled={!canGoForward} aria-label="Last">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(currentIndex + 1)} disabled={!canGoForward}>
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">Next Submission</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" onClick={() => navigateToResponse(totalResponses - 1)} disabled={!canGoForward} aria-label="Last">
                                 <ChevronsRight className="h-4 w-4" />
                             </Button>
                         </div>
@@ -235,7 +235,7 @@ export default function ResponseDetailPage() {
                                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Resolved Outcome</p>
                                     <p className="text-base font-black text-foreground">{matchedRule.label}</p>
                                 </div>
-                                <Badge className="ml-auto bg-primary text-primary-foreground">Active Match</Badge>
+                                <Badge className="ml-auto bg-primary text-primary-foreground text-[10px] font-black uppercase">Active Match</Badge>
                             </div>
                         ) : (
                             <div className="flex items-center gap-2 p-3 rounded-xl border border-dashed bg-muted/30">
@@ -247,30 +247,30 @@ export default function ResponseDetailPage() {
                 </Card>
             )}
             
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-xl font-bold">Questionnaire Detail</CardTitle>
-                    <CardDescription>
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b pb-6">
+                    <CardTitle className="text-lg font-black uppercase tracking-tight">Questionnaire Detail</CardTitle>
+                    <CardDescription className="text-xs font-medium">
                         Submitted on {format(new Date(response.submittedAt), "PPP 'at' p")}
                     </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-10">
+                <CardContent className="p-8 space-y-10">
                     {survey.elements.map(element => {
                         if (isQuestion(element)) {
                             const answerValue = answersMap.get(element.id);
                             const points = getPointsForAnswer(element, answerValue);
                             
                             return (
-                                <div key={element.id} className="space-y-3 pb-6 border-b last:border-b-0 last:pb-0">
+                                <div key={element.id} className="space-y-3 pb-6 border-b border-border/50 last:border-b-0 last:pb-0 group">
                                     <div className="flex justify-between items-start gap-4">
-                                        <Label className="text-lg font-bold leading-tight flex-1">{element.title}</Label>
+                                        <Label className="text-lg font-bold leading-tight flex-1 text-foreground group-hover:text-primary transition-colors">{element.title}</Label>
                                         {survey.scoringEnabled && element.enableScoring && (
-                                            <Badge variant={points > 0 ? "default" : "secondary"} className={cn("shrink-0 h-6 font-black tabular-nums", points > 0 ? "bg-green-600" : "")}>
-                                                +{points} Pts
+                                            <Badge variant={points > 0 ? "default" : "secondary"} className={cn("shrink-0 h-6 font-black tabular-nums border-none", points > 0 ? "bg-emerald-500 text-white" : "opacity-40")}>
+                                                {points > 0 ? `+${points}` : '0'} PTS
                                             </Badge>
                                         )}
                                     </div>
-                                    <div className="p-5 bg-muted/30 rounded-xl border-2 border-dashed">
+                                    <div className="p-5 bg-muted/30 rounded-2xl border-2 border-dashed border-border/50 shadow-inner">
                                         <AnswerDisplay question={element} answerValue={answerValue} />
                                     </div>
                                 </div>
@@ -278,7 +278,7 @@ export default function ResponseDetailPage() {
                         }
                         // Render non-question elements for context
                         return (
-                            <div key={element.id} className="opacity-60 grayscale scale-95 origin-left">
+                            <div key={element.id} className="opacity-40 grayscale scale-95 origin-left pointer-events-none">
                                 <SurveyPreviewRenderer element={element} />
                             </div>
                         );

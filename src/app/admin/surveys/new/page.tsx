@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -415,19 +416,8 @@ export default function NewSurveyPage() {
         <FormProvider {...form}>
             <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                    <div className="mb-8 flex justify-between items-end">
-                        <div>
-                            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
-                                <Link href="/admin/surveys">
-                                    <ArrowLeft className="mr-2 h-4 w-4" />
-                                    Back to Directory
-                                </Link>
-                            </Button>
-                            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Create New Survey</h1>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <AiChatEditor className="h-9" />
-                        </div>
+                    <div className="mb-8 flex justify-end items-center">
+                        <AiChatEditor className="h-9" />
                     </div>
 
                     <Stepper currentStep={step} onStepClick={setStep} />

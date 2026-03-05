@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -7,7 +8,7 @@ import { doc } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Monitor, Printer } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Monitor, Printer, History, Clock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -177,30 +178,31 @@ export default function SubmissionDetailPage() {
   return (
     <div className="h-full overflow-hidden flex flex-col bg-muted/10">
        <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
-        <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions`)} className="h-9 px-2 sm:px-3">
-                <ArrowLeft className="sm:mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">Back</span>
-            </Button>
+        <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-2">
+                <History className="h-3.5 w-3.5" />
+                Submission Node
+            </div>
             <div className="hidden sm:block h-6 w-px bg-border mx-1" />
-            <h1 className="text-sm sm:text-lg font-semibold truncate px-1">
+            <h1 className="text-sm sm:text-base font-black uppercase tracking-tight truncate px-1">
               {isLoadingSubmission ? (
                 <Skeleton className="h-5 w-32" />
               ) : (
-                <span className="truncate">
-                  {submission ? `Submitted: ${format(new Date(submission.submittedAt), "MMM d, yyyy")}` : 'Submission'}
+                <span className="truncate flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-primary" />
+                  {submission ? format(new Date(submission.submittedAt), "MMM d, yyyy") : 'Submission'}
                 </span>
               )}
             </h1>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
-          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex">
+        <div className="flex items-center gap-1.5 shrink-0 pr-2">
+          <Button variant="outline" size="sm" onClick={handleFrontEndDownload} disabled={isLoading || isFrontEndDownloading} className="h-9 hidden md:flex rounded-xl font-bold">
             {isFrontEndDownloading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Monitor className="mr-2 h-4 w-4" />}
-            Front-end
+            Front-end Snapshot
           </Button>
-          <Button size="sm" onClick={handleDownload} disabled={isLoading || isDownloading} className="h-9">
+          <Button size="sm" onClick={handleDownload} disabled={isLoading || isDownloading} className="h-9 rounded-xl font-black shadow-lg">
             {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
-            <span className="hidden sm:inline">Download Signed</span>
+            <span className="hidden sm:inline uppercase text-[10px] tracking-widest">Download Signed Copy</span>
             <span className="sm:hidden">PDF</span>
           </Button>
         </div>
@@ -214,7 +216,7 @@ export default function SubmissionDetailPage() {
             >
                 <div className="max-w-4xl mx-auto space-y-4 print:space-y-0">
                     {isLoading ? (
-                        Array.from({ length: 2 }).map((_, i) => <Skeleton className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
+                        Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="w-[8.5in] h-[11in] bg-white shadow-md mb-4 flex-shrink-0" />)
                     ) : pdfDoc && pdfForm && submission ? (
                         Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                             <div key={index} className="page-capture-wrapper mb-4 print:mb-0">
@@ -229,7 +231,7 @@ export default function SubmissionDetailPage() {
                     ) : (
                         <div className="flex flex-col items-center justify-center py-20 text-center text-muted-foreground">
                             <Monitor className="h-12 w-12 mb-4 opacity-20" />
-                            <p>Submission details unavailable.</p>
+                            <p className="font-black uppercase tracking-widest text-xs">Submission detail unavailable</p>
                         </div>
                     )}
                 </div>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -82,7 +83,7 @@ export default function SurveyResultsPage() {
             return;
         }
 
-        const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in element);
+        const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
         const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
         const questionIds = questions.map(q => q.id);
 
@@ -135,10 +136,6 @@ export default function SurveyResultsPage() {
         return (
             <div className="flex h-full w-full flex-col items-center justify-center gap-4 p-4 sm:p-6 md:p-8">
                 <p className="text-lg font-medium">Survey not found.</p>
-                <Button variant="outline" onClick={() => router.push('/admin/surveys')}>
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to All Surveys
-                </Button>
             </div>
         );
     }
@@ -150,15 +147,18 @@ export default function SurveyResultsPage() {
             className="flex h-full flex-col"
         >
             <div className="shrink-0 border-b bg-background p-4 sm:p-6">
-                 <div className="flex items-start justify-between">
-                    <div className="min-w-0 flex-1">
-                        <Button variant="ghost" size="sm" className="-ml-2" onClick={() => router.push("/admin/surveys")}>
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Back
-                        </Button>
-                        <h1 className="truncate text-2xl font-semibold mt-1">{survey.title}</h1>
-                        <p className="truncate text-sm text-muted-foreground">Results & Analytics</p>
-                    </div>
+                 <div className="flex items-center justify-between">
+                    <TabsList>
+                        <TabsTrigger value="responses">
+                            <FileText className="mr-2 h-4 w-4" /> Responses
+                        </TabsTrigger>
+                        <TabsTrigger value="analytics">
+                            <BarChart3 className="mr-2 h-4 w-4" /> Analytics
+                        </TabsTrigger>
+                        <TabsTrigger value="ai-summaries">
+                            <Brain className="mr-2 h-4 w-4" /> AI Summaries
+                        </TabsTrigger>
+                    </TabsList>
                     <div className="flex shrink-0 items-center gap-2">
                         {activeTab === "responses" ? (
                             <Button onClick={handleExport} disabled={!responses || responses.length === 0}>
@@ -166,7 +166,7 @@ export default function SurveyResultsPage() {
                                 Export CSV
                             </Button>
                         ) : (
-                            <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary}>
+                            <RainbowButton onClick={handleGenerateSummary} disabled={isGeneratingSummary} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest">
                                 {isGeneratingSummary ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (
@@ -177,17 +177,6 @@ export default function SurveyResultsPage() {
                         )}
                     </div>
                 </div>
-                 <TabsList className="mt-4">
-                    <TabsTrigger value="responses">
-                        <FileText className="mr-2 h-4 w-4" /> Responses
-                    </TabsTrigger>
-                    <TabsTrigger value="analytics">
-                        <BarChart3 className="mr-2 h-4 w-4" /> Analytics
-                    </TabsTrigger>
-                    <TabsTrigger value="ai-summaries">
-                        <Brain className="mr-2 h-4 w-4" /> AI Summaries
-                    </TabsTrigger>
-                </TabsList>
             </div>
 
             <div className="flex-1 overflow-x-auto">
