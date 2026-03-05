@@ -225,8 +225,8 @@ export default function EditSurveyPage() {
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
 
-    // Phase 2: Navigation Entity Resolution
-    useSetBreadcrumb(survey?.internalName || survey?.title);
+    // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
+    useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const schoolsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -503,7 +503,7 @@ export default function EditSurveyPage() {
             }
         }
         setStep(targetStep);
-        router.push(`${targetStep === 1 ? pathname : `${pathname}?step=${targetStep}`}`, { scroll: false });
+        router.push(`${targetStep === 1 ? pathname : `${targetStep === 1 ? pathname : `${pathname}?step=${targetStep}`}`}`, { scroll: false });
     }
 
     if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4 sm:p-6 md:p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;

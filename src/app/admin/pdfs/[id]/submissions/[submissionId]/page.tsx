@@ -46,7 +46,7 @@ export default function SubmissionDetailPage() {
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submission, isLoading: isLoadingSubmission } = useDoc<Submission>(submissionDocRef);
 
-  // Phase 2: Navigation Entity Resolution
+  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
   useSetBreadcrumb(pdfForm?.name, `/admin/pdfs/${pdfId}`);
 
   React.useEffect(() => {

@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { FileText } from 'lucide-react';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -63,8 +64,6 @@ function AnswerDisplay({ question, answerValue }: { question: SurveyQuestion, an
     return <p className="text-base font-medium">{String(answerValue)}</p>;
 }
 
-import { FileText } from 'lucide-react';
-
 export default function ResponseDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -83,7 +82,7 @@ export default function ResponseDetailPage() {
     const { data: response, isLoading: isResponseLoading } = useDoc<SurveyResponse>(responseDocRef);
     const { data: allResponses, isLoading: areAllResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
 
-    // Phase 2: Navigation Entity Resolution
+    // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const isLoading = isAuthLoading || isSurveyLoading || isResponseLoading || areAllResponsesLoading;

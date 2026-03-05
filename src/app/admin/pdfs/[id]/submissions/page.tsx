@@ -88,7 +88,7 @@ export default function SubmissionsPage() {
   const { data: pdf, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submissions, isLoading: isLoadingSubmissions } = useCollection<Submission>(submissionsQuery);
 
-  // Phase 2: Navigation Entity Resolution
+  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
@@ -901,7 +901,7 @@ function HighFidelityDownloader({
 
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
-                const captureScale = isIOS ? 1.5 : 2;
+                const captureScale = isIOS || isMobile ? 1.5 : 2;
 
                 const canvas = await html2canvas(el, { scale: captureScale, useCORS: true, logging: false, backgroundColor: '#ffffff' });
                 const imgData = canvas.toDataURL('image/jpeg', 0.9);
@@ -994,7 +994,7 @@ function HighFidelityDownloader({
             </div>
             
             <div className="p-4 border-t bg-card text-center print:hidden">
-                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold rounded-xl border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
+                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
                     Stop Batch Operation
                 </Button>
             </div>

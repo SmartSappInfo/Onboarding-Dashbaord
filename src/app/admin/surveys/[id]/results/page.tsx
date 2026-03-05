@@ -44,7 +44,7 @@ export default function SurveyResultsPage() {
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
 
-    // Phase 2: Navigation Entity Resolution
+    // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
     useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const handleGenerateSummary = async () => {

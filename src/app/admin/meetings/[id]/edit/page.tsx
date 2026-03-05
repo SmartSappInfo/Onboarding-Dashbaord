@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -57,7 +58,7 @@ const formSchema = z.object({
   type: z.custom<MeetingType>().refine(value => !!value, { message: "Meeting type is required." }),
   meetingLink: z.string().url({ message: 'Please enter a valid Google Meet URL.' }),
   recordingUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
-  brochureUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  borderUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   // Internal Notifications
   adminAlertsEnabled: z.boolean().default(false),
   adminAlertChannel: z.enum(['email', 'sms', 'both']).default('both'),
@@ -87,8 +88,8 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
-  // Phase 2: Navigation Entity Resolution
-  useSetBreadcrumb(meeting?.schoolName, pathname.replace('/edit', ''));
+  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
+  useSetBreadcrumb(meeting?.schoolName, `/admin/meetings/${meetingId}`);
 
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;

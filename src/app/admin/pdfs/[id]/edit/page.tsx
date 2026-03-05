@@ -226,8 +226,8 @@ export default function EditPdfPage() {
 
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
-  // Phase 2: Navigation Entity Resolution
-  useSetBreadcrumb(pdf?.name);
+  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
+  useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   React.useEffect(() => {
     if (pdf && !hasInitialized) {
