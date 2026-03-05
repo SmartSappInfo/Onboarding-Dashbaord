@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -16,12 +15,14 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Card } from '@/components/ui/card';
 import { 
     Layers, Mail, Smartphone, CheckCircle2, Loader2, XCircle, 
-    Clock, AlertCircle, TrendingUp
+    Clock, AlertCircle, Trophy
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 export default function MessageJobsView() {
     const firestore = useFirestore();
@@ -35,11 +36,11 @@ export default function MessageJobsView() {
 
     const getStatusBadge = (status: MessageJob['status']) => {
         switch (status) {
-            case 'completed': return <Badge className="bg-green-500 text-white border-none gap-1 h-5 text-[8px] uppercase"><CheckCircle2 className="h-2.5 w-2.5" /> Complete</Badge>;
-            case 'processing': return <Badge variant="secondary" className="gap-1 h-5 text-[8px] uppercase bg-blue-50 text-blue-600 border-blue-200"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Processing</Badge>;
-            case 'failed': return <Badge variant="destructive" className="gap-1 h-5 text-[8px] uppercase"><XCircle className="h-2.5 w-2.5" /> Failed</Badge>;
-            case 'queued': return <Badge variant="outline" className="gap-1 h-5 text-[8px] uppercase border-dashed"><Clock className="h-2.5 w-2.5" /> Queued</Badge>;
-            default: return <Badge variant="ghost" className="h-5 text-[8px] uppercase">{status}</Badge>;
+            case 'completed': return <Badge className="bg-green-500 text-white border-none gap-1 h-5 text-[8px] uppercase tracking-widest"><CheckCircle2 className="h-2.5 w-2.5" /> Complete</Badge>;
+            case 'processing': return <Badge variant="secondary" className="gap-1 h-5 text-[8px] uppercase tracking-widest bg-blue-50 text-blue-600 border-blue-200"><Loader2 className="h-2.5 w-2.5 animate-spin" /> Processing</Badge>;
+            case 'failed': return <Badge variant="destructive" className="gap-1 h-5 text-[8px] uppercase tracking-widest"><XCircle className="h-2.5 w-2.5" /> Failed</Badge>;
+            case 'queued': return <Badge variant="outline" className="gap-1 h-5 text-[8px] uppercase tracking-widest border-dashed"><Clock className="h-2.5 w-2.5" /> Queued</Badge>;
+            default: return <Badge variant="ghost" className="h-5 text-[8px] uppercase tracking-widest">{status}</Badge>;
         }
     };
 
@@ -57,7 +58,7 @@ export default function MessageJobsView() {
         return (
             <div className="py-20 text-center border-2 border-dashed rounded-[2rem] bg-muted/10">
                 <Layers className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-muted-foreground font-medium uppercase text-xs tracking-widest">No bulk jobs found in history.</p>
+                <p className="text-muted-foreground font-black uppercase text-[10px] tracking-[0.2em]">No bulk jobs found in history.</p>
             </div>
         );
     }
@@ -77,7 +78,7 @@ export default function MessageJobsView() {
                                         </div>
                                         <div>
                                             <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Batch ID: {job.id.substring(0, 8)}</p>
-                                            <p className="text-sm font-black text-foreground">Bulk {job.channel} Dispatch</p>
+                                            <p className="text-sm font-black text-foreground uppercase tracking-tight">Bulk {job.channel} Dispatch</p>
                                         </div>
                                     </div>
                                     {getStatusBadge(job.status)}
@@ -85,7 +86,7 @@ export default function MessageJobsView() {
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-end text-[10px] font-black uppercase tracking-tighter">
-                                        <span className="text-muted-foreground">Progress</span>
+                                        <span className="text-muted-foreground opacity-60">Progress</span>
                                         <span className="text-foreground">{progress}%</span>
                                     </div>
                                     <Progress value={progress} className="h-1.5" />
@@ -107,8 +108,8 @@ export default function MessageJobsView() {
                                 </div>
                             </div>
                             <div className="bg-muted/30 p-3 px-5 border-t flex justify-between items-center">
-                                <span className="text-[10px] font-medium text-muted-foreground italic">{format(new Date(job.createdAt), "MMM d, HH:mm")}</span>
-                                <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black uppercase tracking-tighter gap-1">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">{format(new Date(job.createdAt), "MMM d, HH:mm")}</span>
+                                <Button variant="ghost" size="sm" className="h-7 text-[9px] font-black uppercase tracking-tighter gap-1 rounded-lg">
                                     <AlertCircle className="h-3 w-3" />
                                     View Details
                                 </Button>

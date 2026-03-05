@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { fetchScheduledMessagesAction, deleteScheduledMessageAction, updateScheduledMessageAction } from '@/lib/mnotify-actions';
 import { cancelScheduledEmailAction } from '@/lib/resend-actions';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
@@ -297,7 +298,7 @@ export default function ScheduledMessagesPage() {
                             />
                             {editingMessage?.channel === 'email' && (
                                 <p className="text-[9px] font-bold text-orange-600 uppercase tracking-tighter px-1 flex items-center gap-1.5">
-                                    <Info className="h-3 w-3" /> Branded Email content is immutable in the queue.
+                                    <div className="p-0.5 bg-orange-100 rounded-full"><Info className="h-2 w-2" /></div> Branded Email content is immutable in the queue.
                                 </p>
                             )}
                         </div>
