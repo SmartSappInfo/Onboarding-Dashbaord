@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../../components/ai-chat-editor';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -222,6 +223,9 @@ export default function EditSurveyPage() {
     }, [firestore, surveyId]);
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
+
+    // Phase 2: Navigation Entity Resolution
+    useSetBreadcrumb(survey?.internalName || survey?.title);
 
     const schoolsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -501,7 +505,7 @@ export default function EditSurveyPage() {
         router.push(`${targetStep === 1 ? pathname : `${pathname}?step=${targetStep}`}`, { scroll: false });
     }
 
-    if (isLoading) return <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    if (isLoading) return <div className="flex h-full w-full items-center justify-center p-4 sm:p-6 md:p-8"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
 
     const stepTransition = {
         initial: { opacity: 0, x: 20 },

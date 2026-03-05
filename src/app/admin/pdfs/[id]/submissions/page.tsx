@@ -47,6 +47,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -85,6 +86,9 @@ export default function SubmissionsPage() {
 
   const { data: pdf, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submissions, isLoading: isLoadingSubmissions } = useCollection<Submission>(submissionsQuery);
+
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
 

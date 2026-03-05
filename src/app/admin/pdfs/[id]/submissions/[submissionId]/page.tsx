@@ -13,6 +13,7 @@ import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -43,6 +44,9 @@ export default function SubmissionDetailPage() {
 
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submission, isLoading: isLoadingSubmission } = useDoc<Submission>(submissionDocRef);
+
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb(pdfForm?.name, `/admin/pdfs/${pdfId}`);
 
   React.useEffect(() => {
     const loadPdf = async () => {

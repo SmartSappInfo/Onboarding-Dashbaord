@@ -45,6 +45,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import QuickTemplateDialog from '@/app/admin/messaging/components/quick-template-dialog';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -224,6 +225,9 @@ export default function EditPdfPage() {
 
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb(pdf?.name);
+
   React.useEffect(() => {
     if (pdf && !hasInitialized) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));

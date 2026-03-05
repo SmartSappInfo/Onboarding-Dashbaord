@@ -14,6 +14,7 @@ import SurveyPreviewRenderer from '../../../components/survey-preview-renderer';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -78,6 +79,9 @@ export default function ResponseDetailPage() {
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: response, isLoading: isResponseLoading } = useDoc<SurveyResponse>(responseDocRef);
     const { data: allResponses, isLoading: areAllResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+
+    // Phase 2: Navigation Entity Resolution
+    useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const isLoading = isAuthLoading || isSurveyLoading || isResponseLoading || areAllResponsesLoading;
 

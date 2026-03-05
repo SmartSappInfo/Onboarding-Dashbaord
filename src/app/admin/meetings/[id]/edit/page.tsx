@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
@@ -45,6 +45,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { triggerInternalNotification } from '@/lib/notification-engine';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -72,6 +73,7 @@ type FormData = z.infer<typeof formSchema>;
 export default function EditMeetingPage() {
   const params = useParams();
   const meetingId = params.id as string;
+  const pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
@@ -86,6 +88,9 @@ export default function EditMeetingPage() {
   
   const { data: meeting, isLoading: isLoadingMeeting } = useDoc<Meeting>(meetingDocRef);
   
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb(meeting?.schoolName, pathname.replace('/edit', ''));
+
   const schoolsCol = useMemoFirebase(() => {
     if (!firestore) return null;
     return collection(firestore, 'schools');

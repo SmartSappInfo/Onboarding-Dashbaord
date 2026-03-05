@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -6,7 +5,7 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { ArrowLeft, Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck } from 'lucide-react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { doc, updateDoc, collection, query, orderBy } from 'firebase/firestore';
 
@@ -30,6 +29,7 @@ import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
 import { FocalPersonManager } from '../../components/FocalPersonManager';
 import { logActivity } from '@/lib/activity-logger';
+import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 const schoolEditSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -71,6 +71,7 @@ interface EditFormProps {
 function EditSchoolForm({ schoolId }: EditFormProps) {
   const { toast } = useToast();
   const router = useRouter();
+  const pathname = usePathname();
   const firestore = useFirestore();
   const { user } = useUser();
 
@@ -80,6 +81,9 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   }, [firestore, schoolId]);
 
   const { data: school, isLoading: isSchoolLoading } = useDoc<School>(schoolDocRef);
+
+  // Phase 2: Navigation Entity Resolution
+  useSetBreadcrumb(school?.name, pathname.replace('/edit', ''));
 
   // Fetch all authorized users to ensure the selection list is comprehensive
   const usersQuery = useMemoFirebase(() => {

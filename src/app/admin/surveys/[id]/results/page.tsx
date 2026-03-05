@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import ResponsesListView from "./components/responses-list-view";
 import AnalyticsView from "./components/analytics-view";
 import AISummariesView from "./components/ai-summaries-view";
+import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
 
 export default function SurveyResultsPage() {
     const params = useParams();
@@ -41,6 +42,9 @@ export default function SurveyResultsPage() {
 
     const { data: survey, isLoading: isSurveyLoading } = useDoc<Survey>(surveyDocRef);
     const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+
+    // Phase 2: Navigation Entity Resolution
+    useSetBreadcrumb(survey?.internalName || survey?.title, `/admin/surveys/${surveyId}`);
 
     const handleGenerateSummary = async () => {
         if (!survey || !responses || !firestore) {
@@ -78,7 +82,7 @@ export default function SurveyResultsPage() {
             return;
         }
 
-        const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in el);
+        const questions = survey.elements.filter((el): el is SurveyQuestion => 'isRequired' in element);
         const questionIdToTitleMap = new Map(questions.map(q => [q.id, q.title]));
         const questionIds = questions.map(q => q.id);
 
