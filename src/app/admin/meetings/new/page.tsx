@@ -8,7 +8,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { collection, addDoc, query, where, getDocs } from 'firebase/firestore';
 import { 
-    ArrowLeft, 
     Calendar, 
     Loader2, 
     Plus, 
@@ -42,6 +41,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { triggerInternalNotification } from '@/lib/notification-engine';
+import { format } from 'date-fns';
 
 const formSchema = z.object({
   school: z.custom<School>().refine(value => !!value, { message: "School is required." }),
@@ -200,24 +200,16 @@ export default function NewMeetingPage() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8">
-        <div className="flex items-center justify-between">
-            <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold">
-                <Link href="/admin/meetings">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Directory
-                </Link>
-            </Button>
+        <div className="flex items-center justify-end">
             <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-background px-3 py-1 rounded-full border shadow-sm">
                 <Zap className="h-3 w-3 text-primary" />
                 Draft Mode
             </div>
         </div>
 
-        <h1 className="text-4xl font-black tracking-tight text-foreground uppercase">Schedule Session</h1>
-
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                 <div className="lg:col-span-2 space-y-8">
                     <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
                     <CardHeader className="bg-muted/30 border-b pb-6">
@@ -418,13 +410,10 @@ export default function NewMeetingPage() {
                             type="submit" 
                             size="lg" 
                             disabled={form.formState.isSubmitting}
-                            className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95"
+                            className="w-full h-16 rounded-2xl font-black text-xl shadow-2xl shadow-primary/20 gap-3 transition-all active:scale-95 uppercase tracking-widest"
                         >
                             {form.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Plus className="h-6 w-6" />}
-                            Initialize Session
-                        </Button>
-                        <Button type="button" variant="ghost" className="w-full mt-4 font-bold text-muted-foreground" onClick={() => router.push('/admin/meetings')}>
-                            Discard
+                            Schedule Session
                         </Button>
                     </div>
                 </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -54,16 +53,9 @@ export default function ActivitiesPage() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="max-w-5xl mx-auto space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-                            <History className="h-8 w-8 text-primary" />
-                            Platform Activity
-                        </h1>
-                        <p className="text-muted-foreground font-medium">A chronological audit trail of all platform-wide events.</p>
-                    </div>
+                <div className="flex justify-end">
                     {hasActiveFilters && (
-                        <Button variant="ghost" onClick={clearFilters} className="text-xs font-black uppercase tracking-widest gap-2 h-8 rounded-xl bg-primary/5 text-primary hover:bg-primary/10">
+                        <Button variant="ghost" onClick={clearFilters} className="text-xs font-black uppercase tracking-widest gap-2 h-8 rounded-xl bg-primary/5 text-primary hover:bg-primary/10 transition-all">
                             <X className="h-3 w-3" /> Clear All Filters
                         </Button>
                     )}
@@ -149,7 +141,7 @@ export default function ActivitiesPage() {
 
                 <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[600px]">
                     <div className="mb-8 flex items-center gap-3">
-                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Live Feed</Badge>
+                        <Badge variant="outline" className="bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary">Audit Log</Badge>
                         <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
                     </div>
                     <ActivityTimeline 

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo } from 'react';
@@ -48,15 +47,6 @@ export default function UsersPage() {
           title: 'User Updated',
           description: `${user.name} has been ${isAuthorized ? 'authorized' : 'de-authorized'}.`,
         });
-
-        // Automation Trigger: Notify user when authorized
-        if (isAuthorized && user.email) {
-            // We use a generic one-off dispatch logic if a template is not yet selected by default
-            // In a production environment, you would use a 'USER_APPROVED' template ID
-            // Here we just fire the engine to log the intent
-            console.log(`>>> [AUTOMATION] User ${user.name} authorized. Triggering messaging logic.`);
-            // Note: sendMessage requires a real templateId. If none exists, it handles the failure gracefully.
-        }
     } catch (e) {
         const permissionError = new FirestorePermissionError({
           path: userDocRef.path,
@@ -88,44 +78,39 @@ export default function UsersPage() {
 
 
   if (error) {
-    return <div className="text-destructive p-8">Error loading users: {error.message}</div>;
+    return <div className="text-destructive p-8 text-left">Error loading users: {error.message}</div>;
   }
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="mb-8">
-          <h1 className="text-3xl font-black tracking-tight text-foreground uppercase">Team Management</h1>
-          <p className="text-muted-foreground font-medium">Control workspace access and manage administrative profiles.</p>
-      </div>
-
-      <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
+      <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
         <Table>
           <TableHeader className="bg-muted/30">
             <TableRow>
-              <TableHead className="w-16 pl-6 text-[10px] font-bold uppercase tracking-widest">Brand</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Name</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Email Identity</TableHead>
-              <TableHead className="text-[10px] font-bold uppercase tracking-widest">Phone</TableHead>
-              <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest">Joined On</TableHead>
-              <TableHead className="w-[120px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest">Authorized</TableHead>
+              <TableHead className="w-16 pl-6 text-[10px] font-bold uppercase tracking-widest py-4">Brand</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Name</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Email Identity</TableHead>
+              <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Phone</TableHead>
+              <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest py-4">Joined On</TableHead>
+              <TableHead className="w-[120px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest py-4">Authorized</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell className="pl-6"><Skeleton className="h-8 w-8" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
-                  <TableCell><Skeleton className="h-5 w-full" /></TableCell>
-                  <TableCell className="text-right pr-6"><Skeleton className="h-6 w-10 ml-auto" /></TableCell>
+                  <TableCell className="pl-6"><Skeleton className="h-8 w-8 rounded-lg" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-32 rounded" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-full rounded" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-3/4 rounded" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-full rounded" /></TableCell>
+                  <TableCell className="text-right pr-6"><Skeleton className="h-6 w-10 ml-auto rounded-full" /></TableCell>
                 </TableRow>
               ))
             ) : users && users.length > 0 ? (
               users.map((user) => (
                 <TableRow key={user.id} className="group hover:bg-muted/30 transition-colors">
-                  <TableCell className="pl-6">
+                  <TableCell className="pl-6 py-4">
                       <Popover>
                         <PopoverTrigger asChild>
                           <Button variant="outline" className="w-8 h-8 p-0 border-2 rounded-lg" style={{ borderColor: user.color || '#ccc' }}>
@@ -158,16 +143,16 @@ export default function UsersPage() {
                   </TableCell>
                   <TableCell className="font-bold">
                     <div className="flex items-center gap-3">
-                       <Avatar className="h-9 w-9">
+                       <Avatar className="h-9 w-9 ring-2 ring-white shadow-sm">
                         <AvatarImage src={user.photoURL} alt={user.name} />
                         <AvatarFallback className="font-bold text-xs">{getInitials(user.name)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-sm font-black">{user.name}</span>
+                      <span className="text-sm font-black uppercase tracking-tight">{user.name}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-xs font-medium text-muted-foreground">{user.email}</TableCell>
                   <TableCell className="text-xs font-mono">{user.phone || <span className="opacity-20">—</span>}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
+                  <TableCell className="text-xs text-muted-foreground uppercase tabular-nums">
                     {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : 'N/A'}
                   </TableCell>
                   <TableCell className="text-right pr-6">
@@ -181,7 +166,7 @@ export default function UsersPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">No users found.</TableCell>
+                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">No users found in the repository.</TableCell>
               </TableRow>
             )}
           </TableBody>
