@@ -1074,15 +1074,19 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             });
 
             await Promise.allSettled(automationPromises);
-            setIsSubmitting(false);
-
-            // If not showing the debug modal, redirect automatically now that automations are done
+            
+            // If not showing the debug modal, handle redirection
             if (!survey.showDebugProcessingModal) {
                 if (survey.scoringEnabled) {
                     router.push(`/surveys/${survey.slug}/result/${submissionId}`);
+                    // Maintain isSubmitting = true to keep loader visible during navigation
                 } else {
                     onSubmitted();
+                    setIsSubmitting(false);
                 }
+            } else {
+                setIsSubmitting(false); // Stop loader so the diagnostic modal can be seen
+                setIsStatusModalOpen(true);
             }
 
         } catch (error: any) {
@@ -1174,92 +1178,94 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         <div className="pb-24">
             <AnimatePresence>
                 {isSubmitting && (
-                    <SurveyLoader label="Synchronizing Intelligence Hub..." />
+                    <SurveyLoader label="We're Analysing Your Inputs..." />
                 )}
             </AnimatePresence>
 
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
-                {isCoverPage ? (
-                    <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                        {showTitles && (
-                            <>
-                                {survey.bannerImageUrl && (
-                                    <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
-                                        <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
+            <div className={cn("transition-all duration-500", isSubmitting && "opacity-0 pointer-events-none invisible h-0 overflow-hidden")}>
+                <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-4 sm:space-y-12">
+                    {isCoverPage ? (
+                        <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+                            {showTitles && (
+                                <>
+                                    {survey.bannerImageUrl && (
+                                        <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
+                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
+                                        </div>
+                                    )}
+                                    <div className="space-y-5 max-w-3xl mx-auto px-4">
+                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">{survey.title}</h1>
+                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                     </div>
-                                )}
-                                <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                    <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">{survey.title}</h1>
-                                    <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
+                                </>
+                            )}
+                            <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
+                                {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
+                            </button>
+                        </div>
+                    ) : (
+                        <>
+                            {pageSection && (
+                                <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
+                                    {pageSection.description && (
+                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                                    )}
                                 </div>
-                            </>
-                        )}
-                        <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
-                            {survey.startButtonText || "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
-                        </button>
-                    </div>
-                ) : (
-                    <>
-                        {pageSection && (
-                            <div className="text-center space-y-4 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight" dangerouslySetInnerHTML={{ __html: pageSection.title || '' }} />
-                                {pageSection.description && (
-                                    <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: pageSection.description }} />
+                            )}
+
+                            <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} />
+                            
+                            <Card className="border-t-8 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
+                                <CardContent className="p-6 sm:p-10 space-y-10 sm:space-y-12">
+                                    <div className="space-y-10 sm:space-y-12">
+                                        {currentElements.map((el) => {
+                                            if (el.id === pageSection?.id) return null;
+                                            return (
+                                                <ElementRenderer 
+                                                    key={el.id}
+                                                    element={el}
+                                                    control={form.control}
+                                                    errors={form.formState.errors}
+                                                    isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
+                                                    isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
+                                                    surveyId={survey.id}
+                                                    onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
+                                                    clearError={(id) => form.clearErrors(id)}
+                                                />
+                                            )
+                                        })}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
+                                {isMultiPage && currentPageIndex > 0 && (
+                                    <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-muted-foreground hover:text-foreground w-full sm:w-auto text-base uppercase tracking-tight gap-2" onClick={handlePrev} disabled={isSubmitting}>
+                                        <ArrowLeft className="h-5 w-5" /> Back
+                                    </Button>
+                                )}
+                                {isMultiPage && currentPageIndex < pages.length - 1 && (
+                                    <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-bold shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-base uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
+                                        Next <ArrowRight className="ml-2 h-5 w-5" />
+                                    </Button>
+                                )}
+                                {currentPageIndex === pages.length - 1 && (
+                                    <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
+                                        {isSubmitting ? (
+                                            <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
+                                        ) : isSubmitDisabled ? (
+                                            'Submission Disabled'
+                                        ) : (
+                                            'Submit Survey'
+                                        )}
+                                    </Button>
                                 )}
                             </div>
-                        )}
-
-                        <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} />
-                        
-                        <Card className="border-t-8 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
-                            <CardContent className="p-6 sm:p-10 space-y-10 sm:space-y-12">
-                                <div className="space-y-10 sm:space-y-12">
-                                    {currentElements.map((el) => {
-                                        if (el.id === pageSection?.id) return null;
-                                        return (
-                                            <ElementRenderer 
-                                                key={el.id}
-                                                element={el}
-                                                control={form.control}
-                                                errors={form.formState.errors}
-                                                isVisible={elementStates[el.id]?.isVisible ?? !el.hidden}
-                                                isRequired={elementStates[el.id]?.isRequired ?? (isQuestion(el) && el.isRequired)}
-                                                surveyId={survey.id}
-                                                onAutoAdvance={currentPageIndex < pages.length - 1 ? handleNext : undefined}
-                                                clearError={(id) => form.clearErrors(id)}
-                                            />
-                                        )
-                                    })}
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
-                            {isMultiPage && currentPageIndex > 0 && (
-                                <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-muted-foreground hover:text-foreground w-full sm:w-auto text-base uppercase tracking-tight gap-2" onClick={handlePrev} disabled={isSubmitting}>
-                                    <ArrowLeft className="h-5 w-5" /> Back
-                                </Button>
-                            )}
-                            {isMultiPage && currentPageIndex < pages.length - 1 && (
-                                <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-bold shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-base uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
-                                    Next <ArrowRight className="ml-2 h-5 w-5" />
-                                </Button>
-                            )}
-                            {currentPageIndex === pages.length - 1 && (
-                                <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
-                                    {isSubmitting ? (
-                                        <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
-                                    ) : isSubmitDisabled ? (
-                                        'Submission Disabled'
-                                    ) : (
-                                        'Submit Survey'
-                                    )}
-                                </Button>
-                            )}
-                        </div>
-                    </>
-                )}
-            </form>
+                        </>
+                    )}
+                </form>
+            </div>
 
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
                 <DialogContent className="sm:max-w-md">

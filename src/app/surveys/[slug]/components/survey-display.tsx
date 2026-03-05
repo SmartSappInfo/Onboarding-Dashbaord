@@ -95,7 +95,7 @@ export default function SurveyDisplay({ survey }: SurveyDisplayProps) {
     const bgColor = survey.backgroundColor || '#F1F5F9';
 
     if (!isMounted) {
-        return <SurveyLoader label="Initializing Blueprint..." />;
+        return <SurveyLoader label="Customizing Your Survey..." />;
     }
 
     if (isSubmitted) {
