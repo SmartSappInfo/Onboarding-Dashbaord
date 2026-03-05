@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -569,7 +568,7 @@ export default function EditSurveyPage() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
-                                                        <div><CardTitle className="text-lg font-black uppercase tracking-tight">Survey Details</CardTitle></div>
+                                                        <div><CardTitle className="text-sm font-black uppercase tracking-tight">Survey Details</CardTitle></div>
                                                     </div>
                                                     <SurveyPreviewButton variant="outline" size="sm" className="h-8 rounded-xl font-bold border-primary/20">
                                                         <Eye className="mr-2 h-3 w-3" /> Preview Cover
@@ -578,10 +577,10 @@ export default function EditSurveyPage() {
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <FormField control={form.control} name="internalName" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Name (Administrative)</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Name (Administrative)</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-sm" /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="title" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Public Survey Title</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
+                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Public Survey Title</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-sm" /></FormControl><FormMessage /></FormItem>
                                                 )} />
                                                 <FormField control={form.control} name="description" render={({ field }) => (
                                                     <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description / Instructions</FormLabel><FormControl><Textarea placeholder="Share your honest feedback..." {...field} className="min-h-[150px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" /></FormControl><FormMessage /></FormItem>
@@ -614,7 +613,7 @@ export default function EditSurveyPage() {
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Organization</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Organization</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
@@ -648,7 +647,7 @@ export default function EditSurveyPage() {
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Branding</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Branding</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
@@ -664,7 +663,7 @@ export default function EditSurveyPage() {
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Appearance</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Appearance</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6">
@@ -724,7 +723,7 @@ export default function EditSurveyPage() {
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                                         <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
                                             <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-lg font-black uppercase tracking-tight">Publish Logic</CardTitle></div></div>
+                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-sm font-black uppercase tracking-tight">Publish Logic</CardTitle></div></div>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-8 bg-background">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -791,7 +790,7 @@ export default function EditSurveyPage() {
                 open={isQuickCreateOpen}
                 onOpenChange={setIsQuickCreateOpen}
                 channel="email"
-                category="surveys"
+                category="forms"
                 fixedSourceId={surveyId}
                 onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })}
             />
