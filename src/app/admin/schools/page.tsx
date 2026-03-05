@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -135,9 +134,13 @@ export default function SchoolsPage() {
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
         <div className="flex flex-col gap-6 mb-8">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-black tracking-tight text-foreground">Schools Directory</h1>
-                <Button asChild className="rounded-xl font-bold shadow-lg"><Link href="/admin/schools/new">Add New School</Link></Button>
+            <div className="flex justify-end items-center">
+                <Button asChild className="rounded-xl font-bold shadow-lg">
+                    <Link href="/admin/schools/new">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add New School
+                    </Link>
+                </Button>
             </div>
             
             <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">

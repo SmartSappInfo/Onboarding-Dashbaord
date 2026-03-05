@@ -86,12 +86,15 @@ export default function SchoolDetailPage() {
     return (
         <div className="h-full overflow-y-auto bg-muted/10 pb-32">
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <Button variant="ghost" className="-ml-2 text-muted-foreground hover:text-foreground font-bold" onClick={() => router.push('/admin/schools')}><ArrowLeft className="mr-2 h-4 w-4" /> Back to Schools</Button>
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => setIsLogModalOpen(true)}><MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log Interaction</Button>
-                        <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/schools/${school.id}/edit`)}><PenSquare className="mr-2 h-4 w-4" /> Edit Profile</Button>
-                    </div>
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => setIsLogModalOpen(true)}>
+                        <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
+                        Log Interaction
+                    </Button>
+                    <Button className="rounded-xl font-black shadow-lg h-10 px-6" onClick={() => router.push(`/admin/schools/${school.id}/edit`)}>
+                        <PenSquare className="mr-2 h-4 w-4" /> 
+                        Edit Profile
+                    </Button>
                 </div>
 
                 <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
@@ -106,8 +109,7 @@ export default function SchoolDetailPage() {
                         <div className="relative h-44 w-44 rounded-[3rem] bg-white p-3 shadow-2xl ring-8 ring-white overflow-hidden border border-border/50 shrink-0">
                             {school.logoUrl ? <Image src={school.logoUrl} alt={school.name} fill className="object-contain p-6" /> : <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-5xl font-black">{school.initials || school.name.substring(0, 2)}</div>}
                         </div>
-                        <div className="flex-1 space-y-2 pt-4">
-                            <h1 className="text-4xl md:text-5xl font-black tracking-tight text-foreground leading-tight">{school.name}</h1>
+                        <div className="flex-1 space-y-4 pt-4">
                             <div className="flex items-center gap-3">
                                 <Badge variant="outline" className="font-black border-2 text-primary border-primary/20 bg-primary/5">{school.initials}</Badge>
                                 <Separator orientation="vertical" className="h-4" />

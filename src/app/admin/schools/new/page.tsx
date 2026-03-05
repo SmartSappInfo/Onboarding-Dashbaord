@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -146,9 +145,6 @@ export default function NewSchoolPage() {
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8">
-        <Button asChild variant="ghost" className="-ml-2 mb-2 text-muted-foreground hover:text-foreground font-bold"><Link href="/admin/schools"><ArrowLeft className="mr-2 h-4 w-4" /> Back to Schools</Link></Button>
-        <div className="flex flex-col gap-1"><h1 className="text-4xl font-black tracking-tight text-foreground uppercase">Campus Registration</h1><p className="text-muted-foreground font-medium uppercase tracking-tighter text-xs">Establish identity and geographic assignment for a new institution.</p></div>
-
         <FormProvider {...methods}>
           <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
