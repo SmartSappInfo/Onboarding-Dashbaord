@@ -5,7 +5,7 @@ import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, g
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, PDFForm, MessageStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -1066,7 +1066,7 @@ export default function MessageTemplatesPage() {
                                                                 </SelectTrigger>
                                                                 <SelectContent className="rounded-xl">
                                                                     <SelectItem value="none">No Wrapper (Raw)</SelectItem>
-                                                                    {styles?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                    {styles?.map(s => <SelectItem key={t.id} value={s.id}>{s.name}</SelectItem>)}
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
@@ -1194,11 +1194,7 @@ export default function MessageTemplatesPage() {
                                             <SelectValue placeholder="Category" />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
-                                            <SelectItem value="all">All Categories</SelectItem>
-                                            <SelectItem value="general">General</SelectItem>
-                                            <SelectItem value="meetings">Meetings</SelectItem>
-                                            <SelectItem value="surveys">Surveys</SelectItem>
-                                            <SelectItem value="forms">Doc Signing</SelectItem>
+                                            {['all', 'general', 'meetings', 'surveys', 'forms'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                                         </SelectContent>
                                     </Select>
                                 </div>
