@@ -52,18 +52,6 @@ export default function SchoolComparisonClient() {
 
         {/* Choice Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 px-2">
-          {/* Parent Option */}
-          <SelectionCard
-            title="I'm A Parent"
-            description="How do I know if my child’s school is doing the right things?"
-            href="/surveys/parents-survey"
-            image={parentImg}
-            icon={Users}
-            delay={0.2}
-            color="from-orange-500 to-rose-500"
-            label="FOR FAMILIES"
-          />
-
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
@@ -71,9 +59,21 @@ export default function SchoolComparisonClient() {
             href="/surveys/schools-survey"
             image={schoolImg}
             icon={Building2}
-            delay={0.4}
+            delay={0.2}
             color="from-blue-600 to-indigo-600"
             label="FOR INSTITUTIONS"
+          />
+
+          {/* Parent Option */}
+          <SelectionCard
+            title="I'm A Parent"
+            description="How do I know if my child’s school is doing the right things?"
+            href="/surveys/parents-survey"
+            image={parentImg}
+            icon={Users}
+            delay={0.4}
+            color="from-orange-500 to-rose-500"
+            label="FOR FAMILIES"
           />
         </div>
       </div>
@@ -141,7 +141,7 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
             </p>
 
             <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-[0.2em] pt-4">
-              Take Survey Now!
+              Find Out Now
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
                 <ArrowRight className="h-5 w-5" />
                 <div className="absolute inset-0 rounded-2xl bg-primary animate-ping opacity-20" />
