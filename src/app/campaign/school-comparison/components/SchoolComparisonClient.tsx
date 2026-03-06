@@ -33,11 +33,11 @@ export default function SchoolComparisonClient() {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-6 md:space-y-12 py-6 md:py-12 px-4 sm:px-8">
+      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-6 py-6 md:py-12 px-4 sm:px-8">
         {/* Header Section */}
-        <div className="text-center space-y-3 md:space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
-          <Link href="/" className="inline-block hover:scale-105 transition-transform">
-            <SmartSappLogo className="h-8 md:h-10 mx-auto" />
+        <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
+          <Link href="/" className="inline-block hover:scale-105 transition-transform mb-2">
+            <SmartSappLogo className="h-6 md:h-7 mx-auto" />
           </Link>
           <div className="space-y-2 md:space-y-3">
             <h1 className="text-2xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4">
@@ -139,8 +139,8 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
               {description}
             </p>
 
-            <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-[0.2em] pt-2 md:pt-4">
-              Find Out Now
+            <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-tighter leading-tight pt-2 md:pt-4">
+              Take Survey Now to Find Out!
               <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl md:rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
                 <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
                 <div className="absolute inset-0 rounded-xl md:rounded-2xl bg-primary animate-ping opacity-20" />
