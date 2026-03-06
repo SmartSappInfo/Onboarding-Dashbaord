@@ -55,7 +55,7 @@ export default function SchoolComparisonClient() {
           {/* Parent Option */}
           <SelectionCard
             title="I'm A Parent"
-            description="How does my child’s school compares to other schools?"
+            description="How do I know if my child’s school is doing the right things?"
             href="/surveys/parents-survey"
             image={parentImg}
             icon={Users}
@@ -67,7 +67,7 @@ export default function SchoolComparisonClient() {
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
-            description="How does my school compares to the competition?"
+            description="How do I know if my school is the preferred choice for parents?"
             href="/surveys/schools-survey"
             image={schoolImg}
             icon={Building2}
