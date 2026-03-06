@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -77,7 +78,7 @@ const blockIcons: Record<string, React.ElementType> = {
     header: Layout,
     footer: Layout,
     logo: Zap,
-    'score-card': Trophy,
+    'score-card': TrophyIcon,
 };
 
 // --- SHARED UI COMPONENTS ---
@@ -1217,7 +1218,7 @@ export default function MessageTemplatesPage() {
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => {
-                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key);
+                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(a.key);
                                                                 return (
                                                                     <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className={cn(
                                                                         "w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group",
@@ -1458,11 +1459,11 @@ export default function MessageTemplatesPage() {
                                         {/* PREVIEW CANVAS */}
                                         <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-center p-1.5">
                                             {template.channel === 'email' ? (
-                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex justify-center">
-                                                    <div className="absolute inset-0 transform origin-top scale-[0.45] w-[222%] h-[222%] pointer-events-none p-4">
+                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex items-start justify-center">
+                                                    <div className="relative transform origin-top scale-[0.42] w-[238%] h-[238%] pointer-events-none p-4 shrink-0">
                                                         <iframe 
                                                             srcDoc={template.body} 
-                                                            className="w-full h-full border-none bg-white rounded-3xl pointer-events-none shadow-xl" 
+                                                            className="w-full h-full border-none bg-white rounded-[2rem] pointer-events-none shadow-2xl" 
                                                             title="preview"
                                                         />
                                                     </div>
@@ -1536,7 +1537,7 @@ export default function MessageTemplatesPage() {
                                 </div>
                             ) : (
                                 <div className="flex flex-col h-full bg-white">
-                                    <div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Subject Line</span><p className="font-black text-xl text-foreground">{previewTemplate?.subject || '(No Subject)'}</p></div>
+                                    <div className="p-8 bg-muted/20 border-b space-y-2"><span className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.3em] opacity-40">Resolved Subject Payload</span><p className="font-black text-xl text-foreground">{resolveVariables(previewTemplate?.subject || '', {})} </p></div>
                                     <iframe srcDoc={resolvedPreview(previewTemplate!, {})} className="flex-1 w-full border-none bg-white" title="High Fidelity Preview" />
                                 </div>
                             )}
