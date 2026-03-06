@@ -596,6 +596,16 @@ const getInitialElementStates = (elements: SurveyElement[]): Record<string, Elem
     return initialStates;
 };
 
+const getRequiredMessage = (type: string) => {
+    if (['yes-no', 'multiple-choice', 'dropdown', 'rating'].includes(type)) {
+        return 'You must select one option';
+    }
+    if (type === 'checkboxes') {
+        return 'You must select at least one option';
+    }
+    return 'This field is required.';
+};
+
 function SurveyStepper({ pages, pageStatuses, currentIndex, onStepClick }: { pages: SurveyElement[][], pageStatuses: {isValid: boolean}[], currentIndex: number, onStepClick: (idx: number) => void }) {
     const hasCover = pages[0].length === 0;
     const actualPagesCount = hasCover ? pages.length - 1 : pages.length;
@@ -808,7 +818,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             const state = elementStates[q.id];
             if (state?.isVisible && state?.isRequired) {
                 if (isValueEmpty(data[q.id], q.type)) {
-                    form.setError(q.id, { type: 'manual', message: 'This field is required.' });
+                    form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
                     const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
                     missing.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: pageIdx });
@@ -1112,7 +1122,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 return isValueEmpty(formData[q.id], q.type);
             });
             if (invalidQuestionsOnPage.length > 0) {
-                invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: 'This field is required.' }));
+                invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
                 return; 
             }
         }
@@ -1147,7 +1157,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                     return isValueEmpty(formData[q.id], q.type);
                 });
                 if (invalidQuestionsOnPage.length > 0) {
-                    invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: 'This field is required.' }));
+                    invalidQuestionsOnPage.forEach(q => form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) }));
                     toast({ variant: 'destructive', title: 'Action Required', description: 'Please complete the required fields in this section.' });
                     return;
                 }
@@ -1332,7 +1342,9 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                     ) : task.status === 'success' ? (
                                         <CheckCircle2 className="h-5 w-5 text-emerald-500 animate-in zoom-in duration-300" />
                                     ) : task.status === 'skipped' ? (
-                                        <Info className="h-5 w-5 text-amber-500" />
+                                        <div className="p-1 rounded-full border border-amber-200">
+                                            <Info className="h-3 w-3 text-amber-500" />
+                                        </div>
                                     ) : (
                                         <TooltipProvider>
                                             <Tooltip>
