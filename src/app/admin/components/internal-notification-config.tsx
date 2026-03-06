@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Bell, UserCheck, Users, Mail, Smartphone, Info, PlusCircle } from 'lucide-react';
+import { Bell, UserCheck, Users, Mail, Smartphone, Info, PlusCircle, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Separator } from '@/components/ui/separator';
@@ -27,7 +27,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
     const enabled = watch(`${prefix}sEnabled`);
     const channel = watch(`${prefix}Channel`);
 
-    const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean } | null>(null);
+    const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean, templateId?: string } | null>(null);
 
     const usersQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -163,14 +163,32 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                             <Mail className="h-3 w-3" /> Internal Email Template
                                         </Label>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
-                                            onClick={() => setQuickCreateState({ channel: 'email', open: true })}
-                                        >
-                                            <PlusCircle className="h-3 w-3" /> New
-                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                            <Controller
+                                                name={`${prefix}EmailTemplateId`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    field.value && field.value !== 'none' ? (
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'email', open: true, templateId: field.value })}
+                                                        >
+                                                            <Pencil className="h-3 w-3" /> Edit
+                                                        </Button>
+                                                    ) : null
+                                                )}
+                                            />
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                onClick={() => setQuickCreateState({ channel: 'email', open: true })}
+                                            >
+                                                <PlusCircle className="h-3 w-3" /> New
+                                            </Button>
+                                        </div>
                                     </div>
                                     <Controller
                                         name={`${prefix}EmailTemplateId`}
@@ -196,14 +214,32 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                                             <Smartphone className="h-3 w-3" /> Internal SMS Alert
                                         </Label>
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
-                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
-                                        >
-                                            <PlusCircle className="h-3 w-3" /> New
-                                        </Button>
+                                        <div className="flex items-center gap-1">
+                                            <Controller
+                                                name={`${prefix}SmsTemplateId`}
+                                                control={control}
+                                                render={({ field }) => (
+                                                    field.value && field.value !== 'none' ? (
+                                                        <Button 
+                                                            type="button" 
+                                                            variant="ghost" 
+                                                            className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                            onClick={() => setQuickCreateState({ channel: 'sms', open: true, templateId: field.value })}
+                                                        >
+                                                            <Pencil className="h-3 w-3" /> Edit
+                                                        </Button>
+                                                    ) : null
+                                                )}
+                                            />
+                                            <Button 
+                                                type="button" 
+                                                variant="ghost" 
+                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1 rounded-lg"
+                                                onClick={() => setQuickCreateState({ channel: 'sms', open: true })}
+                                            >
+                                                <PlusCircle className="h-3 w-3" /> New
+                                            </Button>
+                                        </div>
                                     </div>
                                     <Controller
                                         name={`${prefix}SmsTemplateId`}
@@ -233,6 +269,7 @@ export default function InternalNotificationConfig({ prefix = "adminAlert", cate
                     onOpenChange={(o) => !o && setQuickCreateState(null)}
                     channel={quickCreateState.channel}
                     category={category}
+                    templateId={quickCreateState.templateId}
                     onCreated={(id) => {
                         if (quickCreateState.channel === 'email') {
                             setValue(`${prefix}EmailTemplateId`, id, { shouldDirty: true });

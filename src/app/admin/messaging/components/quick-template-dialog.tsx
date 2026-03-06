@@ -35,7 +35,8 @@ import {
     Zap,
     Trophy,
     Save,
-    CopyPlus
+    CopyPlus,
+    Pencil
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
