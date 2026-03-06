@@ -408,6 +408,7 @@ export default function MessageTemplatesPage() {
     const [previewTemplate, setPreviewTemplate] = React.useState<MessageTemplate | null>(null);
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
+    const [channelFilter, setChannelFilter] = React.useState<string>('all');
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
@@ -663,7 +664,7 @@ export default function MessageTemplatesPage() {
         
         const result = await cloneTemplate(template.id, user.uid);
         if (result.success) {
-            toast({ title: 'Clone Successful', description: 'New protocol initialized in directory.' });
+            toast({ title: 'Clone Successful', description: 'New template initialized in directory.' });
         } else {
             toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
         }
@@ -740,6 +741,7 @@ export default function MessageTemplatesPage() {
 
     const filteredTemplates = templates?.filter(t => 
         (categoryFilter === 'all' || t.category === categoryFilter) &&
+        (channelFilter === 'all' || t.channel === channelFilter) &&
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
 
@@ -784,7 +786,7 @@ export default function MessageTemplatesPage() {
                     return (
                         <React.Fragment key={step.name}>
                             <button 
-                                type="button"
+                                type="button" 
                                 onClick={() => onStepClick(stepNum)}
                                 className="flex flex-col items-center group outline-none"
                             >
@@ -843,7 +845,7 @@ export default function MessageTemplatesPage() {
                                 <FileType className="h-5 w-5 text-primary" />
                             </div>
                             <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest leading-none">
-                                Institutional Template Hub
+                                Messaging Templates
                             </p>
                         </div>
                         <Button onClick={() => { resetForm(); setIsAdding(true); }} className="rounded-xl font-black shadow-lg uppercase tracking-widest px-8 h-11 transition-all active:scale-95">
@@ -884,7 +886,7 @@ export default function MessageTemplatesPage() {
                                                 </CardHeader>
                                                 <CardContent className="p-10 space-y-10">
                                                     <div className="space-y-2">
-                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocol Name (Internal)</Label>
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name (Internal)</Label>
                                                         <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Admission Confirmation" className="flex h-14 w-full rounded-2xl border-none bg-muted/20 px-6 py-2 text-xl font-black shadow-inner ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" />
                                                     </div>
 
@@ -994,7 +996,7 @@ export default function MessageTemplatesPage() {
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => {
-                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(a.key);
+                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key);
                                                                 return (
                                                                     <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className={cn(
                                                                         "w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group",
@@ -1176,7 +1178,30 @@ export default function MessageTemplatesPage() {
                         <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 pb-32">
                             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
                                 <div className="relative flex-grow w-full"><Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" /><Input placeholder="Filter blueprints..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                                <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="h-12 w-full md:w-[200px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="all">Global Hub</SelectItem><SelectItem value="general">General</SelectItem><SelectItem value="meetings">Meetings</SelectItem><SelectItem value="surveys">Surveys</SelectItem><SelectItem value="forms">Doc Signing</SelectItem></SelectContent></Select>
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <Select value={channelFilter} onValueChange={setChannelFilter}>
+                                        <SelectTrigger className="h-12 w-full md:w-[160px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                                            <SelectValue placeholder="Channel" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="all">All Channels</SelectItem>
+                                            <SelectItem value="email">Email Only</SelectItem>
+                                            <SelectItem value="sms">SMS Only</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                                        <SelectTrigger className="h-12 w-full md:w-[160px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                                            <SelectValue placeholder="Category" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="all">All Categories</SelectItem>
+                                            <SelectItem value="general">General</SelectItem>
+                                            <SelectItem value="meetings">Meetings</SelectItem>
+                                            <SelectItem value="surveys">Surveys</SelectItem>
+                                            <SelectItem value="forms">Doc Signing</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-2xl" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
@@ -1187,7 +1212,7 @@ export default function MessageTemplatesPage() {
                                                 <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
                                                     {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
                                                 </div>
-                                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{template.channel} Protocol</span>
+                                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{template.channel} Template</span>
                                             </div>
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
                                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Preview" onClick={() => setPreviewTemplate(template)}>
@@ -1255,7 +1280,7 @@ export default function MessageTemplatesPage() {
                     <DialogHeader className="p-6 border-b bg-white shrink-0 flex flex-row items-center justify-between space-y-0 pr-12">
                         <div>
                             <DialogTitle className="text-xl font-black uppercase tracking-tight">{previewTemplate?.name}</DialogTitle>
-                            <DialogDescription className="text-xs font-bold uppercase tracking-widest">Global Protocol Preview</DialogDescription>
+                            <DialogDescription className="text-xs font-bold uppercase tracking-widest">Global Template Preview</DialogDescription>
                         </div>
                         <div className="flex items-center gap-2 bg-muted/30 p-1 rounded-xl border">
                             <Button variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'} size="sm" className="h-8 gap-2 rounded-lg font-black text-[10px] uppercase" onClick={() => setPreviewDevice('desktop')}>
@@ -1302,7 +1327,7 @@ export default function MessageTemplatesPage() {
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Delete Protocol?</AlertDialogTitle>
+                        <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Delete Template?</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium">
                             This will permanently remove the template <span className="font-bold text-foreground">&ldquo;{templateToDelete?.name}&rdquo;</span> from the institutional library. Any automations currently referencing this blueprint may fail.
                         </AlertDialogDescription>
