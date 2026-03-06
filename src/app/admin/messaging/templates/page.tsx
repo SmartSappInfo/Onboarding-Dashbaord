@@ -5,7 +5,7 @@ import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, g
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, MessageBlock, VariableDefinition, School, Meeting, Survey, PDFForm, MessageStyle } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -958,7 +958,7 @@ export default function MessageTemplatesPage() {
                                                     )}
                                                 </div>
                                                 {channel === 'email' && (
-                                                    <TabsContent value="blocks" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
+                                                    <TabsContent value="blocks" className="m-0 overflow-hidden data-[state=active]:flex flex-col flex-1 bg-muted/5 border-t">
                                                         <ScrollArea className="flex-1 h-full">
                                                             <div className="p-4 pt-2 space-y-8">
                                                                 <div className="space-y-4">
@@ -990,11 +990,11 @@ export default function MessageTemplatesPage() {
                                                         </ScrollArea>
                                                     </TabsContent>
                                                 )}
-                                                <TabsContent value="tags" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
+                                                <TabsContent value="tags" className="m-0 overflow-hidden data-[state=active]:flex flex-col flex-1 bg-muted/5 border-t">
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => {
-                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(v.key);
+                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(a.key);
                                                                 return (
                                                                     <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className={cn(
                                                                         "w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group",
@@ -1020,7 +1020,7 @@ export default function MessageTemplatesPage() {
                                                     </ScrollArea>
                                                 </TabsContent>
                                                 {channel === 'email' && (
-                                                    <TabsContent value="properties" className="flex-1 m-0 overflow-hidden flex flex-col min-h-0 data-[state=active]:flex bg-muted/5 border-t">
+                                                    <TabsContent value="properties" className="m-0 overflow-hidden data-[state=active]:flex flex-col flex-1 bg-muted/5 border-t">
                                                         <ScrollArea className="flex-1 h-full">
                                                             <div className="p-4 pt-2">
                                                                 {selectedBlock ? (
