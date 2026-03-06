@@ -568,7 +568,7 @@ function GlobalBlockInspector({
                     <div className="pt-6 border-t border-dashed space-y-6">
                         <div className="space-y-3">
                             <div className="flex justify-between items-center px-1">
-                                <Label className="text-[10px] flex items-center gap-1.5 font-black uppercase text-muted-foreground"><Type className="h-3 w-3" /> Font Size</Label>
+                                <Label className="text-xs flex items-center gap-1.5"><Type className="h-3 w-3 text-muted-foreground" /> Font Size</Label>
                                 <span className="text-[10px] font-mono font-black tabular-nums">{block.style?.width ? parseInt(block.style.width) : (block.type === 'heading' ? 22 : 16)}pt</span>
                             </div>
                             <Slider 
@@ -878,13 +878,18 @@ export default function MessageTemplatesPage() {
         setCloningId(template.id);
         toast({ title: 'Protocol Cloning', description: `Creating replica of "${template.name}"...` });
         
-        const result = await cloneTemplate(template.id, user.uid);
-        if (result.success) {
-            toast({ title: 'Clone Successful', description: 'New template initialized in directory.' });
-        } else {
-            toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+        try {
+            const result = await cloneTemplate(template.id, user.uid);
+            if (result.success) {
+                toast({ title: 'Clone Successful', description: 'New template initialized in directory.' });
+            } else {
+                toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+            }
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Clone Error', description: 'Failed to complete cloning operation.' });
+        } finally {
+            setCloningId(null);
         }
-        cloningId && setCloningId(null);
     };
 
     const handleDelete = async () => {
