@@ -55,7 +55,7 @@ export default function SchoolComparisonClient() {
           {/* Parent Option */}
           <SelectionCard
             title="I'm A Parent"
-            description="I want to know how my child’s school compares to others."
+            description="How does my child’s school compares to other schools?"
             href="/surveys/parents-survey"
             image={parentImg}
             icon={Users}
@@ -79,8 +79,8 @@ export default function SchoolComparisonClient() {
       </div>
 
       <footer className="relative z-10 mt-12 py-12 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t w-full border-border/50">
-          <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
-          <p>&copy; {new Date().getFullYear()} SmartSapp</p>
+        <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
+        <p>&copy; {new Date().getFullYear()} SmartSapp</p>
       </footer>
     </div>
   );
@@ -119,11 +119,11 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
               />
             )}
             <div className={cn("absolute inset-0 bg-gradient-to-t opacity-60 group-hover:opacity-80 transition-opacity", color)} />
-            
+
             <div className="absolute top-6 left-6">
-                <Badge variant="outline" className="bg-white/20 backdrop-blur-md text-white border-white/20 text-[8px] font-black tracking-widest uppercase py-1 px-3">
-                    {label}
-                </Badge>
+              <Badge variant="outline" className="bg-white/20 backdrop-blur-md text-white border-white/20 text-[8px] font-black tracking-widest uppercase py-1 px-3">
+                {label}
+              </Badge>
             </div>
 
             <div className="absolute inset-0 flex flex-col justify-end p-8">
@@ -139,7 +139,7 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
             <p className="text-muted-foreground font-semibold text-lg leading-relaxed">
               {description}
             </p>
-            
+
             <div className="flex items-center gap-3 text-primary font-black uppercase text-[10px] tracking-[0.2em] pt-4">
               Take Survey Now!
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
