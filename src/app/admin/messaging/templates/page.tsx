@@ -639,11 +639,14 @@ export default function MessageTemplatesPage() {
             templateData.styleId = styleId !== 'none' ? styleId : null;
         }
 
+        // Sanitize to remove undefined values for Firestore
+        const sanitizedTemplateData = JSON.parse(JSON.stringify(templateData));
+
         try {
             if (editingTemplate) {
-                await updateDoc(doc(firestore, 'message_templates', editingTemplate.id), templateData);
+                await updateDoc(doc(firestore, 'message_templates', editingTemplate.id), sanitizedTemplateData);
             } else {
-                await addDoc(collection(firestore, 'message_templates'), { ...templateData, createdAt: new Date().toISOString() });
+                await addDoc(collection(firestore, 'message_templates'), { ...sanitizedTemplateData, createdAt: new Date().toISOString() });
             }
             toast({ title: 'Template Saved' });
             setIsAdding(false);
