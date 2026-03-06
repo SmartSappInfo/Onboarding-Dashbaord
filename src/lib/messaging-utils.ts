@@ -1,6 +1,35 @@
 import type { MessageBlock, MessageBlockRule } from './types';
 
 /**
+ * UTF-8 safe Base64 encoding.
+ * Supports characters outside the Latin1 range (e.g. bullet points, emojis).
+ */
+function toBase64(str: string): string {
+  try {
+    return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) => 
+      String.fromCharCode(parseInt(p1, 16))
+    ));
+  } catch (e) {
+    console.error("Base64 Encoding Error:", e);
+    return "";
+  }
+}
+
+/**
+ * UTF-8 safe Base64 decoding.
+ */
+function fromBase64(str: string): string {
+  try {
+    return decodeURIComponent(Array.prototype.map.call(atob(str), (c: string) => 
+      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+    ).join(''));
+  } catch (e) {
+    console.error("Base64 Decoding Error:", e);
+    return "";
+  }
+}
+
+/**
  * Resolves variables in a text string using {{variable_name}} syntax.
  */
 export function resolveVariables(text: string, variables: Record<string, any>): string {
@@ -62,8 +91,8 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
       return '';
     }
 
-    // Embed metadata for bidirectional synchronization
-    const metadata = `<!-- BLOCK_DATA:${btoa(JSON.stringify(block))} -->`;
+    // Embed metadata for bidirectional synchronization using UTF-8 safe encoding
+    const metadata = `<!-- BLOCK_DATA:${toBase64(JSON.stringify(block))} -->`;
 
     const align = block.style?.textAlign || 'left';
     const alignStyle = `text-align: ${align};`;
@@ -184,7 +213,7 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
     }
 
     // Append metadata to the block
-    return metadata + '\n' + blockHtml;
+    return blockHtml + '\n' + metadata;
   };
 
   const contentHtml = blocks.map(renderBlock).join('\n');
@@ -238,10 +267,12 @@ export function parseHtmlToBlocks(html: string): MessageBlock[] {
   while ((match = markerRegex.exec(html)) !== null) {
     try {
       const base64Data = match[1];
-      const blockJson = atob(base64Data);
-      const block = JSON.parse(blockJson);
-      blocks.push(block);
-      foundMarkers = true;
+      const blockJson = fromBase64(base64Data);
+      if (blockJson) {
+        const block = JSON.parse(blockJson);
+        blocks.push(block);
+        foundMarkers = true;
+      }
     } catch (e) {
       console.warn("Failed to parse block metadata from HTML:", e);
     }
