@@ -33,25 +33,24 @@ export default function SchoolComparisonClient() {
         />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-12 py-12 px-4 sm:px-8">
+      <div className="relative z-10 w-full max-w-5xl mx-auto space-y-6 md:space-y-12 py-6 md:py-12 px-4 sm:px-8">
         {/* Header Section */}
-        <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
+        <div className="text-center space-y-3 md:space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
           <Link href="/" className="inline-block hover:scale-105 transition-transform">
-            <SmartSappLogo className="h-10 mx-auto" />
+            <SmartSappLogo className="h-8 md:h-10 mx-auto" />
           </Link>
-          <div className="space-y-3">
-            <h2 className="text-xs font-black uppercase tracking-[0.4em] text-primary">WELCOME</h2>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4">
+          <div className="space-y-2 md:space-y-3">
+            <h1 className="text-2xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4">
               Which of the following <br className="hidden md:block" /> best describes you?
             </h1>
           </div>
-          <p className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed px-4">
+          <p className="text-base md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed px-4">
             Choose your path to get the <span className="text-primary font-bold">best experience</span>
           </p>
         </div>
 
         {/* Choice Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 px-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 px-2">
           {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
@@ -78,7 +77,7 @@ export default function SchoolComparisonClient() {
         </div>
       </div>
 
-      <footer className="relative z-10 mt-12 py-12 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t w-full border-border/50">
+      <footer className="relative z-10 mt-8 md:mt-12 py-8 md:py-12 text-center text-xs sm:text-sm text-muted-foreground bg-white/50 border-t w-full border-border/50">
         <p>Powered by <a href="https://www.smartsapp.com" target="_blank" rel="noopener noreferrer" className="font-semibold text-primary hover:underline">SmartSapp</a></p>
         <p>&copy; {new Date().getFullYear()} SmartSapp</p>
       </footer>
@@ -108,7 +107,7 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
       <Link href={href} className="block h-full">
         <Card className="overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card/80 backdrop-blur-xl h-full flex flex-col ring-1 ring-white/10 group-hover:ring-primary/30 transition-all duration-500">
           {/* Image Container */}
-          <div className="relative h-64 sm:h-80 overflow-hidden shrink-0">
+          <div className="relative h-40 md:h-80 overflow-hidden shrink-0">
             {image && (
               <Image
                 src={image}
@@ -120,31 +119,31 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
             )}
             <div className={cn("absolute inset-0 bg-gradient-to-t opacity-60 group-hover:opacity-80 transition-opacity", color)} />
 
-            <div className="absolute top-6 left-6">
+            <div className="absolute top-4 left-4 md:top-6 md:left-6">
               <Badge variant="outline" className="bg-white/20 backdrop-blur-md text-white border-white/20 text-[8px] font-black tracking-widest uppercase py-1 px-3">
                 {label}
               </Badge>
             </div>
 
-            <div className="absolute inset-0 flex flex-col justify-end p-8">
-              <div className="p-3 bg-white/20 backdrop-blur-md rounded-2xl w-fit mb-4 border border-white/20 shadow-xl">
-                <Icon className="h-6 w-6 text-white" />
+            <div className="absolute inset-0 flex flex-col justify-end p-5 md:p-8">
+              <div className="p-2 md:p-3 bg-white/20 backdrop-blur-md rounded-xl md:rounded-2xl w-fit mb-2 md:mb-4 border border-white/20 shadow-xl">
+                <Icon className="h-4 w-4 md:h-6 md:w-6 text-white" />
               </div>
-              <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight uppercase tracking-tighter">{title}</h3>
+              <h3 className="text-xl md:text-3xl font-black text-white leading-tight uppercase tracking-tighter">{title}</h3>
             </div>
           </div>
 
           {/* Content Container */}
-          <CardContent className="p-8 space-y-6 flex-grow flex flex-col justify-between bg-white dark:bg-card">
-            <p className="text-muted-foreground font-semibold text-lg leading-relaxed">
+          <CardContent className="p-5 md:p-8 space-y-4 md:space-y-6 flex-grow flex flex-col justify-between bg-white dark:bg-card">
+            <p className="text-muted-foreground font-semibold text-base md:text-lg leading-relaxed">
               {description}
             </p>
 
-            <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-[0.2em] pt-4">
+            <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-[0.2em] pt-2 md:pt-4">
               Find Out Now
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
-                <ArrowRight className="h-5 w-5" />
-                <div className="absolute inset-0 rounded-2xl bg-primary animate-ping opacity-20" />
+              <div className="flex h-8 w-8 md:h-10 md:w-10 items-center justify-center rounded-xl md:rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
+                <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
+                <div className="absolute inset-0 rounded-xl md:rounded-2xl bg-primary animate-ping opacity-20" />
               </div>
             </div>
           </CardContent>
