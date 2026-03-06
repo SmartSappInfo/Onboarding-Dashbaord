@@ -140,7 +140,7 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
               {description}
             </p>
 
-            <div className="flex items-center gap-3 text-primary font-black uppercase text-[10px] tracking-[0.2em] pt-4">
+            <div className="flex items-center gap-3 text-primary font-black uppercase text-[14px] tracking-[0.2em] pt-4">
               Take Survey Now!
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary text-white shadow-xl shadow-primary/20 group-hover:translate-x-2 transition-transform duration-300 relative">
                 <ArrowRight className="h-5 w-5" />
