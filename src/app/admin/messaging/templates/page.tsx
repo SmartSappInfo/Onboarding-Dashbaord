@@ -1066,7 +1066,7 @@ export default function MessageTemplatesPage() {
                                                                 </SelectTrigger>
                                                                 <SelectContent className="rounded-xl">
                                                                     <SelectItem value="none">No Wrapper (Raw)</SelectItem>
-                                                                    {styles?.map(s => <SelectItem key={t.id} value={s.id}>{s.name}</SelectItem>)}
+                                                                    {styles?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
