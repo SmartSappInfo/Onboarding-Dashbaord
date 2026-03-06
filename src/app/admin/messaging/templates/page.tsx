@@ -24,10 +24,9 @@ import {
     AlignCenter, AlignRight, Save, Search,
     Settings2, ChevronRight, Monitor, Smartphone as PhoneIcon,
     Maximize2, Minimize2, Settings, Link as LinkIcon, Layers, PenTool,
-    Palette, EyeOff, CopyPlus, AlignJustify
+    Palette, EyeOff, CopyPlus, AlignJustify, Bold, Italic, Underline
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -53,6 +52,18 @@ import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
 import { cloneTemplate } from '@/lib/template-actions';
 import { MediaSelect } from '../../schools/components/media-select';
+import { Slider } from '@/components/ui/slider';
+
+/**
+ * @fileOverview Messaging Template Builder Page.
+ * Upgraded with High-Fidelity Workshop features:
+ * - On-canvas direct text editing
+ * - Rich formatting toolbar (Bold, Italic, Alignment)
+ * - Block reordering and duplication
+ * - Side-by-side properties inspector
+ */
+
+// --- HELPERS ---
 
 const blockIcons: Record<string, React.ElementType> = {
     heading: Heading1,
@@ -69,15 +80,127 @@ const blockIcons: Record<string, React.ElementType> = {
     'score-card': Trophy,
 };
 
-// --- SUB-COMPONENTS ---
+// --- SHARED UI COMPONENTS ---
 
-function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulationVars: Record<string, any> }) {
+const RichTextEditor = ({ 
+    value, 
+    onChange, 
+    placeholder, 
+    className,
+    textAlign = 'left' 
+}: { 
+    value: string; 
+    onChange: (val: string) => void; 
+    placeholder?: string;
+    className?: string;
+    textAlign?: 'left' | 'center' | 'right' | 'justify';
+}) => {
+    const editorRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== value) {
+            editorRef.current.innerHTML = value || '';
+        }
+    }, [value]);
+
+    const handleInput = () => {
+        if (editorRef.current) {
+            onChange(editorRef.current.innerHTML);
+        }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key === 'b') { e.preventDefault(); document.execCommand('bold', false); }
+            if (e.key === 'i') { e.preventDefault(); document.execCommand('italic', false); }
+            if (e.key === 'u') { e.preventDefault(); document.execCommand('underline', false); }
+        }
+    };
+
+    return (
+        <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleInput}
+            onKeyDown={handleKeyDown}
+            className={cn(
+                "outline-none empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50 empty:before:italic whitespace-pre-wrap",
+                textAlign === 'center' ? 'text-center' : textAlign === 'right' ? 'text-right' : textAlign === 'justify' ? 'text-justify' : 'text-left',
+                className
+            )}
+            data-placeholder={placeholder}
+        />
+    );
+};
+
+function FormattingToolbar({ alignValue, onAlignChange, minimal }: { 
+    alignValue?: 'left' | 'center' | 'right' | 'justify';
+    onAlignChange?: (val: 'left' | 'center' | 'right' | 'justify') => void;
+    minimal?: boolean;
+}) {
+    const applyStyle = (cmd: string) => {
+        document.execCommand(cmd, false);
+    };
+
+    return (
+        <div className={cn("flex items-center gap-0.5", !minimal && "bg-muted p-1 rounded-md mb-2")}>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('bold')} title="Bold (Ctrl+B)">
+                <Bold className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('italic')} title="Italic (Ctrl+I)">
+                <Italic className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => applyStyle('underline')} title="Underline (Ctrl+U)">
+                <Underline className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+            
+            {onAlignChange && (
+                <>
+                    <Separator orientation="vertical" className="h-4 mx-1" />
+                    <Button type="button" variant={alignValue === 'left' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('left')}>
+                        <AlignLeft className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button type="button" variant={alignValue === 'center' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('center')}>
+                        <AlignCenter className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button type="button" variant={alignValue === 'right' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('right')}>
+                        <AlignRight className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button type="button" variant={alignValue === 'justify' ? 'secondary' : 'ghost'} size="icon" className="h-7 w-7" onClick={() => onAlignChange('justify')}>
+                        <AlignJustify className="h-3.5 w-3.5" />
+                    </Button>
+                </>
+            )}
+        </div>
+    );
+}
+
+// --- BLOCK RENDERER ---
+
+function VisualBlock({ 
+    block, 
+    simulationVars, 
+    isEditing, 
+    onContentUpdate 
+}: { 
+    block: MessageBlock, 
+    simulationVars: Record<string, any>,
+    isEditing?: boolean,
+    onContentUpdate?: (props: Partial<MessageBlock>) => void
+}) {
     const align = block.style?.textAlign || 'left';
     const resolvedTitle = resolveVariables(block.title || '', simulationVars);
     const resolvedContent = resolveVariables(block.content || '', simulationVars);
     const resolvedUrl = resolveVariables(block.url || '', simulationVars);
 
     const alignmentClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : align === 'justify' ? 'text-justify' : 'text-left';
+    
+    const baseFontSize = block.style?.width ? parseInt(block.style.width) : (block.type === 'heading' ? 22 : 16);
+    const textStyle = { 
+        textAlign: align as any, 
+        fontSize: `${baseFontSize}px`,
+        color: block.style?.color 
+    };
 
     switch (block.type) {
         case 'heading': {
@@ -85,20 +208,51 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             const sizeClass = Tag === 'h1' ? "text-3xl" : Tag === 'h2' ? "text-2xl" : "text-lg";
             return (
                 <div className={cn("w-full", alignmentClass)}>
-                    <Tag className={cn("font-black tracking-tight leading-tight m-0", sizeClass)}>{resolvedTitle || 'New Heading'}</Tag>
+                    {isEditing ? (
+                        <RichTextEditor 
+                            value={block.title || ''} 
+                            onChange={(val) => onContentUpdate?.({ title: val })}
+                            textAlign={align}
+                            placeholder="Heading Text..."
+                            className={cn("font-black tracking-tight leading-tight m-0", sizeClass)}
+                        />
+                    ) : (
+                        <Tag className={cn("font-black tracking-tight leading-tight m-0", sizeClass)} style={textStyle}>{resolvedTitle || 'New Heading'}</Tag>
+                    )}
                 </div>
             );
         }
         case 'text':
             return (
                 <div className={cn("w-full", alignmentClass)}>
-                    <p className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap">{resolvedContent || 'New paragraph content...'}</p>
+                    {isEditing ? (
+                        <RichTextEditor 
+                            value={block.content || ''} 
+                            onChange={(val) => onContentUpdate?.({ content: val })}
+                            textAlign={align}
+                            placeholder="Paragraph content..."
+                            className="text-base text-muted-foreground leading-relaxed m-0"
+                        />
+                    ) : (
+                        <p className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap" style={textStyle}>{resolvedContent || 'New paragraph content...'}</p>
+                    )}
                 </div>
             );
         case 'button':
             return (
                 <div className={cn("w-full py-4", alignmentClass)}>
-                    <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">{resolvedTitle || 'Click Me'}</Button>
+                    {isEditing ? (
+                        <div className="inline-flex items-center gap-2">
+                            <Input 
+                                value={block.title || ''} 
+                                onChange={(e) => onContentUpdate?.({ title: e.target.value })} 
+                                placeholder="Button Label"
+                                className="h-12 px-8 font-black rounded-xl shadow-lg w-auto text-center border-primary/20 bg-primary text-white placeholder:text-white/50"
+                            />
+                        </div>
+                    ) : (
+                        <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">{resolvedTitle || 'Click Me'}</Button>
+                    )}
                 </div>
             );
         case 'image':
@@ -139,18 +293,37 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
             return (
                 <div className={cn("w-full my-4 p-6 bg-slate-50 border-l-4 border-primary rounded-r-2xl italic text-xl leading-relaxed text-slate-700", alignmentClass)}>
                     <Quote className="h-6 w-6 text-primary/20 mb-2" />
-                    {resolvedContent || 'Quote content...'}
+                    {isEditing ? (
+                        <RichTextEditor 
+                            value={block.content || ''} 
+                            onChange={(val) => onContentUpdate?.({ content: val })}
+                            textAlign={align}
+                            placeholder="Quote..."
+                            className="text-xl font-medium"
+                        />
+                    ) : (
+                        <span style={textStyle}>{resolvedContent || 'Quote content...'}</span>
+                    )}
                 </div>
             );
         case 'list':
             const ListTag = block.listStyle === 'ordered' ? 'ol' : 'ul';
             return (
                 <div className={cn("w-full", alignmentClass)}>
-                    <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal text-left" : "list-disc text-left", "list-inside")}>
-                        {(block.items || ['New point...']).map((item, i) => (
-                            <li key={item + i}>{resolveVariables(item, simulationVars)}</li>
-                        ))}
-                    </ListTag>
+                    {isEditing ? (
+                        <Textarea 
+                            value={block.items?.join('\n') || ''}
+                            onChange={(e) => onContentUpdate?.({ items: e.target.value.split('\n') })}
+                            placeholder="List items (one per line)..."
+                            className="min-h-[100px] bg-transparent border-none shadow-none focus-visible:ring-0 p-0 text-base leading-relaxed text-muted-foreground"
+                        />
+                    ) : (
+                        <ListTag className={cn("text-base text-muted-foreground leading-relaxed m-0 space-y-2", block.listStyle === 'ordered' ? "list-decimal text-left" : "list-disc text-left", "list-inside")} style={textStyle}>
+                            {(block.items || ['New point...']).map((item, i) => (
+                                <li key={item + i} dangerouslySetInnerHTML={{ __html: resolveVariables(item, simulationVars) }} />
+                            ))}
+                        </ListTag>
+                    )}
                 </div>
             );
         case 'divider':
@@ -170,10 +343,12 @@ function VisualBlock({ block, simulationVars }: { block: MessageBlock, simulatio
     }
 }
 
+// --- SORTABLE ITEM ---
+
 function SortableBlockItem({ 
-    id, index, block, isSelected, simulationVars, onSelect, onRemove, onDuplicate 
+    id, index, block, isSelected, simulationVars, onSelect, onRemove, onDuplicate, onSwap, totalCount, onUpdate
 }: { 
-    id: string, index: number, block: MessageBlock, isSelected: boolean, simulationVars: Record<string, any>, onSelect: () => void, onRemove: () => void, onDuplicate: () => void
+    id: string, index: number, block: MessageBlock, isSelected: boolean, simulationVars: Record<string, any>, onSelect: () => void, onRemove: () => void, onDuplicate: () => void, onSwap: (a: number, b: number) => void, totalCount: number, onUpdate: (u: Partial<MessageBlock>) => void
 }) {
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
@@ -197,27 +372,46 @@ function SortableBlockItem({
                 isSelected ? "border-primary shadow-2xl shadow-primary/10 bg-primary/[0.02]" : "border-transparent"
             )} />
 
-            <div
-                {...attributes}
-                {...listeners}
-                className={cn(
-                    "absolute -left-10 top-1/2 -translate-y-1/2 z-20 cursor-grab p-2 bg-background border rounded-full transition-all duration-300 shadow-xl",
-                    isSelected || "opacity-0 group-hover/block:opacity-100"
-                )}
-            >
-                <GripVertical className="h-4 w-4 text-muted-foreground" />
+            {/* Reordering & Control UI */}
+            <div className={cn(
+                "absolute -left-12 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-1 transition-all duration-300",
+                isSelected || "opacity-0 group-hover/block:opacity-100"
+            )}>
+                <div {...attributes} {...listeners} className="cursor-grab p-2 bg-background border rounded-full shadow-xl hover:text-primary">
+                    <GripVertical className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg" onClick={(e) => { e.stopPropagation(); onSwap(index, index - 1); }} disabled={index === 0}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg" onClick={(e) => { e.stopPropagation(); onSwap(index, index + 1); }} disabled={index === totalCount - 1}><ArrowDown className="h-3.5 w-3.5" /></Button>
             </div>
 
             <div className={cn(
-                "absolute -right-10 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1 transition-all duration-300",
+                "absolute -right-12 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-1 transition-all duration-300",
                 isSelected || "opacity-0 group-hover/block:opacity-100"
             )}>
                 <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg hover:text-primary" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3.5 w-3.5" /></Button>
                 <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
+
+            {/* In-Place Formatting Toolbar */}
+            {isSelected && (
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="bg-background border shadow-2xl rounded-xl p-1 flex items-center gap-1">
+                        <FormattingToolbar 
+                            alignValue={block.style?.textAlign}
+                            onAlignChange={(val) => onUpdate({ style: { ...block.style, textAlign: val } })}
+                            minimal 
+                        />
+                    </div>
+                </div>
+            )}
             
             <div className="relative py-2 px-4">
-                <VisualBlock block={block} simulationVars={simulationVars} />
+                <VisualBlock 
+                    block={block} 
+                    simulationVars={simulationVars} 
+                    isEditing={isSelected}
+                    onContentUpdate={onUpdate}
+                />
             </div>
         </div>
     );
@@ -310,7 +504,7 @@ function GlobalBlockInspector({
                             <Textarea 
                                 value={block.items?.join('\n') || ''}
                                 onChange={e => onUpdate({ items: e.target.value.split('\n') })}
-                                className="min-h-[200px] rounded-2xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
+                                className="min-h-[200px] text-sm rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed"
                                 placeholder="Pasting a list works here too..."
                             />
                         </div>
@@ -371,21 +565,35 @@ function GlobalBlockInspector({
                 )}
 
                 {isTextType && (
-                    <div className="pt-6 border-t border-dashed">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-3 block ml-1">Paragraph Alignment</Label>
-                        <div className="flex gap-1 bg-muted/30 p-1 rounded-[1.25rem] border shadow-inner">
-                            {(['left', 'center', 'right', 'justify'] as const).map(a => (
-                                <Button 
-                                    key={a}
-                                    type="button" 
-                                    variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
-                                    className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")} 
-                                    onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
-                                    title={a.charAt(0).toUpperCase() + a.slice(1)}
-                                >
-                                    {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : a === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignJustify className="h-4 w-4" />}
-                                </Button>
-                            ))}
+                    <div className="pt-6 border-t border-dashed space-y-6">
+                        <div className="space-y-3">
+                            <div className="flex justify-between items-center px-1">
+                                <Label className="text-[10px] flex items-center gap-1.5 font-black uppercase text-muted-foreground"><Type className="h-3 w-3" /> Font Size</Label>
+                                <span className="text-[10px] font-mono font-black tabular-nums">{block.style?.width ? parseInt(block.style.width) : (block.type === 'heading' ? 22 : 16)}pt</span>
+                            </div>
+                            <Slider 
+                                value={[block.style?.width ? parseInt(block.style.width) : (block.type === 'heading' ? 22 : 16)]} 
+                                onValueChange={([v]) => onUpdate({ style: { ...block.style, width: String(v) } })}
+                                min={8} max={48} step={1}
+                            />
+                        </div>
+
+                        <div className="space-y-3">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground block ml-1">Alignment</Label>
+                            <div className="flex gap-1 bg-muted/30 p-1 rounded-[1.25rem] border shadow-inner">
+                                {(['left', 'center', 'right', 'justify'] as const).map(a => (
+                                    <Button 
+                                        key={a}
+                                        type="button" 
+                                        variant={block.style?.textAlign === a ? 'secondary' : 'ghost'} 
+                                        className={cn("flex-1 h-10 rounded-xl transition-all", block.style?.textAlign === a ? "bg-white shadow-md text-primary" : "text-muted-foreground opacity-60")} 
+                                        onClick={() => onUpdate({ style: { ...block.style, textAlign: a } })}
+                                        title={a.charAt(0).toUpperCase() + a.slice(1)}
+                                    >
+                                        {a === 'left' ? <AlignLeft className="h-4 w-4" /> : a === 'center' ? <AlignCenter className="h-4 w-4" /> : a === 'right' ? <AlignRight className="h-4 w-4" /> : <AlignJustify className="h-4 w-4" />}
+                                    </Button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -608,6 +816,11 @@ export default function MessageTemplatesPage() {
                 return arrayMove(items, oldIndex, newIndex);
             });
         }
+    };
+
+    const handleSwapBlocks = (idxA: number, idxB: number) => {
+        if (idxB < 0 || idxB >= blocks.length) return;
+        setBlocks(prev => arrayMove(prev, idxA, idxB));
     };
 
     const handleSave = async () => {
@@ -946,7 +1159,7 @@ export default function MessageTemplatesPage() {
 
                                 {step === 2 && (
                                     <motion.div key="step2" {...stepTransition} className={cn("absolute inset-0 flex select-none bg-background transition-all duration-500", isFullScreen && "fixed inset-0 z-[100] h-screen w-screen")}>
-                                        <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300" style={{ width: variablesWidth }}>
+                                        <div className="border-r bg-background flex flex-col shrink-0 relative transition-all duration-300 shadow-xl" style={{ width: variablesWidth }}>
                                             <Tabs value={sidebarTab} onValueChange={(v: any) => setSidebarTab(v)} className="flex-1 flex flex-col min-h-0">
                                                 <div className="px-2 py-2 border-b bg-muted/10 shrink-0">
                                                     {channel === 'email' ? (
@@ -1091,10 +1304,18 @@ export default function MessageTemplatesPage() {
                                                                             <div className="space-y-4">
                                                                                 {blocks.map((block, idx) => (
                                                                                     <SortableBlockItem 
-                                                                                        key={block.id} id={block.id} index={idx} block={block} isSelected={selectedBlockId === block.id} simulationVars={simVariables}
+                                                                                        key={block.id} 
+                                                                                        id={block.id} 
+                                                                                        index={idx} 
+                                                                                        block={block} 
+                                                                                        isSelected={selectedBlockId === block.id} 
+                                                                                        simulationVars={simVariables}
                                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
                                                                                         onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
                                                                                         onDuplicate={() => { const newBlock = { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }; const next = [...blocks]; next.splice(idx + 1, 0, newBlock); setBlocks(next); }}
+                                                                                        onSwap={handleSwapBlocks}
+                                                                                        totalCount={blocks.length}
+                                                                                        onUpdate={(u) => setBlocks(prev => prev.map(b => b.id === block.id ? { ...b, ...u } : b))}
                                                                                     />
                                                                                 ))}
                                                                             </div>
@@ -1305,7 +1526,7 @@ export default function MessageTemplatesPage() {
                                     </div>
                                     <div className="p-8 bg-white border border-slate-200 rounded-[2rem] relative shadow-xl">
                                         <div className="absolute -left-3 top-10 w-6 h-6 bg-white border-l border-b border-slate-200 rotate-45 rounded-sm" />
-                                        <p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})}</p>
+                                        <p className="text-lg text-slate-900 font-bold whitespace-pre-wrap leading-relaxed">{resolvedPreview(previewTemplate, {})} </p>
                                     </div>
                                 </div>
                             ) : (
