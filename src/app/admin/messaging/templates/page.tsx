@@ -78,7 +78,7 @@ const blockIcons: Record<string, React.ElementType> = {
     header: Layout,
     footer: Layout,
     logo: Zap,
-    'score-card': TrophyIcon,
+    'score-card': Trophy,
 };
 
 // --- SHARED UI COMPONENTS ---
@@ -1218,15 +1218,14 @@ export default function MessageTemplatesPage() {
                                                     <ScrollArea className="flex-1 h-full">
                                                         <div className="p-4 pt-2 space-y-2">
                                                             {filteredVars.length > 0 ? filteredVars.map(v => {
-                                                                const isMetric = v.entity === 'SurveyResponse' && ['survey_score', 'max_score', 'outcome_label', 'result_url'].includes(a.key);
                                                                 return (
                                                                     <button key={v.id} type="button" onClick={() => { const tag = `{{${v.key}}}`; navigator.clipboard.writeText(tag); toast({ title: 'Tag Copied' }); }} className={cn(
                                                                         "w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group",
-                                                                        isMetric && "bg-primary/5 border-primary/10 shadow-inner"
+                                                                        v.entity === 'SurveyResponse' && "bg-primary/5 border-primary/10 shadow-inner"
                                                                     )}>
                                                                         <div className="flex items-center justify-between mb-1">
-                                                                            <span className={cn("text-[8px] font-black uppercase tracking-widest", isMetric ? "text-primary" : "text-muted-foreground opacity-60")}>
-                                                                                {isMetric ? 'Metric' : (v.sourceName || 'Core')}
+                                                                            <span className={cn("text-[8px] font-black uppercase tracking-widest", v.entity === 'SurveyResponse' ? "text-primary" : "text-muted-foreground opacity-60")}>
+                                                                                {v.entity === 'SurveyResponse' ? 'Metric' : (v.sourceName || 'Core')}
                                                                             </span>
                                                                             <Copy className="h-2.5 w-2.5 text-primary opacity-0 group-hover:opacity-100" />
                                                                         </div>
