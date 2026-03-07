@@ -37,20 +37,17 @@ import {
     Check, 
     X,
     Loader2,
-    ArrowLeft,
     RefreshCw,
     Sparkles,
     ShieldCheck,
     Clock,
-    AlertCircle,
-    Info,
-    Send,
     Globe,
     MoreVertical,
-    Star
+    Star,
+    Save,
+    Send
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
