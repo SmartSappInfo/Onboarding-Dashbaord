@@ -2,18 +2,16 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { collection, query, orderBy, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { VariableDefinition, MessageTemplate } from '@/lib/types';
+import type { VariableDefinition, MessageTemplate, Survey, PDFForm } from '@/lib/types';
 import { syncVariableRegistry, upsertConstantVariable, deleteVariable, updateVariableVisibility } from '@/lib/messaging-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-    ArrowLeft, 
     RefreshCw, 
-    Code, 
     Building, 
     Calendar, 
     ClipboardList, 
@@ -21,13 +19,9 @@ import {
     Search,
     Info,
     CheckCircle2,
-    Database,
     Zap,
     Tag,
-    ListFilter,
     ShieldAlert,
-    BarChart2,
-    Link as LinkIcon,
     Loader2,
     Plus,
     X,
@@ -35,12 +29,11 @@ import {
     Trash2,
     Save,
     Globe,
-    ChevronDown,
-    Layers,
-    Eye,
+    ChevronRight,
     EyeOff,
-    AlertCircle,
-    ChevronRight
+    Lock,
+    LayoutList,
+    AlertCircle
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -54,11 +47,12 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion";
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -68,6 +62,10 @@ export default function VariableRegistryPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [isSyncing, setIsSyncing] = React.useState(false);
     
+    // Filtering State
+    const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | null>('all');
+    const [selectedPdfId, setSelectedPdfId] = React.useState<string | null>('all');
+
     // Constant Management State
     const [isAddingConstant, setIsAddingConstant] = React.useState(false);
     const [editingConst, setEditingConst] = React.useState<VariableDefinition | null>(null);
@@ -79,6 +77,7 @@ export default function VariableRegistryPage() {
     // Diagnostic State
     const [isBrokenModalOpen, setIsBrokenModalOpen] = React.useState(false);
 
+    // Data Subscriptions
     const varsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
         return query(collection(firestore, 'messaging_variables'), orderBy('category', 'asc'));
@@ -89,8 +88,20 @@ export default function VariableRegistryPage() {
         return query(collection(firestore, 'message_templates'));
     }, [firestore]);
 
+    const surveysQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'surveys'), where('status', '==', 'published'), orderBy('internalName', 'asc'));
+    }, [firestore]);
+
+    const pdfsQuery = useMemoFirebase(() => {
+        if (!firestore) return null;
+        return query(collection(firestore, 'pdfs'), where('status', '==', 'published'), orderBy('name', 'asc'));
+    }, [firestore]);
+
     const { data: variables, isLoading: isVarsLoading } = useCollection<VariableDefinition>(varsQuery);
     const { data: templates, isLoading: isTemplatesLoading } = useCollection<MessageTemplate>(templatesQuery);
+    const { data: surveys } = useCollection<Survey>(surveysQuery);
+    const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
 
     const isLoading = isVarsLoading || isTemplatesLoading;
 
@@ -125,7 +136,7 @@ export default function VariableRegistryPage() {
     const handleToggleVisibility = async (id: string, currentHidden: boolean) => {
         const result = await updateVariableVisibility(id, !currentHidden);
         if (result.success) {
-            toast({ title: currentHidden ? 'Variable Restored' : 'Variable Hidden', description: currentHidden ? 'It will now appear in design sidebars.' : 'It is now hidden from design sidebars.' });
+            toast({ title: currentHidden ? 'Variable Restored' : 'Variable Hidden' });
         } else {
             toast({ variant: 'destructive', title: 'Visibility Update Failed' });
         }
@@ -164,7 +175,7 @@ export default function VariableRegistryPage() {
     };
 
     const handleDeleteConst = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this constant? Templates using it will break.')) return;
+        if (!confirm('Are you sure? Templates using this constant will break.')) return;
         const result = await deleteVariable(id);
         if (result.success) toast({ title: 'Variable Removed' });
     };
@@ -198,7 +209,7 @@ export default function VariableRegistryPage() {
                 <TableCell>
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{isConstant ? 'Global' : (v.sourceName || 'Registry')}</span>
-                        <span className="text-[9px] text-muted-foreground/60 uppercase font-bold">{isConstant ? 'Manual Value' : `Path: ${v.path}`}</span>
+                        <span className="text-[9px] text-muted-foreground/60 uppercase font-bold truncate max-w-[150px]">{isConstant ? 'Fixed Value' : `Path: ${v.path}`}</span>
                     </div>
                 </TableCell>
                 <TableCell className="text-center">
@@ -226,7 +237,7 @@ export default function VariableRegistryPage() {
                                         />
                                     </div>
                                 </TooltipTrigger>
-                                <TooltipContent>Global Visibility Toggle</TooltipContent>
+                                <TooltipContent>Visibility Toggle</TooltipContent>
                             </Tooltip>
 
                             {isConstant && (
@@ -254,16 +265,23 @@ export default function VariableRegistryPage() {
         );
     };
 
-    const VariableListView = ({ category, source }: { category?: VariableDefinition['category'], source?: VariableDefinition['source'] }) => {
-        const items = filteredVars.filter(v => 
-            (category ? v.category === category : true) && 
-            (source ? v.source === source : v.source !== 'constant')
-        );
+    const VariableListView = ({ category, sourceId }: { category: VariableDefinition['category'], sourceId?: string | null }) => {
+        const items = filteredVars.filter(v => {
+            if (v.category !== category) return false;
+            if (category === 'general' || category === 'meetings') return true; // These categories don't have sourceId filters
+            
+            if (sourceId && sourceId !== 'all') {
+                return v.sourceId === sourceId || v.source === 'static'; // Always show core metrics like score
+            }
+            return true;
+        });
         
         if (items.length === 0) {
             return (
                 <div className="py-24 text-center border-4 border-dashed rounded-[3rem] bg-muted/10 border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
-                    <Tag className="h-12 w-12 text-muted-foreground/20" />
+                    <div className="p-6 bg-white rounded-[2rem] shadow-inner">
+                        <Tag className="h-12 w-12 text-muted-foreground/20" />
+                    </div>
                     <p className="text-muted-foreground font-black uppercase tracking-widest text-xs opacity-40">No variable data in this context.</p>
                 </div>
             );
@@ -290,7 +308,7 @@ export default function VariableRegistryPage() {
     };
 
     const healthMetrics = React.useMemo(() => {
-        if (!variables || !templates) return { used: 0, unused: 0, usedPercentage: 0, broken: 0, brokenItems: [] };
+        if (!variables || !templates) return { used: 0, unused: 0, broken: 0, brokenItems: [] };
         const usedKeys = new Set(usageMap.keys());
         const registryKeys = new Set(variables.map(v => v.key));
         
@@ -322,14 +340,13 @@ export default function VariableRegistryPage() {
             used: usedKeys.size, 
             unused: variables.length - usedKeys.size, 
             broken: brokenItems.length,
-            brokenItems,
-            usedPercentage: variables.length > 0 ? Math.round((usedKeys.size / variables.length) * 100) : 0
+            brokenItems
         };
     }, [variables, templates, usageMap]);
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="max-w-6xl mx-auto space-y-8">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+            <div className="max-w-7xl mx-auto space-y-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-end gap-4">
                     <div className="flex items-center gap-3">
                         <Button variant="outline" onClick={() => setIsAddingConstant(true)} className="rounded-xl font-black h-12 gap-2 shadow-sm border-primary/20 hover:bg-primary/5">
@@ -348,7 +365,7 @@ export default function VariableRegistryPage() {
 
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     <div className="space-y-6">
-                        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
+                        <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden">
                             <CardHeader className="bg-primary/5 border-b pb-4">
                                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                                     <Zap className="h-3 w-3" /> Operational Audit
@@ -440,9 +457,68 @@ export default function VariableRegistryPage() {
                             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <TabsContent value="general" className="m-0"><VariableListView category="general" /></TabsContent>
                                 <TabsContent value="meetings" className="m-0"><VariableListView category="meetings" /></TabsContent>
-                                <TabsContent value="surveys" className="m-0"><VariableListView category="surveys" /></TabsContent>
-                                <TabsContent value="forms" className="m-0"><VariableListView category="forms" /></TabsContent>
-                                <TabsContent value="constants" className="m-0"><VariableListView source="constant" /></TabsContent>
+                                
+                                <TabsContent value="surveys" className="m-0 space-y-6">
+                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border shadow-sm">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
+                                        <Select value={selectedSurveyId || 'all'} onValueChange={setSelectedSurveyId}>
+                                            <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
+                                                <SelectValue placeholder="All Surveys" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="all">All Survey Blueprints</SelectItem>
+                                                {surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.internalName || s.title}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <VariableListView category="surveys" sourceId={selectedSurveyId} />
+                                </TabsContent>
+
+                                <TabsContent value="forms" className="m-0 space-y-6">
+                                    <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border shadow-sm">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground shrink-0 ml-1">Source Record Filter:</Label>
+                                        <Select value={selectedPdfId || 'all'} onValueChange={setSelectedPdfId}>
+                                            <SelectTrigger className="h-10 w-[300px] rounded-xl bg-muted/20 border-none font-bold">
+                                                <SelectValue placeholder="All Documents" />
+                                            </SelectTrigger>
+                                            <SelectContent className="rounded-xl">
+                                                <SelectItem value="all">All Form Templates</SelectItem>
+                                                {pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <VariableListView category="forms" sourceId={selectedPdfId} />
+                                </TabsContent>
+
+                                <TabsContent value="constants" className="m-0">
+                                    <div className="rounded-2xl border bg-card shadow-sm overflow-hidden ring-1 ring-border/50">
+                                        <Table>
+                                            <TableHeader className="bg-muted/30">
+                                                <TableRow>
+                                                    <TableHead className="pl-6 text-[10px] font-black uppercase tracking-widest py-4">Manual Label & Technical Key</TableHead>
+                                                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Global Value</TableHead>
+                                                    <TableHead className="text-center text-[10px] font-black uppercase tracking-widest py-4">Studio Usage</TableHead>
+                                                    <TableHead className="text-right pr-6 text-[10px] font-black uppercase tracking-widest py-4">Actions</TableHead>
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {filteredVars.filter(v => v.source === 'constant').map((v) => (
+                                                    <VariableRow key={v.id} v={v} />
+                                                ))}
+                                                {filteredVars.filter(v => v.source === 'constant').length === 0 && (
+                                                    <TableRow>
+                                                        <TableCell colSpan={4} className="h-48 text-center">
+                                                            <div className="flex flex-col items-center justify-center gap-2 opacity-30">
+                                                                <Globe className="h-10 w-10" />
+                                                                <p className="text-[10px] font-black uppercase tracking-widest">No Constants Defined</p>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </TabsContent>
                             </div>
                         </Tabs>
                     </div>
@@ -532,7 +608,7 @@ export default function VariableRegistryPage() {
                                 <Input 
                                     placeholder="e.g. support_phone" 
                                     value={constKey} 
-                                    onChange={e => setConstKey(e.target.value.toLowerCase().replace(/\s+/g, '_'))}
+                                    onChange={e => setConstKey(e.target.value.replace(/\s+/g, '_'))}
                                     className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono font-black" 
                                 />
                                 <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase text-muted-foreground/60 border-l">{"}}"}</div>
@@ -540,7 +616,7 @@ export default function VariableRegistryPage() {
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Display Label</Label>
-                            <Input value={constLabel} onChange={e => setConstLabel(e.target.value)} placeholder="e.g. Help WhatsApp Line" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                            <Input value={constLabel} onChange={e => setConstLabel(e.target.value)} placeholder="e.g. Help WhatsApp Line" className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Fixed Value</Label>
