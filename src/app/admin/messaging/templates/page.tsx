@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -219,7 +218,11 @@ function VisualBlock({
                             className={cn("font-black tracking-tight leading-tight m-0", sizeClass)}
                         />
                     ) : (
-                        <Tag className={cn("font-black tracking-tight leading-tight m-0", sizeClass)} style={textStyle}>{resolvedTitle || 'New Heading'}</Tag>
+                        <Tag 
+                            className={cn("font-black tracking-tight leading-tight m-0", sizeClass)} 
+                            style={textStyle}
+                            dangerouslySetInnerHTML={{ __html: resolvedTitle || 'New Heading' }}
+                        />
                     )}
                 </div>
             );
@@ -236,7 +239,11 @@ function VisualBlock({
                             className="text-base text-muted-foreground leading-relaxed m-0"
                         />
                     ) : (
-                        <p className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap" style={textStyle}>{resolvedContent || 'New paragraph content...'}</p>
+                        <p 
+                            className="text-base text-muted-foreground leading-relaxed m-0 whitespace-pre-wrap" 
+                            style={textStyle}
+                            dangerouslySetInnerHTML={{ __html: resolvedContent || 'New paragraph content...' }}
+                        />
                     )}
                 </div>
             );
@@ -253,7 +260,9 @@ function VisualBlock({
                             />
                         </div>
                     ) : (
-                        <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">{resolvedTitle || 'Click Me'}</Button>
+                        <Button variant={block.style?.variant as any || 'default'} className="rounded-xl font-bold h-12 px-8 uppercase tracking-widest shadow-md">
+                            <span dangerouslySetInnerHTML={{ __html: resolvedTitle || 'Click Me' }} />
+                        </Button>
                     )}
                 </div>
             );
@@ -304,7 +313,10 @@ function VisualBlock({
                             className="text-xl font-medium"
                         />
                     ) : (
-                        <span style={textStyle}>{resolvedContent || 'Quote content...'}</span>
+                        <span 
+                            style={textStyle}
+                            dangerouslySetInnerHTML={{ __html: resolvedContent || 'Quote content...' }}
+                        />
                     )}
                 </div>
             );
@@ -391,7 +403,7 @@ function SortableBlockItem({
                 isSelected || "opacity-0 group-hover/block:opacity-100"
             )}>
                 <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg hover:text-primary" onClick={(e) => { e.stopPropagation(); onDuplicate(); }}><Copy className="h-3.5 w-3.5" /></Button>
-                <Button type="button" variant="outline" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-background shadow-lg text-destructive hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); onRemove(); }}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
 
             {/* In-Place Formatting Toolbar */}
@@ -1521,7 +1533,7 @@ export default function MessageTemplatesPage() {
                                                                     <Zap size={120} />
                                                                 </div>
                                                                 <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
-                                                                    <p className="text-[9px] font-bold text-slate-900 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
+                                                                    <p className="text-[9px] font-bold text-slate-900 leading-relaxed font-black line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
                                                                 </div>
                                                                 <div className="flex items-center justify-between opacity-20 border-t border-slate-200 pt-3">
                                                                     <SmartSappIcon className="h-3.5 w-3.5" variant="primary" />
