@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -55,7 +56,8 @@ import {
     ClipboardList,
     Calendar,
     Database,
-    PlusCircle
+    PlusCircle,
+    Search
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
@@ -112,8 +114,9 @@ export default function ComposerWizard() {
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
     const [smsBalance, setSmsBalance] = React.useState<number | null>(null);
 
-    // Recipient Targeting State (Phase 7)
+    // Recipient Targeting State
     const [recipientSuggestions, setRecipientSuggestions] = React.useState<{ label: string, value: string, source: string }[]>([]);
+    const [recipientSearchTerm, setRecipientSearchTerm] = React.useState('');
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -210,7 +213,7 @@ export default function ComposerWizard() {
         schools?.find(s => s.id === watchedSchoolId),
     [schools, watchedSchoolId]);
 
-    // Phase 7: Recipient Discovery Logic
+    // Recipient Discovery Logic
     const discoverRecipients = React.useCallback((data: any, source: string) => {
         const candidates: { label: string, value: string, source: string }[] = [];
         if (!data) return candidates;
@@ -245,6 +248,21 @@ export default function ComposerWizard() {
         return candidates.filter(c => !!c.value);
     }, [watchedChannel]);
 
+    // Search Result Filtering
+    const searchResults = React.useMemo(() => {
+        if (!recipientSearchTerm || !schools) return [];
+        const s = recipientSearchTerm.toLowerCase();
+        const results: { label: string, value: string, source: string }[] = [];
+
+        schools.forEach(school => {
+            if (school.name.toLowerCase().includes(s)) {
+                results.push(...discoverRecipients(school, school.name));
+            }
+        });
+
+        return results.slice(0, 5);
+    }, [recipientSearchTerm, schools, discoverRecipients]);
+
     // Handle Contextual Binding (Automatic Resolution)
     React.useEffect(() => {
         const resolveRecord = async () => {
@@ -269,8 +287,7 @@ export default function ComposerWizard() {
                     result.data.answers?.forEach((a: any) => {
                         setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value));
                     });
-                    // Phase 7: Recipient Auto-Discovery
-                    setRecipientSuggestions(prev => [...prev, ...discoverRecipients(result.data, 'Survey')]);
+                    setRecipientSuggestions(discoverRecipients(result.data, 'Survey'));
                 }
             }
         };
@@ -285,8 +302,7 @@ export default function ComposerWizard() {
                     Object.entries(result.data.formData || {}).forEach(([key, val]) => {
                         setValue(`variables.${key}`, String(val));
                     });
-                    // Phase 7: Recipient Auto-Discovery
-                    setRecipientSuggestions(prev => [...prev, ...discoverRecipients(result.data, 'PDF')]);
+                    setRecipientSuggestions(discoverRecipients(result.data, 'PDF'));
                 }
             }
         };
@@ -301,9 +317,7 @@ export default function ComposerWizard() {
             setValue('variables.school_phone', selectedSchool.phone || '');
             setValue('variables.school_email', selectedSchool.email || '');
             setValue('variables.contact_name', selectedSchool.contactPerson || '');
-            
-            // Phase 7: Focal Person Discovery
-            setRecipientSuggestions(prev => [...prev, ...discoverRecipients(selectedSchool, 'School')]);
+            setRecipientSuggestions(discoverRecipients(selectedSchool, 'School'));
         }
     }, [selectedSchool, setValue, discoverRecipients]);
 
@@ -333,7 +347,6 @@ export default function ComposerWizard() {
             setCsvHeaders(headers);
             setCsvData(data);
             
-            // Auto-mapping logic
             const mapping: Record<string, string> = {};
             selectedTemplate?.variables.forEach(v => {
                 const match = headers.find(h => h.toLowerCase() === v.toLowerCase());
@@ -468,7 +481,7 @@ export default function ComposerWizard() {
                 {stepLabel(3, "Validation")}
             </div>
 
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
                 {step === 1 && (
                     <Card className="shadow-xl border-none ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-white">
                         <CardHeader className="bg-muted/30 border-b pb-6 p-8">
@@ -548,7 +561,7 @@ export default function ComposerWizard() {
                             </div>
 
                             {selectedTemplate && (
-                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 space-y-8">
+                                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="p-8 rounded-[2.5rem] bg-slate-50 border-2 border-dashed border-slate-200 space-y-8 text-left">
                                     <div className="flex justify-between items-center px-2">
                                         <div className="flex items-center gap-3">
                                             <Zap className="h-5 w-5 text-primary" />
@@ -815,48 +828,91 @@ export default function ComposerWizard() {
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between px-1">
                                                     <Label className="text-[10px] font-black uppercase tracking-widest text-primary">Manual Recipient Overlay</Label>
-                                                    {recipientSuggestions.length > 0 && (
-                                                        <TooltipProvider>
-                                                            <Tooltip>
-                                                                <TooltipTrigger asChild>
-                                                                    <div className="flex items-center gap-1.5 text-[9px] font-black uppercase text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                                                                        <CheckCircle2 className="h-2.5 w-2.5" /> Discovery Active
-                                                                    </div>
-                                                                </TooltipTrigger>
-                                                                <TooltipContent>Targeting suggestions available from bound record</TooltipContent>
-                                                            </Tooltip>
-                                                        </TooltipProvider>
-                                                    )}
+                                                    <TooltipProvider>
+                                                        <Tooltip>
+                                                            <TooltipTrigger asChild>
+                                                                <div className={cn(
+                                                                    "flex items-center gap-1.5 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border transition-all duration-500",
+                                                                    recipientSuggestions.length > 0 ? "text-emerald-600 bg-emerald-50 border-emerald-100" : "text-muted-foreground opacity-20 bg-muted/10 border-border"
+                                                                )}>
+                                                                    <CheckCircle2 className="h-2.5 w-2.5" /> Discovery Engine
+                                                                </div>
+                                                            </TooltipTrigger>
+                                                            <TooltipContent>Targeting suggestions harvested from bound records</TooltipContent>
+                                                        </Tooltip>
+                                                    </TooltipProvider>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <Controller
-                                                        name="recipient"
-                                                        control={control}
-                                                        render={({ field }) => (
-                                                            <Input {...field} placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-8" />
-                                                        )}
-                                                    />
+                                                
+                                                <div className="space-y-4">
+                                                    <div className="relative group">
+                                                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground opacity-20 group-focus-within:text-primary group-focus-within:opacity-100 transition-all" />
+                                                        <Controller
+                                                            name="recipient"
+                                                            control={control}
+                                                            render={({ field }) => (
+                                                                <Input 
+                                                                    {...field} 
+                                                                    placeholder={watchedChannel === 'email' ? 'parent@example.com' : 'e.g. 024XXXXXXX'} 
+                                                                    className="h-16 rounded-[1.25rem] bg-muted/20 border-none shadow-inner font-black text-2xl px-12 focus-visible:ring-1 focus-visible:ring-primary/20"
+                                                                    value={field.value || ''}
+                                                                    onChange={(e) => {
+                                                                        field.onChange(e.target.value);
+                                                                        setRecipientSearchTerm(e.target.value);
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        />
+                                                    </div>
                                                     
-                                                    {/* Phase 7: Smart Suggestions UI */}
-                                                    {recipientSuggestions.length > 0 && (
-                                                        <div className="flex flex-wrap gap-2 pt-1">
-                                                            {recipientSuggestions.map((sug, i) => (
-                                                                <button
-                                                                    key={i}
-                                                                    type="button"
-                                                                    onClick={() => setValue('recipient', sug.value)}
-                                                                    className={cn(
-                                                                        "flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all hover:scale-105 active:scale-95",
-                                                                        watch('recipient') === sug.value ? "bg-primary border-primary text-white shadow-lg" : "bg-white border-primary/10 text-primary hover:bg-primary/5"
-                                                                    )}
-                                                                >
-                                                                    <Contact className="h-3 w-3" />
-                                                                    <div className="text-left leading-none">
-                                                                        <p className="text-[9px] font-black uppercase tracking-tighter">{sug.label}</p>
-                                                                        <p className="text-[8px] opacity-60 font-bold">{sug.source}</p>
+                                                    {/* Smart Suggestions & Discovery Hub */}
+                                                    {(recipientSuggestions.length > 0 || searchResults.length > 0) && (
+                                                        <div className="p-4 rounded-2xl bg-slate-50 border border-border shadow-inner space-y-4 animate-in fade-in slide-in-from-top-2">
+                                                            {recipientSuggestions.length > 0 && (
+                                                                <div className="space-y-2">
+                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground ml-1">Discovered Contacts</p>
+                                                                    <div className="flex flex-wrap gap-2">
+                                                                        {recipientSuggestions.map((sug, i) => (
+                                                                            <button
+                                                                                key={i}
+                                                                                type="button"
+                                                                                onClick={() => { setValue('recipient', sug.value); setRecipientSearchTerm(''); }}
+                                                                                className={cn(
+                                                                                    "flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 transition-all hover:scale-105 active:scale-95 shadow-sm",
+                                                                                    watch('recipient') === sug.value ? "bg-primary border-primary text-white" : "bg-white border-primary/10 text-primary hover:bg-primary/5"
+                                                                                )}
+                                                                            >
+                                                                                <Contact className="h-3.5 w-3.5" />
+                                                                                <div className="text-left leading-none">
+                                                                                    <p className="text-[10px] font-black uppercase tracking-tighter truncate max-w-[120px]">{sug.label}</p>
+                                                                                    <p className="text-[8px] opacity-60 font-bold uppercase mt-0.5">{sug.source}</p>
+                                                                                </div>
+                                                                            </button>
+                                                                        ))}
                                                                     </div>
-                                                                </button>
-                                                            ))}
+                                                                </div>
+                                                            )}
+
+                                                            {searchResults.length > 0 && recipientSearchTerm && (
+                                                                <div className="space-y-2 pt-2 border-t border-border/50">
+                                                                    <p className="text-[8px] font-black uppercase tracking-widest text-primary ml-1">Network Search</p>
+                                                                    <div className="space-y-1">
+                                                                        {searchResults.map((res, i) => (
+                                                                            <button
+                                                                                key={i}
+                                                                                type="button"
+                                                                                onClick={() => { setValue('recipient', res.value); setRecipientSearchTerm(''); }}
+                                                                                className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-primary/10 transition-colors group"
+                                                                            >
+                                                                                <div className="flex items-center gap-3">
+                                                                                    <Building className="h-3 w-3 text-muted-foreground opacity-40" />
+                                                                                    <span className="text-xs font-bold text-foreground/80">{res.label}</span>
+                                                                                </div>
+                                                                                <Badge variant="outline" className="text-[8px] font-black uppercase text-primary border-primary/20 opacity-0 group-hover:opacity-100">{res.source}</Badge>
+                                                                            </button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </div>
@@ -899,7 +955,7 @@ export default function ComposerWizard() {
                                                     <Controller
                                                         name={`variables.${v}`}
                                                         control={control}
-                                                        render={({ field }) => <Input {...field} value={field.value ?? ''} className="bg-white border border-primary/10 h-11 rounded-xl shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 font-bold" />}
+                                                        render={({ field }) => <Input {...field} value={field.value ?? ''} className="bg-white border border-primary/10 h-11 rounded-xl shadow-sm focus-visible:ring-1 focus-visible:ring-primary/20 font-bold px-4" />}
                                                     />
                                                 </div>
                                             ))}

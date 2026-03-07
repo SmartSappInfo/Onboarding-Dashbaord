@@ -1,8 +1,11 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, Meeting, Submission, SurveyResponse } from './types';
+import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, Meeting, Submission, SurveyResponse, MessageLog } from './types';
 import { revalidatePath } from 'next/cache';
+import { fetchSmsStatusAction } from './mnotify-actions';
+import { fetchEmailStatusAction } from './resend-actions';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -29,7 +32,6 @@ export async function syncVariableRegistry() {
     const batch = adminDb.batch();
 
     // 2. STATIC CORE VARIABLES (Always Sync/Update)
-    // Expanded to include Survey Result specific tags.
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
       { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
       { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
@@ -40,8 +42,6 @@ export async function syncVariableRegistry() {
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
-      
-      // Dynamic Result Tags (Always available for survey templates)
       { key: 'survey_score', label: 'Respondent Score', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'score', type: 'number' },
       { key: 'max_score', label: 'Survey Max Points', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'maxScore', type: 'number' },
       { key: 'outcome_label', label: 'Logic Result Name', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'outcome.label', type: 'string' },
@@ -118,6 +118,64 @@ export async function syncVariableRegistry() {
     console.error(">>> [VARIABLES] Sync Failed:", error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Synchronizes statuses for all relevant messaging logs by querying providers.
+ * High-cost operation - limited to top 50 logs.
+ */
+export async function syncAllLogStatuses() {
+    try {
+        const logsCol = adminDb.collection('message_logs');
+        const logsSnap = await logsCol
+            .where('status', '==', 'sent')
+            .orderBy('sentAt', 'desc')
+            .limit(50)
+            .get();
+
+        if (logsSnap.empty) return { success: true, count: 0 };
+
+        let updatedCount = 0;
+        for (const logDoc of logsSnap.docs) {
+            const log = { id: logDoc.id, ...logDoc.data() } as MessageLog;
+            if (!log.providerId) continue;
+
+            let providerStatus = '';
+            let isDelivered = false;
+
+            try {
+                if (log.channel === 'sms') {
+                    const res = await fetchSmsStatusAction(log.providerId);
+                    if (res.success) {
+                        providerStatus = String(res.data.status);
+                        isDelivered = providerStatus === '0' || providerStatus.toLowerCase().includes('delivered');
+                    }
+                } else {
+                    const res = await fetchEmailStatusAction(log.providerId);
+                    if (res.success) {
+                        providerStatus = res.data.last_event || 'sent';
+                        isDelivered = providerStatus === 'delivered';
+                    }
+                }
+
+                if (providerStatus && providerStatus !== log.providerStatus) {
+                    await logDoc.ref.update({
+                        providerStatus,
+                        status: isDelivered ? 'sent' : providerStatus === 'bounced' ? 'failed' : log.status,
+                        updatedAt: new Date().toISOString()
+                    });
+                    updatedCount++;
+                }
+            } catch (e) {
+                console.error(`Status sync failed for log ${log.id}`);
+            }
+        }
+
+        revalidatePath('/admin/messaging/logs');
+        return { success: true, count: updatedCount };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
 }
 
 /**

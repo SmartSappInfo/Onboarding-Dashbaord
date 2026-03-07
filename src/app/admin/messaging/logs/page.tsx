@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -20,7 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { 
     History, ArrowLeft, Mail, Smartphone, CheckCircle2, XCircle, 
     Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck,
-    FileText, MousePointer2, Wand2, ArrowRight, Lock, AlertTriangle
+    FileText, MousePointer2, Wand2, ArrowRight, Lock, AlertTriangle, Zap
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
@@ -38,6 +39,7 @@ import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { fetchSmsStatusAction } from '@/lib/mnotify-actions';
 import { fetchEmailStatusAction } from '@/lib/resend-actions';
+import { syncAllLogStatuses } from '@/lib/messaging-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -49,6 +51,7 @@ export default function MessageLogsPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedLog, setSelectedLog] = React.useState<MessageLog | null>(null);
     const [isSyncing, setIsSyncing] = React.useState(false);
+    const [isGlobalSyncing, setIsGlobalSyncing] = React.useState(false);
 
     // Pull all logs and filter in frontend for reliability
     const logsQuery = useMemoFirebase(() => {
@@ -69,6 +72,20 @@ export default function MessageLogsPage() {
             l.title?.toLowerCase().includes(s)
         );
     }, [logs, searchTerm]);
+
+    const handleGlobalSync = async () => {
+        setIsGlobalSyncing(true);
+        const result = await syncAllLogStatuses();
+        if (result.success) {
+            toast({ 
+                title: 'Sync Complete', 
+                description: result.count ? `Synchronized ${result.count} delivery statuses.` : 'All records are up to date.' 
+            });
+        } else {
+            toast({ variant: 'destructive', title: 'Global Sync Failed', description: result.error });
+        }
+        setIsGlobalSyncing(false);
+    }
 
     const handleSyncStatus = async () => {
         if (!selectedLog?.providerId || !firestore) return;
@@ -135,6 +152,18 @@ export default function MessageLogsPage() {
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
             <div className="grid gap-6">
+                <div className="flex justify-end gap-3">
+                    <Button 
+                        variant="outline" 
+                        onClick={handleGlobalSync} 
+                        disabled={isGlobalSyncing || isLoading}
+                        className="rounded-xl font-bold h-10 gap-2 border-primary/20 hover:bg-primary/5 text-primary shadow-sm"
+                    >
+                        {isGlobalSyncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                        Universal Status Sync
+                    </Button>
+                </div>
+
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
                     <CardHeader className="pb-3 border-b bg-muted/10">
                         <div className="flex items-center justify-between gap-4">
