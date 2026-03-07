@@ -35,11 +35,11 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, School, Meeting, Survey, PDFForm } from '@/lib/types';
-import { renderBlocksToHtml } from '@/lib/messaging-utils';
+import { renderBlocksToHtml, resolveVariables } from '@/lib/messaging-utils';
 import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
 import { SimulationStudio } from './simulation-studio';
-import AiChatEditor from '../components/ai-chat-editor';
+import { useToast } from '@/hooks/use-toast';
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -66,6 +66,7 @@ export function TemplateWorkshop({
     onCancel,
     isSaving
 }: TemplateWorkshopProps) {
+    const { toast } = useToast();
     const [step, setStep] = React.useState(1);
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
@@ -95,6 +96,7 @@ export function TemplateWorkshop({
     // Sync Designers
     React.useEffect(() => {
         if (channel === 'email' && editorMode === 'designer') {
+            // Internal sync uses empty variables but we need to ensure formatting is consistent
             const html = renderBlocksToHtml(blocks, {});
             if (html !== body) setBody(html);
         }
@@ -386,7 +388,15 @@ export function TemplateWorkshop({
                             simEntity={simEntity} setSimEntity={setSimEntity} 
                             simRecordId={simRecordId} setSimRecordId={setSimRecordId} 
                             schools={schools} meetings={meetings} surveys={surveys} pdfs={pdfs}
-                            resolvedPreview={() => body} // Helper for preview
+                            resolvedPreview={(tmpl, vars) => {
+                                if (channel === 'email') {
+                                    const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+                                    return renderBlocksToHtml(blocks, vars, {
+                                        wrapper: activeStyle?.htmlWrapper
+                                    });
+                                }
+                                return resolveVariables(body, vars);
+                            }}
                         />
                     )}
                 </AnimatePresence>

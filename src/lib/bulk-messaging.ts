@@ -1,10 +1,9 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
 import { sendMessage } from './messaging-engine';
 import { sendBatchEmails } from './resend-service';
-import { resolveVariables } from './messaging-utils';
+import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle } from './types';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
@@ -45,7 +44,6 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
     const jobRef = await adminDb.collection('message_jobs').add(jobData);
 
     // 3. Task Fan-out (Batched for Firestore limits)
-    // Firestore allows max 500 writes per batch. We use 450 to be safe.
     const taskChunks = [];
     for (let i = 0; i < recipients.length; i += 450) {
       taskChunks.push(recipients.slice(i, i + 450));
@@ -75,8 +73,6 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
 
 /**
  * Processes a single chunk of tasks for a given job.
- * Designed to be called iteratively until the job is complete.
- * Uses high-performance batch APIs for Email.
  */
 export async function processBulkJobChunk(jobId: string) {
   try {
@@ -90,12 +86,10 @@ export async function processBulkJobChunk(jobId: string) {
         return { status: job.status, progress: 100 };
     }
 
-    // 1. Mark as processing if queued
     if (job.status === 'queued') {
         await jobRef.update({ status: 'processing' });
     }
 
-    // 2. Fetch pending tasks
     const tasksSnap = await jobRef.collection('tasks')
         .where('status', '==', 'pending')
         .limit(CHUNK_SIZE)
@@ -106,7 +100,6 @@ export async function processBulkJobChunk(jobId: string) {
         return { status: 'completed', progress: 100 };
     }
 
-    // 3. Fetch Core Assets for generation (once per chunk)
     const [templateSnap, senderSnap] = await Promise.all([
         adminDb.collection('message_templates').doc(job.templateId).get(),
         adminDb.collection('sender_profiles').doc(job.senderProfileId).get(),
@@ -115,30 +108,38 @@ export async function processBulkJobChunk(jobId: string) {
     const template = templateSnap.data() as MessageTemplate;
     const sender = senderSnap.data() as SenderProfile;
     
-    let styleWrapper = '{{content}}';
-    if (template.channel === 'email' && template.styleId) {
+    let styleWrapper = '';
+    if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
         const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
         if (styleSnap.exists) {
             styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
         }
     }
 
-    // 4. Batch Dispatching
     let successIncrement = 0;
     let failedIncrement = 0;
 
     if (job.channel === 'email') {
-        // Optimized Email Batching
         const batchPayload = tasksSnap.docs.map(taskDoc => {
             const task = taskDoc.data() as MessageTask;
-            const resolvedSubject = resolveVariables(template.subject || '', task.variables);
-            const resolvedBody = resolveVariables(template.body, task.variables);
-            const html = styleWrapper.replace('{{content}}', resolvedBody);
+            let html = '';
+            let subject = resolveVariables(template.subject || '', task.variables);
+
+            if (template.blocks?.length) {
+                html = renderBlocksToHtml(template.blocks, task.variables, {
+                    wrapper: styleWrapper || undefined
+                });
+            } else {
+                html = resolveVariables(template.body, task.variables);
+                if (styleWrapper && styleWrapper.includes('{{content}}')) {
+                    html = styleWrapper.replace('{{content}}', html);
+                }
+            }
 
             return {
                 from: sender.identifier,
                 to: task.recipient,
-                subject: resolvedSubject,
+                subject: subject,
                 html: html,
                 taskDocRef: taskDoc.ref
             };
@@ -146,7 +147,6 @@ export async function processBulkJobChunk(jobId: string) {
 
         try {
             const result = await sendBatchEmails(batchPayload);
-            // Resend returns an array of results for batch dispatches
             if (result.data) {
                 for (let i = 0; i < result.data.length; i++) {
                     const res = result.data[i];
@@ -161,16 +161,12 @@ export async function processBulkJobChunk(jobId: string) {
                 }
             }
         } catch (e: any) {
-            console.error(">>> [BULK] BATCH EMAIL FAILED:", e.message);
-            // Fallback: Mark all in this chunk as failed
             failedIncrement = tasksSnap.size;
             for (const doc of tasksSnap.docs) {
                 await doc.ref.update({ status: 'failed', error: e.message });
             }
         }
     } else {
-        // Individual processing for SMS (mNotify SMS is usually optimized via recipient array, 
-        // but for templates with variables, individual is safer for this MVP)
         for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
             const result = await sendMessage({
@@ -190,11 +186,9 @@ export async function processBulkJobChunk(jobId: string) {
         }
     }
 
-    // 5. Update Job Stats
     const newProcessed = job.processed + tasksSnap.size;
     const newSuccess = job.success + successIncrement;
     const newFailed = job.failed + failedIncrement;
-    
     const isFinished = newProcessed >= job.totalRecipients;
 
     await jobRef.update({

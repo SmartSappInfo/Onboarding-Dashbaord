@@ -79,7 +79,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 school_email: schoolData.email,
                 school_contact_name: schoolData.contactPerson,
             };
-            // Merge school vars without overwriting already present keys (e.g. if the form already provided school_name)
+            // Merge school vars without overwriting already present keys
             Object.entries(schoolVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
@@ -97,28 +97,31 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     });
 
-    // 6. Render Body
+    // 6. Resolve Style Wrapper
+    let styleWrapper = '';
+    if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
+        const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
+        if (styleSnap.exists) {
+            styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
+        }
+    }
+
+    // 7. Render Body
     let resolvedBody = '';
     if (template.channel === 'email' && template.blocks && template.blocks.length > 0) {
-        resolvedBody = renderBlocksToHtml(template.blocks, finalVariables);
+        resolvedBody = renderBlocksToHtml(template.blocks, finalVariables, {
+            wrapper: styleWrapper || undefined
+        });
     } else {
         resolvedBody = resolveVariables(template.body, finalVariables);
+        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+            resolvedBody = styleWrapper.replace('{{content}}', resolvedBody);
+        }
     }
 
-    // 7. Resolve Metadata (Email only)
+    // 8. Resolve Metadata (Email only)
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
-
-    // 8. Apply Legacy Style Wrapper (if no blocks)
-    if (template.channel === 'email' && template.styleId && !template.blocks?.length) {
-      const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
-      if (styleSnap.exists) {
-        const style = styleSnap.data() as MessageStyle;
-        if (style.htmlWrapper.includes('{{content}}')) {
-          resolvedBody = style.htmlWrapper.replace('{{content}}', resolvedBody);
-        }
-      }
-    }
 
     // 9. Perform Delivery
     let providerId = null;

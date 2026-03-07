@@ -80,7 +80,15 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
  * Optimized for Outlook, Gmail, and Mobile clients.
  * Includes hidden metadata markers for bidirectional sync.
  */
-export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<string, any>, options?: { width?: string, backgroundColor?: string }): string {
+export function renderBlocksToHtml(
+  blocks: MessageBlock[], 
+  variables: Record<string, any>, 
+  options?: { 
+    width?: string, 
+    backgroundColor?: string,
+    wrapper?: string 
+  }
+): string {
   if (!blocks || blocks.length === 0) return '';
 
   const maxWidth = options?.width || '600px';
@@ -138,9 +146,10 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
       case 'button': {
         const title = resolveVariables(block.title || 'Click Here', variables);
         const link = resolveVariables(block.link || '#', variables);
+        // CRITICAL: Added font-size: 16px to override parent td font-size: 0px inheritance
         blockHtml = `
           <div style="${wrapperStyle} margin: 20px 0;">
-            <a href="${link}" style="background-color: #3B5FFF; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 800; font-family: sans-serif; display: inline-block;">
+            <a href="${link}" style="background-color: #3B5FFF; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 800; font-family: sans-serif; display: inline-block; font-size: 16px;">
               ${title}
             </a>
           </div>
@@ -217,6 +226,10 @@ export function renderBlocksToHtml(blocks: MessageBlock[], variables: Record<str
   };
 
   const contentHtml = blocks.map(renderBlock).join('\n');
+
+  if (options?.wrapper && options.wrapper.includes('{{content}}')) {
+    return options.wrapper.replace('{{content}}', contentHtml);
+  }
 
   return `<!doctype html>
 <html xmlns="http://www.w3.org/1999/xhtml">
