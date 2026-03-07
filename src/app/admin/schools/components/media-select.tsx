@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, Video, AudioWaveform, FileText } from 'lucide-react';
+import { ImageIcon, Video, AudioWaveform, FileText, AlertCircle } from 'lucide-react';
 import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -61,28 +61,52 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
            url.includes('logo.clearbit.com');
   };
 
+  const isInvalid = value && filterType === 'image' && !isLikelyImage(value);
+
   return (
     <>
-      <div className={cn("flex items-start gap-2", className)}>
-        <div className="relative w-24 h-24 border rounded-md flex items-center justify-center bg-muted shrink-0">
-          {value && filterType === 'image' && isLikelyImage(value) ? (
-            <Image src={value} alt="Preview" fill className="object-contain rounded-md p-1" />
-          ) : (
-            <PreviewIcon />
-          )}
+      <div className={cn("space-y-2 w-full", className)}>
+        <div className="flex items-start gap-2">
+            <div className={cn(
+                "relative w-24 h-24 border rounded-2xl flex items-center justify-center bg-muted shrink-0 transition-colors",
+                isInvalid ? "border-rose-500/50 bg-rose-50" : "border-border"
+            )}>
+            {value && filterType === 'image' && isLikelyImage(value) ? (
+                <Image src={value} alt="Preview" fill className="object-contain rounded-[inherit] p-1" />
+            ) : (
+                <PreviewIcon />
+            )}
+            </div>
+            <div className="flex-grow space-y-2 min-w-0">
+            <Input 
+                value={value || ''}
+                onChange={(e) => triggerChange(e.target.value)}
+                placeholder="https://... or select from library"
+                className={cn(
+                    "h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 transition-all",
+                    isInvalid ? "focus:ring-rose-500/30" : "focus:ring-primary/20"
+                )}
+                ref={ref}
+                {...props}
+            />
+            <Button type="button" variant="outline" size="sm" onClick={() => setIsDialogOpen(true)} className="rounded-lg font-bold border-border/50 text-[10px] uppercase tracking-widest h-8">
+                Select from Library
+            </Button>
+            </div>
         </div>
-        <div className="flex-grow space-y-2">
-          <Input 
-            value={value || ''}
-            onChange={(e) => triggerChange(e.target.value)}
-            placeholder="https://... or select from library"
-            ref={ref}
-            {...props}
-          />
-          <Button type="button" variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
-            Select from Library
-          </Button>
-        </div>
+        
+        {isInvalid && (
+            <motion.div 
+                initial={{ opacity: 0, y: -5 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100"
+            >
+                <AlertCircle className="h-3 w-3 shrink-0" />
+                <p className="text-[9px] font-bold uppercase tracking-tight leading-none">
+                    Format Mismatch: Image expected, but link looks like a video or external page.
+                </p>
+            </motion.div>
+        )}
       </div>
       <MediaSelectorDialog 
         open={isDialogOpen}

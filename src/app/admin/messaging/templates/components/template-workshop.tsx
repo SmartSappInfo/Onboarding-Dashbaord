@@ -144,7 +144,7 @@ export function TemplateWorkshop({
     };
 
     return (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden text-left">
             <div className="bg-background border-b pt-6 shrink-0 flex items-center justify-between px-8">
                 <div className="flex justify-center items-center mb-8 max-w-2xl mx-auto px-4">
                     {[
@@ -183,7 +183,7 @@ export function TemplateWorkshop({
                                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20"><Settings2 className="h-6 w-6" /></div>
                                             <div>
                                                 <CardTitle className="text-2xl font-black uppercase tracking-tight">Identity & Parameters</CardTitle>
-                                                <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters for this blueprint.</CardDescription>
+                                                <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure the master parameters for this template.</CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -287,7 +287,7 @@ export function TemplateWorkshop({
                                                 {selectedBlockId ? (
                                                     <BlockInspector block={blocks.find(b => b.id === selectedBlockId)!} variables={variables} onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))} />
                                                 ) : (
-                                                    <div className="py-20 text-center opacity-30 px-4"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit properties</p></div>
+                                                    <div className="py-20 text-center opacity-30 px-4 text-left"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit properties</p></div>
                                                 )}
                                             </div>
                                         </ScrollArea>
@@ -349,7 +349,10 @@ export function TemplateWorkshop({
                                                                         isSelected={selectedBlockId === block.id} 
                                                                         simulationVars={simVariables}
                                                                         onSelect={() => { setSelectedBlockId(block.id); setSidebarTab('properties'); }}
-                                                                        onRemove={() => setBlocks(prev => prev.filter(b => b.id !== block.id))}
+                                                                        onRemove={() => {
+                                                                            setBlocks(prev => prev.filter(b => b.id !== block.id));
+                                                                            if (selectedBlockId === block.id) setSelectedBlockId(null);
+                                                                        }}
                                                                         onDuplicate={() => { const next = [...blocks]; next.splice(idx + 1, 0, { ...block, id: `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` }); setBlocks(next); }}
                                                                         onSwap={(a, b) => setBlocks(p => arrayMove(p, a, b))}
                                                                         totalCount={blocks.length}
@@ -362,7 +365,7 @@ export function TemplateWorkshop({
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="space-y-2">
+                                            <div className="space-y-2 text-left">
                                                 <Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">Manual Logic Editor</Label>
                                                 <div className="p-1 rounded-[2.5rem] shadow-2xl bg-slate-900 overflow-hidden">
                                                     <Textarea value={body} onChange={e => setBody(e.target.value)} className="min-h-[600px] rounded-[2rem] font-mono text-sm leading-relaxed p-10 border-none shadow-none focus-visible:ring-0 bg-slate-900 text-blue-400" />

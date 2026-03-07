@@ -31,6 +31,8 @@ interface BlockInspectorProps {
 }
 
 export function BlockInspector({ block, onUpdate }: BlockInspectorProps) {
+    if (!block) return null;
+
     const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer', 'list'].includes(block.type);
 
     return (
