@@ -26,7 +26,7 @@ import {
     Database, 
     Mail, 
     Smartphone, 
-    Check,
+    Check, 
     Info,
     Wand2,
     ClipboardList,
@@ -339,7 +339,7 @@ export default function QuickTemplateDialog({
                         {isLoadingTemplate && (
                             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
                                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Loading Protocol...</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Loading Template...</p>
                             </div>
                         )}
 
@@ -492,7 +492,7 @@ export default function QuickTemplateDialog({
                             className="px-16 rounded-2xl font-black shadow-2xl h-12 uppercase tracking-widest text-sm transition-all active:scale-95 flex-grow sm:flex-grow-0"
                         >
                             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : templateId ? <Save className="mr-2 h-4 w-4" /> : <Check className="mr-2 h-4 w-4" />}
-                            {templateId ? 'Update Current' : 'Commit Protocol'}
+                            {templateId ? 'Update Current' : 'Save Template'}
                         </Button>
                     </div>
                 </DialogFooter>

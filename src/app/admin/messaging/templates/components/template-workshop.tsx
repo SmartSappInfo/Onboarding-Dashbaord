@@ -10,17 +10,15 @@ import {
     Loader2, 
     Save, 
     Database, 
-    Undo, 
-    Redo, 
     PlusCircle, 
     Eye, 
     Maximize2, 
     Minimize2, 
     Monitor, 
     Smartphone as PhoneIcon,
-    Palette,
     Code,
-    Sparkles
+    Sparkles,
+    ChevronRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,9 +34,8 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { AnimatePresence, motion } from 'framer-motion';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
-import { SmartSappIcon } from '@/components/icons';
 import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, School, Meeting, Survey, PDFForm } from '@/lib/types';
-import { renderBlocksToHtml, parseHtmlToBlocks } from '@/lib/messaging-utils';
+import { renderBlocksToHtml } from '@/lib/messaging-utils';
 import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
 import { SimulationStudio } from './simulation-studio';
@@ -170,7 +167,7 @@ export function TemplateWorkshop({
                     <Button variant="ghost" onClick={onCancel} className="font-bold h-11">Discard</Button>
                     <Button onClick={handleCommit} disabled={isSaving || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95 uppercase tracking-widest">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        Save Protocol
+                        Save Template
                     </Button>
                 </div>
             </div>
@@ -192,7 +189,7 @@ export function TemplateWorkshop({
                                     </CardHeader>
                                     <CardContent className="p-10 space-y-10">
                                         <div className="space-y-2">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Protocol Name</Label>
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Template Name</Label>
                                             <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Admission Confirmation" className="h-14 rounded-2xl border-none bg-muted/20 px-6 py-2 text-xl font-black shadow-inner ring-offset-background placeholder:text-muted-foreground/40 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/20 transition-all" />
                                         </div>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -225,6 +222,18 @@ export function TemplateWorkshop({
                                             </div>
                                         )}
                                     </CardContent>
+                                    <CardFooter className="justify-between bg-muted/30 p-8 border-t">
+                                        <Button variant="ghost" onClick={onCancel} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                                        <Button 
+                                            type="button" 
+                                            onClick={() => setStep(2)} 
+                                            disabled={!name}
+                                            className="px-12 rounded-xl font-black shadow-2xl h-12 uppercase tracking-widest text-sm transition-all active:scale-95 gap-2 group"
+                                        >
+                                            Next Phase 
+                                            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                                        </Button>
+                                    </CardFooter>
                                 </Card>
                             </div>
                         </motion.div>

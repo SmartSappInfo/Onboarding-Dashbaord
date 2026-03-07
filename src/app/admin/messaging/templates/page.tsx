@@ -23,7 +23,7 @@ import { AnimatePresence } from 'framer-motion';
 
 /**
  * @fileOverview Messaging Templates Management Page.
- * Orchestrates the relationship between the Protocol Gallery and the Design Workshop.
+ * Orchestrates the relationship between the Template Gallery and the Design Workshop.
  */
 
 export default function MessageTemplatesPage() {
@@ -119,7 +119,7 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
-            toast({ title: 'Protocol Saved', description: 'Institutional communications updated.' });
+            toast({ title: 'Template Saved', description: 'Institutional communications updated.' });
             setIsAdding(false);
             setEditingTemplate(null);
         } catch (e: any) {
@@ -192,7 +192,7 @@ export default function MessageTemplatesPage() {
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
-                        <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Remove Protocol?</AlertDialogTitle>
+                        <AlertDialogTitle className="font-black text-xl uppercase tracking-tight">Remove Template?</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium">
                             Deleting <span className="font-bold text-foreground">"{templateToDelete?.name}"</span> will permanently remove it from the institutional repository.
                         </AlertDialogDescription>

@@ -115,12 +115,12 @@ export function TemplateGallery({
     }, [templates, searchTerm, channelFilter, categoryFilter]);
 
     const groupedTemplates = React.useMemo(() => {
-        if (groupBy === 'none') return { 'All Protocols': filteredTemplates };
+        if (groupBy === 'none') return { 'All Templates': filteredTemplates };
         
         return filteredTemplates.reduce((acc, template) => {
             const key = groupBy === 'channel' 
-                ? (template.channel === 'email' ? 'Email Protocols' : 'SMS Protocols')
-                : (template.category.charAt(0).toUpperCase() + template.category.slice(1) + ' Protocols');
+                ? (template.channel === 'email' ? 'Email Templates' : 'SMS Templates')
+                : (template.category.charAt(0).toUpperCase() + template.category.slice(1) + ' Templates');
             
             if (!acc[key]) acc[key] = [];
             acc[key].push(template);
@@ -134,7 +134,7 @@ export function TemplateGallery({
                 <div className="relative flex-grow w-full">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
                     <Input 
-                        placeholder="Filter protocol blueprints..." 
+                        placeholder="Filter template blueprints..." 
                         className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold shadow-none focus:ring-1 focus:ring-primary/20" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
@@ -208,7 +208,7 @@ export function TemplateGallery({
                     {filteredTemplates.length === 0 && (
                         <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4 opacity-30">
                             <FileType className="h-16 w-16 text-muted-foreground" />
-                            <p className="font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p>
+                            <p className="font-black uppercase tracking-widest text-sm">No template blueprints found.</p>
                         </div>
                     )}
                 </div>
