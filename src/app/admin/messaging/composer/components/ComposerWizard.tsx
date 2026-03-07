@@ -57,7 +57,6 @@ import {
     Database,
     PlusCircle
 } from 'lucide-react';
-import { typeof window } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
