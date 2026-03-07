@@ -52,7 +52,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { checkSenderIdStatusStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
+import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -172,7 +172,7 @@ export default function SenderProfilesPage() {
         
         try {
             if (profile.channel === 'sms') {
-                const result = await checkSenderIdStatusStatusAction(profile.identifier);
+                const result = await checkSenderIdStatusAction(profile.identifier);
                 if (result.success) {
                     const normalizedStatus = result.message?.toLowerCase().includes('approved') ? 'approved' : 
                                            result.message?.toLowerCase().includes('pending') ? 'pending' : 
