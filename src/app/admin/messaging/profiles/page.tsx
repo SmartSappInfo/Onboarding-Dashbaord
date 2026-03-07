@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { SenderProfile } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,14 @@ import {
     DialogDescription,
     DialogFooter,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { 
     Fingerprint, 
     Plus, 
@@ -37,12 +45,14 @@ import {
     AlertCircle,
     Info,
     Send,
-    Globe
+    Globe,
+    MoreVertical,
+    Star
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
+import { checkSenderIdStatusStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
@@ -88,7 +98,7 @@ export default function SenderProfilesPage() {
                 name: name.trim(),
                 channel,
                 identifier: channel === 'sms' ? identifier.trim().toUpperCase() : identifier.trim().toLowerCase(),
-                isDefault: (profiles?.length || 0) === 0,
+                isDefault: (profiles?.filter(p => p.channel === channel).length || 0) === 0,
                 isActive: true,
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
@@ -128,6 +138,31 @@ export default function SenderProfilesPage() {
             toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save profile changes.' });
         } finally {
             setIsUpdating(false);
+        }
+    };
+
+    const handleSetDefault = async (profile: SenderProfile) => {
+        if (!firestore || !profiles) return;
+        
+        const batch = writeBatch(firestore);
+        const channelProfiles = profiles.filter(p => p.channel === profile.channel);
+        
+        channelProfiles.forEach(p => {
+            const ref = doc(firestore, 'sender_profiles', p.id);
+            batch.update(ref, { 
+                isDefault: p.id === profile.id,
+                updatedAt: new Date().toISOString()
+            });
+        });
+
+        try {
+            await batch.commit();
+            toast({ 
+                title: 'Default Updated', 
+                description: `"${profile.name}" is now the primary gateway for ${profile.channel.toUpperCase()}.` 
+            });
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Failed to update default profile.' });
         }
     };
 
@@ -226,30 +261,30 @@ export default function SenderProfilesPage() {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="mb-8 flex items-center justify-end">
-                <Button onClick={() => setIsAdding(!isAdding)}>
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+            <div className="mb-8 flex items-center justify-end flex-wrap gap-4">
+                <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-11 px-8">
                     {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
                     {isAdding ? 'Cancel' : 'Add Profile'}
                 </Button>
             </div>
 
             {isAdding && (
-                <Card className="mb-8 border-primary/20 bg-primary/5 animate-in slide-in-from-top-4 duration-300">
-                    <CardHeader>
-                        <CardTitle>Create New Profile</CardTitle>
-                        <CardDescription>Sender IDs are used for SMS, and From addresses for Email.</CardDescription>
+                <Card className="mb-8 border-primary/20 bg-primary/5 animate-in slide-in-from-top-4 duration-300 rounded-[2rem] overflow-hidden shadow-xl">
+                    <CardHeader className="bg-primary/5 border-b border-primary/10">
+                        <CardTitle className="text-xl font-black uppercase tracking-tight">Create Identity Blueprint</CardTitle>
+                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Configure sender credentials for SMS or Email channels.</CardDescription>
                     </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                    <CardContent className="p-8">
+                        <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
                             <div className="space-y-2">
-                                <Label>Display Name</Label>
-                                <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Enrollment Team" required />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
+                                <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Enrollment Team" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" required />
                             </div>
                             <div className="space-y-2">
-                                <Label>Channel</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Channel Medium</Label>
                                 <Select value={channel} onValueChange={(v: any) => setChannel(v)}>
-                                    <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="h-12 rounded-xl bg-white border-none shadow-inner font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent className="rounded-xl">
                                         <SelectItem value="sms">SMS (Sender ID)</SelectItem>
                                         <SelectItem value="email">Email (From Addr)</SelectItem>
@@ -257,83 +292,83 @@ export default function SenderProfilesPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label>{channel === 'sms' ? 'Sender ID (max 11 chars)' : 'From Email'}</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID' : 'Verified Address'}</Label>
                                 <Input 
                                     value={identifier} 
                                     onChange={e => setIdentifier(e.target.value)} 
                                     placeholder={channel === 'sms' ? 'SMARTSAPP' : 'notifications@enroll.smartsapp.com'} 
                                     required 
                                     maxLength={channel === 'sms' ? 11 : undefined}
-                                    className="rounded-xl"
+                                    className="h-12 rounded-xl bg-white border-none shadow-inner font-mono font-bold"
                                 />
                             </div>
-                            <Button type="submit" disabled={isSubmitting} className="rounded-xl font-bold">
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create Profile
+                            <Button type="submit" disabled={isSubmitting} className="h-12 rounded-xl font-black shadow-2xl uppercase tracking-widest">
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                Commit Identity
                             </Button>
                         </form>
                     </CardContent>
                 </Card>
             )}
 
-            <div className="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden">
+            <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
                 <Table>
-                    <TableHeader className="bg-muted/50">
+                    <TableHeader className="bg-muted/30">
                         <TableRow>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest pl-6">Name</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest pl-8 py-5">Corporate Identity</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-widest">Channel</TableHead>
                             <TableHead className="text-[10px] font-black uppercase tracking-widest">Identifier</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Identity Status</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Availability</TableHead>
-                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-right pr-6">Actions</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Status</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Active</TableHead>
+                            <TableHead className="text-[10px] font-black uppercase tracking-widest text-right pr-8">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoading ? (
                             Array.from({ length: 3 }).map((_, i) => (
                                 <TableRow key={i}>
-                                    <TableCell className="pl-6"><Skeleton className="h-4 w-32 rounded" /></TableCell>
+                                    <TableCell className="pl-8"><Skeleton className="h-4 w-32 rounded" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-16 rounded" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-48 rounded" /></TableCell>
                                     <TableCell><Skeleton className="h-4 w-12 mx-auto rounded" /></TableCell>
                                     <TableCell className="mx-auto text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
-                                    <TableCell className="pr-6"><Skeleton className="h-8 w-16 ml-auto rounded" /></TableCell>
+                                    <TableCell className="pr-8"><Skeleton className="h-8 w-16 ml-auto rounded" /></TableCell>
                                 </TableRow>
                             ))
                         ) : profiles?.length ? (
                             profiles.map((profile) => (
                                 <TableRow key={profile.id} className="group hover:bg-muted/30 transition-colors">
-                                    <TableCell className="font-bold pl-6">
-                                        <div className="flex items-center gap-2">
-                                            {profile.name}
-                                            {profile.isDefault && <Badge className="h-4 text-[8px] uppercase tracking-tighter bg-primary/10 text-primary border-none font-black">Default</Badge>}
+                                    <TableCell className="font-bold pl-8 py-4">
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-black text-foreground uppercase tracking-tight">{profile.name}</span>
+                                            {profile.isDefault && <Badge className="h-5 text-[8px] uppercase tracking-widest bg-primary text-white border-none font-black shadow-lg shadow-primary/20">Default</Badge>}
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter">
-                                            {profile.channel === 'sms' ? <Smartphone className="h-3 w-3 text-orange-500" /> : <Mail className="h-3 w-3 text-blue-500" />}
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest">
+                                            {profile.channel === 'sms' ? <Smartphone className="h-3.5 w-3.5 text-orange-500" /> : <Mail className="h-3.5 w-3.5 text-blue-500" />}
                                             {profile.channel}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs uppercase">{profile.identifier}</TableCell>
+                                    <TableCell className="font-mono text-xs uppercase text-muted-foreground font-bold">{profile.identifier}</TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex flex-col items-center gap-1.5">
                                             {getStatusBadge(profile)}
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button 
                                                     onClick={() => handleSyncStatus(profile)} 
                                                     disabled={syncingId === profile.id}
-                                                    className="text-[9px] font-black uppercase tracking-tighter text-primary flex items-center gap-1 hover:underline"
+                                                    className="text-[8px] font-black uppercase tracking-widest text-primary flex items-center gap-1 hover:underline"
                                                 >
                                                     <RefreshCw className={cn("h-2.5 w-2.5", syncingId === profile.id && "animate-spin")} />
-                                                    Sync Gateway
+                                                    Sync
                                                 </button>
                                                 {profile.channel === 'sms' && (!profile.mNotifyStatus || profile.mNotifyStatus === 'not_registered') && (
                                                     <>
-                                                        <span className="text-[9px] text-muted-foreground/30">|</span>
+                                                        <span className="text-[8px] text-muted-foreground/30">|</span>
                                                         <button 
                                                             onClick={() => handleStartRegistration(profile)}
-                                                            className="text-[9px] font-black uppercase tracking-tighter text-orange-600 flex items-center gap-1 hover:underline"
+                                                            className="text-[8px] font-black uppercase tracking-widest text-orange-600 flex items-center gap-1 hover:underline"
                                                         >
                                                             <Sparkles className="h-2.5 w-2.5" />
                                                             Apply
@@ -350,31 +385,50 @@ export default function SenderProfilesPage() {
                                             className="scale-75 mx-auto"
                                         />
                                     </TableCell>
-                                    <TableCell className="text-right pr-6">
-                                        <div className="flex items-center justify-end gap-1">
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
-                                                onClick={() => handleEditClick(profile)}
-                                            >
-                                                <Pencil className="h-4 w-4" />
-                                            </Button>
-                                            <Button 
-                                                variant="ghost" 
-                                                size="icon" 
-                                                className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-xl"
-                                                onClick={() => handleDelete(profile.id)}
-                                            >
-                                                <Trash2 className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                    <TableCell className="text-right pr-8">
+                                        <DropdownMenu modal={false}>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl hover:bg-primary/5">
+                                                    <MoreVertical className="h-4 w-4 text-muted-foreground" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+                                                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Profile Actions</DropdownMenuLabel>
+                                                
+                                                <DropdownMenuItem onClick={() => handleEditClick(profile)} className="rounded-xl p-2.5 gap-3">
+                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Pencil className="h-3.5 w-3.5" /></div>
+                                                    <span className="font-bold text-sm">Edit Blueprint</span>
+                                                </DropdownMenuItem>
+
+                                                {!profile.isDefault && (
+                                                    <DropdownMenuItem onClick={() => handleSetDefault(profile)} className="rounded-xl p-2.5 gap-3">
+                                                        <div className="p-1.5 bg-amber-500/10 rounded-lg text-amber-600"><Star className="h-3.5 w-3.5" /></div>
+                                                        <span className="font-bold text-sm">Set as Channel Default</span>
+                                                    </DropdownMenuItem>
+                                                )}
+
+                                                <DropdownMenuSeparator className="my-2" />
+                                                
+                                                <DropdownMenuItem 
+                                                    onClick={() => handleDelete(profile.id)} 
+                                                    className="rounded-xl p-2.5 gap-3 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                >
+                                                    <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-3.5 w-3.5" /></div>
+                                                    <span className="font-bold text-sm">Remove Identity</span>
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">No sender profiles configured.</TableCell>
+                                <TableCell colSpan={6} className="h-64 text-center">
+                                    <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+                                        <Fingerprint className="h-12 w-12" />
+                                        <p className="text-xs font-black uppercase tracking-widest">Registry Empty</p>
+                                    </div>
+                                </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
@@ -383,43 +437,48 @@ export default function SenderProfilesPage() {
 
             {/* Edit Dialog */}
             <Dialog open={!!editingProfile} onOpenChange={(open) => !open && setEditingProfile(null)}>
-                <DialogContent className="sm:max-w-md rounded-2xl">
+                <DialogContent className="sm:max-w-md rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
                     <form onSubmit={handleUpdate}>
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-black">Modify Identity</DialogTitle>
-                            <DialogDescription className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-                                Updating profile for &ldquo;{editingProfile?.name}&rdquo;
-                            </DialogDescription>
+                        <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                            <div className="flex items-center gap-4 mb-1">
+                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                    <Pencil className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <DialogTitle className="text-2xl font-black tracking-tight uppercase">Edit Blueprint</DialogTitle>
+                                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Updating institutional identity protocol</DialogDescription>
+                                </div>
+                            </div>
                         </DialogHeader>
-                        <div className="space-y-6 py-6 border-y my-4">
+                        <div className="p-8 space-y-8">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
                                 <Input 
                                     value={editName} 
                                     onChange={e => setEditName(e.target.value)} 
                                     placeholder="e.g. Alerts Channel" 
-                                    className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                                    className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner"
                                     required 
                                 />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                                    {editingProfile?.channel === 'sms' ? 'Sender ID' : 'Verified Address'}
+                                    {editingProfile?.channel === 'sms' ? 'Provider Alphanumeric ID' : 'Verified Endpoint Address'}
                                 </Label>
                                 <Input 
                                     value={editIdentifier} 
                                     onChange={e => setEditIdentifier(editingProfile?.channel === 'sms' ? e.target.value.toUpperCase() : e.target.value.toLowerCase())} 
-                                    className="h-11 rounded-xl bg-muted/20 border-none font-mono font-bold"
+                                    className="h-12 rounded-xl bg-muted/20 border-none font-mono font-bold shadow-inner"
                                     required 
                                     maxLength={editingProfile?.channel === 'sms' ? 11 : undefined}
                                 />
                             </div>
                         </div>
-                        <DialogFooter className="gap-2">
-                            <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} className="font-bold">Cancel</Button>
-                            <Button type="submit" disabled={isUpdating} className="rounded-xl font-bold px-8 shadow-lg">
-                                {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Commit Update
+                        <DialogFooter className="bg-muted/30 p-6 flex justify-between gap-3 sm:justify-between border-t">
+                            <Button type="button" variant="ghost" onClick={() => setEditingProfile(null)} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                            <Button type="submit" disabled={isUpdating} className="rounded-xl font-black px-12 shadow-2xl h-12 uppercase tracking-widest text-sm">
+                                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                                Commit Change
                             </Button>
                         </DialogFooter>
                     </form>
@@ -428,7 +487,7 @@ export default function SenderProfilesPage() {
 
             {/* Registration Dialog */}
             <Dialog open={!!registeringProfile} onOpenChange={(open) => !open && setRegisteringProfile(null)}>
-                <DialogContent className="sm:max-w-md rounded-[2rem] overflow-hidden p-0 border-none">
+                <DialogContent className="sm:max-w-md rounded-[2.5rem] overflow-hidden p-0 border-none shadow-2xl">
                     <DialogHeader className="p-8 pb-0">
                         <div className="flex items-center gap-4 mb-2">
                             <div className="p-3 bg-orange-500 text-white rounded-2xl shadow-xl shadow-orange-200">
@@ -441,9 +500,9 @@ export default function SenderProfilesPage() {
                         </div>
                     </DialogHeader>
                     <div className="p-8 space-y-8">
-                        <div className="p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-1">
+                        <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-1 shadow-inner">
                             <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Requested Alphanumeric ID</Label>
-                            <p className="text-3xl font-black text-foreground tracking-tighter uppercase">{registeringProfile?.identifier}</p>
+                            <p className="text-4xl font-black text-foreground tracking-tighter uppercase">{registeringProfile?.identifier}</p>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Justification</Label>
@@ -451,7 +510,7 @@ export default function SenderProfilesPage() {
                                 value={regPurpose} 
                                 onChange={e => setRegPurpose(e.target.value)}
                                 placeholder="Explain how you will use this ID (e.g., automated enrollment confirmations and school event reminders for SmartSapp parents)"
-                                className="min-h-[120px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 leading-relaxed"
+                                className="min-h-[140px] rounded-2xl bg-muted/20 border-none shadow-inner p-4 leading-relaxed"
                             />
                         </div>
                         <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
@@ -464,12 +523,12 @@ export default function SenderProfilesPage() {
                             </div>
                         </div>
                     </div>
-                    <DialogFooter className="bg-muted/30 p-6 flex justify-between items-center sm:justify-between">
-                        <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="font-bold">Cancel</Button>
+                    <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between items-center sm:justify-between">
+                        <Button variant="ghost" onClick={() => setRegisteringProfile(null)} disabled={isRegProcessing} className="font-bold rounded-xl h-12 px-8">Cancel</Button>
                         <Button 
                             onClick={handleCompleteRegistration} 
                             disabled={isRegProcessing || !regPurpose.trim()}
-                            className="rounded-2xl font-black h-12 px-10 shadow-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95 uppercase tracking-widest text-xs"
+                            className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95 uppercase tracking-widest text-xs"
                         >
                             {isRegProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                             Submit Application
