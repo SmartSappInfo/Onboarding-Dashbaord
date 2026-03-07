@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { MessageTemplate, MessageStyle } from '@/lib/types';
+import type { MessageTemplate } from '@/lib/types';
 import { 
     Search, 
     FileType, 
@@ -18,6 +18,7 @@ import { Card, CardTitle, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SmartSappIcon } from '@/components/icons';
 import { cn } from '@/lib/utils';
