@@ -19,7 +19,7 @@ interface SendMessageInput {
 
 /**
  * Main entry point for sending a single message via the messaging engine.
- * Upgraded to handle structured blocks for high-fidelity emails and automatic sender fallback.
+ * Upgraded to handle an intelligent resolution hierarchy for Sender Profiles.
  */
 export async function sendMessage(input: SendMessageInput): Promise<{ success: boolean; error?: string; logId?: string }> {
   const { templateId, senderProfileId, recipient, variables, attachments, schoolId, scheduledAt } = input;
@@ -30,9 +30,15 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     if (!templateSnap.exists) throw new Error(`Template not found: ${templateId}`);
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
-    // 2. Resolve Sender Profile (with intelligent fallback for 'default' or missing IDs)
+    // 2. Resolve Sender Profile (Resolution Hierarchy)
+    // Hierarchy: 1. Input ID (Explicit) -> 2. Channel Default -> 3. Any Active
     let senderProfileSnap;
-    if (senderProfileId === 'default' || !senderProfileId || senderProfileId === 'none') {
+    
+    if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
+        senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+    }
+
+    if (!senderProfileSnap || !senderProfileSnap.exists) {
         const defaultSnap = await adminDb.collection('sender_profiles')
             .where('channel', '==', template.channel)
             .where('isDefault', '==', true)
@@ -52,11 +58,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         } else {
             senderProfileSnap = defaultSnap.docs[0];
         }
-    } else {
-        senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
     }
 
-    if (!senderProfileSnap.exists) throw new Error(`Sender Profile not found: ${senderProfileId}`);
     const sender = { id: senderProfileSnap.id, ...senderProfileSnap.data() } as SenderProfile;
 
     if (!sender.isActive) throw new Error(`Sender Profile "${sender.name}" is inactive.`);

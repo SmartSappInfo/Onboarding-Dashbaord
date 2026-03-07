@@ -3,16 +3,15 @@
 import * as React from 'react';
 import { useFormContext, useFieldArray, Controller } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, GripVertical, AlertCircle, Mail, Smartphone, Send, MessageSquareText, PlusCircle, ArrowUp, ArrowDown, Pencil } from 'lucide-react';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ArrowDown, ShieldCheck } from 'lucide-react';
 import type { SurveyResultRule, SurveyResultPage, MessageTemplate, SenderProfile } from '@/lib/types';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -140,12 +139,15 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     control={control}
                                     render={({ field }) => (
                                         <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-white border-blue-200 text-xs font-medium italic">
-                                                <SelectValue placeholder="Select sender..." />
+                                            <SelectTrigger className="h-9 bg-white border-blue-200 text-[10px] font-bold uppercase text-blue-700/60 flex items-center gap-2">
+                                                <ShieldCheck className="h-3 w-3" />
+                                                <SelectValue placeholder="Resolved From Identity" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">Default Sender</SelectItem>
-                                                {emailProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                {emailProfiles?.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     )}
@@ -206,12 +208,15 @@ function SortableRuleItem({ id, index, pages, remove, templates, profiles, surve
                                     control={control}
                                     render={({ field }) => (
                                         <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-white border-orange-200 text-xs font-medium italic">
-                                                <SelectValue placeholder="Select sender..." />
+                                            <SelectTrigger className="h-9 bg-white border-orange-200 text-[10px] font-bold uppercase text-orange-700/60 flex items-center gap-2">
+                                                <ShieldCheck className="h-3 w-3" />
+                                                <SelectValue placeholder="Resolved From Identity" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="none">Default Sender</SelectItem>
-                                                {smsProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                {smsProfiles?.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))}
                                             </SelectContent>
                                         </Select>
                                     )}
@@ -258,7 +263,7 @@ export default function ResultRuleManager() {
 
     const templatesQuery = useMemoFirebase(() => {
         if (!firestore) return null;
-        return query(collection(firestore, 'message_templates'), where('category', '==', 'surveys'));
+        return query(collection(firestore, 'message_templates'), where('isActive', '==', true));
     }, [firestore]);
 
     const profilesQuery = useMemoFirebase(() => {
@@ -311,7 +316,7 @@ export default function ResultRuleManager() {
                 </DndContext>
             ) : (
                 <div className="text-center py-24 border-4 border-dashed rounded-[2.5rem] bg-muted/10 border-muted-foreground/10 flex flex-col items-center justify-center gap-4">
-                    <div className="p-6 bg-white rounded-full shadow-inner"><AlertCircle className="h-10 w-10 text-muted-foreground/30" /></div>
+                    <div className="p-6 bg-white rounded-full shadow-inner"><ArrowUp className="h-10 w-10 text-muted-foreground/30 animate-bounce" /></div>
                     <div className="space-y-1">
                         <p className="text-muted-foreground font-black uppercase tracking-widest text-xs">No active logic thresholds</p>
                         <p className="text-[10px] font-medium text-muted-foreground/60 uppercase tracking-tighter">All respondents will view the default result page</p>

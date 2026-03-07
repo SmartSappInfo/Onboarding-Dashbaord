@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Link as LinkIcon, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
+    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
 import { type PDFForm, type PDFFormField, type School, type MessageTemplate, type SenderProfile } from '@/lib/types';
 import { savePdfForm, updatePdfFormStatus, updatePdfFormSlug } from '@/lib/pdf-actions';
@@ -193,13 +193,13 @@ export default function EditPdfPage() {
 
   const templatesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'message_templates'), orderBy('name', 'asc'));
+    return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('category', '==', 'forms'));
   }, [firestore]);
   const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
 
   const profilesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true));
+    return query(collection(firestore, 'sender_profiles'), where('isActive', '==', true), where('channel', '==', 'email'));
   }, [firestore]);
   const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
 
@@ -225,7 +225,6 @@ export default function EditPdfPage() {
 
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
   
-  // Phase 2: Navigation Entity Resolution
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   React.useEffect(() => {
@@ -269,7 +268,6 @@ export default function EditPdfPage() {
       reset(initialData);
       setHasInitialized(true);
 
-      // Check for localStorage recovery
       const savedData = localStorage.getItem(storageKey);
       if (savedData) {
           try {
@@ -299,7 +297,6 @@ export default function EditPdfPage() {
     }
   }, [pdf, reset, resetHistory, pdfId, storageKey, toast, hasInitialized]);
 
-  // Handle Autosave to LocalStorage
   React.useEffect(() => {
       const currentDetails = getValues();
       const saveState = {
@@ -374,16 +371,11 @@ export default function EditPdfPage() {
 
     if (result.success) {
       toast({ title: 'Document Saved' });
-      
-      // Trigger Variable Registry sync if published
       if (data.status === 'published') {
           syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
       }
-
       localStorage.removeItem(storageKey);
-      if (redirect) {
-        router.push('/admin/pdfs');
-      }
+      if (redirect) router.push('/admin/pdfs');
     } else {
       toast({ variant: 'destructive', title: 'Save Failed' });
     }
@@ -411,11 +403,10 @@ export default function EditPdfPage() {
   const handleNext = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 1) fieldsToValidate = ['name', 'publicTitle', 'logoUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
-    if (step === 2) fieldsToValidate = [];
     
     const isStepValid = await trigger(fieldsToValidate);
     if (!isStepValid) {
-        toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors before proceeding.' });
+        toast({ variant: 'destructive', title: 'Validation Error' });
         return;
     }
 
@@ -460,11 +451,9 @@ export default function EditPdfPage() {
                 isSuggestion: true, 
             }));
 
-            if (mode === 'overwrite') {
-                setFields(newSuggestions);
-            } else {
-                setFields(prev => [...prev, ...newSuggestions]);
-            }
+            if (mode === 'overwrite') setFields(newSuggestions);
+            else setFields(prev => [...prev, ...newSuggestions]);
+            
             toast({ title: 'AI Detection Complete', description: `${result.fields.length} potential fields found.` });
         }
     } catch (error: any) {
@@ -476,13 +465,6 @@ export default function EditPdfPage() {
 
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
-
-  const stepTransition = {
-    initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: -20 },
-    transition: { type: 'spring', damping: 25, stiffness: 200 }
-  };
 
   return (
     <FormProvider {...form}>
@@ -512,17 +494,9 @@ export default function EditPdfPage() {
                     <form 
                         onSubmit={form.handleSubmit(onFinalSubmit)} 
                         className="pb-32"
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter' && step < 3) {
-                                const target = e.target as HTMLElement;
-                                if (target.tagName !== 'TEXTAREA') {
-                                    e.preventDefault();
-                                }
-                            }
-                        }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && step < 3 && (e.target as HTMLElement).tagName !== 'TEXTAREA') e.preventDefault(); }}
                     >
                         <AnimatePresence mode="wait">
-                            {/* PHASE 1: DETAILS */}
                             {step === 1 && (
                                 <motion.div key="step1" {...stepTransition}>
                                     <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -673,37 +647,21 @@ export default function EditPdfPage() {
                                 </motion.div>
                             )}
 
-                            {/* PHASE 2: BUILDER */}
                             {step === 2 && (
                                 <motion.div key="step2" {...stepTransition} className="h-full">
                                     <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
                                         <FieldMapper
-                                            pdf={pdf}
-                                            fields={fields}
-                                            setFields={setFields}
-                                            namingFieldId={namingFieldId}
-                                            setNamingFieldId={setNamingFieldId}
-                                            onSave={() => {}} // No auto-saving to DB from builder phase UI
-                                            isSaving={isSaving}
-                                            onPreview={() => setIsPreviewOpen(true)}
-                                            isStatusChanging={isStatusChanging}
-                                            onStatusChange={(s) => setValue('status', s, { shouldDirty: true })}
-                                            onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
-                                            isDetecting={isDetecting}
-                                            undo={handleUndo}
-                                            redo={handleRedo}
-                                            canUndo={canUndo}
-                                            canRedo={canRedo}
-                                            password={watch('password')}
-                                            setPassword={(val) => setValue('password', val, { shouldDirty: true })}
-                                            passwordProtected={watch('passwordProtected')}
-                                            setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
+                                            pdf={pdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
+                                            onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging}
+                                            onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
+                                            isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo}
+                                            password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })}
+                                            passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
                                         />
                                     </div>
                                 </motion.div>
                             )}
 
-                            {/* PHASE 3: PUBLISH */}
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition}>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -711,96 +669,26 @@ export default function EditPdfPage() {
                                             <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
                                                 <CardHeader className="bg-muted/30 border-b pb-6">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl">
-                                                            <Globe className="h-5 w-5 text-primary" />
-                                                        </div>
-                                                        <div>
-                                                            <CardTitle className="text-lg font-black uppercase tracking-tight">Finalize & Integrate</CardTitle>
-                                                            <CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription>
-                                                        </div>
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
+                                                        <div><CardTitle className="text-lg font-black uppercase tracking-tight">Finalize & Integrate</CardTitle><CardDescription className="text-xs font-medium">Set document visibility and external connections.</CardDescription></div>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-0">
                                                     <div className="p-6 bg-background">
                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            <Controller
-                                                                name="status"
-                                                                control={form.control}
-                                                                render={({ field }) => (
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label>
-                                                                        <Select onValueChange={field.onChange} value={field.value}>
-                                                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
-                                                                                <SelectValue />
-                                                                            </SelectTrigger>
-                                                                            <SelectContent className="rounded-xl">
-                                                                                <SelectItem value="draft">Draft</SelectItem>
-                                                                                <SelectItem value="published">Published</SelectItem>
-                                                                                <SelectItem value="archived">Archived</SelectItem>
-                                                                            </SelectContent>
-                                                                        </Select>
-                                                                    </div>
-                                                                )}
-                                                            />
-                                                            <Controller
-                                                                name="slug"
-                                                                control={form.control}
-                                                                render={({ field }) => (
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label>
-                                                                        <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner">
-                                                                            <div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div>
-                                                                            <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" />
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            />
+                                                            <Controller name="status" control={form.control} render={({ field }) => (
+                                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Status</Label><Select onValueChange={field.onChange} value={field.value}><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></div>
+                                                            )} />
+                                                            <Controller name="slug" control={form.control} render={({ field }) => (
+                                                                <div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Backhalf</Label><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/forms/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></div>
+                                                            )} />
                                                         </div>
                                                     </div>
-
                                                     <div className="px-6 pb-6 space-y-4">
-                                                        <div className={cn(
-                                                            "rounded-2xl border-2 transition-all duration-300",
-                                                            watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
-                                                        )}>
-                                                            <div className="flex items-center justify-between p-4">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
-                                                                        <Lock className="h-4 w-4" />
-                                                                    </div>
-                                                                    <div className="space-y-0.5">
-                                                                        <Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label>
-                                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p>
-                                                                    </div>
-                                                                </div>
-                                                                <Controller
-                                                                    name="passwordProtected"
-                                                                    control={form.control}
-                                                                    render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />}
-                                                                />
-                                                            </div>
-                                                            <AnimatePresence>
-                                                                {watch('passwordProtected') && (
-                                                                    <motion.div 
-                                                                        initial={{ height: 0, opacity: 0 }}
-                                                                        animate={{ height: 'auto', opacity: 1 }}
-                                                                        exit={{ height: 0, opacity: 0 }}
-                                                                        className="overflow-hidden"
-                                                                    >
-                                                                        <div className="px-4 pb-4 pt-0">
-                                                                            <Controller
-                                                                                name="password"
-                                                                                control={form.control}
-                                                                                render={({ field }) => (
-                                                                                    <Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />
-                                                                                )}
-                                                                            />
-                                                                        </div>
-                                                                    </motion.div>
-                                                                )}
-                                                            </AnimatePresence>
+                                                        <div className={cn("rounded-2xl border-2 transition-all duration-300", watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background")}>
+                                                            <div className="flex items-center justify-between p-4"><div className="flex items-center gap-3"><div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><Lock className="h-4 w-4" /></div><div className="space-y-0.5"><Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label><p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p></div></div><Controller name="passwordProtected" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} /></div>
+                                                            <AnimatePresence>{watch('passwordProtected') && (<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="px-4 pb-4 pt-0"><Controller name="password" control={form.control} render={({ field }) => (<Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />)} /></div></motion.div>)}</AnimatePresence>
                                                         </div>
-
                                                         <WebhookManager />
                                                     </div>
                                                 </CardContent>
@@ -808,105 +696,18 @@ export default function EditPdfPage() {
 
                                             <Card className="shadow-xl border-2 border-primary/10 bg-primary/5 overflow-hidden">
                                                 <CardHeader className="bg-primary/5 pb-6 border-b border-primary/10">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
-                                                            <Send className="h-5 w-5" />
-                                                        </div>
-                                                        <div>
-                                                            <CardTitle className="text-lg font-black tracking-tight uppercase">Public Confirmation</CardTitle>
-                                                            <CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription>
-                                                        </div>
-                                                    </div>
+                                                    <div className="flex items-center gap-3"><div className="p-2 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Send className="h-5 w-5" /></div><div><CardTitle className="text-lg font-black tracking-tight uppercase">Public Confirmation</CardTitle><CardDescription className="text-xs font-bold text-primary/60 uppercase tracking-widest">Dispatch messaging after signing</CardDescription></div></div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
                                                     <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="p-3 bg-primary/10 rounded-2xl text-primary">
-                                                                <Mail className="h-6 w-6" />
-                                                            </div>
-                                                            <div className="space-y-0.5">
-                                                                <Label className="text-base font-black uppercase tracking-tight">Public Acknowledgement</Label>
-                                                                <p className="text-xs text-muted-foreground font-medium">Notify parent/respondent</p>
-                                                            </div>
-                                                        </div>
-                                                        <Controller
-                                                            name="confirmationMessagingEnabled"
-                                                            control={form.control}
-                                                            render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />}
-                                                        />
+                                                        <div className="flex items-center gap-4"><div className="p-3 bg-primary/10 rounded-2xl text-primary"><Mail className="h-6 w-6" /></div><div className="space-y-0.5"><Label className="text-base font-black uppercase tracking-tight">Public Acknowledgement</Label><p className="text-xs text-muted-foreground font-medium">Notify parent/respondent</p></div></div>
+                                                        <Controller name="confirmationMessagingEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />} />
                                                     </div>
-
-                                                    <AnimatePresence>
-                                                        {watch('confirmationMessagingEnabled') && (
-                                                            <motion.div 
-                                                                initial={{ opacity: 0, y: 10 }}
-                                                                animate={{ opacity: 1, y: 0 }}
-                                                                exit={{ opacity: 0, y: 10 }}
-                                                                className="space-y-6"
-                                                            >
-                                                                <div className="grid gap-4">
-                                                                    <div className="space-y-2">
-                                                                        <div className="flex justify-between items-center px-1">
-                                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60">Template</Label>
-                                                                            <Button 
-                                                                                type="button"
-                                                                                variant="ghost" 
-                                                                                size="sm" 
-                                                                                className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1"
-                                                                                onClick={() => setIsQuickCreateOpen(true)}
-                                                                            >
-                                                                                <PlusCircle className="h-3 w-3" /> New Template
-                                                                            </Button>
-                                                                        </div>
-                                                                        <Controller
-                                                                            name="confirmationTemplateId"
-                                                                            control={form.control}
-                                                                            render={({ field }) => (
-                                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
-                                                                                        <SelectValue placeholder="Select template..." />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent className="rounded-2xl">
-                                                                                        <SelectItem value="none">No Template Selected</SelectItem>
-                                                                                        {templates?.filter(t => t.category === 'forms' && t.isActive).map(t => (
-                                                                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                                        ))}
-                                                                                    </SelectContent>
-                                                                                </Select>
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                    <div className="space-y-2">
-                                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Sender Profile</Label>
-                                                                        <Controller
-                                                                            name="confirmationSenderProfileId"
-                                                                            control={form.control}
-                                                                            render={({ field }) => (
-                                                                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                                                    <SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all">
-                                                                                        <SelectValue placeholder="Select sender..." />
-                                                                                    </SelectTrigger>
-                                                                                    <SelectContent className="rounded-2xl">
-                                                                                        <SelectItem value="none">No Sender Selected</SelectItem>
-                                                                                        {profiles?.filter(p => p.isActive).map(p => (
-                                                                                            <SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>
-                                                                                        ))}
-                                                                                    </SelectContent>
-                                                                                </Select>
-                                                                            )}
-                                                                        />
-                                                                    </div>
-                                                                </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
+                                                    <AnimatePresence>{watch('confirmationMessagingEnabled') && (<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-6"><div className="grid gap-4"><div className="space-y-2"><div className="flex justify-between items-center px-1"><Label className="text-[10px] font-black uppercase tracking-widest text-primary/60">Template</Label><Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1" onClick={() => setIsQuickCreateOpen(true)}><PlusCircle className="h-3 w-3" /> New Template</Button></div><Controller name="confirmationTemplateId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all"><SelectValue placeholder="Select template..." /></SelectTrigger><SelectContent className="rounded-2xl"><SelectItem value="none">No Template Selected</SelectItem>{templates?.filter(t => t.isActive).map(t => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}</SelectContent></Select>)} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Resolved From Identity</Label><Controller name="confirmationSenderProfileId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all"><ShieldCheck className="h-4 w-4 mr-2 text-primary/40" /><SelectValue placeholder="Auto-Resolve (Default)" /></SelectTrigger><SelectContent className="rounded-2xl"><SelectItem value="none">Auto-Resolve (Channel Default)</SelectItem>{profiles?.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>))}</SelectContent></Select>)} /></div></div></motion.div>)}</AnimatePresence>
                                                 </CardContent>
                                             </Card>
                                         </div>
-
-                                        <div className="space-y-8">
-                                            <InternalNotificationConfig prefix="adminAlert" category="forms" />
-                                        </div>
+                                        <div className="space-y-8"><InternalNotificationConfig prefix="adminAlert" category="forms" /></div>
                                     </div>
                                 </motion.div>
                             )}
@@ -915,86 +716,17 @@ export default function EditPdfPage() {
                 </div>
             </div>
 
-            {/* STICKY ACTION FOOTER */}
             <div className="fixed bottom-0 left-0 right-0 z-[80] p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                 <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl flex items-center justify-between gap-4">
-                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')} className="font-bold text-muted-foreground hover:bg-muted/50 rounded-xl px-6 h-12">
-                        Cancel
-                    </Button>
-                    <div className="flex items-center gap-4">
-                        {step > 1 && (
-                            <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2">
-                                <ArrowLeft className="h-4 w-4" /> Back
-                            </Button>
-                        )}
-                        {step < 3 ? (
-                            <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">
-                                Next Phase 
-                                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                            </Button>
-                        ) : (
-                            <Button 
-                                type="submit" 
-                                disabled={isSaving} 
-                                onClick={form.handleSubmit(onFinalSubmit)}
-                                className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg"
-                            >
-                                {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />}
-                                Finalize & Save
-                            </Button>
-                        )}
-                    </div>
+                    <Button type="button" variant="ghost" onClick={() => router.push('/admin/pdfs')} className="font-bold text-muted-foreground hover:bg-muted/50 rounded-xl px-6 h-12">Cancel</Button>
+                    <div className="flex items-center gap-4">{step > 1 && (<Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>)}{step < 3 ? (<Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></Button>) : (<Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onFinalSubmit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">{isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />} Finalize & Save</Button>)}</div>
                 </div>
             </div>
         </div>
 
-        <PdfPreviewDialog
-            isOpen={isPreviewOpen}
-            onClose={() => setIsPreviewOpen(false)}
-            pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm}
-        />
-
-        <QuickTemplateDialog 
-            open={isQuickCreateOpen}
-            onOpenChange={setIsQuickCreateOpen}
-            channel="email"
-            category="forms"
-            fixedSourceId={pdfId}
-            onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })}
-        />
-
-        <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}>
-            <AlertDialogContent className="sm:max-w-md rounded-2xl">
-                <AlertDialogHeader>
-                    <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                        <Sparkles className="h-6 w-6 text-primary" />
-                    </div>
-                    <AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle>
-                    <AlertDialogDescription className="text-center">
-                        You already have {fields.length} fields. How should the AI proceed?
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <div className="grid gap-4 py-4">
-                    <Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}>
-                        <div className="flex items-center gap-2 font-bold group-hover:text-primary transition-colors">
-                            <Play className="h-4 w-4 text-primary" />
-                            Continue Designing
-                        </div>
-                        <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Keep existing work and find missing fields.</span>
-                    </Button>
-                    <Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}>
-                        <div className="flex items-center gap-2 font-bold text-destructive">
-                            <RefreshCcw className="h-4 w-4" />
-                            Re-design from Scratch
-                        </div>
-                        <span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Wipe the canvas and let AI build the entire form.</span>
-                    </Button>
-                </div>
-                <AlertDialogFooter>
-                    <AlertDialogCancel type="button" className="w-full rounded-xl">Cancel</AlertDialogCancel>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
+        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} />
+        <QuickTemplateDialog open={isQuickCreateOpen} onOpenChange={setIsQuickCreateOpen} channel="email" category="forms" fixedSourceId={pdfId} onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })} />
+        <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}><AlertDialogContent className="sm:max-w-md"><AlertDialogHeader><div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-primary" /></div><AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle><AlertDialogDescription className="text-center">You already have {fields.length} fields. How should the AI proceed?</AlertDialogDescription></AlertDialogHeader><div className="grid gap-4 py-4"><Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}><div className="flex items-center gap-2 font-bold group-hover:text-primary transition-colors"><Play className="h-4 w-4 text-primary" />Continue Designing</div><span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Keep existing work and find missing fields.</span></Button><Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}><div className="flex items-center gap-2 font-bold text-destructive"><RefreshCcw className="h-4 w-4" />Re-design from Scratch</div><span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Wipe the canvas and let AI build the entire form.</span></Button></div><AlertDialogFooter><AlertDialogCancel type="button" className="w-full rounded-xl">Cancel</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </FormProvider>
   );
 }

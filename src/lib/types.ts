@@ -171,7 +171,7 @@ export interface SurveyLogicBlock {
   type: 'logic';
   rules: {
     sourceQuestionId: string;
-    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
+    operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'isGreaterThan' | 'isLessThan' | 'isEmpty' | 'isNotEmpty' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith';
     targetValue?: any;
     action: SurveyLogicAction;
   }[];
@@ -388,8 +388,9 @@ export interface SenderProfile {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  mNotifyStatus?: string;
-  resendStatus?: string;
+  mNotifyStatus?: 'approved' | 'pending' | 'not_registered' | 'unknown';
+  mNotifyMessage?: string;
+  resendStatus?: 'verified' | 'pending' | 'not_registered' | 'unknown';
 }
 
 export interface MessageStyle {
@@ -473,20 +474,6 @@ export interface MessageLog {
   attachmentCount?: number;
   openedCount?: number;
   clickedCount?: number;
-}
-
-export interface MessageJob {
-  id: string;
-  templateId: string;
-  senderProfileId: string;
-  channel: 'sms' | 'email';
-  createdBy: string;
-  status: 'queued' | 'processing' | 'completed' | 'failed';
-  totalRecipients: number;
-  processed: number;
-  success: number;
-  failed: number;
-  createdAt: string;
 }
 
 export interface MessageJob {
