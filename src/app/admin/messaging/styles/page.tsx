@@ -191,7 +191,7 @@ export default function MessageStylesPage() {
             <div className="mb-8 flex items-center justify-end flex-wrap gap-4">
                 <div className="flex items-center gap-2">
                     <RainbowButton onClick={() => setIsAiGenerating(true)} className="h-10 px-4 gap-2 font-bold shadow-lg">
-                        <OpenSparkles className="h-4 w-4" /> Create with AI
+                        <Sparkles className="h-4 w-4" /> Create with AI
                     </RainbowButton>
                     <Button onClick={() => { setIsAdding(!isAdding); if(!isAdding) { setName(''); setHtmlWrapper('<html>\n  <body style="font-family: sans-serif; padding: 20px;">\n    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px;">\n      {{content}}\n    </div>\n  </body>\n</html>'); } }} variant="outline" className="font-bold">
                         {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
