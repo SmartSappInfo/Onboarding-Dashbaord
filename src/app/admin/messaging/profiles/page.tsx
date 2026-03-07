@@ -97,7 +97,7 @@ export default function SenderProfilesPage() {
             await addDoc(collection(firestore, 'sender_profiles'), {
                 name: name.trim(),
                 channel,
-                identifier: channel === 'sms' ? identifier.trim().toUpperCase() : identifier.trim().toLowerCase(),
+                identifier: identifier.trim(),
                 isDefault: (profiles?.filter(p => p.channel === channel).length || 0) === 0,
                 isActive: true,
                 createdAt: new Date().toISOString(),
@@ -129,7 +129,7 @@ export default function SenderProfilesPage() {
             const docRef = doc(firestore, 'sender_profiles', editingProfile.id);
             await updateDoc(docRef, {
                 name: editName.trim(),
-                identifier: editingProfile.channel === 'sms' ? editIdentifier.trim().toUpperCase() : editingProfile.channel === 'email' ? editIdentifier.trim().toLowerCase() : editIdentifier,
+                identifier: editIdentifier.trim(),
                 updatedAt: new Date().toISOString(),
             });
             setEditingProfile(null);
@@ -172,7 +172,7 @@ export default function SenderProfilesPage() {
         
         try {
             if (profile.channel === 'sms') {
-                const result = await checkSenderIdStatusAction(profile.identifier);
+                const result = await checkSenderIdStatusStatusAction(profile.identifier);
                 if (result.success) {
                     const normalizedStatus = result.message?.toLowerCase().includes('approved') ? 'approved' : 
                                            result.message?.toLowerCase().includes('pending') ? 'pending' : 
@@ -350,7 +350,7 @@ export default function SenderProfilesPage() {
                                             {profile.channel}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs uppercase text-muted-foreground font-bold">{profile.identifier}</TableCell>
+                                    <TableCell className="font-mono text-xs text-muted-foreground font-bold">{profile.identifier}</TableCell>
                                     <TableCell className="text-center">
                                         <div className="flex flex-col items-center gap-1.5">
                                             {getStatusBadge(profile)}
@@ -467,7 +467,7 @@ export default function SenderProfilesPage() {
                                 </Label>
                                 <Input 
                                     value={editIdentifier} 
-                                    onChange={e => setEditIdentifier(editingProfile?.channel === 'sms' ? e.target.value.toUpperCase() : e.target.value.toLowerCase())} 
+                                    onChange={e => setEditIdentifier(e.target.value)} 
                                     className="h-12 rounded-xl bg-muted/20 border-none font-mono font-bold shadow-inner"
                                     required 
                                     maxLength={editingProfile?.channel === 'sms' ? 11 : undefined}
@@ -502,7 +502,7 @@ export default function SenderProfilesPage() {
                     <div className="p-8 space-y-8">
                         <div className="p-6 rounded-2xl bg-slate-50 border-2 border-slate-100 space-y-1 shadow-inner">
                             <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter">Requested Alphanumeric ID</Label>
-                            <p className="text-4xl font-black text-foreground tracking-tighter uppercase">{registeringProfile?.identifier}</p>
+                            <p className="text-4xl font-black text-foreground tracking-tighter">{registeringProfile?.identifier}</p>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Business Justification</Label>

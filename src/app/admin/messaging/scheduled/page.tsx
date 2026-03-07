@@ -216,7 +216,7 @@ export default function ScheduledMessagesPage() {
                                                 <TableCell>
                                                     {isEmail ? <Mail className="h-4 w-4 text-blue-500" /> : <Smartphone className="h-4 w-4 text-orange-500" />}
                                                 </TableCell>
-                                                <TableCell className="font-mono text-[10px] uppercase font-black">{msg.sender || msg.senderName}</TableCell>
+                                                <TableCell className="font-mono text-[10px] font-black">{msg.sender || msg.senderName}</TableCell>
                                                 <TableCell className="text-xs font-bold truncate max-w-[120px]">{msg.recipient}</TableCell>
                                                 <TableCell>
                                                     <p className="text-xs text-muted-foreground line-clamp-1 max-w-md italic opacity-60">

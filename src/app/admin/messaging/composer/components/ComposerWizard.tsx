@@ -57,7 +57,7 @@ import {
     Database,
     PlusCircle
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { typeof window } from '@/lib/utils';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -67,6 +67,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickTemplateDialog from '../../components/quick-template-dialog';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
     channel: z.enum(['email', 'sms']),
@@ -617,8 +618,8 @@ export default function ComposerWizard() {
                                                     {profiles?.map(p => (
                                                         <SelectItem key={p.id} value={p.id} className="rounded-xl my-1.5 p-3">
                                                             <div className="flex items-center gap-4">
-                                                                <span className="font-black text-foreground">{p.name}</span>
-                                                                <span className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.1em] bg-muted px-2.5 py-1 rounded-lg">ID: {p.identifier}</span>
+                                                                <span className="font-black text-foreground uppercase tracking-tight">{p.name}</span>
+                                                                <span className="text-[9px] font-black text-muted-foreground tracking-[0.1em] bg-muted px-2.5 py-1 rounded-lg italic">ID: {p.identifier}</span>
                                                             </div>
                                                         </SelectItem>
                                                     ))}
