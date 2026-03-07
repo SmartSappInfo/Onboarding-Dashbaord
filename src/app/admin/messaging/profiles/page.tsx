@@ -45,7 +45,8 @@ import {
     MoreVertical,
     Star,
     Save,
-    Send
+    Send,
+    Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
