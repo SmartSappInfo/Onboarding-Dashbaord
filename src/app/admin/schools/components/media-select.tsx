@@ -46,11 +46,26 @@ const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
     }
   };
 
+  // Helper to determine if the value is likely an image that next/image can handle
+  const isLikelyImage = (url?: string) => {
+    if (!url) return false;
+    // Explicitly exclude common video hosts that might be pasted into image fields
+    const isVideoHost = url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com');
+    if (isVideoHost) return false;
+    
+    // Check extension or known high-fidelity image domains
+    return url.match(/\.(jpeg|jpg|gif|png|webp|svg|avif)$/i) || 
+           url.includes('firebasestorage.googleapis.com') ||
+           url.includes('picsum.photos') ||
+           url.includes('unsplash.com') ||
+           url.includes('logo.clearbit.com');
+  };
+
   return (
     <>
       <div className={cn("flex items-start gap-2", className)}>
         <div className="relative w-24 h-24 border rounded-md flex items-center justify-center bg-muted shrink-0">
-          {value && filterType === 'image' ? (
+          {value && filterType === 'image' && isLikelyImage(value) ? (
             <Image src={value} alt="Preview" fill className="object-contain rounded-md p-1" />
           ) : (
             <PreviewIcon />
