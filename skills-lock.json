@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "skills": {
+    "code-refactoring": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "18da189464fd9a53133a1372599369ac4b7f3a9da653a907762e20e89cdb2102"
+    },
+    "firebase-firestore-basics": {
+      "source": "firebase/agent-skills",
+      "sourceType": "github",
+      "computedHash": "e7e21f72b693e8eba6797e0799e1f9d96ec9f73669cb741a7ca2e541fa460b55"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "computedHash": "063a0e6448123cd359ad0044cc46b0e490cc7964d45ef4bb9fd842bd2ffbca67"
+    },
+    "remotion-best-practices": {
+      "source": "remotion-dev/skills",
+      "sourceType": "github",
+      "computedHash": "9851afb52e1b892c43b2af973bda1776ce01fedfdfe704e0cfd70069a3a9c300"
+    },
+    "task-planning": {
+      "source": "supercent-io/skills-template",
+      "sourceType": "github",
+      "computedHash": "1459a31d3c87df7fd601a99479363a7f66da1cd2089f08405a7d4854d0da3a93"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "computedHash": "e688fcd4c5693e14ebd00d48e982dbd2be060fbea89f5f60531e79c704a1bc28"
+    },
+    "web-design-guidelines": {
+      "source": "vercel-labs/agent-skills",
+      "sourceType": "github",
+      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    }
+  }
+}
