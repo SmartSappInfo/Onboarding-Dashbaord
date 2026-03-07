@@ -62,6 +62,7 @@ import { Slider } from '@/components/ui/slider';
  * - Rich formatting toolbar (Bold, Italic, Alignment)
  * - Block reordering and duplication
  * - Side-by-side properties inspector
+ * - Grouping by channel or category
  */
 
 // --- HELPERS ---
@@ -618,6 +619,7 @@ export default function MessageTemplatesPage() {
     const [searchTerm, setSearchTerm] = React.useState('');
     const [categoryFilter, setCategoryFilter] = React.useState<string>('all');
     const [channelFilter, setChannelFilter] = React.useState<string>('all');
+    const [groupBy, setGroupBy] = React.useState<'none' | 'channel' | 'category'>('none');
     const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
@@ -962,10 +964,24 @@ export default function MessageTemplatesPage() {
     }, [styles]);
 
     const filteredTemplates = templates?.filter(t => 
-        (categoryFilter === 'all' || t.category === categoryFilter) &&
         (channelFilter === 'all' || t.channel === channelFilter) &&
+        (categoryFilter === 'all' || t.category === categoryFilter) &&
         (t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.body.toLowerCase().includes(searchTerm.toLowerCase()))
     ) || [];
+
+    const groupedTemplates = React.useMemo(() => {
+        if (groupBy === 'none') return { 'All Templates': filteredTemplates };
+        
+        return filteredTemplates.reduce((acc, template) => {
+            const key = groupBy === 'channel' 
+                ? (template.channel === 'email' ? 'Email Templates' : 'SMS Templates')
+                : (template.category.charAt(0).toUpperCase() + template.category.slice(1) + ' Templates');
+            
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(template);
+            return acc;
+        }, {} as Record<string, MessageTemplate[]>);
+    }, [filteredTemplates, groupBy]);
 
     const filteredVars = React.useMemo(() => {
         if (!variables) return [];
@@ -1058,7 +1074,7 @@ export default function MessageTemplatesPage() {
     );
 
     return (
-        <div className="h-full flex flex-col bg-muted/5 overflow-hidden">
+        <div className="h-full flex flex-col bg-muted/5 overflow-hidden text-left">
             {!isAdding && (
                 <div className="shrink-0 p-4 sm:p-6 md:p-8 border-b bg-background shadow-sm z-20">
                     <div className="flex items-center justify-between">
@@ -1406,10 +1422,18 @@ export default function MessageTemplatesPage() {
                     <ScrollArea className="h-full">
                         <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8 pb-32">
                             <div className="flex flex-col md:flex-row gap-4 items-center bg-card p-4 rounded-3xl border shadow-sm ring-1 ring-black/5">
-                                <div className="relative flex-grow w-full"><Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" /><Input placeholder="Filter blueprints..." className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                                <div className="flex gap-2 w-full md:w-auto">
+                                <div className="relative flex-grow w-full">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                                    <Input 
+                                        placeholder="Filter blueprints..." 
+                                        className="pl-11 h-12 rounded-2xl bg-muted/20 border-none font-bold shadow-none focus:ring-1 focus:ring-primary/20" 
+                                        value={searchTerm} 
+                                        onChange={e => setSearchTerm(e.target.value)} 
+                                    />
+                                </div>
+                                <div className="flex flex-wrap gap-2 w-full md:w-auto">
                                     <Select value={channelFilter} onValueChange={setChannelFilter}>
-                                        <SelectTrigger className="h-12 w-full md:w-[160px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                                        <SelectTrigger className="h-12 w-full md:w-[140px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
                                             <SelectValue placeholder="Channel" />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
@@ -1419,80 +1443,114 @@ export default function MessageTemplatesPage() {
                                         </SelectContent>
                                     </Select>
                                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                        <SelectTrigger className="h-12 w-full md:w-[160px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
+                                        <SelectTrigger className="h-12 w-full md:w-[140px] rounded-2xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all hover:bg-muted/40">
                                             <SelectValue placeholder="Category" />
                                         </SelectTrigger>
                                         <SelectContent className="rounded-xl">
-                                            {['all', 'general', 'meetings', 'surveys', 'forms'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
+                                            <SelectItem value="all">All Types</SelectItem>
+                                            {['general', 'meetings', 'surveys', 'forms'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
+                                        </SelectContent>
+                                    </Select>
+                                    <div className="h-12 w-px bg-border mx-1 hidden md:block" />
+                                    <Select value={groupBy} onValueChange={(v: any) => setGroupBy(v)}>
+                                        <SelectTrigger className="h-12 w-full md:w-[140px] rounded-2xl bg-primary/10 border-none font-black uppercase text-[10px] tracking-widest text-primary transition-all hover:bg-primary/20">
+                                            <SelectValue placeholder="Group By" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="none">Flat List</SelectItem>
+                                            <SelectItem value="channel">Group by Channel</SelectItem>
+                                            <SelectItem value="category">Group by Type</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {isLoadingTemplates ? Array.from({ length: 6 }).map((_, i) => <Card key={i} className="h-64 animate-pulse bg-muted rounded-2xl" />) : filteredTemplates.length > 0 ? filteredTemplates.map(template => (
-                                    <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
-                                        {/* MANAGEMENT HEADROOM */}
-                                        <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-muted/5 group-hover:bg-background transition-colors duration-500">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
-                                                    {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
-                                                </div>
-                                                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{template.channel} Template</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Preview" onClick={() => setPreviewTemplate(template)}>
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Edit" onClick={() => handleEditClick(template)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} title="Clone" onClick={() => handleCloneClick(template)} disabled={!!cloningId}>
-                                                    <CopyPlus className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" title="Delete" onClick={() => setTemplateToDelete(template)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        
-                                        {/* PREVIEW CANVAS */}
-                                        <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-center p-1.5">
-                                            {template.channel === 'email' ? (
-                                                <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex items-start justify-center">
-                                                    <div className="relative transform origin-top scale-[0.42] w-[238%] h-[238%] pointer-events-none p-4 shrink-0">
-                                                        <iframe 
-                                                            srcDoc={template.body} 
-                                                            className="w-full h-full border-none bg-white rounded-[2rem] pointer-events-none shadow-2xl" 
-                                                            title="preview"
-                                                        />
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <div className="w-full h-full bg-white rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 shadow-inner">
-                                                    <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
-                                                        <Zap size={120} />
-                                                    </div>
-                                                    <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
-                                                        <p className="text-[9px] font-bold text-slate-900 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
-                                                    </div>
-                                                    <div className="flex items-center justify-between opacity-20 border-t border-slate-200 pt-3">
-                                                        <SmartSappIcon className="h-3.5 w-3.5" variant="primary" />
-                                                        <span className="text-[7px] font-black uppercase tracking-widest text-slate-900">Handset Simulator</span>
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-0 bg-transparent z-10" />
-                                        </div>
 
-                                        {/* FOOTER */}
-                                        <CardHeader className="p-5 shrink-0 bg-background border-t">
-                                            <div className="min-w-0">
-                                                <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
-                                                <p className="text-[8px] uppercase font-bold tracking-[0.2em] text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
+                            <div className="space-y-16">
+                                {Object.entries(groupedTemplates).map(([groupName, groupItems]) => (
+                                    <section key={groupName} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        {groupBy !== 'none' && (
+                                            <div className="flex items-center gap-4">
+                                                <h2 className="text-xl font-black uppercase tracking-tight text-foreground/80">{groupName}</h2>
+                                                <Badge variant="secondary" className="rounded-full h-6 px-3 font-black tabular-nums">{groupItems.length}</Badge>
+                                                <div className="h-px flex-1 bg-gradient-to-r from-border to-transparent" />
                                             </div>
-                                        </CardHeader>
-                                    </Card>
-                                )) : <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4"><FileType className="h-16 w-16 text-muted-foreground/20" /><p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p></div>}
+                                        )}
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                            {groupItems.map(template => (
+                                                <Card key={template.id} className="group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]">
+                                                    {/* MANAGEMENT HEADROOM */}
+                                                    <div className="h-12 shrink-0 border-b flex items-center justify-between px-4 bg-muted/5 group-hover:bg-background transition-colors duration-500">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <div className={cn("p-1.5 rounded-lg border", template.channel === 'sms' ? "bg-orange-500/10 text-orange-500 border-orange-100" : "bg-blue-500/10 text-blue-500 border-blue-100")}>
+                                                                {template.channel === 'sms' ? <Smartphone className="h-3 w-3" /> : <Mail className="h-3 w-3" />}
+                                                            </div>
+                                                            <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground opacity-60">{template.channel} Template</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Preview" onClick={() => setPreviewTemplate(template)}>
+                                                                <Eye className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10 text-primary" title="Edit" onClick={() => handleEditClick(template)}>
+                                                                <Pencil className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className={cn("h-8 w-8 rounded-lg hover:bg-primary/10 text-primary", cloningId === template.id && "animate-spin")} title="Clone" onClick={() => handleCloneClick(template)} disabled={!!cloningId}>
+                                                                <CopyPlus className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" title="Delete" onClick={() => setTemplateToDelete(template)}>
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    {/* PREVIEW CANVAS */}
+                                                    <div className="flex-1 overflow-hidden relative bg-white flex flex-col items-center justify-center p-1.5">
+                                                        {template.channel === 'email' ? (
+                                                            <div className="w-full h-full relative overflow-hidden bg-slate-50 border rounded-xl shadow-inner flex items-start justify-center">
+                                                                <div className="relative transform origin-top scale-[0.42] w-[238%] h-[238%] pointer-events-none p-4 shrink-0">
+                                                                    <iframe 
+                                                                        srcDoc={template.body} 
+                                                                        className="w-full h-full border-none bg-white rounded-[2rem] pointer-events-none shadow-2xl" 
+                                                                        title="preview"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="w-full h-full bg-white rounded-xl p-6 flex flex-col justify-center gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-slate-100 shadow-inner">
+                                                                <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
+                                                                    <Zap size={120} />
+                                                                </div>
+                                                                <div className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xl backdrop-blur-sm">
+                                                                    <p className="text-[9px] font-bold text-slate-900 leading-relaxed line-clamp-[8] italic">&ldquo;{template.body}&rdquo;</p>
+                                                                </div>
+                                                                <div className="flex items-center justify-between opacity-20 border-t border-slate-200 pt-3">
+                                                                    <SmartSappIcon className="h-3.5 w-3.5" variant="primary" />
+                                                                    <span className="text-[7px] font-black uppercase tracking-widest text-slate-900">Handset Simulator</span>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                        <div className="absolute inset-0 bg-transparent z-10" />
+                                                    </div>
+
+                                                    {/* FOOTER */}
+                                                    <CardHeader className="p-5 shrink-0 bg-background border-t">
+                                                        <div className="min-w-0">
+                                                            <CardTitle className="text-sm font-black truncate text-foreground group-hover:text-primary transition-colors leading-tight">{template.name}</CardTitle>
+                                                            <p className="text-[8px] uppercase font-bold tracking-[0.2em] text-muted-foreground opacity-60 mt-1">{template.category === 'forms' ? 'Doc Signing' : template.category}</p>
+                                                        </div>
+                                                    </CardHeader>
+                                                </Card>
+                                            ))}
+                                        </div>
+                                    </section>
+                                ))}
+
+                                {filteredTemplates.length === 0 && (
+                                    <div className="col-span-full py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/5 flex flex-col items-center justify-center gap-4">
+                                        <FileType className="h-16 w-16 text-muted-foreground/20" />
+                                        <p className="text-muted-foreground font-black uppercase tracking-widest text-sm">No protocol blueprints found.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </ScrollArea>
@@ -1501,7 +1559,7 @@ export default function MessageTemplatesPage() {
 
             {/* QUICK PREVIEW MODAL */}
             <Dialog open={!!previewTemplate} onOpenChange={(o) => !o && setPreviewTemplate(null)}>
-                <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-none shadow-2xl">
+                <DialogContent className="max-w-4xl h-[85vh] flex flex-col p-0 overflow-hidden bg-slate-50 border-none shadow-2xl text-left">
                     <DialogHeader className="p-6 border-b bg-white shrink-0 flex flex-row items-center justify-between space-y-0 pr-12">
                         <div>
                             <DialogTitle className="text-xl font-black uppercase tracking-tight">{previewTemplate?.name}</DialogTitle>
