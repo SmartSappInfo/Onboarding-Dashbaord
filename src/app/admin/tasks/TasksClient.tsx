@@ -1,17 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, where, limit } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit, doc, getDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskStatus, TaskCategory } from '@/lib/types';
-import { format, isToday, isPast, isTomorrow, isAfter, addDays, startOfToday } from 'date-fns';
+import { format, isToday, isPast, isTomorrow } from 'date-fns';
 import { 
     CheckCircle2, 
     Circle, 
     Clock, 
     AlertTriangle, 
     ShieldAlert, 
-    User, 
+    User as UserIcon, 
     Building, 
     Phone, 
     MapPin, 
@@ -20,23 +20,39 @@ import {
     MoreVertical,
     Trash2,
     Calendar,
-    Filter,
     Plus,
     Loader2,
     Search,
-    Check
+    Pencil,
+    Send,
+    Mail,
+    Smartphone
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { completeTaskNonBlocking, deleteTaskNonBlocking, updateTaskNonBlocking } from '@/lib/task-actions';
+import { 
+    completeTaskNonBlocking, 
+    deleteTaskNonBlocking, 
+    updateTaskNonBlocking,
+    createTaskNonBlocking 
+} from '@/lib/task-actions';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import TaskEditor from './components/TaskEditor';
+import { logActivity } from '@/lib/activity-logger';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     critical: { label: 'Critical', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -55,13 +71,18 @@ const CATEGORY_ICONS: Record<TaskCategory, any> = {
 
 export default function TasksClient() {
     const firestore = useFirestore();
-    const { user } = useUser();
+    const { user: currentUser } = useUser();
     const { toast } = useToast();
     
     const [statusFilter, setStatusFilter] = React.useState<string>('pending');
     const [priorityFilter, setPriorityFilter] = React.useState<string>('all');
-    const [assignedFilter, setAssignedFilter] = React.useState<string>(user?.uid || 'all');
+    const [assignedFilter, setAssignedFilter] = React.useState<string>(currentUser?.uid || 'all');
     const [searchTerm, setSearchTerm] = React.useState('');
+
+    // Editor State
+    const [editorOpen, setEditorOpen] = React.useState(false);
+    const [editingTask, setEditingTask] = React.useState<Task | null>(null);
+    const [isSaving, setIsSaving] = React.useState(false);
 
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -86,6 +107,50 @@ export default function TasksClient() {
             return matchesStatus && matchesPriority && matchesAssigned && matchesSearch;
         });
     }, [allTasks, statusFilter, priorityFilter, assignedFilter, searchTerm]);
+
+    const handleSaveTask = async (values: any) => {
+        if (!firestore || !currentUser) return;
+        setIsSaving(true);
+
+        const assignedUser = users?.find(u => u.id === values.assignedTo);
+        const taskData = {
+            ...values,
+            schoolId: values.schoolId === 'none' ? null : values.schoolId,
+            schoolName: values.schoolId !== 'none' ? users?.find(u => u.id === values.schoolId)?.name : null,
+            assignedToName: assignedUser?.name || 'Unknown',
+            dueDate: values.dueDate.toISOString(),
+            source: task ? task.source : 'manual'
+        };
+
+        try {
+            if (editingTask) {
+                updateTaskNonBlocking(firestore, editingTask.id, taskData);
+                toast({ title: 'Task Updated' });
+            } else {
+                await createTaskNonBlocking(firestore, {
+                    ...taskData,
+                    status: 'pending',
+                    reminderSent: false,
+                    source: 'manual'
+                });
+                toast({ title: 'Task Created' });
+                
+                logActivity({
+                    schoolId: values.schoolId === 'none' ? '' : values.schoolId,
+                    userId: currentUser.uid,
+                    type: 'school_updated', // Using as general type
+                    source: 'user_action',
+                    description: `created a new task: "${values.title}"`,
+                });
+            }
+            setEditorOpen(false);
+            setEditingTask(null);
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Operation Failed' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     const handleToggleComplete = (task: Task) => {
         if (!firestore) return;
@@ -124,7 +189,7 @@ export default function TasksClient() {
                         </h1>
                         <p className="text-muted-foreground font-medium mt-1">Manage your CRM interventions and automated follow-ups.</p>
                     </div>
-                    <Button className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8">
+                    <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8">
                         <Plus className="mr-2 h-5 w-5" /> New Task
                     </Button>
                 </div>
@@ -137,7 +202,7 @@ export default function TasksClient() {
                                 placeholder="Search tasks or schools..." 
                                 value={searchTerm}
                                 onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-muted/20 border-none font-bold"
+                                className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -239,14 +304,29 @@ export default function TasksClient() {
 
                                         <div className="flex flex-col items-end gap-4 shrink-0">
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 rounded-lg" onClick={() => handleDelete(task.id)}><Trash2 className="h-4 w-4" /></Button>
+                                                <DropdownMenu modal={false}>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl">
+                                                        <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="gap-2">
+                                                            <Pencil className="h-4 w-4" /> Edit Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem onClick={() => toast({ title: 'Reminder Sent' })} className="gap-2">
+                                                            <Send className="h-4 w-4" /> Dispatch Reminder
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive gap-2">
+                                                            <Trash2 className="h-4 w-4" /> Delete Task
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <span className="text-[10px] font-bold text-muted-foreground uppercase">{task.assignedToName?.split(' ')[0]}</span>
                                                 <Avatar className="h-6 w-6">
                                                     <AvatarImage src={`https://i.pravatar.cc/150?u=${task.assignedTo}`} />
-                                                    <AvatarFallback><User className="h-3 w-3" /></AvatarFallback>
+                                                    <AvatarFallback><UserIcon className="h-3 w-3" /></AvatarFallback>
                                                 </Avatar>
                                             </div>
                                         </div>
@@ -262,6 +342,14 @@ export default function TasksClient() {
                     )}
                 </div>
             </div>
+
+            <TaskEditor 
+                open={editorOpen} 
+                onOpenChange={setEditorOpen} 
+                task={editingTask}
+                onSave={handleSaveTask}
+                isSaving={isSaving}
+            />
         </div>
     );
 }

@@ -24,7 +24,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
         reminderSent: false,
     };
 
-    addDoc(tasksCol, taskData).catch(async (error) => {
+    return addDoc(tasksCol, taskData).catch(async (error) => {
         const permissionError = new FirestorePermissionError({
             path: tasksCol.path,
             operation: 'create',
