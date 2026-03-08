@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -492,6 +492,64 @@ export async function seedMessageLogs(firestore: Firestore): Promise<number> {
 
   await batch.commit();
   return count;
+}
+
+export async function seedTasks(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'tasks');
+    const batch = writeBatch(firestore);
+    const tasksCol = collection(firestore, 'tasks');
+
+    const schoolsSnap = await getDocs(collection(firestore, 'schools'));
+    const usersSnap = await getDocs(query(collection(firestore, 'users'), where('isAuthorized', '==', true)));
+
+    if (schoolsSnap.empty || usersSnap.empty) return 0;
+
+    const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
+    const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+
+    const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
+    const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];
+    const statuses: TaskStatus[] = ['pending', 'in_progress', 'completed'];
+
+    let count = 0;
+    schools.forEach((school, i) => {
+        // Create 2 tasks per school
+        for (let j = 0; j < 2; j++) {
+            const user = users[i % users.length];
+            const priority = priorities[(i + j) % priorities.length];
+            const category = categories[(i + j * 2) % categories.length];
+            const status = j === 0 ? 'pending' : (i % 3 === 0 ? 'completed' : 'in_progress');
+            
+            // Varied due dates: some overdue, some today, some future
+            let dueDate = new Date();
+            if (i % 3 === 0) dueDate = subDays(new Date(), 2); // Overdue
+            else if (i % 3 === 1) dueDate = new Date(); // Today
+            else dueDate = addDays(new Date(), 5); // Future
+
+            const task: Omit<Task, 'id'> = {
+                title: `${category.charAt(0).toUpperCase() + category.slice(1)}: ${school.name} protocol`,
+                description: `Complete the ${category} phase for the onboarding workflow at ${school.name}. Ensure all focal persons are briefed.`,
+                priority,
+                status,
+                category,
+                schoolId: school.id,
+                schoolName: school.name,
+                assignedTo: user.id,
+                assignedToName: user.name,
+                dueDate: dueDate.toISOString(),
+                reminderSent: false,
+                source: 'manual',
+                createdAt: subDays(new Date(), 5).toISOString(),
+                completedAt: status === 'completed' ? new Date().toISOString() : undefined
+            };
+
+            batch.set(doc(tasksCol), task);
+            count++;
+        }
+    });
+
+    await batch.commit();
+    return count;
 }
 
 const surveyData = [

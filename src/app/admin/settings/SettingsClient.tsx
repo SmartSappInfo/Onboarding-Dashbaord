@@ -5,18 +5,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs } from '@/lib/seed';
-import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin } from 'lucide-react';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks } from '@/lib/seed';
+import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks';
 
 const DEFAULT_LAYOUT = [
-    'userAssignments', 'pipelinePieChart', 'upcomingMeetings', 
-    'recentActivity', 'moduleRadarChart', 'latestSurveys', 'monthlySchoolsChart',
+    'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
+    'upcomingMeetings', 'recentActivity', 'zoneDistribution', 
+    'moduleRadarChart', 'latestSurveys', 'monthlySchoolsChart',
 ];
 
 export default function SettingsClient() {
@@ -26,7 +27,8 @@ export default function SettingsClient() {
   const [seedingStatus, setSeedingStatus] = useState<Record<Seeder, SeedingState>>({
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
-    activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', logs: 'idle',
+    activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
+    logs: 'idle', tasks: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -53,6 +55,7 @@ export default function SettingsClient() {
         else if (seeder === 'messaging') { count = await seedMessaging(firestore); name = 'Messaging Assets'; }
         else if (seeder === 'zones') { count = await seedZones(firestore); name = 'Organizational Zones'; }
         else if (seeder === 'logs') { count = await seedMessageLogs(firestore); name = 'Communication Logs'; }
+        else if (seeder === 'tasks') { count = await seedTasks(firestore); name = 'CRM Tasks'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -134,6 +137,10 @@ export default function SettingsClient() {
                     <Button onClick={() => handleSeed('pdfs')} disabled={seedingStatus.pdfs === 'seeding'} className="rounded-xl font-bold shadow-sm">
                         {seedingStatus.pdfs === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
                         Seed Doc Signing
+                    </Button>
+                    <Button onClick={() => handleSeed('tasks')} disabled={seedingStatus.tasks === 'seeding'} className="rounded-xl font-bold shadow-sm">
+                        {seedingStatus.tasks === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckSquare className="mr-2 h-4 w-4" />}
+                        Seed CRM Tasks
                     </Button>
                     <Button onClick={() => handleSeed('messaging')} disabled={seedingStatus.messaging === 'seeding'} className="rounded-xl font-bold shadow-sm">
                         {seedingStatus.messaging === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MessageSquareText className="mr-2 h-4 w-4" />}
