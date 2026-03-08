@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/select';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { 
     Loader2, 
     Save, 
@@ -84,7 +85,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
         }
     });
 
-    const { register, handleSubmit, control, reset, setValue } = form;
+    const { register, handleSubmit, control, reset } = form;
 
     React.useEffect(() => {
         if (open) {
