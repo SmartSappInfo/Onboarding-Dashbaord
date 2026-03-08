@@ -31,6 +31,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
@@ -119,7 +120,7 @@ export default function TasksClient() {
             schoolName: values.schoolId !== 'none' ? users?.find(u => u.id === values.schoolId)?.name : null,
             assignedToName: assignedUser?.name || 'Unknown',
             dueDate: values.dueDate.toISOString(),
-            source: task ? task.source : 'manual'
+            source: editingTask ? editingTask.source : 'manual'
         };
 
         try {
