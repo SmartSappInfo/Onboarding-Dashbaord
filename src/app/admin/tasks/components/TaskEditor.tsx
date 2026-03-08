@@ -24,6 +24,7 @@ import {
     SelectValue 
 } from '@/components/ui/select';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Loader2, 
     Save, 
@@ -280,7 +281,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             disabled={isSaving}
                             className="rounded-2xl font-black h-14 px-12 shadow-2xl bg-primary text-white hover:bg-primary/90 transition-all active:scale-95 uppercase tracking-widest text-sm gap-2"
                         >
-                            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
+                            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : <Save className="h-5 w-5" />}
                             {task ? 'Commit Modification' : 'Activate Action'}
                         </Button>
                     </DialogFooter>
