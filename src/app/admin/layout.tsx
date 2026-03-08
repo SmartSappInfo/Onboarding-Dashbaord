@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -33,7 +34,10 @@ import {
     FileText, 
     RefreshCw, 
     MessageSquareText,
-    Globe
+    Globe,
+    CheckSquare,
+    Zap,
+    BarChart3
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -63,7 +67,10 @@ const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline' },
+  { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
+  { href: '/admin/automations', icon: Zap, label: 'Automations' },
+  { href: '/admin/reports', icon: BarChart3, label: 'Intelligence' },
   { href: '/admin/portals', icon: Globe, label: 'Public Portals' },
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
