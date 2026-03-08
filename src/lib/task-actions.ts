@@ -7,6 +7,7 @@ import {
     updateDoc, 
     deleteDoc, 
     serverTimestamp,
+    deleteField,
     type Firestore 
 } from 'firebase/firestore';
 import type { Task, TaskStatus, TaskPriority, TaskCategory } from './types';
@@ -39,8 +40,14 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
  */
 export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Partial<Task>) {
     const taskRef = doc(db, 'tasks', taskId);
+    
+    // Filter out undefined values to prevent Firestore crashes
+    const cleanedUpdates = Object.fromEntries(
+        Object.entries(updates).map(([k, v]) => [k, v === undefined ? deleteField() : v])
+    );
+
     const data = {
-        ...updates,
+        ...cleanedUpdates,
         updatedAt: new Date().toISOString(),
     };
 

@@ -505,7 +505,7 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
     if (schoolsSnap.empty || usersSnap.empty) return 0;
 
     const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
-    const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
 
     const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
     const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];
@@ -526,7 +526,7 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
             else if (i % 3 === 1) dueDate = new Date(); // Today
             else dueDate = addDays(new Date(), 5); // Future
 
-            const task: Omit<Task, 'id'> = {
+            const task: any = {
                 title: `${category.charAt(0).toUpperCase() + category.slice(1)}: ${school.name} protocol`,
                 description: `Complete the ${category} phase for the onboarding workflow at ${school.name}. Ensure all focal persons are briefed.`,
                 priority,
@@ -540,8 +540,11 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
                 reminderSent: false,
                 source: 'manual',
                 createdAt: subDays(new Date(), 5).toISOString(),
-                completedAt: status === 'completed' ? new Date().toISOString() : undefined
             };
+
+            if (status === 'completed') {
+                task.completedAt = new Date().toISOString();
+            }
 
             batch.set(doc(tasksCol), task);
             count++;
