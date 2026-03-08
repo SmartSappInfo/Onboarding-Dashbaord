@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import {
@@ -25,6 +24,7 @@ import {
     RecentActivity,
     ZoneDistribution,
     MessagingWidget,
+    TaskWidget,
 } from "@/components/dashboard";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout } from '@/lib/types';
@@ -33,6 +33,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 
 
 const componentMap: Record<string, React.FC<any>> = {
+  taskWidget: TaskWidget,
   pipelinePieChart: PipelinePieChart,
   latestSurveys: LatestSurveys,
   upcomingMeetings: UpcomingMeetings,
@@ -45,6 +46,7 @@ const componentMap: Record<string, React.FC<any>> = {
 };
 
 const componentPropsMap = (data: any) => ({
+  taskWidget: {},
   pipelinePieChart: { stages: data.pipelineCounts },
   latestSurveys: { surveys: data.latestSurveys },
   upcomingMeetings: { meetings: data.upcomingMeetings },
@@ -58,6 +60,8 @@ const componentPropsMap = (data: any) => ({
 
 const componentGridConfig: Record<string, string> = {
   userAssignments: 'md:col-span-2 lg:col-span-4',
+  taskWidget: 'md:col-span-2 lg:col-span-2',
+  messagingWidget: 'md:col-span-2 lg:col-span-2',
   pipelinePieChart: 'md:col-span-2 lg:col-span-2 lg:row-span-2',
   upcomingMeetings: 'lg:col-span-2',
   moduleRadarChart: 'lg:col-span-2',
@@ -65,11 +69,11 @@ const componentGridConfig: Record<string, string> = {
   monthlySchoolsChart: 'md:col-span-4',
   recentActivity: 'md:col-span-4 lg:col-span-2 lg:row-span-2',
   zoneDistribution: 'lg:col-span-2',
-  messagingWidget: 'lg:col-span-2',
 };
 
 const DEFAULT_LAYOUT = [
     'userAssignments',
+    'taskWidget',
     'messagingWidget',
     'pipelinePieChart',
     'upcomingMeetings',

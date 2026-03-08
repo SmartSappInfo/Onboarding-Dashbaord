@@ -3,9 +3,9 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import type { School, FocalPerson } from '@/lib/types';
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import type { School, FocalPerson, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
@@ -24,9 +24,12 @@ import {
     MessageSquarePlus,
     Activity,
     UserCheck,
-    Contact
+    Contact,
+    CheckCircle2,
+    Clock,
+    Plus
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,6 +37,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { completeTaskNonBlocking } from '@/lib/task-actions';
+import { useToast } from '@/hooks/use-toast';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -55,6 +61,7 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
 export default function SchoolDetailPage() {
     const params = useParams();
     const router = useRouter();
+    const { toast } = useToast();
     const schoolId = params.id as string;
     const firestore = useFirestore();
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
@@ -66,11 +73,30 @@ export default function SchoolDetailPage() {
 
     const { data: school, isLoading } = useDoc<School>(schoolDocRef);
 
+    // Tasks Subscription for this school
+    const tasksQuery = useMemoFirebase(() => {
+        if (!firestore || !schoolId) return null;
+        return query(
+            collection(firestore, 'tasks'),
+            where('schoolId', '==', schoolId),
+            orderBy('status'),
+            orderBy('dueDate', 'asc')
+        );
+    }, [firestore, schoolId]);
+    const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
+
     // Phase 2: Navigation Entity Resolution
     useSetBreadcrumb(school?.name);
 
     if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
     if (!school) return <div className="flex flex-col items-center justify-center py-20 text-center space-y-4"><h2 className="text-xl font-bold">School Not Found</h2><Button variant="outline" onClick={() => router.push('/admin/schools')}>Back to List</Button></div>;
+
+    const handleTaskComplete = (taskId: string) => {
+        if (firestore) {
+            completeTaskNonBlocking(firestore, taskId);
+            toast({ title: 'Task Completed' });
+        }
+    };
 
     const DetailItem = ({ icon: Icon, label, value, href, children }: { icon: any, label: string, value?: any, href?: string, children?: any }) => (
         <div className="flex items-start gap-4">
@@ -119,71 +145,126 @@ export default function SchoolDetailPage() {
                     </CardContent>
                 </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                        <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Staff Focal Directory</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            <div className="divide-y divide-border/50">
-                                {school.focalPersons && school.focalPersons.length > 0 ? (
-                                    school.focalPersons.map((person, idx) => (
-                                        <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors">
-                                            <div className="flex items-center gap-4">
-                                                <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
-                                                <div>
-                                                    <p className="font-black text-base">{person.name}</p>
-                                                    <Badge variant="outline" className="mt-1 text-[8px] font-black uppercase tracking-tighter h-5">{person.type}</Badge>
+                <Tabs defaultValue="overview" className="space-y-8">
+                    <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
+                        <TabsTrigger value="overview" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Campus Insights</TabsTrigger>
+                        <TabsTrigger value="tasks" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+                            Action Registry
+                            {tasks && tasks.filter(t => t.status !== 'completed').length > 0 && (
+                                <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.filter(t => t.status !== 'completed').length}</Badge>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger value="timeline" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Activity Feed</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+                                <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Staff Focal Directory</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-0">
+                                    <div className="divide-y divide-border/50">
+                                        {school.focalPersons && school.focalPersons.length > 0 ? (
+                                            school.focalPersons.map((person, idx) => (
+                                                <div key={idx} className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group hover:bg-muted/5 transition-colors">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="h-12 w-12 rounded-2xl bg-muted flex items-center justify-center font-black text-primary border shadow-sm group-hover:bg-primary group-hover:text-white transition-colors">{getInitials(person.name)}</div>
+                                                        <div>
+                                                            <p className="font-black text-base">{person.name}</p>
+                                                            <Badge variant="outline" className="mt-1 text-[8px] font-black uppercase tracking-tighter h-5">{person.type}</Badge>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex gap-2 w-full sm:w-auto">
+                                                        <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`mailto:${person.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a></Button>
+                                                        <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`tel:${person.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a></Button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <div className="p-12 text-center text-muted-foreground font-medium italic">No staff directory initialized for this campus.</div>
+                                        )}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
+                                <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
+                                    <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
+                                </CardHeader>
+                                <CardContent className="p-8 space-y-8">
+                                    <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/5 border border-primary/10 shadow-inner">
+                                        <div className="space-y-1">
+                                            <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Roll</p>
+                                            <p className="text-3xl font-black tabular-nums tracking-tighter text-primary">{school.nominalRoll?.toLocaleString() || '0'}</p>
+                                        </div>
+                                        <div className="p-3 bg-white rounded-2xl shadow-sm border border-primary/10"><Users className="h-6 w-6 text-primary" /></div>
+                                    </div>
+                                    <div className="space-y-6">
+                                        <DetailItem icon={ShieldCheck} label="Account Manager" value={school.assignedTo?.name || 'Unassigned'} />
+                                        <DetailItem icon={Calendar} label="Implementation Date" value={school.implementationDate ? format(new Date(school.implementationDate), 'PPP') : 'Pending'} />
+                                        <Separator />
+                                        <div className="space-y-3">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Activated Modules</p>
+                                            <div className="flex flex-wrap gap-2">{school.modules?.map(m => <Badge key={m.id} style={{backgroundColor: m.color}} className="text-white border-none font-bold text-[9px] uppercase">{m.abbreviation}</Badge>)}</div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="flex justify-between items-center mb-2 px-2">
+                            <h3 className="text-xl font-black uppercase tracking-tight">Pending Interventions</h3>
+                            <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
+                                <Link href={`/admin/tasks?schoolId=${school.id}&assignedTo=${school.assignedTo?.userId || 'all'}`}>
+                                    <Plus className="h-4 w-4" /> Create Task
+                                </Link>
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {isLoadingTasks ? (
+                                Array.from({ length: 2 }).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-2xl" />)
+                            ) : tasks && tasks.length > 0 ? (
+                                tasks.filter(t => t.status !== 'completed').map(task => (
+                                    <Card key={task.id} className="border-border/50 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all">
+                                        <CardContent className="p-4 flex items-center gap-4">
+                                            <button onClick={() => handleTaskComplete(task.id)} className="shrink-0 text-muted-foreground hover:text-emerald-500"><Circle className="h-6 w-6" /></button>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-black uppercase tracking-tight truncate leading-tight">{task.title}</p>
+                                                <div className="flex items-center gap-3 mt-1 text-[9px] font-bold uppercase tracking-tighter">
+                                                    <span className={cn("flex items-center gap-1", isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "text-rose-600" : "text-muted-foreground")}>
+                                                        <Clock className="h-2.5 w-2.5" /> Due {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
+                                                    </span>
+                                                    <Badge variant="outline" className="h-4 border-primary/20 text-primary text-[7px]">{task.category}</Badge>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2 w-full sm:w-auto">
-                                                <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`mailto:${person.email}`}><Mail className="h-3.5 w-3.5 mr-2" /> Email</a></Button>
-                                                <Button variant="outline" size="sm" asChild className="h-9 rounded-xl flex-1 sm:flex-none border-border/50"><a href={`tel:${person.phone}`}><Phone className="h-3.5 w-3.5 mr-2" /> Call</a></Button>
-                                            </div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="p-12 text-center text-muted-foreground font-medium italic">No staff directory initialized for this campus.</div>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className="border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
-                        <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
-                            <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><ShieldCheck className="h-4 w-4" /> Account Metrics</CardTitle>
-                        </CardHeader>
-                        <CardContent className="p-8 space-y-8">
-                            <div className="flex items-center justify-between p-5 rounded-[1.5rem] bg-primary/5 border border-primary/10 shadow-inner">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-black uppercase text-primary/60 tracking-widest">Active Roll</p>
-                                    <p className="text-3xl font-black tabular-nums tracking-tighter text-primary">{school.nominalRoll?.toLocaleString() || '0'}</p>
+                                        </CardContent>
+                                    </Card>
+                                ))
+                            ) : (
+                                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-[2rem] bg-muted/10 opacity-30 flex flex-col items-center gap-2">
+                                    <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No pending actions for this campus</p>
                                 </div>
-                                <div className="p-3 bg-white rounded-2xl shadow-sm border border-primary/10"><Users className="h-6 w-6 text-primary" /></div>
-                            </div>
-                            <div className="space-y-6">
-                                <DetailItem icon={ShieldCheck} label="Account Manager" value={school.assignedTo?.name || 'Unassigned'} />
-                                <DetailItem icon={Calendar} label="Implementation Date" value={school.implementationDate ? format(new Date(school.implementationDate), 'PPP') : 'Pending'} />
-                                <Separator />
-                                <div className="space-y-3">
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Activated Modules</p>
-                                    <div className="flex flex-wrap gap-2">{school.modules?.map(m => <Badge key={m.id} style={{backgroundColor: m.color}} className="text-white border-none font-bold text-[9px] uppercase">{m.abbreviation}</Badge>)}</div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-
-                <div className="bg-card rounded-[2.5rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
-                    <div className="mb-10 flex items-center gap-3">
-                        <div className="flex flex-col">
-                            <Badge variant="outline" className="w-fit bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary mb-1">Live Feed</Badge>
-                            <h3 className="text-2xl font-black tracking-tight">Campus Audit Trail</h3>
+                            )}
                         </div>
-                        <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
-                    </div>
-                    <ActivityTimeline schoolId={school.id} limit={20} />
-                </div>
+                    </TabsContent>
+
+                    <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
+                            <div className="mb-10 flex items-center gap-3">
+                                <div className="flex flex-col">
+                                    <Badge variant="outline" className="w-fit bg-background font-black text-[10px] uppercase tracking-widest px-3 py-1 border-primary/20 text-primary mb-1">Live Feed</Badge>
+                                    <h3 className="text-2xl font-black tracking-tight">Campus Audit Trail</h3>
+                                </div>
+                                <div className="h-px flex-1 bg-gradient-to-r from-primary/20 to-transparent" />
+                            </div>
+                            <ActivityTimeline schoolId={school.id} limit={20} />
+                        </div>
+                    </TabsContent>
+                </Tabs>
             </div>
             <LogActivityModal school={school} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
         </div>

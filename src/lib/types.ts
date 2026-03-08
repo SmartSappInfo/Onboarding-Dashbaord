@@ -513,3 +513,59 @@ export interface VariableDefinition {
   constantValue?: string; 
   hidden?: boolean;
 }
+
+export type TaskPriority = 'low' | 'medium' | 'high' | 'critical';
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
+export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'general';
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  category: TaskCategory;
+  schoolId?: string;
+  schoolName?: string;
+  assignedTo: string; // userId
+  assignedToName?: string;
+  dueDate: string; // ISO string
+  reminderSent: boolean;
+  source: 'manual' | 'automation' | 'system';
+  automationId?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON';
+
+export interface AutomationCondition {
+  field: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: any;
+}
+
+export interface AutomationAction {
+  type: 'SEND_MESSAGE' | 'CREATE_TASK' | 'WEBHOOK';
+  templateId?: string;
+  senderProfileId?: string;
+  recipientType?: 'manager' | 'fixed' | 'focal_person';
+  focalPersonType?: FocalPersonType;
+  fixedRecipient?: string;
+  taskTitle?: string;
+  taskDescription?: string;
+  taskPriority?: TaskPriority;
+  taskCategory?: TaskCategory;
+  taskDueOffsetDays?: number;
+}
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  trigger: AutomationTrigger;
+  conditions: AutomationCondition[];
+  actions: AutomationAction[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

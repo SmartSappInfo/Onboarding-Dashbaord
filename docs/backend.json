@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -116,6 +115,36 @@
         "description": { "type": "string" },
         "metadata": { "type": "object" }
       }
+    },
+    "Task": {
+      "title": "Task",
+      "description": "Administrative CRM task assigned to a team member.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "status": { "type": "string", "enum": ["pending", "in_progress", "completed", "cancelled"] },
+        "category": { "type": "string", "enum": ["call", "visit", "document", "training", "general"] },
+        "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "source": { "type": "string", "enum": ["manual", "automation", "system"] }
+      }
+    },
+    "AutomationRule": {
+      "title": "Automation Rule",
+      "description": "System-wide rule for triggering automated actions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "trigger": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "actions": { "type": "array" }
+      }
     }
   },
   "auth": {
@@ -150,17 +179,13 @@
       "schema": "#/entities/Activity",
       "description": "Audit logs and interaction notes."
     },
-    "/sender_profiles/{profileId}": {
-      "schema": "object",
-      "description": "Authorized sender identities."
+    "/tasks/{taskId}": {
+      "schema": "#/entities/Task",
+      "description": "CRM task registry."
     },
-    "/message_styles/{styleId}": {
-      "schema": "object",
-      "description": "Branded HTML email wrappers."
-    },
-    "/message_templates/{templateId}": {
-      "schema": "object",
-      "description": "Reusable message content definitions."
+    "/automations/{ruleId}": {
+      "schema": "#/entities/AutomationRule",
+      "description": "Global trigger hub rules."
     }
   }
 }

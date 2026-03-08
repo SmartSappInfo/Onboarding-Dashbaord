@@ -1,4 +1,3 @@
-
 export * from './DashboardCard';
 export * from './MetricCard';
 export * from './LatestSurveys';
@@ -10,3 +9,4 @@ export * from './ModuleRadarChart';
 export * from './RecentActivity';
 export * from './ZoneDistribution';
 export * from './MessagingWidget';
+export * from './TaskWidget';
