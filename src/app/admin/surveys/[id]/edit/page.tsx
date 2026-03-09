@@ -3,27 +3,24 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { 
     Check, 
     Loader2, 
     ArrowLeft, 
     ArrowRight, 
     Save, 
-    ShieldCheck, 
-    Plus,
-    Layout,
-    Eye,
-    Settings2,
     Undo,
     Redo,
     X,
     Sparkles,
     Zap,
-    Share2
+    Share2,
+    Settings2,
+    Layout,
+    Eye
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -35,9 +32,10 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
+import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
@@ -471,7 +469,7 @@ export default function EditSurveyPage() {
 
                         {/* Sticky Navigation Footer */}
                         <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                            <div className="max-w-7xl mx-auto flex items-center justify-between">
+                            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
                                 <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
                                 <div className="flex items-center gap-4">
                                     {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}

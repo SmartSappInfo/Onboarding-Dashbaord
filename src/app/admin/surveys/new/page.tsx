@@ -12,17 +12,15 @@ import {
     ArrowLeft, 
     ArrowRight, 
     Save, 
-    ShieldCheck, 
-    Plus,
-    Layout,
-    Eye,
-    Settings2,
     Undo,
     Redo,
     X,
     Sparkles,
     Zap,
-    Share2
+    Share2,
+    Settings2,
+    Layout,
+    Eye
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -34,6 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Extracted Modular Components
 import Step1Details from '../components/step-1-details';
