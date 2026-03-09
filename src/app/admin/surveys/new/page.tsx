@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -480,7 +479,7 @@ export default function NewSurveyPage() {
                                         </Button>
                                     ) : (
                                         <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
-                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />} 
+                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
                                             Finalize & Initialize
                                         </Button>
                                     )}

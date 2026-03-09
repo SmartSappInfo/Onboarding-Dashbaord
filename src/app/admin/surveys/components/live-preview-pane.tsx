@@ -1,10 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Monitor, Smartphone, Layout, ArrowRight, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SmartSappLogo } from '@/components/icons';
@@ -88,7 +88,9 @@ export default function LivePreviewPane() {
                             {/* Logo */}
                             <div className="flex justify-center">
                                 {logoUrl ? (
-                                    <div className="relative h-10 w-40"><img src={logoUrl} alt="logo" className="object-contain w-full h-full" /></div>
+                                    <div className="relative h-10 w-40 sm:h-12 sm:w-48">
+                                        <img src={logoUrl} alt="logo" className="object-contain w-full h-full" />
+                                    </div>
                                 ) : <SmartSappLogo className="h-8" />}
                             </div>
 
@@ -99,12 +101,8 @@ export default function LivePreviewPane() {
                                         videoUrl={videoUrl} 
                                         thumbnailUrl={videoThumbnailUrl} 
                                         title={title} 
+                                        videoCaption={videoCaption}
                                     />
-                                    <div className="flex flex-col items-center gap-2">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-primary animate-pulse">
-                                            {videoCaption || 'Click to watch video'}
-                                        </span>
-                                    </div>
                                 </div>
                             ) : bannerImageUrl ? (
                                 <div className="relative aspect-video rounded-[2rem] overflow-hidden shadow-xl border-4 border-white bg-white">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -233,7 +232,7 @@ export default function EditSurveyPage() {
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
-        return doc(firestore, 'surveys', surveyId);
+        return doc(firestore, 'surveys', surveyId as string);
     }, [firestore, surveyId]);
 
     const { data: survey, isLoading } = useDoc<Survey>(surveyDocRef);
@@ -494,6 +493,7 @@ export default function EditSurveyPage() {
             </div>
 
             <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={(id) => { setIsErrorModalOpen(false); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} />
-        </FormProvider>
+        </div>
+    </FormProvider>
     );
 }
