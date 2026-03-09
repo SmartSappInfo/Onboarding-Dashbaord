@@ -180,7 +180,7 @@ export default function PortalsClient() {
                     <StatCard label="Live Surveys" value={surveys?.length || 0} icon={ClipboardList} />
                     <StatCard label="Doc Portals" value={pdfs?.length || 0} icon={FileText} />
                     <StatCard label="Meeting Rooms" value={meetings?.length || 0} icon={Calendar} />
-                    <StatCard label="System Nodes" value={5} icon={Zap} />
+                    <StatCard label="Custom Pages" value={5} icon={Zap} />
                 </div>
 
                 {isLoading ? (
@@ -192,7 +192,7 @@ export default function PortalsClient() {
                         
                         {!searchTerm && (
                             <section>
-                                <SectionHeader title="Core System Nodes" icon={Zap} />
+                                <SectionHeader title="Core Custom Pages" icon={Zap} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
                                     <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
@@ -215,7 +215,7 @@ export default function PortalsClient() {
                                             school={s.schoolName || 'SmartSapp'} 
                                             path={`/surveys/${s.slug}`} 
                                             icon={ClipboardList} 
-                                            color="bg-blue-500" 
+                                            color="bg-blue-50" 
                                         />
                                     ))}
                                 </div>
@@ -233,7 +233,7 @@ export default function PortalsClient() {
                                             school={p.schoolName || 'SmartSapp'} 
                                             path={`/forms/${p.slug || p.id}`} 
                                             icon={FileText} 
-                                            color="bg-orange-500" 
+                                            color="bg-orange-50" 
                                         />
                                     ))}
                                 </div>
@@ -253,7 +253,7 @@ export default function PortalsClient() {
                                                 school={m.schoolName} 
                                                 path={`/meetings/${typeSlug}/${m.schoolSlug}`} 
                                                 icon={Calendar} 
-                                                color="bg-purple-600" 
+                                                color="bg-purple-50" 
                                             />
                                         );
                                     })}
