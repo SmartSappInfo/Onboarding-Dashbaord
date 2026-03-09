@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import Link from 'next/link';
 
 import type { PDFForm } from '@/lib/types';
-import { deletePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
+import { deletePdfForm, updatePdfFormStatus, clonePdfForm } from '@/lib/pdf-actions';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -18,7 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from '@/table';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, CopyPlus } from 'lucide-react';
 import UploadPDFButton from './components/UploadPDFButton';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
@@ -56,6 +56,7 @@ export default function PdfsClient() {
 
   const [formToDelete, setFormToDelete] = useState<PDFForm | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cloningId, setCloningId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
@@ -80,6 +81,26 @@ export default function PdfsClient() {
     
     setFormToDelete(null);
     setIsDeleting(false);
+  };
+
+  const handleClone = async (pdf: PDFForm) => {
+    if (!user) return;
+    setCloningId(pdf.id);
+    toast({ title: 'Cloning Document...', description: `Creating replica of "${pdf.name}".` });
+    
+    try {
+        const result = await clonePdfForm(pdf.id, user.uid);
+        if (result.success) {
+            toast({ title: 'Document Cloned', description: 'Duplicated successfully. Opening Design Studio...' });
+            router.push(`/admin/pdfs/${result.id}/edit`);
+        } else {
+            toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
+        }
+    } catch (e: any) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete duplication.' });
+    } finally {
+        setCloningId(null);
+    }
   };
 
   const handleStatusChange = async (pdf: PDFForm, status: PDFForm['status']) => {
@@ -160,7 +181,7 @@ export default function PdfsClient() {
           <TooltipContent>Map Fields</TooltipContent>
         </Tooltip>
         </TooltipProvider>
-      <DropdownMenu>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary transition-colors rounded-lg">
             <span className="sr-only">Open menu</span>
@@ -176,6 +197,14 @@ export default function PdfsClient() {
           <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdf.id}/submissions`)}>
             <BarChart2 className="mr-2 h-4 w-4" />
             <span>Submission Records</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleClone(pdf)} disabled={cloningId !== null}>
+            {cloningId === pdf.id ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+                <CopyPlus className="mr-2 h-4 w-4" />
+            )}
+            <span>Clone Document</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={() => handleStatusChange(pdf, pdf.status === 'published' ? 'draft' : 'published')}>
@@ -201,8 +230,8 @@ export default function PdfsClient() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6 text-left">
+        <div className="max-w-7xl mx-auto space-y-8 text-left">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center shrink-0">
                     <UploadPDFButton />
                 </div>

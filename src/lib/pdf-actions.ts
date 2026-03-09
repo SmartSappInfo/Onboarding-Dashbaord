@@ -196,6 +196,51 @@ export async function createPdfForm(data: any, userId: string) {
   return { success: true, id: docRef.id };
 }
 
+export async function clonePdfForm(pdfId: string, userId: string) {
+  try {
+    const pdfRef = adminDb.collection('pdfs').doc(pdfId);
+    const pdfSnap = await pdfRef.get();
+
+    if (!pdfSnap.exists) {
+      return { success: false, error: 'Document template not found.' };
+    }
+
+    const originalData = pdfSnap.data() as PDFForm;
+    const newName = `[Copy] ${originalData.name}`;
+    const newSlug = `${originalData.slug || pdfId}-copy-${Math.random().toString(36).substring(2, 7)}`;
+    const timestamp = new Date().toISOString();
+
+    // Prepare Clone Data
+    // We explicitly exclude submissions (results) and reset the status to draft
+    const cloneData: Omit<PDFForm, 'id'> = {
+      ...originalData,
+      name: newName,
+      slug: newSlug,
+      status: 'draft',
+      createdBy: userId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+
+    const newDocRef = await adminDb.collection('pdfs').add(cloneData);
+
+    await logActivity({
+      schoolId: originalData.schoolId || '',
+      userId,
+      type: 'pdf_uploaded',
+      source: 'user_action',
+      description: `cloned PDF document "${originalData.name}" as "${newName}"`,
+      metadata: { originalPdfId: pdfId, newPdfId: newDocRef.id }
+    });
+
+    revalidatePath('/admin/pdfs');
+    return { success: true, id: newDocRef.id };
+  } catch (error: any) {
+    console.error(">>> [PDF] Clone Failed:", error.message);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
     await adminDb.collection('pdfs').doc(pdfId).update({
         ...data,
