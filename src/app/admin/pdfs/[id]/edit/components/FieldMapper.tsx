@@ -9,7 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle
+    Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle, Tag
 } from 'lucide-react';
 
 import { 
@@ -115,7 +115,8 @@ function EditorLayout() {
                         <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-background/95 backdrop-blur-md p-2 shadow-2xl overflow-x-auto max-w-[90vw] no-scrollbar mx-auto">
                             <TooltipProvider>
                                 <div className="flex items-center gap-1 px-2 shrink-0">
-                                    <ToolButton icon={Text} label="Add Text" onClick={() => addField('text')} />
+                                    <ToolButton icon={Tag} label="Add Label" onClick={() => addField('static-text')} />
+                                    <ToolButton icon={Text} label="Add Input" onClick={() => addField('text')} />
                                     <ToolButton icon={Signature} label="Add Signature" onClick={() => addField('signature')} />
                                     <ToolButton icon={Calendar} label="Add Date" onClick={() => addField('date')} />
                                     <ToolButton icon={ChevronDownSquare} label="Add Dropdown" onClick={() => addField('dropdown')} />

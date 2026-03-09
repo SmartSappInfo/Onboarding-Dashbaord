@@ -115,7 +115,7 @@ export function EditorProvider({
   const addField = React.useCallback((type: LocalPDFFormField['type']) => {
     const newField: LocalPDFFormField = {
       id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      label: `New ${type}`,
+      label: type === 'static-text' ? 'Label Text' : `New ${type}`,
       type,
       pageNumber: 1,
       position: { x: 10, y: 10 },
@@ -123,6 +123,8 @@ export function EditorProvider({
       required: false,
       alignment: 'center', // Standardized horizontal centering
       verticalAlignment: 'center', // Standardized vertical centering
+      fontSize: 11,
+      staticText: type === 'static-text' ? 'Double-click to edit Label' : undefined,
       options: type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined
     };
     setFields(prev => [...prev, newField]);

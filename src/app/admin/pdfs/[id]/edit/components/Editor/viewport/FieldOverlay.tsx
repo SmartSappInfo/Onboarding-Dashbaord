@@ -8,7 +8,7 @@ import {
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
     AlignStartVertical, AlignCenterVertical, AlignEndVertical,
     AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-    ChevronUp, ChevronDown as ChevronDownIcon
+    ChevronUp, ChevronDown as ChevronDownIcon, Tag
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
@@ -33,6 +33,7 @@ const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   email: Mail,
   time: Clock,
   photo: Camera,
+  'static-text': Tag,
 };
 
 interface FieldOverlayProps {
@@ -51,7 +52,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   });
 
   const [isResizing, setIsResizing] = React.useState(false);
-  const [isEditingPlaceholder, setIsEditingPlaceholder] = React.useState(false);
+  const [isEditingLabel, setIsEditingLabel] = React.useState(false);
   const resizeHandleRef = React.useRef<ResizeHandle | null>(null);
   const initialResizeState = React.useRef<any>(null);
 
@@ -59,7 +60,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const isMulti = selectedFieldIds.length > 1;
   const isNaming = field.id === namingFieldId;
 
-  const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time'].includes(field.type);
+  const isTextType = ['text', 'dropdown', 'phone', 'email', 'date', 'time', 'static-text'].includes(field.type);
   const isMediaField = field.type === 'signature' || field.type === 'photo';
 
   const baseFontSize = field.fontSize || 11;
@@ -151,42 +152,51 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
       {...attributes}
       data-field-id={field.id}
       className={cn(
-        "absolute border-2 transition-colors cursor-default select-none",
+        "absolute border-2 transition-colors cursor-default select-none overflow-hidden",
         isSelected ? "border-primary bg-primary/5" : field.isSuggestion ? "border-green-500 bg-green-50/20" : "border-dashed border-primary/40 hover:border-primary/80",
-        isMediaField ? "flex items-center justify-center p-0" : "p-1"
+        isMediaField ? "flex items-center justify-center p-0" : "p-1",
+        field.type === 'static-text' && "border-primary/20 bg-primary/5"
       )}
       onPointerDown={(e) => { 
         e.stopPropagation(); 
         selectField(field.id, e.shiftKey, e.metaKey || e.ctrlKey); 
       }}
-      onDoubleClick={(e) => { e.stopPropagation(); if (!isMulti) setIsEditingPlaceholder(true); }}
+      onDoubleClick={(e) => { 
+        e.stopPropagation(); 
+        if (!isMulti) setIsEditingLabel(true); 
+      }}
     >
       <div {...listeners} className="absolute inset-0 z-0 cursor-grab active:cursor-grabbing" />
 
-      {isEditingPlaceholder ? (
+      {isEditingLabel ? (
         <textarea
           autoFocus
-          className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 italic text-muted-foreground z-20 overflow-hidden"
+          className="absolute inset-0 w-full h-full bg-transparent border-none outline-none resize-none p-1 z-20 overflow-hidden"
           style={{ 
             fontSize: 'inherit',
             textAlign: 'inherit',
             fontWeight: 'inherit',
             fontStyle: 'inherit',
-            textDecoration: 'inherit'
+            textDecoration: 'inherit',
+            color: 'hsl(var(--primary))'
           }}
-          value={field.placeholder || ''}
-          onChange={(e) => updateField(field.id, { placeholder: e.target.value, isSuggestion: false })}
-          onBlur={() => setIsEditingPlaceholder(false)}
+          value={field.type === 'static-text' ? (field.staticText || '') : (field.placeholder || '')}
+          onChange={(e) => {
+            if (field.type === 'static-text') {
+                updateField(field.id, { staticText: e.target.value, isSuggestion: false });
+            } else {
+                updateField(field.id, { placeholder: e.target.value, isSuggestion: false });
+            }
+          }}
+          onBlur={() => setIsEditingLabel(false)}
         />
       ) : (
-        field.placeholder && (
-          <span 
-            className="text-muted-foreground italic z-10 pointer-events-none truncate block w-full px-1"
+        <div 
+            className={cn("z-10 pointer-events-none truncate block w-full px-1", field.type === 'static-text' ? "text-primary" : "text-muted-foreground italic")}
             style={{ fontSize: 'inherit' }}
-          >
-            {field.placeholder}
-          </span>
-        )
+        >
+            {field.type === 'static-text' ? (field.staticText || '') : (field.placeholder || '')}
+        </div>
       )}
 
       {(field.type === 'dropdown' || field.type === 'time') && (
@@ -208,11 +218,11 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
               <div className="flex items-center gap-0.5 px-1">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingPlaceholder(true)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setIsEditingLabel(true)}>
                       <ALargeSmall className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Edit Placeholder</TooltipContent>
+                  <TooltipContent>Edit Content</TooltipContent>
                 </Tooltip>
                 
                 <DropdownMenu>

@@ -11,13 +11,13 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -32,6 +32,7 @@ const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
   email: Mail,
   time: Clock,
   photo: Camera,
+  'static-text': Tag,
 };
 
 export function Inspector() {
@@ -74,7 +75,7 @@ export function Inspector() {
     );
   }
 
-  const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time';
+  const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time' || selectedField?.type === 'static-text';
 
   return (
     <ScrollArea className="flex-grow">
@@ -93,14 +94,29 @@ export function Inspector() {
               <CardDescription className="text-[10px] font-mono">ID: {selectedField.id}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
-                <Input value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Placeholder</Label>
-                <Input value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
-              </div>
+              {selectedField.type === 'static-text' ? (
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Label Content</Label>
+                    <Textarea 
+                        value={selectedField.staticText || ''} 
+                        onChange={e => updateField(selectedField.id, { staticText: e.target.value })} 
+                        className="min-h-[100px] text-sm rounded-xl bg-background border-primary/20 shadow-inner p-3"
+                        placeholder="Type text to display on the document..."
+                    />
+                </div>
+              ) : (
+                <>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Label</Label>
+                        <Input value={selectedField.label || ''} onChange={e => updateField(selectedField.id, { label: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Placeholder</Label>
+                        <Input value={selectedField.placeholder || ''} onChange={e => updateField(selectedField.id, { placeholder: e.target.value })} className="h-9 text-sm rounded-xl bg-background border-border/50" />
+                    </div>
+                </>
+              )}
+              
               <div className="space-y-2">
                 <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Type</Label>
                 <Select value={selectedField.type} onValueChange={(v: PDFFormField['type']) => updateField(selectedField.id, { type: v, options: v === 'dropdown' ? (selectedField.options || ['Option 1', 'Option 2']) : undefined })}>
@@ -114,10 +130,13 @@ export function Inspector() {
                   <Textarea value={selectedField.options?.join('\n')} onChange={e => updateField(selectedField.id, { options: e.target.value.split('\n').filter(Boolean) })} className="min-h-[100px] text-xs rounded-xl bg-background border-border/50" />
                 </div>
               )}
-              <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
-                <Label className="text-xs font-bold">Required Field</Label>
-                <Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} />
-              </div>
+              
+              {selectedField.type !== 'static-text' && (
+                <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
+                    <Label className="text-xs font-bold">Required Field</Label>
+                    <Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} />
+                </div>
+              )}
               
               {isTextType && (
                 <div className="space-y-4 pt-4 border-t mt-2">
@@ -240,13 +259,15 @@ export function Inspector() {
                 </div>
               )}
 
-              <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-white shadow-sm mt-4">
-                <div className="space-y-0.5">
-                  <Label className="text-xs flex items-center gap-1.5 font-black text-primary uppercase tracking-tighter"><Key className="h-3 w-3" /> Naming Field</Label>
-                  <p className="text-[9px] text-muted-foreground leading-none font-medium">Use for submission titles</p>
+              {selectedField.type !== 'static-text' && (
+                <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-white shadow-sm mt-4">
+                    <div className="space-y-0.5">
+                    <Label className="text-xs flex items-center gap-1.5 font-black text-primary uppercase tracking-tighter"><Key className="h-3 w-3" /> Naming Field</Label>
+                    <p className="text-[9px] text-muted-foreground leading-none font-medium">Use for submission titles</p>
+                    </div>
+                    <Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} />
                 </div>
-                <Switch checked={namingFieldId === selectedField.id} onCheckedChange={v => setNamingFieldId(v ? selectedField.id : null)} />
-              </div>
+              )}
             </CardContent>
           </Card>
         ) : isMulti ? (

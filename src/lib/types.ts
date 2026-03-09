@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -346,9 +345,10 @@ export interface Activity {
 
 export interface PDFFormField {
   id: string;
-  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo';
+  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo' | 'static-text';
   label?: string;
   placeholder?: string;
+  staticText?: string;
   pageNumber: number;
   position: { x: number; y: number };
   dimensions: { width: number; height: number };

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -68,6 +67,8 @@ const pdfjsPromise = import('pdfjs-dist');
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
+        if (field.type === 'static-text') return acc;
+
         let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
         
         if (field.type === 'email') {
@@ -317,6 +318,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const currentTime = format(now, 'HH:mm');
 
     pdfForm.fields.forEach(field => {
+      if (field.type === 'static-text') return;
       const currentValue = getValues(field.id);
       if (!currentValue) {
         if (field.type === 'date') {
@@ -336,7 +338,9 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   React.useEffect(() => {
     pdfForm.fields.forEach(field => {
-        register(field.id);
+        if (field.type !== 'static-text') {
+            register(field.id);
+        }
     });
   }, [pdfForm.fields, register]);
 
@@ -384,7 +388,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const onInvalid = (errors: any) => {
     const missing = pdfForm.fields
-        .filter(f => errors[f.id])
+        .filter(f => f.type !== 'static-text' && errors[f.id])
         .map(f => ({ id: f.id, label: f.label || f.placeholder || 'Unnamed Field' }));
     
     if (missing.length > 0) {
@@ -522,7 +526,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
 
   const handleFieldClick = (field: PDFFormField) => {
-    if (isSubmitting || isSubmitted) return;
+    if (isSubmitting || isSubmitted || field.type === 'static-text') return;
     
     if (field.type === 'signature' || field.type === 'photo') {
         setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
@@ -553,6 +557,16 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         justifyContent: vAlign === 'center' ? 'center' : vAlign === 'bottom' ? 'flex-end' : 'flex-start',
         alignItems: hAlign === 'center' ? 'center' : hAlign === 'right' ? 'flex-end' : 'flex-start',
     };
+
+    if (field.type === 'static-text') {
+        return (
+            <div className="w-full h-full flex overflow-visible text-primary" style={fieldStyle}>
+                <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
+                    {field.staticText}
+                </span>
+            </div>
+        );
+    }
 
     if (isSubmitted) {
         return (
@@ -873,7 +887,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
                             <AlertCircle className="h-6 w-6 text-destructive" />
                         </div>
-                        <DialogTitle className="text-center text-xl font-bold">Required Fields Missing</DialogTitle>
+                        <DialogTitle className="text-center text-xl font-bold">Required Questions Missing</DialogTitle>
                         <DialogDescription className="text-center pt-2 text-sm font-medium">
                             Please complete the following fields before submitting the document:
                         </DialogDescription>
@@ -1005,7 +1019,7 @@ function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: {
 
     return (
         <div 
-            className="relative shadow-2xl bg-white border border-border transition-all duration-300 flex-shrink-0" 
+            className="relative mx-auto shadow-2xl bg-white border border-border transition-all duration-300 flex-shrink-0" 
             style={{ width: dimensions.width, height: dimensions.height }}
         >
             {isRendering && <Skeleton className="absolute inset-0 z-10" />}

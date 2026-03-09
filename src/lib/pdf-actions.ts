@@ -48,7 +48,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
     for (const field of fields) {
         try {
-            const rawValue = formData[field.id];
+            const rawValue = field.type === 'static-text' ? field.staticText : formData[field.id];
             
             if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {
                 continue;
