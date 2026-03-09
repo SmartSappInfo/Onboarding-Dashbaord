@@ -10,7 +10,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle, Tag,
-    Plus, ChevronRight, Trash2
+    Plus, ChevronRight, Trash2, Database
 } from 'lucide-react';
 
 import {
@@ -110,6 +110,10 @@ function EditorLayout() {
                                             <Tag className="h-4 w-4 text-primary" />
                                             <span className="font-bold text-sm">Add Label</span>
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => addField('variable')} className="rounded-lg gap-3 p-2.5">
+                                            <Database className="h-4 w-4 text-primary" />
+                                            <span className="font-bold text-sm">Add Variable</span>
+                                        </DropdownMenuItem>
                                         
                                         <DropdownMenuSeparator className="my-1" />
                                         <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">Input Fields</div>
@@ -199,7 +203,7 @@ function EditorLayout() {
                                         variant="ghost" 
                                         size="icon" 
                                         type="button"
-                                        className="h-8 w-8 rounded-full mb-2" 
+                                        className="h-8 w-8 rounded-full mb-2 shrink-0" 
                                         onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
                                     >
                                         <ZoomIn className="h-4 w-4 text-primary" />
@@ -224,7 +228,7 @@ function EditorLayout() {
                                         variant="ghost" 
                                         size="icon" 
                                         type="button"
-                                        className="h-8 w-8 rounded-full mt-2" 
+                                        className="h-8 w-8 rounded-full mt-2 shrink-0" 
                                         onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
                                     >
                                         <ZoomOut className="h-4 w-4 text-primary" />

@@ -345,10 +345,11 @@ export interface Activity {
 
 export interface PDFFormField {
   id: string;
-  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo' | 'static-text';
+  type: 'text' | 'signature' | 'date' | 'dropdown' | 'phone' | 'email' | 'time' | 'photo' | 'static-text' | 'variable';
   label?: string;
   placeholder?: string;
   staticText?: string;
+  variableKey?: string;
   pageNumber: number;
   position: { x: number; y: number };
   dimensions: { width: number; height: number };

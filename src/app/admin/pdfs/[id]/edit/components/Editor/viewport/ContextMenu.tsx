@@ -25,7 +25,8 @@ import {
     Mail, 
     Clock, 
     Camera, 
-    Tag 
+    Tag,
+    Database
 } from 'lucide-react';
 
 export function EditorContextMenu({ children }: { children: React.ReactNode }) {
@@ -55,6 +56,10 @@ export function EditorContextMenu({ children }: { children: React.ReactNode }) {
             <ContextMenuItem onClick={() => addField('static-text')} className="rounded-lg gap-3 p-2.5">
               <Tag className="h-4 w-4 text-primary" />
               <span className="font-bold text-sm">Add Label</span>
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => addField('variable')} className="rounded-lg gap-3 p-2.5">
+              <Database className="h-4 w-4 text-primary" />
+              <span className="font-bold text-sm">Add Variable</span>
             </ContextMenuItem>
             <ContextMenuSeparator className="my-1" />
             <ContextMenuItem onClick={() => addField('text')} className="rounded-lg gap-3 p-2.5">
@@ -112,7 +117,7 @@ export function EditorContextMenu({ children }: { children: React.ReactNode }) {
             </ContextMenuItem>
           </>
         )}
-      </ContextMenuContent>
+      </を開くContent>
     </ContextMenu>
   );
 }

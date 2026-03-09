@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField } from '@/lib/types';
+import type { PDFForm, PDFFormField, School } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
 import { 
@@ -67,7 +67,7 @@ const pdfjsPromise = import('pdfjs-dist');
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
-        if (field.type === 'static-text') return acc;
+        if (field.type === 'static-text' || field.type === 'variable') return acc;
 
         let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
         
@@ -207,7 +207,7 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfForm: PDFForm, isPreview?: boolean }) {
+export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: { pdfForm: PDFForm, school?: School, isPreview?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -238,7 +238,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
 
   const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
-  const [missingFields, setMissingFields] = React.useState<{ id: string, label: string }[]>([]);
+  const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
 
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -318,7 +318,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     const currentTime = format(now, 'HH:mm');
 
     pdfForm.fields.forEach(field => {
-      if (field.type === 'static-text') return;
+      if (field.type === 'static-text' || field.type === 'variable') return;
       const currentValue = getValues(field.id);
       if (!currentValue) {
         if (field.type === 'date') {
@@ -338,7 +338,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   React.useEffect(() => {
     pdfForm.fields.forEach(field => {
-        if (field.type !== 'static-text') {
+        if (field.type !== 'static-text' && field.type !== 'variable') {
             register(field.id);
         }
     });
@@ -388,7 +388,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const onInvalid = (errors: any) => {
     const missing = pdfForm.fields
-        .filter(f => f.type !== 'static-text' && errors[f.id])
+        .filter(f => f.type !== 'static-text' && f.type !== 'variable' && errors[f.id])
         .map(f => ({ id: f.id, label: f.label || f.placeholder || 'Unnamed Field' }));
     
     if (missing.length > 0) {
@@ -526,7 +526,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   };
 
   const handleFieldClick = (field: PDFFormField) => {
-    if (isSubmitting || isSubmitted || field.type === 'static-text') return;
+    if (isSubmitting || isSubmitted || field.type === 'static-text' || field.type === 'variable') return;
     
     if (field.type === 'signature' || field.type === 'photo') {
         setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
@@ -568,6 +568,27 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         );
     }
 
+    if (field.type === 'variable') {
+        let resolvedValue = `{{${field.variableKey}}}`;
+        if (school && field.variableKey) {
+            switch(field.variableKey) {
+                case 'school_name': resolvedValue = school.name; break;
+                case 'school_initials': resolvedValue = school.initials || ''; break;
+                case 'school_location': resolvedValue = school.location || ''; break;
+                case 'school_phone': resolvedValue = school.phone || ''; break;
+                case 'school_email': resolvedValue = school.email || ''; break;
+                case 'contact_name': resolvedValue = school.contactPerson || ''; break;
+            }
+        }
+        return (
+            <div className="w-full h-full flex overflow-visible text-primary" style={fieldStyle}>
+                <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
+                    {resolvedValue}
+                </span>
+            </div>
+        );
+    }
+
     if (isSubmitted) {
         return (
             <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
@@ -595,7 +616,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                             <Select onValueChange={selectField.onChange} value={selectField.value}>
                                 <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary", field.bold && "font-bold")} style={{ fontSize: 'inherit' }}>
                                     <SelectValue placeholder={field.placeholder || field.label} />
-                                    <ChevronDown className="h-3 w-3 opacity-20 group-hover/desktop-field:opacity-60" />
+                                    <ChevronDown className="h-4 w-4 opacity-50" />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
                                     {(field.options || []).map((opt, i) => (

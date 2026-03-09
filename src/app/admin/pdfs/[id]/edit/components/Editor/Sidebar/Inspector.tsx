@@ -18,7 +18,7 @@ import {
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
-  Layers, ArrowRightLeft
+  Layers, ArrowRightLeft, Database, Building
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -34,11 +34,21 @@ const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
   time: Clock,
   photo: Camera,
   'static-text': Tag,
+  variable: Database,
 };
+
+const SCHOOL_VARIABLES = [
+    { key: 'school_name', label: 'School Name' },
+    { key: 'school_initials', label: 'School Initials' },
+    { key: 'school_location', label: 'School Location' },
+    { key: 'school_phone', label: 'School Phone' },
+    { key: 'school_email', label: 'School Email' },
+    { key: 'contact_name', label: 'Primary Contact' },
+];
 
 export function Inspector() {
   const { 
-    fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
+    pdf, fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, removeField, duplicateFields, alignFields, distributeFields,
     isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen, setFields
   } = useEditor();
@@ -76,7 +86,7 @@ export function Inspector() {
     );
   }
 
-  const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time' || selectedField?.type === 'static-text';
+  const isTextType = selectedField?.type === 'text' || selectedField?.type === 'dropdown' || selectedField?.type === 'phone' || selectedField?.type === 'email' || selectedField?.type === 'date' || selectedField?.type === 'time' || selectedField?.type === 'static-text' || selectedField?.type === 'variable';
 
   return (
     <ScrollArea className="flex-grow">
@@ -104,6 +114,41 @@ export function Inspector() {
                         className="min-h-[100px] text-sm rounded-xl bg-background border-primary/20 shadow-inner p-3"
                         placeholder="Type text to display on the document..."
                     />
+                </div>
+              ) : selectedField.type === 'variable' ? (
+                <div className="space-y-4">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                            <Building className="h-3 w-3" /> School Data Context
+                        </Label>
+                        {pdf.schoolId ? (
+                            <Select 
+                                value={selectedField.variableKey} 
+                                onValueChange={(val) => updateField(selectedField.id, { variableKey: val, label: SCHOOL_VARIABLES.find(v => v.key === val)?.label })}
+                            >
+                                <SelectTrigger className="h-11 rounded-xl bg-background border-primary/20 font-bold shadow-sm">
+                                    <SelectValue placeholder="Pick school field..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    {SCHOOL_VARIABLES.map(v => (
+                                        <SelectItem key={v.key} value={v.key}>{v.label}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex flex-col items-center text-center gap-2">
+                                <AlertCircle className="h-5 w-5 text-orange-600" />
+                                <p className="text-[9px] font-black uppercase text-orange-800 leading-tight">No School Associated</p>
+                                <p className="text-[8px] font-bold text-orange-700/60 uppercase tracking-tighter">Please bind this document to a school in "Step 1: Details" to use variables.</p>
+                            </div>
+                        )}
+                    </div>
+                    {selectedField.variableKey && (
+                        <div className="p-3 bg-background rounded-xl border border-dashed border-primary/20 flex flex-col items-center justify-center gap-1.5 shadow-inner">
+                            <span className="text-[9px] font-black uppercase tracking-widest opacity-40">Active Placeholder</span>
+                            <code className="text-xs font-black text-primary">{"{{" + selectedField.variableKey + "}}"}</code>
+                        </div>
+                    )}
                 </div>
               ) : (
                 <>
@@ -156,7 +201,7 @@ export function Inspector() {
                 </div>
               )}
               
-              {selectedField.type !== 'static-text' && (
+              {selectedField.type !== 'static-text' && selectedField.type !== 'variable' && (
                 <div className="flex items-center justify-between rounded-xl border border-border/50 p-3 bg-background">
                     <Label className="text-xs font-bold">Required Field</Label>
                     <Switch checked={!!selectedField.required} onCheckedChange={v => updateField(selectedField.id, { required: v })} />
@@ -284,7 +329,7 @@ export function Inspector() {
                 </div>
               )}
 
-              {selectedField.type !== 'static-text' && (
+              {selectedField.type !== 'static-text' && selectedField.type !== 'variable' && (
                 <div className="flex items-center justify-between rounded-xl border border-primary/20 p-3 bg-white shadow-sm mt-4">
                     <div className="space-y-0.5">
                     <Label className="text-xs flex items-center gap-1.5 font-black text-primary uppercase tracking-tighter"><Key className="h-3 w-3" /> Naming Field</Label>

@@ -3,8 +3,28 @@
 import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
-import type { PDFForm, PDFFormField } from './types';
+import type { PDFForm, PDFFormField, School } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+
+/**
+ * Resolves technical variable tags (e.g. {{school_name}}) using school data.
+ */
+function resolvePdfVariables(text: string, school?: School): string {
+    if (!text || !school) return text;
+    
+    return text.replace(/\{\{(.*?)\}\}/g, (match, key) => {
+        const cleanKey = key.trim();
+        switch (cleanKey) {
+            case 'school_name': return school.name || '';
+            case 'school_initials': return school.initials || '';
+            case 'school_location': return school.location || '';
+            case 'school_phone': return school.phone || '';
+            case 'school_email': return school.email || '';
+            case 'contact_name': return school.contactPerson || '';
+            default: return match;
+        }
+    });
+}
 
 /**
  * Generates a PDF buffer by overlaying form data onto a template using Firebase Admin.
@@ -14,6 +34,15 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     console.log(`>>> [PDF:GEN] START: "${pdfForm.name}" (ID: ${pdfForm.id})`);
     
+    // Fetch school data for variable resolution if associated
+    let school: School | undefined = undefined;
+    if (pdfForm.schoolId) {
+        const schoolSnap = await adminDb.collection('schools').doc(pdfForm.schoolId).get();
+        if (schoolSnap.exists) {
+            school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
+        }
+    }
+
     let pdfBuffer: Buffer;
     try {
         console.log(`>>> [PDF:GEN] STEP 1: Downloading template from Admin Storage: ${pdfForm.storagePath}`);
@@ -48,7 +77,15 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
     for (const field of fields) {
         try {
-            const rawValue = field.type === 'static-text' ? field.staticText : formData[field.id];
+            let rawValue: any;
+            
+            if (field.type === 'static-text') {
+                rawValue = field.staticText;
+            } else if (field.type === 'variable') {
+                rawValue = resolvePdfVariables(`{{${field.variableKey}}}`, school);
+            } else {
+                rawValue = formData[field.id];
+            }
             
             if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {
                 continue;
