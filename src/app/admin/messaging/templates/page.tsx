@@ -29,7 +29,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Trash2, Plus, Sparkles, Wand2, X } from 'lucide-react';
+import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
