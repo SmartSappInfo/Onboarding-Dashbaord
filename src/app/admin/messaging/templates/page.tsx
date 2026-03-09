@@ -18,12 +18,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Trash2 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { 
+    Dialog, 
+    DialogContent, 
+    DialogHeader, 
+    DialogTitle, 
+    DialogDescription, 
+    DialogFooter 
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Loader2, Trash2, Plus, Sparkles, Wand2, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { RainbowButton } from '@/components/ui/rainbow-button';
+import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 
 /**
  * @fileOverview Messaging Templates Management Page.
- * Orchestrates the relationship between the Template Gallery and the Design Workshop.
+ * Features an AI Architect for generative drafting and a Manual Workshop for precision design.
  */
 
 export default function MessageTemplatesPage() {
@@ -37,6 +50,11 @@ export default function MessageTemplatesPage() {
     const [cloningId, setCloningId] = React.useState<string | null>(null);
     const [templateToDelete, setTemplateToDelete] = React.useState<MessageTemplate | null>(null);
     const [isDeleting, setIsDeleting] = React.useState(false);
+
+    // AI Architect State
+    const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
+    const [aiPrompt, setAiPrompt] = React.useState('');
+    const [isAiProcessing, setIsAiProcessing] = React.useState(false);
 
     // Data Subscriptions
     const templatesQuery = useMemoFirebase(() => {
@@ -92,6 +110,42 @@ export default function MessageTemplatesPage() {
         setEditingTemplate(null);
     };
 
+    const handleAiArchitect = async () => {
+        if (!aiPrompt.trim()) return;
+        setIsAiProcessing(true);
+        try {
+            // Harvest all available variable keys for AI context
+            const availableKeys = (variables || []).map(v => v.key);
+            
+            const result = await generateEmailTemplate({
+                prompt: aiPrompt,
+                channel: 'email',
+                availableVariables: availableKeys
+            });
+
+            // Initialize the workshop with AI-generated draft
+            const draftTemplate: any = {
+                name: result.name,
+                subject: result.subject || '',
+                body: result.body,
+                blocks: result.blocks || [],
+                channel: 'email',
+                category: 'general', // AI usually starts with general, user can refine in step 1
+                isActive: true
+            };
+
+            setEditingTemplate(draftTemplate);
+            setIsAdding(true);
+            setIsAiModalOpen(false);
+            setAiPrompt('');
+            toast({ title: 'AI Draft Ready', description: 'The template architecture has been generated.' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Architect Failure', description: e.message });
+        } finally {
+            setIsAiProcessing(false);
+        }
+    };
+
     const handleSave = async (data: any) => {
         if (!firestore) return;
         
@@ -107,11 +161,10 @@ export default function MessageTemplatesPage() {
             updatedAt: new Date().toISOString(),
         };
 
-        // Ensure we don't send undefined to Firestore
         const sanitizedData = JSON.parse(JSON.stringify(templateData));
 
         try {
-            if (editingTemplate) {
+            if (editingTemplate?.id) {
                 await updateDoc(doc(firestore, 'message_templates', editingTemplate.id), sanitizedData);
             } else {
                 await addDoc(collection(firestore, 'message_templates'), { 
@@ -119,7 +172,7 @@ export default function MessageTemplatesPage() {
                     createdAt: new Date().toISOString() 
                 });
             }
-            toast({ title: 'Template Saved', description: 'Institutional communications updated.' });
+            toast({ title: 'Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
         } catch (e: any) {
@@ -173,8 +226,25 @@ export default function MessageTemplatesPage() {
                         isSaving={false}
                     />
                 ) : (
-                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-                        <div className="max-w-7xl mx-auto">
+                    <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+                        <div className="max-w-7xl mx-auto space-y-8">
+                            <div className="flex items-center justify-end flex-wrap gap-4">
+                                <div className="flex items-center gap-3">
+                                    <RainbowButton 
+                                        onClick={() => setIsAiModalOpen(true)} 
+                                        className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl"
+                                    >
+                                        <Sparkles className="h-4 w-4" /> AI Architect
+                                    </RainbowButton>
+                                    <Button 
+                                        onClick={() => { setEditingTemplate(null); setIsAdding(true); }} 
+                                        className="rounded-xl font-bold h-11 px-6 shadow-lg gap-2"
+                                    >
+                                        <Plus className="h-5 w-5" /> Manual Create
+                                    </Button>
+                                </div>
+                            </div>
+
                             <TemplateGallery 
                                 templates={templates || []}
                                 isLoading={isLoadingTemplates}
@@ -189,6 +259,56 @@ export default function MessageTemplatesPage() {
                 )}
             </AnimatePresence>
 
+            {/* AI Architect Dialog */}
+            <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
+                <DialogContent className="sm:max-w-2xl rounded-[2.5rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-primary/5 border-b border-primary/10 shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                <Wand2 className="h-6 w-6" />
+                            </div>
+                            <div>
+                                <DialogTitle className="text-2xl font-black uppercase tracking-tight">AI Template Architect</DialogTitle>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-primary/60">Generate a high-fidelity communication blueprint.</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-8 space-y-6">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Communication Goal</Label>
+                            <Textarea 
+                                value={aiPrompt} 
+                                onChange={e => setAiPrompt(e.target.value)}
+                                placeholder="e.g. Create a formal email inviting parents to a meeting. Mention that we'll discuss the new security module and include their child's name."
+                                className="min-h-[180px] rounded-[2rem] bg-muted/20 border-none shadow-inner p-6 leading-relaxed text-lg"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="p-5 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-4">
+                            <Zap className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <p className="text-sm font-black text-blue-800 uppercase tracking-tighter">Institutional Intelligence</p>
+                                <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
+                                    The AI will automatically scan your Variable Registry to inject the correct dynamic tags for schools, students, and sessions.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between items-center sm:justify-between">
+                        <Button variant="ghost" onClick={() => setIsAiModalOpen(false)} disabled={isAiProcessing} className="font-bold rounded-xl h-12 px-8">Discard</Button>
+                        <RainbowButton 
+                            onClick={handleAiArchitect} 
+                            disabled={isAiProcessing || !aiPrompt.trim()}
+                            className="h-12 px-12 font-black shadow-2xl uppercase tracking-widest text-sm"
+                        >
+                            {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                            {isAiProcessing ? 'Architecting...' : 'Generate Blueprint'}
+                        </RainbowButton>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation */}
             <AlertDialog open={!!templateToDelete} onOpenChange={(o) => !o && setTemplateToDelete(null)}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader>
