@@ -38,6 +38,7 @@ import { triggerInternalNotification } from '@/lib/notification-engine';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logActivity } from '@/lib/activity-logger';
 import SurveyLoader from '../../components/survey-loader';
+import VideoHero from '@/components/video-hero';
 
 interface SurveyFormProps {
     survey: Survey;
@@ -906,7 +907,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const score = calculateScore(data);
         const outcome = resolveOutcome(score);
 
-        // Respondent Identification
         const emailQuestion = survey.elements.filter(isQuestion).find(q => 
             q.type === 'email' || 
             q.title.toLowerCase().includes('email address') ||
@@ -1005,7 +1005,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             
             updateAutomationStatus('db', 'success');
 
-            // Final Analytics Sync
             if (sessionId) {
                 updateDoc(doc(firestore, 'survey_sessions', sessionId), {
                     isSubmitted: true,
@@ -1229,7 +1228,13 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                         <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 animate-in fade-in slide-in-from-bottom-8 duration-1000">
                             {showTitles && (
                                 <>
-                                    {survey.bannerImageUrl && (
+                                    {survey.videoUrl ? (
+                                        <VideoHero 
+                                            videoUrl={survey.videoUrl} 
+                                            thumbnailUrl={survey.videoThumbnailUrl} 
+                                            title={survey.title} 
+                                        />
+                                    ) : survey.bannerImageUrl && (
                                         <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
                                             <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block" />
                                         </div>

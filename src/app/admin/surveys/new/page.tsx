@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -29,7 +30,7 @@ import { FocalPersonManager } from '../components/FocalPersonManager';
 import { logActivity } from '@/lib/activity-logger';
 import { type UserProfile, type School, type SurveyElement, type SurveyQuestion } from '@/lib/types';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle } from 'lucide-react';
+import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle, Video } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
@@ -122,6 +123,8 @@ const formSchema = z.object({
   thankYouDescription: z.string().optional(),
   logoUrl: z.string().url().optional().or(z.literal('')),
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
+  videoThumbnailUrl: z.string().url().optional().or(z.literal('')),
   backgroundColor: z.string().optional(),
   backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
   patternColor: z.string().optional(),
@@ -234,6 +237,8 @@ export default function NewSurveyPage() {
             thankYouDescription: 'Your response has been recorded.',
             logoUrl: '',
             bannerImageUrl: '',
+            videoUrl: '',
+            videoThumbnailUrl: '',
             backgroundColor: '#F1F5F9',
             backgroundPattern: 'none',
             patternColor: '#3B5FFF',
@@ -310,7 +315,7 @@ export default function NewSurveyPage() {
 
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'videoUrl', 'videoThumbnailUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
@@ -366,10 +371,7 @@ export default function NewSurveyPage() {
             }
 
             toast({ title: 'Survey Initialized' });
-            
-            // Trigger Variable Registry sync
             syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
-
             router.push('/admin/surveys');
         } catch (e) {
             console.error(e);
@@ -485,7 +487,7 @@ export default function NewSurveyPage() {
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Organization</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Organization</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
@@ -515,27 +517,54 @@ export default function NewSurveyPage() {
                                                     )} />
                                                 </CardContent>
                                             </Card>
+
                                             <Card className="shadow-sm border-none ring-1 ring-border">
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Branding</CardTitle>
+                                                        <div className="p-2 bg-primary/10 rounded-xl">
+                                                            <Video className="h-5 w-5 text-primary" />
+                                                        </div>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Hero Media</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
-                                                    <FormField control={form.control} name="logoUrl" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Brand Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl></FormItem>
+                                                    <FormField control={form.control} name="videoUrl" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Intro Video URL</FormLabel>
+                                                            <FormControl>
+                                                                <Input {...field} placeholder="YouTube, Vimeo, or MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
                                                     )} />
+                                                    <FormField control={form.control} name="videoThumbnailUrl" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Video Poster (Poster Frame)</FormLabel>
+                                                            <FormControl>
+                                                                <MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                    <Separator />
                                                     <FormField control={form.control} name="bannerImageUrl" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover / Banner Image</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl></FormItem>
+                                                        <FormItem>
+                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover / Banner Image (Fallback)</FormLabel>
+                                                            <FormControl>
+                                                                <MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" />
+                                                            </FormControl>
+                                                        </FormItem>
+                                                    )} />
+                                                    <FormField control={form.control} name="logoUrl" render={({ field }) => (
+                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Institutional Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl></FormItem>
                                                     )} />
                                                 </CardContent>
                                             </Card>
+
                                             <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
                                                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-lg font-black uppercase tracking-tight">Appearance</CardTitle>
+                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Appearance</CardTitle>
                                                     </div>
                                                 </CardHeader>
                                                 <CardContent className="p-6">
@@ -601,7 +630,7 @@ export default function NewSurveyPage() {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                                     <FormField control={form.control} name="status" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></SelectContent></Select></FormItem>
+                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></Select></FormItem>
                                                     )} />
                                                     <FormField control={form.control} name="slug" render={({ field }) => (
                                                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Extension</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
@@ -610,8 +639,7 @@ export default function NewSurveyPage() {
                                                 <Separator />
                                                 <div className={cn(
                                                     "rounded-2xl border-2 transition-all duration-300",
-                                                    watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
-                                                )}>
+                                                    watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background")}>
                                                     <div className="flex items-center justify-between p-4">
                                                         <div className="flex items-center gap-3">
                                                             <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>

@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to modify an existing survey structure based on user chat instructions.
@@ -44,7 +45,7 @@ const resultRuleSchema = z.object({
 const questionSchema = z.object({
   id: z.string(),
   title: z.string(),
-  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload']),
+  type: z.enum(['text', 'long-text', 'yes-no', 'multiple-choice', 'checkboxes', 'dropdown', 'rating', 'date', 'time', 'file-upload', 'email', 'phone']),
   options: z.array(z.string()).optional(),
   allowOther: z.boolean().optional(),
   isRequired: z.boolean(),
@@ -57,6 +58,7 @@ const questionSchema = z.object({
   optionScores: z.array(z.number()).optional(),
   yesScore: z.number().optional(),
   noScore: z.number().optional(),
+  autoAdvance: z.boolean().optional(),
 });
 
 const layoutBlockSchema = z.object({
@@ -109,6 +111,8 @@ const ModifySurveyInputSchema = z.object({
     patternColor: z.string().optional(),
     logoUrl: z.string().optional(),
     bannerImageUrl: z.string().optional(),
+    videoUrl: z.string().optional(),
+    videoThumbnailUrl: z.string().optional(),
     thankYouTitle: z.string().optional(),
     thankYouDescription: z.string().optional(),
     startButtonText: z.string().optional(),
@@ -133,6 +137,8 @@ const ModifySurveyOutputSchema = z.object({
         patternColor: z.string().optional(),
         logoUrl: z.string().optional(),
         bannerImageUrl: z.string().optional(),
+        videoUrl: z.string().optional(),
+        videoThumbnailUrl: z.string().optional(),
         thankYouTitle: z.string().optional(),
         thankYouDescription: z.string().optional(),
         startButtonText: z.string().optional(),
@@ -158,7 +164,7 @@ Review the current survey structure and the user's request. Modify the survey to
 3. **Scoring**: If 'scoringEnabled' is true, ensure new questions have appropriate scores and 'maxScore' is updated to the new possible maximum.
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
 5. **Layouts**: When adding 'heading' blocks, use an appropriate 'variant' (h1, h2, h3).
-6. **Styling & Metadata**: Preserve existing background colors, patterns, and logo URLs unless specifically asked to change them.
+6. **Styling & Metadata**: Preserve existing background colors, patterns, video settings, and logo URLs unless specifically asked to change them.
 7. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- CURRENT SURVEY ---
@@ -167,6 +173,7 @@ Description: {{{currentSurvey.description}}}
 Elements: {{{json currentSurvey.elements}}}
 Scoring: {{{currentSurvey.scoringEnabled}}} (Max: {{{currentSurvey.maxScore}}})
 Styling: Pattern: {{{currentSurvey.backgroundPattern}}}, Color: {{{currentSurvey.backgroundColor}}}
+Media: Video: {{{currentSurvey.videoUrl}}}, Banner: {{{currentSurvey.bannerImageUrl}}}
 Result Rules: {{{json currentSurvey.resultRules}}}
 Result Pages: {{{json currentSurvey.resultPages}}}
 

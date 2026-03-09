@@ -84,7 +84,9 @@
         "status": { "type": "string", "enum": ["draft", "published", "archived"] },
         "elements": { "type": "array" },
         "scoringEnabled": { "type": "boolean" },
-        "maxScore": { "type": "number" }
+        "maxScore": { "type": "number" },
+        "videoUrl": { "type": "string" },
+        "videoThumbnailUrl": { "type": "string" }
       }
     },
     "PDFForm": {

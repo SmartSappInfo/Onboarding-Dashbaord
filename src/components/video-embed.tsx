@@ -1,4 +1,6 @@
 
+import { cn } from '@/lib/utils';
+
 function extractYouTubeID(url?: string): string | null {
   if (!url) return null;
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -13,11 +15,25 @@ interface VideoEmbedProps {
 
 const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
   const videoId = extractYouTubeID(url);
+  const isDirectFile = url?.match(/\.(mp4|webm|ogg)$/i);
 
-  if (!videoId) {
+  if (!videoId && !isDirectFile) {
     return (
         <div className={cn("aspect-video w-full rounded-xl bg-muted flex items-center justify-center text-center p-8", className)}>
-            <p className="text-muted-foreground font-medium italic">Video content unavailable.</p>
+            <p className="text-muted-foreground font-medium italic">Video source unsupported or unavailable.</p>
+        </div>
+    );
+  }
+
+  if (isDirectFile) {
+    return (
+        <div className={cn("aspect-video w-full rounded-xl overflow-hidden shadow-2xl border-4 border-white bg-black", className)}>
+            <video 
+                src={url} 
+                className="w-full h-full" 
+                controls 
+                playsInline
+            />
         </div>
     );
   }
@@ -27,7 +43,7 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
       <iframe
         width="100%"
         height="100%"
-        src={`https://www.youtube.com/embed/${videoId}`}
+        src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
         title="YouTube video player"
         frameBorder="0"
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -38,4 +54,3 @@ const VideoEmbed = ({ url, className }: VideoEmbedProps) => {
 };
 
 export default VideoEmbed;
-import { cn } from '@/lib/utils';
