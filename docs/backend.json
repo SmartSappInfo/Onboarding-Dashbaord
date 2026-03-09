@@ -159,6 +159,18 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
+    "PdfSession": {
+      "title": "PDF Session",
+      "description": "Tracking record for an individual PDF signer's scroll progress and completion.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "pdfId": { "type": "string" },
+        "maxPageReached": { "type": "number" },
+        "isSubmitted": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "CampaignSession": {
       "title": "Campaign Session",
       "description": "Analytics tracking for marketing campaign pages.",
@@ -215,6 +227,10 @@
     "/survey_sessions/{sessionId}": {
       "schema": "#/entities/SurveySession",
       "description": "Ephemeral tracking of survey progress."
+    },
+    "/pdf_sessions/{sessionId}": {
+      "schema": "#/entities/PdfSession",
+      "description": "Ephemeral tracking of PDF document engagement."
     },
     "/campaign_sessions/{sessionId}": {
       "schema": "#/entities/CampaignSession",

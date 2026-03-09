@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -19,7 +20,6 @@ import {
     AlertTriangle, 
     ZoomIn, 
     ZoomOut, 
-    AlertCircle, 
     Edit3, 
     LayoutList, 
     X, 
@@ -60,6 +60,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { useFirestore } from '@/firebase';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -195,8 +197,9 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
                 <Calendar
                   mode="single"
                   selected={dateValue}
-                  onSelect={(d) => onChange(d)}
+                  onSelect={onChange}
                   initialFocus
+                  captionLayout="dropdown"
                 />
             </PopoverContent>
         </Popover>
@@ -209,6 +212,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const firestore = useFirestore();
 
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -237,6 +241,64 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
 
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
+
+  // ANALYTICS SESSION TRACKING
+  const [sessionId] = React.useState(() => {
+    if (typeof window === 'undefined' || isPreview) return null;
+    const key = `pdf_sess_${pdfForm.id}`;
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+        id = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem(key, id);
+    }
+    return id;
+  });
+
+  const recordPagePulse = React.useCallback((pageNumber: number) => {
+    if (!sessionId || !firestore || isPreview) return;
+    
+    const key = `pdf_max_page_${pdfForm.id}`;
+    const currentMaxStr = sessionStorage.getItem(key) || '0';
+    const currentMax = parseInt(currentMaxStr, 10);
+
+    if (pageNumber >= currentMax) {
+        sessionStorage.setItem(key, String(pageNumber));
+        const sessionRef = doc(firestore, 'pdf_sessions', sessionId);
+        setDoc(sessionRef, {
+            pdfId: pdfForm.id,
+            maxPageReached: pageNumber,
+            updatedAt: new Date().toISOString(),
+            isSubmitted: false
+        }, { merge: true }).catch(err => console.warn("Analytics pulse failed:", err));
+    }
+  }, [sessionId, firestore, pdfForm.id, isPreview]);
+
+  // Track scroll progress for funnel analytics
+  React.useEffect(() => {
+    if (!sessionId || !pdfDoc || isPreview) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const pageNumAttr = entry.target.getAttribute('data-page-number');
+                if (pageNumAttr) {
+                    recordPagePulse(parseInt(pageNumAttr, 10));
+                }
+            }
+        });
+    }, { threshold: 0.3 });
+
+    // We wait a bit for pages to render before observing
+    const timer = setTimeout(() => {
+        const pages = document.querySelectorAll('.page-capture-wrapper');
+        pages.forEach(p => observer.observe(p));
+    }, 2000);
+
+    return () => {
+        clearTimeout(timer);
+        observer.disconnect();
+    };
+  }, [sessionId, pdfDoc, isPreview, recordPagePulse]);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
 
@@ -291,60 +353,6 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
     window.addEventListener('resize', updateBaseScale);
     return () => window.removeEventListener('resize', updateBaseScale);
   }, []);
-
-  React.useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey) {
-        e.preventDefault();
-        const delta = -e.deltaY;
-        const factor = Math.exp(delta * 0.005);
-        setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
-      }
-    };
-
-    const onTouchStart = (e: TouchEvent) => {
-      if (e.touches.length === 2) {
-        const dist = Math.hypot(
-          e.touches[0].pageX - e.touches[1].pageX,
-          e.touches[0].pageY - e.touches[1].pageY
-        );
-        touchStartDist.current = dist;
-        startZoom.current = zoomRef.current;
-      }
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (e.touches.length === 2 && touchStartDist.current !== null) {
-        e.preventDefault();
-        const dist = Math.hypot(
-          e.touches[0].pageX - e.touches[1].pageX,
-          e.touches[0].pageY - e.touches[1].pageY
-        );
-        const factor = dist / touchStartDist.current;
-        const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
-        setZoom(newZoom);
-      }
-    };
-
-    const onTouchEnd = () => {
-      touchStartDist.current = null;
-    };
-
-    viewport.addEventListener('wheel', onWheel, { passive: false });
-    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
-    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
-    viewport.addEventListener('touchend', onTouchEnd);
-    
-    return () => {
-      viewport.removeEventListener('wheel', onWheel);
-      viewport.removeEventListener('touchstart', onTouchStart);
-      viewport.removeEventListener('touchmove', onTouchMove);
-      viewport.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [setZoom]);
 
   React.useEffect(() => {
     const loadPdf = async () => {
@@ -418,6 +426,15 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
         if (response.ok) {
             setSubmissionId(result.submissionId);
             setIsSubmitted(true);
+            
+            // Final Analytics Sync
+            if (sessionId && firestore) {
+                updateDoc(doc(firestore, 'pdf_sessions', sessionId), {
+                    isSubmitted: true,
+                    updatedAt: new Date().toISOString()
+                }).catch(console.warn);
+            }
+
             toast({ title: 'Submission Successful', description: 'Your data has been securely saved.' });
             
             const params = new URLSearchParams(searchParams);
@@ -467,12 +484,12 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
             const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
             const image = await pdfBundle.embedJpg(imgBytes);
             
-            const page = pdfBundle.addPage([image.width, image.height]);
+            const page = pdfBundle.addPage([595.28, 841.89]);
             page.drawImage(image, {
                 x: 0,
                 y: 0,
-                width: image.width,
-                height: image.height,
+                width: 595.28,
+                height: 841.89,
             });
         }
 
@@ -762,7 +779,7 @@ export default function PdfFormRenderer({ pdfForm, isPreview = false }: { pdfFor
                         ) : (
                             <div className="flex flex-col gap-4 sm:gap-8 pb-8">
                                 {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
-                                    <div key={index} className="page-capture-wrapper">
+                                    <div key={index} className="page-capture-wrapper" data-page-number={index + 1}>
                                         <PageRenderer
                                             pdf={pdfDoc}
                                             pageNumber={index + 1}

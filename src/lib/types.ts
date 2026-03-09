@@ -280,6 +280,14 @@ export interface SurveySession {
   updatedAt: string;
 }
 
+export interface PdfSession {
+  id: string;
+  pdfId: string;
+  maxPageReached: number;
+  isSubmitted: boolean;
+  updatedAt: string;
+}
+
 export interface CampaignSession {
   id: string;
   campaignId: string;

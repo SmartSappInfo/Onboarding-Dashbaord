@@ -3,8 +3,8 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, query, orderBy } from 'firebase/firestore';
-import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
+import { collection, doc, query, orderBy, where } from 'firebase/firestore';
+import type { PDFForm, Submission, PDFFormField, PdfSession } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -14,7 +14,7 @@ import Link from 'next/link';
 import { 
     ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, Share2, 
     Copy, Lock, FileSpreadsheet, Printer, Clock, Users, Trash2, 
-    CheckSquare, MoreVertical, FileText
+    CheckSquare, MoreVertical, FileText, BarChart3, TrendingDown, Target
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
@@ -49,8 +49,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList } from 'recharts';
 
 const pdfjsPromise = import('pdfjs-dist');
+
+const CHART_COLORS = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--chart-5))",
+];
 
 export default function SubmissionsPage() {
   const params = useParams();
@@ -75,6 +85,8 @@ export default function SubmissionsPage() {
   const [isDeletingSelected, setIsDeletingSelected] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
+  const activeTab = searchParams.get('view') || 'list';
+
   const pdfDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfId) return null;
     return doc(firestore, 'pdfs', pdfId);
@@ -85,10 +97,15 @@ export default function SubmissionsPage() {
     return query(collection(firestore, `pdfs/${pdfId}/submissions`), orderBy('submittedAt', 'desc'));
   }, [firestore, pdfId]);
 
+  const sessionsQuery = useMemoFirebase(() => {
+    if (!firestore || !pdfId) return null;
+    return query(collection(firestore, 'pdf_sessions'), where('pdfId', '==', pdfId));
+  }, [firestore, pdfId]);
+
   const { data: pdf, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submissions, isLoading: isLoadingSubmissions } = useCollection<Submission>(submissionsQuery);
+  const { data: sessions, isLoading: isLoadingSessions } = useCollection<PdfSession>(sessionsQuery);
 
-  // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
   const isLoading = isLoadingPdf || isLoadingSubmissions;
@@ -112,6 +129,50 @@ export default function SubmissionsPage() {
     }
     return finalSet.slice(0, 3);
   }, [pdf, selectedNamingFieldId]);
+
+  // Analytics Funnel Generation
+  const funnelData = React.useMemo(() => {
+    if (!sessions || sessions.length === 0 || !pdf) return [];
+
+    // Model funnel steps based on pages
+    const maxPages = pdf.fields.reduce((max, f) => Math.max(max, f.pageNumber), 1);
+    const steps = [];
+
+    // Step 0: Total Visits (all sessions)
+    steps.push({ label: 'Initial Visit', count: sessions.length, color: CHART_COLORS[0] });
+
+    // Step 1..N: Pages reached
+    for (let i = 1; i <= maxPages; i++) {
+        const count = sessions.filter(s => s.maxPageReached >= i).length;
+        if (count > 0 || i === 1) {
+            steps.push({ label: `Page ${i}`, count, color: CHART_COLORS[i % CHART_COLORS.length] });
+        }
+    }
+
+    // Final Step: Submitted
+    const submittedCount = sessions.filter(s => s.isSubmitted).length;
+    steps.push({ label: 'Signed & Submitted', count: submittedCount, color: '#10b981' });
+
+    return steps.map((s, i) => ({
+        ...s,
+        percentage: (s.count / sessions.length) * 100
+    }));
+  }, [sessions, pdf]);
+
+  const dropoffInsights = React.useMemo(() => {
+    if (funnelData.length < 2) return [];
+    const insights = [];
+    for (let i = 0; i < funnelData.length - 1; i++) {
+        const current = funnelData[i];
+        const next = funnelData[i+1];
+        const lost = current.count - next.count;
+        const lossPercentage = current.count > 0 ? (lost / current.count) * 100 : 0;
+        if (lossPercentage > 0) {
+            insights.push({ from: current.label, to: next.label, lost, lossPercentage });
+        }
+    }
+    return insights.sort((a, b) => b.lossPercentage - a.lossPercentage);
+  }, [funnelData]);
 
   const handleNamingFieldChange = async (fieldId: string | null) => {
     const newVal = fieldId === 'none' ? null : fieldId;
@@ -250,131 +311,6 @@ export default function SubmissionsPage() {
     }
   };
 
-  const handleExportPDF = async () => {
-    if (!submissions || !pdf || isExportingPDF) return;
-    setIsExportingPDF(true);
-    
-    try {
-        const html2canvas = (await import('html2canvas')).default;
-        const { PDFDocument } = await import('pdf-lib');
-        
-        const A4_WIDTH = 794;
-        const A4_HEIGHT = 1123;
-        const ROWS_PER_PAGE = 18;
-
-        const pdfDoc = await PDFDocument.create();
-        const rowChunks = [];
-        for (let i = 0; i < submissions.length; i += ROWS_PER_PAGE) {
-            rowChunks.push(submissions.slice(i, i + ROWS_PER_PAGE));
-        }
-
-        const exportContainer = document.createElement('div');
-        exportContainer.style.position = 'fixed';
-        exportContainer.style.left = '-9999px';
-        exportContainer.style.top = '-9999px';
-        exportContainer.style.width = `${A4_WIDTH}px`;
-        document.body.appendChild(exportContainer);
-
-        for (let pageIdx = 0; pageIdx < rowChunks.length; pageIdx++) {
-            const chunk = rowChunks[pageIdx];
-            
-            const pageEl = document.createElement('div');
-            pageEl.className = "p-10 bg-white text-black font-sans";
-            pageEl.style.width = `${A4_WIDTH}px`;
-            pageEl.style.minHeight = `${A4_HEIGHT}px`;
-            pageEl.style.boxSizing = 'border-box';
-
-            if (pageIdx === 0) {
-                const headerHtml = `
-                    <div class="mb-8 border-b-2 pb-4 border-gray-200">
-                        <h1 class="text-3xl font-black text-gray-900 uppercase tracking-tight">Submission Report</h1>
-                        <h2 class="text-xl font-bold text-primary mt-1">${pdf.name}</h2>
-                        <div class="flex justify-between items-end mt-4">
-                            <p class="text-xs text-gray-500 font-medium">Generated: ${format(new Date(), "PPPP 'at' p")}</p>
-                            <p class="text-xs font-bold text-gray-700">${submissions.length} total records</p>
-                        </div>
-                    </div>
-                `;
-                pageEl.innerHTML += headerHtml;
-            } else {
-                pageEl.innerHTML += `<div class="mb-4 text-xs font-bold text-gray-400 uppercase tracking-widest text-right">Page ${pageIdx + 1} of ${rowChunks.length}</div>`;
-            }
-
-            let tableHtml = `
-                <table class="w-full border-collapse">
-                    <thead>
-                        <tr class="bg-primary text-white">
-                            ${displayFields.map(f => `<th class="p-3 text-[10px] font-black uppercase text-left border border-primary">${f.label || 'Field'}</th>`).join('')}
-                            <th class="p-3 text-[10px] font-black uppercase text-left border border-primary">Submission Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${chunk.map(sub => `
-                            <tr class="border-b border-gray-200">
-                                ${displayFields.map(f => {
-                                    const val = sub.formData[f.id];
-                                    if (f.type === 'signature') {
-                                        return `<td class="p-2 border border-gray-100 h-12"><div class="h-full flex items-center justify-center">${val ? `<img src="${val}" style="max-height: 40px; object-fit: contain;" />` : '-'}</div></td>`;
-                                    }
-                                    return `<td class="p-3 text-xs text-gray-800 font-medium border border-gray-100 break-words">${val || '-'}</td>`;
-                                }).join('')}
-                                <td class="p-3 text-[10px] text-gray-500 border border-gray-100">${format(new Date(sub.submittedAt), 'MMM d, yyyy p')}</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            `;
-            pageEl.innerHTML += tableHtml;
-
-            if (pageIdx === rowChunks.length - 1) {
-                pageEl.innerHTML += `<div class="mt-12 pt-4 border-t border-gray-100 text-center text-[10px] text-gray-400 font-medium">© ${new Date().getFullYear()} SmartSapp Onboarding Workspace</div>`;
-            }
-
-            exportContainer.appendChild(pageEl);
-
-            const canvas = await html2canvas(pageEl, {
-                scale: 2,
-                useCORS: true,
-                backgroundColor: 'white',
-                logging: false,
-            });
-
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-            const image = await pdfDoc.embedJpg(imgBytes);
-            
-            const page = pdfDoc.addPage([595.28, 841.89]);
-            page.drawImage(image, {
-                x: 0,
-                y: 0,
-                width: 595.28,
-                height: 841.89,
-            });
-
-            exportContainer.removeChild(pageEl);
-        }
-
-        document.body.removeChild(exportContainer);
-
-        const pdfBytes = await pdfDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.setAttribute("download", `${pdf.name.replace(/[^a-z0-9]/gi, '_')}_Report.pdf`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({ title: 'PDF Report Generated' });
-    } catch (e) {
-        console.error(e);
-        toast({ variant: 'destructive', title: 'Export Failed' });
-    } finally {
-        setIsExportingPDF(false);
-    }
-  };
-
   const handleDeleteSelected = async () => {
     if (selectedIds.length === 0 || !user || !pdf) return;
     setIsDeletingSelected(true);
@@ -412,352 +348,293 @@ export default function SubmissionsPage() {
   return (
     <TooltipProvider>
       <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/10">
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                <CardContent className="p-4 flex items-center gap-4">
-                    <div className="bg-primary/10 p-2.5 rounded-xl">
-                        <Users className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Total Records</p>
-                        <p className="text-2xl font-black text-foreground">{isLoading ? '...' : submissions?.length || 0}</p>
-                    </div>
-                </CardContent>
-            </Card>
-            <Card className="bg-card shadow-sm border-border/50 rounded-xl">
-                <CardContent className="p-4 flex items-center gap-4">
-                    <div className="bg-green-500/10 p-2.5 rounded-xl">
-                        <Clock className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mb-1">Last Active</p>
-                        <p className="text-sm font-bold text-foreground">
-                            {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'No activity'}
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+        <Tabs value={activeTab} onValueChange={(v) => router.push(`${pathname}?view=${v}`)} className="space-y-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <TabsList className="bg-background border shadow-sm p-1 h-12 rounded-2xl w-fit">
+                    <TabsTrigger value="list" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+                        <FileText className="h-4 w-4" /> Submission Log
+                    </TabsTrigger>
+                    <TabsTrigger value="analytics" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+                        <BarChart3 className="h-4 w-4" /> Funnel Analytics
+                    </TabsTrigger>
+                </TabsList>
 
-        {/* Actions Bar */}
-        {!isLoading && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-8">
-                {selectedIds.length > 0 ? (
-                    <Card className="bg-primary/5 border-primary/20 w-full animate-in slide-in-from-top-2">
-                        <CardContent className="p-3 flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <CheckSquare className="h-5 w-5 text-primary" />
-                                <span className="text-sm font-bold text-primary">{selectedIds.length} selected</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 px-3 sm:px-4 font-bold">
-                                    <Download className="h-4 w-4 sm:mr-2" /> 
-                                    <span className="hidden sm:inline">Download</span>
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="h-9 px-3 sm:px-4 font-bold">
-                                    <Trash2 className="h-4 w-4 sm:mr-2" /> 
-                                    <span className="hidden sm:inline">Delete</span>
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9">
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3 w-full">
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="outline" size="sm" className="h-9 sm:h-10 px-3 sm:px-4 sm:gap-2 shadow-sm" disabled={isExportingCSV || isExportingPDF}>
-                                    {isExportingCSV || isExportingPDF ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-                                    <span className="hidden sm:inline">Export List</span>
-                                    <span className="sm:hidden">Export</span>
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56">
-                                <DropdownMenuItem onClick={handleExportCSV} disabled={isExportingCSV}>
-                                    <FileSpreadsheet className="mr-2 h-4 w-4" />
-                                    Export to Excel (CSV)
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleExportPDF} disabled={isExportingPDF}>
-                                    <Printer className="mr-2 h-4 w-4" />
-                                    Export to PDF Report
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-
-                        <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-9 sm:h-10 px-3 sm:px-4 sm:gap-2 shadow-sm">
-                            <Share2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">Share Portal</span>
-                            <span className="sm:hidden">Share</span>
-                        </Button>
-                        
-                        {submissions && submissions.length > 0 && (
-                            <ButtonGroup className="shadow-sm">
-                                <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-9 sm:h-10 px-3 sm:px-6 font-bold bg-primary text-primary-foreground hover:bg-primary/90">
-                                    {isProcessingBatch ? (
-                                        <><Loader2 className="h-4 w-4 animate-spin sm:mr-2" /><span className="hidden sm:inline">Processing ({batchDownloadQueue.length} left)</span><span className="sm:hidden">{batchDownloadQueue.length}</span></>
-                                    ) : (
-                                        <><Download className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Download All PDFs</span><span className="sm:hidden">All</span></>
-                                    )}
-                                </Button>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="default" size="icon" className="h-9 w-9 sm:h-10 sm:w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
-                                            <ChevronDown className="h-4 w-4" />
+                {!isLoading && activeTab === 'list' && (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                        {selectedIds.length > 0 ? (
+                            <Card className="bg-primary/5 border-primary/20 animate-in slide-in-from-top-2 overflow-hidden rounded-xl">
+                                <CardContent className="p-2 flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-3 px-3">
+                                        <CheckSquare className="h-5 w-5 text-primary" />
+                                        <span className="text-sm font-bold text-primary">{selectedIds.length} Selected</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button size="sm" onClick={handleDownloadSelected} disabled={isProcessingBatch || !!downloadingId} className="h-9 font-bold px-4">
+                                            <Download className="h-4 w-4 mr-2" /> Download
                                         </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-64">
-                                        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Identifier</DropdownMenuLabel>
-                                        <DropdownMenuSeparator />
-                                        <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document Name)</DropdownMenuItem>
-                                        {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
-                                            <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
-                                                {field.label || field.id}
-                                                {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
-                                            </DropdownMenuItem>
-                                        ))}
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </ButtonGroup>
+                                        <Button size="sm" variant="destructive" onClick={() => setShowDeleteConfirm(true)} className="h-9 px-4 font-bold">
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                        <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])} className="h-9"><X className="h-4 w-4" /></Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={handleExportCSV} className="h-10 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary gap-2">
+                                    <FileSpreadsheet className="h-4 w-4" /> Export CSV
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setIsShareDialogOpen(true)} className="h-10 rounded-xl font-bold border-primary/20 hover:bg-primary/5 text-primary gap-2">
+                                    <Share2 className="h-4 w-4" /> Share Portal
+                                </Button>
+                                {submissions && submissions.length > 0 && (
+                                    <ButtonGroup className="shadow-lg">
+                                        <Button onClick={handleDownloadAll} disabled={isProcessingBatch || !!downloadingId} className="h-10 px-6 font-black uppercase text-[10px] tracking-widest bg-primary text-primary-foreground hover:bg-primary/90 rounded-l-xl">
+                                            {isProcessingBatch ? (
+                                                <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing ({batchDownloadQueue.length})</>
+                                            ) : (
+                                                <><Download className="h-4 w-4 mr-2" /> Download All</>
+                                            )}
+                                        </Button>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="default" size="icon" className="h-10 w-10 border-l border-primary-foreground/20 rounded-l-none bg-primary text-primary-foreground" disabled={isProcessingBatch}>
+                                                    <ChevronDown className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-64 rounded-xl shadow-2xl">
+                                                <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground p-3">Filename Reference</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleNamingFieldChange(null)} className={cn("text-xs py-2.5", !selectedNamingFieldId && "bg-accent font-bold")}>Default (Document ID)</DropdownMenuItem>
+                                                {pdf?.fields.filter(f => f.type !== 'signature').map(field => (
+                                                    <DropdownMenuItem key={field.id} onClick={() => handleNamingFieldChange(field.id)} className={cn("text-xs py-2.5 flex items-center justify-between", selectedNamingFieldId === field.id && "bg-accent font-bold")}>
+                                                        {field.label || field.id}
+                                                        {selectedNamingFieldId === field.id && <Key className="h-3 w-3 text-primary" />}
+                                                    </DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </ButtonGroup>
+                                )}
+                            </div>
                         )}
                     </div>
                 )}
             </div>
-        )}
 
-        {/* List View: Desktop Table */}
-        <div className="hidden md:block rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden">
-          <Table>
-            <TableHeader>
-              <TableRow className="hover:bg-transparent bg-muted/30">
-                <TableHead className="w-[50px] pl-6">
-                    <Checkbox 
-                        checked={submissions?.length ? selectedIds.length === submissions.length : false} 
-                        onCheckedChange={toggleSelectAll} 
-                    />
-                </TableHead>
-                {displayFields.map((field) => (
-                  <TableHead key={field.id} className="text-[10px] font-black uppercase tracking-widest py-4">
-                      <div className="flex items-center gap-1.5">
-                        {field.label || 'Unnamed Field'}
-                        {field.id === selectedNamingFieldId && <Key className="h-3 w-3 text-primary" />}
-                      </div>
-                  </TableHead>
-                ))}
-                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Submitted At</TableHead>
-                <TableHead className="w-[120px] text-right py-4 pr-6 text-[10px] font-black uppercase tracking-widest">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-4 w-4 rounded" /></TableCell>
-                    {Array.from({ length: 3 }).map((_, j) => <TableCell key={j}><Skeleton className="h-5 w-32" /></TableCell>)}
-                    <TableCell><Skeleton className="h-5 w-48" /></TableCell>
-                    <TableCell className="text-right pr-6"><Skeleton className="h-8 w-20 ml-auto" /></TableCell>
-                  </TableRow>
-                )) : submissions && submissions.length > 0 ? submissions.map((submission) => (
-                  <TableRow key={submission.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(submission.id) && "bg-primary/5")}>
-                    <TableCell className="pl-6">
-                        <Checkbox 
-                            checked={selectedIds.includes(submission.id)} 
-                            onCheckedChange={() => toggleSelect(submission.id)} 
-                        />
-                    </TableCell>
-                    {displayFields.map((field, idx) => {
-                      const value = submission.formData[field.id];
-                      const content = field.type === 'signature' ? (
-                        <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
-                      ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
-                      
-                      // Font size logic matches renderer context
-                      const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
-                      const verticalAlign = field.verticalAlignment || 'center';
-
-                      return (
-                        <TableCell key={field.id} style={{ height: 'inherit' }}>
-                          <div 
-                            className="flex flex-col h-full"
-                            style={{ 
-                                fontSize: dynamicFontSize,
-                                justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start'
-                            }}
-                          >
-                            {idx === 0 ? (
-                                <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="inline-flex items-center gap-2 hover:text-primary transition-colors cursor-pointer">
-                                    {content}
-                                </Link>
-                            ) : content}
-                          </div>
-                        </TableCell>
-                      );
-                    })}
-                    <TableCell className="text-muted-foreground text-xs font-medium">
-                        {format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
-                                <Eye className="h-4 w-4" />
-                            </Link>
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId && downloadingId !== submission.id}>
-                            {downloadingId === submission.id ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <Download className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )) : (
-                <TableRow>
-                  <TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground">No submissions yet.</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Mobile Card View */}
-        <div className="grid gap-4 md:hidden">
-            {isLoading ? (
-                Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)
-            ) : submissions && submissions.length > 0 ? (
-                submissions.map((submission) => {
-                    const namingField = displayFields.find(f => f.id === selectedNamingFieldId) || displayFields[0];
-                    const namingValue = submission.formData[namingField?.id] || 'Unnamed Submission';
-                    const secondaryFields = displayFields.filter(f => f.id !== namingField?.id);
-
-                    return (
-                        <Card key={submission.id} className={cn(
-                            "relative overflow-hidden transition-all",
-                            selectedIds.includes(submission.id) ? "ring-2 ring-primary bg-primary/5 shadow-md" : "bg-card border-border/50"
-                        )}>
-                            <div className="absolute top-3 left-3 z-10">
-                                <Checkbox 
-                                    checked={selectedIds.includes(submission.id)} 
-                                    onCheckedChange={() => toggleSelect(submission.id)} 
-                                    className="bg-background"
-                                />
+            <TabsContent value="list" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                        <CardContent className="p-4 flex items-center gap-4 text-left">
+                            <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 leading-none">Total Signatures</p>
+                                <p className="text-2xl font-black">{isLoading ? '...' : submissions?.length || 0}</p>
                             </div>
-                            <CardHeader className="pl-10 pt-4 pb-2">
-                                <div className="flex items-start justify-between">
-                                    <div className="min-w-0 pr-2">
-                                        <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="block">
-                                            <CardTitle className="text-lg font-black truncate leading-tight group-hover:text-primary transition-colors">
-                                                {namingValue}
-                                            </CardTitle>
-                                        </Link>
-                                        <CardDescription className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 mt-1">
-                                            <Clock className="h-3 w-3" />
-                                            {formatDistanceToNow(new Date(submission.submittedAt), { addSuffix: true })}
-                                        </CardDescription>
-                                    </div>
-                                    <DropdownMenu modal={false}>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => router.push(`/admin/pdfs/${pdfId}/submissions/${submission.id}`)}>
-                                                <Eye className="mr-2 h-4 w-4" /> View Full Detail
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => handleDownloadClick(submission.id)}>
-                                                <Download className="mr-2 h-4 w-4" /> Download PDF
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="pl-10 pb-4 space-y-3">
-                                {secondaryFields.map(field => (
-                                    <div key={field.id} className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">{field.label || 'Field'}</p>
-                                        <div className="text-sm font-medium truncate">
-                                            {field.type === 'signature' ? (
-                                                <div className="h-6 w-12 relative bg-muted rounded overflow-hidden">
-                                                    {submission.formData[field.id] && <img src={submission.formData[field.id]} alt="sig" className="h-full w-full object-contain" />}
-                                                </div>
-                                            ) : (
-                                                submission.formData[field.id] || <span className="text-muted-foreground italic opacity-50">—</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </CardContent>
-                            <CardFooter className="bg-muted/30 p-2 flex gap-2">
-                                <Button variant="ghost" size="sm" className="flex-1 h-9 font-bold text-xs" asChild>
-                                    <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
-                                        <Eye className="h-3.5 w-3.5 mr-2" /> View
-                                    </Link>
-                                </Button>
-                                <Button 
-                                    variant="secondary" 
-                                    size="sm" 
-                                    className="flex-1 h-9 font-bold text-xs"
-                                    onClick={() => handleDownloadClick(submission.id)}
-                                    disabled={!!downloadingId && downloadingId !== submission.id}
-                                >
-                                    {downloadingId === submission.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Download className="h-3.5 w-3.5 mr-2" />}
-                                    Download
-                                </Button>
-                            </CardFooter>
-                        </Card>
-                    )
-                })
-            ) : (
-                <div className="text-center py-20 border-2 border-dashed rounded-xl bg-card">
-                    <FileText className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
-                    <p className="text-muted-foreground font-medium">No submissions found.</p>
+                        </CardContent>
+                    </Card>
+                    <Card className="bg-card shadow-sm border-border/50 rounded-xl">
+                        <CardContent className="p-4 flex items-center gap-4 text-left">
+                            <div className="bg-green-500/10 p-2.5 rounded-xl text-green-600"><Clock className="h-5 w-5" /></div>
+                            <div>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1 leading-none">Last Signature</p>
+                                <p className="text-sm font-bold truncate">
+                                    {isLoading ? '...' : submissions?.[0] ? formatDistanceToNow(new Date(submissions[0].submittedAt), { addSuffix: true }) : 'No activity'}
+                                </p>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
-            )}
-        </div>
+
+                <div className="rounded-xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
+                    <Table>
+                        <TableHeader>
+                            <TableRow className="bg-muted/30 hover:bg-transparent">
+                                <TableHead className="w-[50px] pl-6">
+                                    <Checkbox checked={submissions?.length ? selectedIds.length === submissions.length : false} onCheckedChange={toggleSelectAll} />
+                                </TableHead>
+                                {displayFields.map((field) => (
+                                    <TableHead key={field.id} className="text-[10px] font-black uppercase tracking-widest py-4">
+                                        <div className="flex items-center gap-1.5">
+                                            {field.label || 'Field'}
+                                            {field.id === selectedNamingFieldId && <Key className="h-3 w-3 text-primary" />}
+                                        </div>
+                                    </TableHead>
+                                ))}
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Submitted At</TableHead>
+                                <TableHead className="w-[120px] text-right py-4 pr-6 text-[10px] font-black uppercase tracking-widest">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? Array.from({ length: 5 }).map((_, i) => (
+                                <TableRow key={i}><TableCell colSpan={displayFields.length + 3}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
+                            )) : submissions?.length ? submissions.map((submission) => (
+                                <TableRow key={submission.id} className={cn("group hover:bg-muted/30 transition-colors", selectedIds.includes(submission.id) && "bg-primary/5")}>
+                                    <TableCell className="pl-6"><Checkbox checked={selectedIds.includes(submission.id)} onCheckedChange={() => toggleSelect(submission.id)} /></TableCell>
+                                    {displayFields.map((field, idx) => {
+                                        const value = submission.formData[field.id];
+                                        return (
+                                            <TableCell key={field.id}>
+                                                <div className="flex flex-col justify-center min-h-[40px]">
+                                                    {field.type === 'signature' ? (
+                                                        <div className="h-8 w-16 relative bg-muted/50 rounded border overflow-hidden">{value && <img src={value} alt="S" className="w-full h-full object-contain" />}</div>
+                                                    ) : (
+                                                        <span className="truncate max-w-[200px] block font-bold text-sm">
+                                                            {idx === 0 ? <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:text-primary hover:underline">{value || submission.id.substring(0,8)}</Link> : (value || '—')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                        );
+                                    })}
+                                    <TableCell className="text-muted-foreground text-xs font-medium uppercase tabular-nums">
+                                        {format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}
+                                    </TableCell>
+                                    <TableCell className="text-right pr-6">
+                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4 text-primary" /></Link></Button>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId}><Download className="h-4 w-4" /></Button>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )) : (
+                                <TableRow><TableCell colSpan={displayFields.length + 3} className="h-64 text-center text-muted-foreground font-medium italic">No submission records found.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </TabsContent>
+
+            <TabsContent value="analytics" className="m-0 space-y-10 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <StatCard label="Public Reach" value={sessions?.length || 0} sub="Unique Page Loads" icon={Eye} color="text-primary" bg="bg-primary/10" />
+                    <StatCard label="Engagement" value={sessions?.filter(s => s.maxPageReached > 1).length || 0} sub="Scrolled Past Page 1" icon={TrendingDown} color="text-blue-600" bg="bg-blue-50" />
+                    <StatCard label="Conversion" value={submissions?.length || 0} sub="Completed Signatures" icon={Target} color="text-emerald-600" bg="bg-emerald-50" />
+                    <StatCard label="Performance" value={`${sessions?.length ? Math.round(((submissions?.length || 0) / sessions.length) * 100) : 0}%`} sub="Completion Velocity" icon={Zap} color="text-orange-600" bg="bg-orange-50" />
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                <TrendingDown className="h-4 w-4" /> Document Progression Funnel
+                            </CardTitle>
+                            <CardDescription className="text-xs font-bold uppercase tracking-widest mt-1">Visualizing scroll depth and signing retention.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="p-8 h-[350px]">
+                            {funnelData.length > 0 ? (
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={funnelData} layout="vertical" margin={{ left: 40, right: 100 }}>
+                                        <XAxis type="number" hide />
+                                        <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} fontSize={10} width={100} tick={{ fontWeight: 'black' }} />
+                                        <Tooltip 
+                                            cursor={{ fill: 'hsl(var(--muted)/0.2)' }}
+                                            content={({ active, payload }) => {
+                                                if (active && payload && payload.length) {
+                                                    const d = payload[0].payload;
+                                                    return (
+                                                        <div className="rounded-xl border bg-background p-3 shadow-2xl text-xs space-y-1">
+                                                            <p className="font-black uppercase tracking-widest">{d.label}</p>
+                                                            <p className="text-primary font-bold">{d.count} Users Reached</p>
+                                                            <p className="text-muted-foreground">{d.percentage.toFixed(1)}% of total traffic</p>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
+                                            }}
+                                        />
+                                        <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32}>
+                                            {funnelData.map((entry, index) => (
+                                                <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
+                                            ))}
+                                            <LabelList dataKey="count" position="right" content={(props: any) => {
+                                                const { x, y, width, height, value, index } = props;
+                                                const pct = funnelData[index].percentage;
+                                                return (
+                                                    <text x={x + width + 10} y={y + height / 2 + 4} className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground opacity-60">
+                                                        {value} ({pct.toFixed(0)}%)
+                                                    </text>
+                                                );
+                                            }} />
+                                        </Bar>
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 gap-3">
+                                    <BarChart3 className="h-12 w-12" />
+                                    <p className="font-black uppercase text-[10px] tracking-widest">Collecting Engagement Pulse...</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+                        <CardHeader className="bg-muted/10 border-b pb-6 px-8 pt-8">
+                            <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4" /> Drop-off Audit
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0">
+                            {dropoffInsights.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent bg-muted/20">
+                                            <TableHead className="pl-8 py-4 text-[9px] font-black uppercase">Transition</TableHead>
+                                            <TableHead className="text-right pr-8 py-4 text-[9px] font-black uppercase">Loss %</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {dropoffInsights.slice(0, 5).map((insight, idx) => (
+                                            <TableRow key={idx} className="group transition-colors">
+                                                <TableCell className="pl-8 py-4">
+                                                    <p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Signers Lost</p>
+                                                </TableCell>
+                                                <TableCell className="text-right pr-8 py-4">
+                                                    <Badge variant="outline" className={cn(
+                                                        "h-5 text-[9px] font-black uppercase border-none",
+                                                        insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600"
+                                                    )}>
+                                                        {insight.lossPercentage.toFixed(0)}%
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="py-32 text-center opacity-20 space-y-3">
+                                    <CheckCircle2 className="h-10 w-10 mx-auto" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">No Significant Drop-offs</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            </TabsContent>
+        </Tabs>
       </div>
 
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-[2rem]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selectedIds.length} Records?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the selected submission records and their associated signed documents. This action cannot be undone.
+            <AlertDialogTitle className="font-black text-xl uppercase tracking-tight text-rose-600">Purge {selectedIds.length} Records?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium">
+              This will permanently delete the selected submission records and their high-fidelity signed documents. This action is immutable.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingSelected}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSelected} disabled={isDeletingSelected} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              {isDeletingSelected ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-              Delete Records
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel disabled={isDeletingSelected} className="rounded-xl font-bold">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSelected} disabled={isDeletingSelected} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">
+              {isDeletingSelected ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Acknowledge & Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {pdf && (
-          <ShareResultsDialog
-            pdf={pdf}
-            open={isShareDialogOpen}
-            onOpenChange={setIsShareDialogOpen}
-          />
-      )}
-
-      {isExportingPDF && (
-          <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300 p-4">
-              <Card className="w-full max-w-sm shadow-2xl border-primary/20 bg-card rounded-2xl">
-                  <CardContent className="p-8 flex flex-col items-center gap-6 text-center">
-                      <div className="relative">
-                          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                          <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
-                      </div>
-                      <div className="space-y-1">
-                          <h2 className="font-black text-xl tracking-tight uppercase">Generating Report</h2>
-                          <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">Building A4 multi-page document...</p>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground hover:text-foreground">Cancel Generation</Button>
-                  </CardContent>
-              </Card>
-          </div>
+          <ShareResultsDialog pdf={pdf} open={isShareDialogOpen} onOpenChange={setIsShareDialogOpen} />
       )}
 
       {downloadingId && pdf && (
@@ -772,6 +649,23 @@ export default function SubmissionsPage() {
       )}
     </TooltipProvider>
   );
+}
+
+function StatCard({ label, value, sub, icon: Icon, color, bg }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string }) {
+    return (
+        <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-white overflow-hidden group hover:ring-primary/20 transition-all">
+            <CardContent className="p-6 flex items-center gap-5">
+                <div className={cn("p-4 rounded-2xl shrink-0 transition-transform group-hover:scale-110 shadow-inner", bg, color)}>
+                    <Icon className="h-7 w-7" />
+                </div>
+                <div>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">{label}</p>
+                    <p className="text-3xl font-black tabular-nums tracking-tighter">{value}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-tighter mt-1">{sub}</p>
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
 
 function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -796,44 +690,56 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0">
-                <DialogHeader className="p-6 pb-0">
-                    <DialogTitle className="text-2xl font-black tracking-tight">Share Portal</DialogTitle>
-                    <DialogDescription className="text-sm font-medium">Allow external stakeholders to view and download submissions securely.</DialogDescription>
+            <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                    <DialogTitle className="text-2xl font-black tracking-tight uppercase">Share Records Portal</DialogTitle>
+                    <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Allow stakeholders to view and audit submissions.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 p-6">
-                    <div className="flex items-center justify-between rounded-2xl border border-border/50 bg-muted/30 p-4">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-bold uppercase tracking-wider">Public Access</Label>
-                            <p className="text-xs text-muted-foreground font-medium">Enable viewing via link.</p>
+                <div className="space-y-8 p-8">
+                    <div className={cn(
+                        "flex items-center justify-between rounded-[1.5rem] border-2 transition-all p-5 shadow-sm",
+                        isShared ? "border-primary/20 bg-primary/5" : "border-border/50 bg-muted/30"
+                    )}>
+                        <div className="flex items-center gap-4">
+                            <div className={cn("p-3 rounded-xl shadow-inner", isShared ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                <Share2 className="h-5 w-5" />
+                            </div>
+                            <div className="space-y-0.5">
+                                <Label className="text-sm font-black uppercase tracking-tight leading-none">Public Access</Label>
+                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Enable record viewing via link</p>
+                            </div>
                         </div>
-                        <Switch checked={isShared} onCheckedChange={setIsShared} />
+                        <Switch checked={isShared} onCheckedChange={setIsShared} className="scale-110" />
                     </div>
-                    {isShared && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1.5"><Lock className="h-3 w-3" /> Results Password</Label>
-                                <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-11 rounded-xl" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Share Link</Label>
-                                <div className="flex items-center gap-2">
-                                    <Input value={shareUrl} readOnly className="text-[10px] bg-muted h-11 font-mono rounded-xl" />
-                                    <Button size="icon" variant="outline" className="h-11 w-11 shrink-0 rounded-xl shadow-sm" onClick={() => {
-                                        navigator.clipboard.writeText(shareUrl);
-                                        toast({ title: 'Link Copied' });
-                                    }}>
-                                        <Copy className="h-4 w-4" />
-                                    </Button>
+                    
+                    <AnimatePresence>
+                        {isShared && (
+                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2 ml-1"><Lock className="h-3 w-3 text-primary" /> Entry Authentication</Label>
+                                    <Input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Required for access..." className="h-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold" />
                                 </div>
-                            </div>
-                        </div>
-                    )}
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Portal URL</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Input value={shareUrl} readOnly className="text-[10px] bg-muted/30 h-12 font-mono rounded-xl border-none shadow-inner px-4 flex-1" />
+                                        <Button size="icon" variant="outline" className="h-12 w-12 shrink-0 rounded-xl shadow-lg border-primary/20 hover:bg-primary/5 text-primary" onClick={() => {
+                                            navigator.clipboard.writeText(shareUrl);
+                                            toast({ title: 'Link Copied' });
+                                        }}>
+                                            <Copy className="h-5 w-5" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
                 </div>
-                <DialogFooter className="p-6 pt-0">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-muted-foreground">Cancel</Button>
-                    <Button onClick={handleSave} disabled={isSaving} className="font-bold rounded-xl px-8">
-                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Settings'}
+                <DialogFooter className="p-6 border-t bg-muted/30 flex justify-between sm:justify-between items-center">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                    <Button onClick={handleSave} disabled={isSaving} className="font-black rounded-xl px-12 shadow-2xl h-12 uppercase tracking-widest text-sm">
+                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                        Apply Logic
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -896,50 +802,34 @@ function HighFidelityDownloader({
             const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
             if (!pageWrappers.length) throw new Error("No pages rendered.");
 
-            // iOS Detection
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
-                const captureScale = isIOS || isMobile ? 1.5 : 2;
-
-                const canvas = await html2canvas(el, { scale: captureScale, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
                 const imgData = canvas.toDataURL('image/jpeg', 0.9);
                 const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
                 const image = await pdfBundle.embedJpg(imgBytes);
                 const page = pdfBundle.addPage([595.28, 841.89]);
-                page.drawImage(image, {
-                    x: 0,
-                    y: 0,
-                    width: 595.28,
-                    height: 841.89,
-                });
+                page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
             }
             const pdfBytes = await pdfBundle.save();
             const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
 
-            if (isIOS) {
-                window.location.assign(url);
-            } else {
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = fileName;
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => {
-                    if (document.body.contains(a)) document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                }, 500);
+            if (!batchProgress) {
+                if (isIOS) window.location.assign(url);
+                else {
+                    const a = document.createElement('a'); a.href = url; a.download = fileName;
+                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                }
             }
             onFinished(true, url);
         } catch (e: any) {
             console.error("Capture failed", e);
             onFinished(false);
-        } finally {
-            setIsCapturing(false);
-        }
-    }, [fileName, onFinished, isCapturing]);
+        } finally { setIsCapturing(false); }
+    }, [fileName, onFinished, isCapturing, batchProgress]);
 
     React.useEffect(() => {
         if (pdfDoc && submission && !isCapturing) {
@@ -951,7 +841,7 @@ function HighFidelityDownloader({
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
             <div className="flex items-center justify-between p-4 border-b shrink-0 bg-card shadow-sm">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 text-left">
                     <Loader2 className="h-5 w-5 animate-spin text-primary" />
                     <div>
                         <h2 className="text-lg font-bold">
@@ -995,7 +885,7 @@ function HighFidelityDownloader({
             
             <div className="p-4 border-t bg-card text-center print:hidden">
                 <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
-                    Stop Batch Operation
+                    Stop Operation
                 </Button>
             </div>
         </div>
@@ -1013,10 +903,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
         const render = async () => {
             setIsRendering(true);
             try {
-                if (renderTaskRef.current) {
-                    renderTaskRef.current.cancel();
-                }
-
+                if (renderTaskRef.current) renderTaskRef.current.cancel();
                 const page = await pdf.getPage(pageNumber);
                 const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
                 if (isCancelled) return;
@@ -1025,8 +912,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                     const canvas = canvasRef.current;
                     const context = canvas.getContext('2d');
                     if (context) {
-                        canvas.height = viewport.height;
-                        canvas.width = viewport.width;
+                        canvas.height = viewport.height; canvas.width = viewport.width;
                         const renderTask = page.render({ canvasContext: context, viewport });
                         renderTaskRef.current = renderTask;
                         await renderTask.promise;
@@ -1034,13 +920,12 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                 }
             } catch (e: any) {
                 if (e.name === 'RenderingCancelledException') return;
-                console.error("Renderer: task failed", e);
             } finally {
                 if (!isCancelled) setIsRendering(false);
             }
         };
         render();
-        return () => { isCancelled = true; if (renderTaskRef.current) { renderTaskRef.current.cancel(); } };
+        return () => { isCancelled = true; if (renderTaskRef.current) renderTaskRef.current.cancel(); };
     }, [pdf, pageNumber]);
 
     return (
@@ -1050,38 +935,12 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
             {!isRendering && (
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
-                        const value = formData[field.id];
-                        if (!value) return null;
-                        
-                        // Use consistent scaling for silent rendering
+                        const value = formData[field.id]; if (!value) return null;
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
-
                         return (
-                            <div 
-                                key={field.id} 
-                                style={{ 
-                                    position: 'absolute', 
-                                    left: `${field.position.x}%`, 
-                                    top: `${field.position.y}%`, 
-                                    width: `${field.dimensions.width}%`, 
-                                    height: `${field.dimensions.height}%`, 
-                                    display: 'flex', 
-                                    flexDirection: 'column',
-                                    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
-                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
-                                }}
-                            >
-                                {field.type === 'signature' ? (
-                                    <img src={value} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
-                                ) : (
-                                    <span 
-                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
-                                        style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
-                                    >
-                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
-                                    </span>
-                                )}
+                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', flexDirection: 'column', justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start', alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start' }}>
+                                {field.type === 'signature' ? <img src={value} alt="S" className="w-full h-full object-contain" crossOrigin="anonymous" /> : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")} style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}>{field.type === 'date' && value ? format(new Date(value), 'PPP') : value}</span>}
                             </div>
                         );
                     })}

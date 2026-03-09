@@ -129,10 +129,16 @@ service cloud.firestore {
       allow read, list: if isAuthorized();
     }
 
+    match /pdf_sessions/{sessionId} {
+      allow create: if true;
+      allow update: if true;
+      allow read, list: if isAuthorized();
+    }
+
     match /campaign_sessions/{sessionId} {
       allow create: if true;
       allow update: if true;
-      allow read, list: if true; // Public stats page needs read access
+      allow read, list: if true;
     }
   }
 }
