@@ -5,7 +5,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useEditor } from '../EditorContext';
 import { FieldOverlay } from './FieldOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDroppable } from '@nd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 
 const pdfjsPromise = import('pdfjs-dist');
 
