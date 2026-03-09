@@ -11,7 +11,6 @@ import {
     Clock, 
     AlertTriangle, 
     ShieldAlert, 
-    User as UserIcon, 
     Building, 
     Phone, 
     MapPin, 
@@ -25,14 +24,13 @@ import {
     Search,
     Pencil,
     Send,
-    Mail,
-    Smartphone,
     ExternalLink,
     X,
     CheckSquare,
-    Layers,
     ListChecks,
-    ArrowRight
+    ArrowRight,
+    Square,
+    ChevronLeft
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -64,6 +62,16 @@ import TaskEditor from './components/TaskEditor';
 import { logActivity } from '@/lib/activity-logger';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     critical: { label: 'Critical', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -100,6 +108,7 @@ export default function TasksClient() {
     const [searchTerm, setSearchTerm] = React.useState('');
 
     // Selection State
+    const [isSelectionMode, setIsSelectionMode] = React.useState(false);
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [isBulkProcessing, setIsBulkProcessing] = React.useState(false);
 
@@ -107,6 +116,9 @@ export default function TasksClient() {
     const [editorOpen, setEditorOpen] = React.useState(false);
     const [editingTask, setEditingTask] = React.useState<Task | null>(null);
     const [isSaving, setIsSaving] = React.useState(false);
+
+    // Confirmation State
+    const [taskToComplete, setTaskToComplete] = React.useState<Task | null>(null);
 
     const tasksQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -180,15 +192,17 @@ export default function TasksClient() {
         }
     };
 
-    const handleToggleComplete = (task: Task) => {
-        if (!firestore) return;
-        if (task.status === 'completed') {
-            updateTaskNonBlocking(firestore, task.id, { status: 'pending', completedAt: undefined });
-            toast({ title: 'Task reopened' });
+    const handleConfirmComplete = () => {
+        if (!firestore || !taskToComplete) return;
+        
+        if (taskToComplete.status === 'completed') {
+            updateTaskNonBlocking(firestore, taskToComplete.id, { status: 'pending', completedAt: undefined });
+            toast({ title: 'Task Reopened' });
         } else {
-            completeTaskNonBlocking(firestore, task.id);
-            toast({ title: 'Task marked as complete' });
+            completeTaskNonBlocking(firestore, taskToComplete.id);
+            toast({ title: 'Task Resolved' });
         }
+        setTaskToComplete(null);
     };
 
     const handleDelete = (id: string) => {
@@ -204,6 +218,7 @@ export default function TasksClient() {
             await bulkCompleteTasks(firestore, selectedIds);
             toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
             setSelectedIds([]);
+            setIsSelectionMode(false);
         } catch (e) {
             toast({ variant: 'destructive', title: 'Bulk Update Failed' });
         } finally {
@@ -218,6 +233,7 @@ export default function TasksClient() {
             await bulkDeleteTasks(firestore, selectedIds);
             toast({ title: 'Bulk Deletion Success', description: 'Records purged.' });
             setSelectedIds([]);
+            setIsSelectionMode(false);
         } catch (e) {
             toast({ variant: 'destructive', title: 'Bulk Deletion Failed' });
         } finally {
@@ -268,9 +284,16 @@ export default function TasksClient() {
                         </h1>
                         <p className="text-muted-foreground font-medium mt-1">Manage CRM interventions and multi-scale follow-ups.</p>
                     </div>
-                    <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
-                        <Plus className="mr-2 h-5 w-5" /> New Task
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        {isSelectionMode && (
+                            <Button variant="ghost" onClick={() => { setIsSelectionMode(false); setSelectedIds([]); }} className="font-bold text-muted-foreground gap-2">
+                                <X className="h-4 w-4" /> Cancel Selection
+                            </Button>
+                        )}
+                        <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
+                            <Plus className="mr-2 h-5 w-5" /> New Task
+                        </Button>
+                    </div>
                 </div>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
@@ -322,14 +345,15 @@ export default function TasksClient() {
                 </Card>
 
                 <div className="space-y-4">
-                    {!isLoading && filteredTasks.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 pb-2">
+                    {isSelectionMode && !isLoading && filteredTasks.length > 0 && (
+                        <div className="flex items-center gap-2 px-2 pb-2 animate-in fade-in slide-in-from-left-2">
                             <Checkbox 
+                                id="select-all"
                                 checked={selectedIds.length === filteredTasks.length && filteredTasks.length > 0} 
                                 onCheckedChange={handleSelectAll} 
                                 className="h-5 w-5 rounded-md"
                             />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Select All Visible</span>
+                            <Label htmlFor="select-all" className="text-[10px] font-black uppercase tracking-widest text-primary ml-2">Select All Visible Records</Label>
                         </div>
                     )}
 
@@ -343,108 +367,138 @@ export default function TasksClient() {
                             const CatIcon = CATEGORY_ICONS[task.category];
                             const isDone = task.status === 'completed';
                             const interlinkUrl = getInterlinkUrl(task);
+                            const isSelected = selectedIds.includes(task.id);
 
                             return (
-                                <Card 
-                                    key={task.id} 
-                                    className={cn(
-                                        "group overflow-hidden border-border/50 hover:shadow-xl transition-all duration-300 rounded-2xl bg-card",
-                                        isDone && "opacity-60 grayscale-[0.5]",
-                                        selectedIds.includes(task.id) && "border-primary/40 bg-primary/[0.02] shadow-md ring-1 ring-primary/10"
-                                    )}
-                                >
-                                    <div className="p-5 flex items-start gap-5">
-                                        <div className="flex flex-col items-center gap-4 pt-1">
-                                            <Checkbox 
-                                                checked={selectedIds.includes(task.id)} 
-                                                onCheckedChange={() => toggleSelect(task.id)}
-                                                className="h-5 w-5 rounded-md border-2"
-                                            />
-                                            <button onClick={() => handleToggleComplete(task)} className={cn("shrink-0 transition-colors", isDone ? "text-emerald-500" : "text-muted-foreground hover:text-emerald-500")}>
-                                                {isDone ? <CheckCircle2 className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
-                                            </button>
-                                        </div>
-                                        
-                                        <div className="flex-grow min-w-0 space-y-1">
-                                            <div className="flex items-center gap-3 flex-wrap">
-                                                <h3 className={cn(
-                                                    "text-lg font-black tracking-tight uppercase leading-none",
-                                                    isDone && "line-through text-muted-foreground"
-                                                )}>
-                                                    {task.title}
-                                                </h3>
-                                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-5", P.color)}>
-                                                    <P.icon className="h-2.5 w-2.5 mr-1" /> {P.label}
-                                                </Badge>
-                                                {interlinkUrl && (
-                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 border-blue-200 bg-blue-50 text-blue-600 gap-1">
-                                                        <ExternalLink className="h-2 w-2" /> Record Linked
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                            <p className="text-sm text-muted-foreground font-medium line-clamp-1">{task.description}</p>
-                                            
-                                            <div className="flex items-center gap-6 pt-3">
-                                                {task.schoolName && (
-                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                        <Building className="h-3 w-3" /> {task.schoolName}
-                                                    </div>
-                                                )}
-                                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
-                                                    <CatIcon className="h-3 w-3" /> {task.category}
-                                                </div>
-                                                <div className={cn(
-                                                    "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border shadow-xs transition-all",
-                                                    isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "bg-rose-50 border-rose-100 text-rose-600" : "bg-primary/5 border-primary/10 text-primary"
-                                                )}>
-                                                    <Calendar className="h-3 w-3" /> Due {getDueLabel(task.dueDate)}
-                                                </div>
-                                            </div>
-                                        </div>
+                                <div key={task.id} className="flex items-center gap-4">
+                                    <AnimatePresence mode="popLayout">
+                                        {isSelectionMode && (
+                                            <motion.div 
+                                                initial={{ opacity: 0, x: -20 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -20 }}
+                                                className="shrink-0"
+                                            >
+                                                <Checkbox 
+                                                    checked={isSelected} 
+                                                    onCheckedChange={() => toggleSelect(task.id)}
+                                                    className="h-6 w-6 rounded-lg border-2 shadow-sm"
+                                                />
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
 
-                                        <div className="flex flex-col items-end gap-4 shrink-0 self-stretch justify-between">
-                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                {interlinkUrl && (
-                                                    <Button variant="outline" size="sm" asChild className="h-8 rounded-lg font-black text-[9px] uppercase tracking-tighter gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50">
-                                                        <Link href={interlinkUrl}>
-                                                            Open Record <ArrowRight className="h-3 w-3" />
-                                                        </Link>
-                                                    </Button>
-                                                )}
-                                                <DropdownMenu modal={false}>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl">
-                                                        <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="gap-2">
-                                                            <Pencil className="h-4 w-4" /> Edit Details
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuItem onClick={() => toast({ title: 'Reminder Sent' })} className="gap-2">
-                                                            <Send className="h-4 w-4" /> Dispatch Reminder
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive gap-2">
-                                                            <Trash2 className="h-4 w-4" /> Delete Task
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
+                                    <Card 
+                                        className={cn(
+                                            "flex-1 group overflow-hidden border-border/50 hover:shadow-xl transition-all duration-300 rounded-2xl bg-card",
+                                            isDone && "opacity-60 grayscale-[0.5]",
+                                            isSelected && "border-primary/40 bg-primary/[0.02] shadow-md ring-1 ring-primary/10"
+                                        )}
+                                    >
+                                        <div className="p-5 flex items-start gap-5">
+                                            <div className="flex flex-col items-center gap-4 pt-1">
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <button 
+                                                                onClick={() => setTaskToComplete(task)} 
+                                                                className={cn("shrink-0 transition-all active:scale-90", isDone ? "text-emerald-500" : "text-muted-foreground hover:text-emerald-500")}
+                                                            >
+                                                                {isDone ? <CheckCircle2 className="h-6 w-6" /> : <Square className="h-6 w-6 opacity-40 group-hover:opacity-100" />}
+                                                            </button>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="right">
+                                                            {isDone ? 'Reopen Task' : 'Mark as Complete'}
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                             </div>
-                                            <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
-                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter px-1">{task.assignedToName?.split(' ')[0]}</span>
-                                                <Avatar className="h-6 w-6 border-2 border-white shadow-sm">
-                                                    <AvatarImage src={`https://i.pravatar.cc/150?u=${task.assignedTo}`} />
-                                                    <AvatarFallback className="text-[8px]">{getInitials(task.assignedToName)}</AvatarFallback>
-                                                </Avatar>
+                                            
+                                            <div className="flex-grow min-w-0 space-y-1">
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <h3 className={cn(
+                                                        "text-lg font-black tracking-tight uppercase leading-none",
+                                                        isDone && "line-through text-muted-foreground"
+                                                    )}>
+                                                        {task.title}
+                                                    </h3>
+                                                    <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-5", P.color)}>
+                                                        <P.icon className="h-2.5 w-2.5 mr-1" /> {P.label}
+                                                    </Badge>
+                                                    {interlinkUrl && (
+                                                        <Badge variant="outline" className="text-[8px] font-black uppercase h-5 border-blue-200 bg-blue-50 text-blue-600 gap-1">
+                                                            <ExternalLink className="h-2 w-2" /> Record Linked
+                                                        </Badge>
+                                                    )}
+                                                </div>
+                                                <p className="text-sm text-muted-foreground font-medium line-clamp-1">{task.description}</p>
+                                                
+                                                <div className="flex items-center gap-6 pt-3">
+                                                    {task.schoolName && (
+                                                        <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                            <Building className="h-3 w-3" /> {task.schoolName}
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                                        <CatIcon className="h-3 w-3" /> {task.category}
+                                                    </div>
+                                                    <div className={cn(
+                                                        "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border shadow-xs transition-all",
+                                                        isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "bg-rose-50 border-rose-100 text-rose-600" : "bg-primary/5 border-primary/10 text-primary"
+                                                    )}>
+                                                        <Calendar className="h-3 w-3" /> Due {getDueLabel(task.dueDate)}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col items-end gap-4 shrink-0 self-stretch justify-between">
+                                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    {interlinkUrl && (
+                                                        <Button variant="outline" size="sm" asChild className="h-8 rounded-lg font-black text-[9px] uppercase tracking-tighter gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50">
+                                                            <Link href={interlinkUrl}>
+                                                                Open Record <ArrowRight className="h-3 w-3" />
+                                                            </Link>
+                                                        </Button>
+                                                    )}
+                                                    <DropdownMenu modal={false}>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl">
+                                                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Operational Context</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => { setEditingTask(task); setEditorOpen(true); }} className="gap-3 rounded-lg p-2.5">
+                                                                <Pencil className="h-4 w-4 text-primary" /> Edit Details
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => { setIsSelectionMode(true); toggleSelect(task.id); }} className="gap-3 rounded-lg p-2.5">
+                                                                <CheckSquare className="h-4 w-4 text-primary" /> Select Multiple
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => toast({ title: 'Reminder Sent' })} className="gap-3 rounded-lg p-2.5">
+                                                                <Send className="h-4 w-4 text-primary" /> Dispatch Reminder
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem onClick={() => handleDelete(task.id)} className="text-destructive gap-3 rounded-lg p-2.5 focus:bg-destructive/10 focus:text-destructive">
+                                                                <Trash2 className="h-4 w-4" /> Delete Task
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                                <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
+                                                    <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter px-1">{task.assignedToName?.split(' ')[0]}</span>
+                                                    <Avatar className="h-6 w-6 border-2 border-white shadow-sm">
+                                                        <AvatarImage src={`https://i.pravatar.cc/150?u=${task.assignedTo}`} />
+                                                        <AvatarFallback className="text-[8px] font-black">{getInitials(task.assignedToName)}</AvatarFallback>
+                                                    </Avatar>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </Card>
+                                    </Card>
+                                </div>
                             );
                         })
                     ) : (
                         <div className="py-32 text-center border-4 border-dashed rounded-[4rem] bg-muted/10 flex flex-col items-center justify-center gap-4 opacity-30">
                             <CheckCircle2 className="h-16 w-16 text-muted-foreground" />
-                            <p className="font-black uppercase tracking-widest text-sm">No tasks identified in this context</p>
+                            <p className="font-black uppercase tracking-widest text-sm">No active protocols identified</p>
                         </div>
                     )}
                 </div>
@@ -490,7 +544,7 @@ export default function TasksClient() {
                                     <Button 
                                         variant="ghost" 
                                         size="icon" 
-                                        onClick={() => setSelectedIds([])}
+                                        onClick={() => { setSelectedIds([]); setIsSelectionMode(false); }}
                                         className="h-11 w-11 rounded-xl text-white/40 hover:text-white hover:bg-white/10"
                                     >
                                         <X className="h-5 w-5" />
@@ -509,6 +563,28 @@ export default function TasksClient() {
                 onSave={handleSaveTask}
                 isSaving={isSaving}
             />
+
+            {/* Completion Safety Gate */}
+            <AlertDialog open={!!taskToComplete} onOpenChange={(o) => !o && setTaskToComplete(null)}>
+                <AlertDialogContent className="rounded-[2rem]">
+                    <AlertDialogHeader>
+                        <div className="mx-auto bg-primary/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                            <CheckCircle2 className="h-6 w-6 text-primary" />
+                        </div>
+                        <AlertDialogTitle className="text-center font-black uppercase tracking-tight">Resolve Intervention?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-center">
+                            Confirm resolution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. 
+                            This action will update the school's audit trail.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="sm:justify-center gap-3 mt-4">
+                        <AlertDialogCancel className="rounded-xl font-bold px-8">Review</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleConfirmComplete} className="rounded-xl font-black px-10 shadow-xl shadow-primary/20">
+                            Confirm Resolution
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
