@@ -7,12 +7,19 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { GripVertical, Trash2, Key, Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera } from 'lucide-react';
+import { GripVertical, Trash2, Key, Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, Tag } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 
 const fieldIcons: Record<PDFFormField['type'], React.ElementType> = {
-  text: Text, signature: Signature, date: Calendar, dropdown: ChevronDownSquare, 
-  phone: Phone, email: Mail, time: Clock, photo: Camera
+  text: Text, 
+  signature: Signature, 
+  date: Calendar, 
+  dropdown: ChevronDownSquare, 
+  phone: Phone, 
+  email: Mail, 
+  time: Clock, 
+  photo: Camera,
+  'static-text': Tag
 };
 
 export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRemove, onUpdateLabel, isCollapsed }: { 
@@ -27,7 +34,9 @@ export function FieldListItem({ field, isSelected, isNamingField, onSelect, onRe
   const [isEditing, setIsEditing] = React.useState(false);
   const [editValue, setEditValue] = React.useState(field.label || '');
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: field.id });
-  const Icon = fieldIcons[field.type];
+  
+  // Fallback to Text icon if type is not found in the map to prevent crashes
+  const Icon = fieldIcons[field.type] || Text;
   
   const style = { transform: CSS.Transform.toString(transform), transition };
 
