@@ -31,6 +31,11 @@
       "sourceType": "github",
       "computedHash": "72e9ab72627e4fd8ed26a582e82309a98ecdc4f6e1c99418430ac05682c9e91d"
     },
+    "table-filters": {
+      "source": "shipshitdev/library",
+      "sourceType": "github",
+      "computedHash": "cc9bc337cd2db6bec0eb3c0d1d0312db48ec997ca217ff1a9c58a4a8a0e2e0a1"
+    },
     "task-planning": {
       "source": "supercent-io/skills-template",
       "sourceType": "github",
