@@ -27,7 +27,8 @@ import {
     Contact,
     CheckCircle2,
     Clock,
-    Plus
+    Plus,
+    Circle
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';

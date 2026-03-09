@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -505,7 +505,7 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
     if (schoolsSnap.empty || usersSnap.empty) return 0;
 
     const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
-    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+    const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
 
     const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
     const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];

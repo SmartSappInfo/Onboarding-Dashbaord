@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -35,7 +34,8 @@ import {
     Calendar,
     Trophy,
     MousePointer2,
-    PieChart as PieChartIcon
+    PieChart as PieChartIcon,
+    AlertCircle
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
