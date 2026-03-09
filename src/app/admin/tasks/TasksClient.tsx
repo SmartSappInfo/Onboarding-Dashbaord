@@ -31,7 +31,8 @@ import {
     X,
     CheckSquare,
     Layers,
-    ListChecks
+    ListChecks,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -62,6 +63,7 @@ import {
 import TaskEditor from './components/TaskEditor';
 import { logActivity } from '@/lib/activity-logger';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     critical: { label: 'Critical', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -77,6 +79,15 @@ const CATEGORY_ICONS: Record<TaskCategory, any> = {
     training: GraduationCap,
     general: CheckCircle2
 };
+
+const getInitials = (name?: string | null) =>
+  name
+    ? name
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+    : '?';
 
 export default function TasksClient() {
     const firestore = useFirestore();
@@ -178,6 +189,12 @@ export default function TasksClient() {
             completeTaskNonBlocking(firestore, task.id);
             toast({ title: 'Task marked as complete' });
         }
+    };
+
+    const handleDelete = (id: string) => {
+        if (!firestore || !confirm('Are you sure you want to delete this task?')) return;
+        deleteTaskNonBlocking(firestore, id);
+        toast({ title: 'Task Deleted' });
     };
 
     const handleBulkComplete = async () => {
