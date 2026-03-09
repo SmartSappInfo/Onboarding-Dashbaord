@@ -8,7 +8,8 @@ import {
     deleteDoc, 
     serverTimestamp,
     deleteField,
-    type Firestore 
+    type Firestore,
+    writeBatch
 } from 'firebase/firestore';
 import type { Task, TaskStatus, TaskPriority, TaskCategory } from './types';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
@@ -69,6 +70,33 @@ export function completeTaskNonBlocking(db: Firestore, taskId: string) {
         status: 'completed',
         completedAt: new Date().toISOString(),
     });
+}
+
+/**
+ * Bulk deletes multiple tasks.
+ */
+export async function bulkDeleteTasks(db: Firestore, taskIds: string[]) {
+    const batch = writeBatch(db);
+    taskIds.forEach(id => {
+        batch.delete(doc(db, 'tasks', id));
+    });
+    return batch.commit();
+}
+
+/**
+ * Bulk marks multiple tasks as complete.
+ */
+export async function bulkCompleteTasks(db: Firestore, taskIds: string[]) {
+    const batch = writeBatch(db);
+    const timestamp = new Date().toISOString();
+    taskIds.forEach(id => {
+        batch.update(doc(db, 'tasks', id), {
+            status: 'completed',
+            completedAt: timestamp,
+            updatedAt: timestamp
+        });
+    });
+    return batch.commit();
 }
 
 /**

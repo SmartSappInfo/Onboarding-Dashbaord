@@ -525,8 +525,8 @@ export interface Task {
   priority: TaskPriority;
   status: TaskStatus;
   category: TaskCategory;
-  schoolId?: string;
-  schoolName?: string;
+  schoolId?: string | null;
+  schoolName?: string | null;
   assignedTo: string; // userId
   assignedToName?: string;
   dueDate: string; // ISO string
@@ -535,6 +535,12 @@ export interface Task {
   automationId?: string;
   createdAt: string;
   completedAt?: string;
+  updatedAt?: string;
+  
+  // Rich Data Interlinking
+  relatedEntityId?: string | null;
+  relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | null;
+  relatedParentId?: string | null; // e.g. SurveyId for a Response
 }
 
 export type AutomationTrigger = 'SCHOOL_CREATED' | 'SCHOOL_STAGE_CHANGED' | 'SURVEY_SUBMITTED' | 'PDF_SIGNED' | 'TASK_DUE_SOON';

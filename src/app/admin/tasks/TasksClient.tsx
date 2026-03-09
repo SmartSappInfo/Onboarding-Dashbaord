@@ -26,7 +26,12 @@ import {
     Pencil,
     Send,
     Mail,
-    Smartphone
+    Smartphone,
+    ExternalLink,
+    X,
+    CheckSquare,
+    Layers,
+    ListChecks
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +43,9 @@ import {
     completeTaskNonBlocking, 
     deleteTaskNonBlocking, 
     updateTaskNonBlocking,
-    createTaskNonBlocking 
+    createTaskNonBlocking,
+    bulkDeleteTasks,
+    bulkCompleteTasks
 } from '@/lib/task-actions';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +61,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import TaskEditor from './components/TaskEditor';
 import { logActivity } from '@/lib/activity-logger';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     critical: { label: 'Critical', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -80,6 +88,10 @@ export default function TasksClient() {
     const [assignedFilter, setAssignedFilter] = React.useState<string>(currentUser?.uid || 'all');
     const [searchTerm, setSearchTerm] = React.useState('');
 
+    // Selection State
+    const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+    const [isBulkProcessing, setIsBulkProcessing] = React.useState(false);
+
     // Editor State
     const [editorOpen, setEditorOpen] = React.useState(false);
     const [editingTask, setEditingTask] = React.useState<Task | null>(null);
@@ -91,9 +103,11 @@ export default function TasksClient() {
     }, [firestore]);
 
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
+    const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
 
     const { data: allTasks, isLoading } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
+    const { data: schools } = useCollection<School>(schoolsQuery);
 
     const filteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
@@ -114,10 +128,12 @@ export default function TasksClient() {
         setIsSaving(true);
 
         const assignedUser = users?.find(u => u.id === values.assignedTo);
+        const school = schools?.find(s => s.id === values.schoolId);
+        
         const taskData = {
             ...values,
             schoolId: values.schoolId === 'none' ? null : values.schoolId,
-            schoolName: values.schoolId !== 'none' ? users?.find(u => u.id === values.schoolId)?.name : null,
+            schoolName: values.schoolId !== 'none' ? school?.name : null,
             assignedToName: assignedUser?.name || 'Unknown',
             dueDate: values.dueDate.toISOString(),
             source: editingTask ? editingTask.source : 'manual'
@@ -139,7 +155,7 @@ export default function TasksClient() {
                 logActivity({
                     schoolId: values.schoolId === 'none' ? '' : values.schoolId,
                     userId: currentUser.uid,
-                    type: 'school_updated', // Using as general type
+                    type: 'school_updated',
                     source: 'user_action',
                     description: `created a new task: "${values.title}"`,
                 });
@@ -164,10 +180,44 @@ export default function TasksClient() {
         }
     };
 
-    const handleDelete = (id: string) => {
-        if (!firestore || !confirm('Permanently delete this task?')) return;
-        deleteTaskNonBlocking(firestore, id);
-        toast({ title: 'Task removed' });
+    const handleBulkComplete = async () => {
+        if (!firestore || selectedIds.length === 0) return;
+        setIsBulkProcessing(true);
+        try {
+            await bulkCompleteTasks(firestore, selectedIds);
+            toast({ title: 'Bulk Completion Success', description: `${selectedIds.length} tasks resolved.` });
+            setSelectedIds([]);
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Bulk Update Failed' });
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (!firestore || selectedIds.length === 0 || !confirm(`Delete ${selectedIds.length} tasks?`)) return;
+        setIsBulkProcessing(true);
+        try {
+            await bulkDeleteTasks(firestore, selectedIds);
+            toast({ title: 'Bulk Deletion Success', description: 'Records purged.' });
+            setSelectedIds([]);
+        } catch (e) {
+            toast({ variant: 'destructive', title: 'Bulk Deletion Failed' });
+        } finally {
+            setIsBulkProcessing(false);
+        }
+    };
+
+    const handleSelectAll = () => {
+        if (selectedIds.length === filteredTasks.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredTasks.map(t => t.id));
+        }
+    };
+
+    const toggleSelect = (id: string) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
     };
 
     const getDueLabel = (dateStr: string) => {
@@ -178,9 +228,20 @@ export default function TasksClient() {
         return format(date, 'MMM d');
     };
 
+    const getInterlinkUrl = (task: Task) => {
+        if (!task.relatedEntityType || !task.relatedEntityId) return null;
+        if (task.relatedEntityType === 'SurveyResponse' && task.relatedParentId) {
+            return `/admin/surveys/${task.relatedParentId}/results/${task.relatedEntityId}`;
+        }
+        if (task.relatedEntityType === 'Submission' && task.relatedParentId) {
+            return `/admin/pdfs/${task.relatedParentId}/submissions/${task.relatedEntityId}`;
+        }
+        return null;
+    };
+
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-            <div className="max-w-6xl mx-auto space-y-8">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+            <div className="max-w-6xl mx-auto space-y-8 pb-32">
                 
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="text-left">
@@ -188,9 +249,9 @@ export default function TasksClient() {
                             <CheckCircle2 className="h-8 w-8 text-primary" />
                             Operational Tasks
                         </h1>
-                        <p className="text-muted-foreground font-medium mt-1">Manage your CRM interventions and automated follow-ups.</p>
+                        <p className="text-muted-foreground font-medium mt-1">Manage CRM interventions and multi-scale follow-ups.</p>
                     </div>
-                    <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8">
+                    <Button onClick={() => setEditorOpen(true)} className="rounded-xl font-black uppercase tracking-widest shadow-lg h-12 px-8 transition-all active:scale-95">
                         <Plus className="mr-2 h-5 w-5" /> New Task
                     </Button>
                 </div>
@@ -244,6 +305,17 @@ export default function TasksClient() {
                 </Card>
 
                 <div className="space-y-4">
+                    {!isLoading && filteredTasks.length > 0 && (
+                        <div className="flex items-center gap-2 px-2 pb-2">
+                            <Checkbox 
+                                checked={selectedIds.length === filteredTasks.length && filteredTasks.length > 0} 
+                                onCheckedChange={handleSelectAll} 
+                                className="h-5 w-5 rounded-md"
+                            />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-2">Select All Visible</span>
+                        </div>
+                    )}
+
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
                             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
@@ -253,22 +325,27 @@ export default function TasksClient() {
                             const P = PRIORITY_CONFIG[task.priority];
                             const CatIcon = CATEGORY_ICONS[task.category];
                             const isDone = task.status === 'completed';
+                            const interlinkUrl = getInterlinkUrl(task);
 
                             return (
                                 <Card 
                                     key={task.id} 
                                     className={cn(
                                         "group overflow-hidden border-border/50 hover:shadow-xl transition-all duration-300 rounded-2xl bg-card",
-                                        isDone && "opacity-60 grayscale-[0.5]"
+                                        isDone && "opacity-60 grayscale-[0.5]",
+                                        selectedIds.includes(task.id) && "border-primary/40 bg-primary/[0.02] shadow-md ring-1 ring-primary/10"
                                     )}
                                 >
                                     <div className="p-5 flex items-start gap-5">
-                                        <div className="pt-1">
+                                        <div className="flex flex-col items-center gap-4 pt-1">
                                             <Checkbox 
-                                                checked={isDone} 
-                                                onCheckedChange={() => handleToggleComplete(task)}
-                                                className="h-6 w-6 rounded-lg border-2"
+                                                checked={selectedIds.includes(task.id)} 
+                                                onCheckedChange={() => toggleSelect(task.id)}
+                                                className="h-5 w-5 rounded-md border-2"
                                             />
+                                            <button onClick={() => handleToggleComplete(task)} className={cn("shrink-0 transition-colors", isDone ? "text-emerald-500" : "text-muted-foreground hover:text-emerald-500")}>
+                                                {isDone ? <CheckCircle2 className="h-6 w-6" /> : <Circle className="h-6 w-6" />}
+                                            </button>
                                         </div>
                                         
                                         <div className="flex-grow min-w-0 space-y-1">
@@ -282,13 +359,15 @@ export default function TasksClient() {
                                                 <Badge variant="outline" className={cn("text-[8px] font-black uppercase h-5", P.color)}>
                                                     <P.icon className="h-2.5 w-2.5 mr-1" /> {P.label}
                                                 </Badge>
-                                                {task.source === 'automation' && (
-                                                    <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/10 text-[8px] h-5 uppercase font-black">Auto-Triggered</Badge>
+                                                {interlinkUrl && (
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase h-5 border-blue-200 bg-blue-50 text-blue-600 gap-1">
+                                                        <ExternalLink className="h-2 w-2" /> Record Linked
+                                                    </Badge>
                                                 )}
                                             </div>
                                             <p className="text-sm text-muted-foreground font-medium line-clamp-1">{task.description}</p>
                                             
-                                            <div className="flex items-center gap-6 pt-2">
+                                            <div className="flex items-center gap-6 pt-3">
                                                 {task.schoolName && (
                                                     <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
                                                         <Building className="h-3 w-3" /> {task.schoolName}
@@ -297,14 +376,24 @@ export default function TasksClient() {
                                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
                                                     <CatIcon className="h-3 w-3" /> {task.category}
                                                 </div>
-                                                <div className="flex items-center gap-1.5 text-[10px] font-black text-primary uppercase tracking-widest bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/10">
+                                                <div className={cn(
+                                                    "flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-lg border shadow-xs transition-all",
+                                                    isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) ? "bg-rose-50 border-rose-100 text-rose-600" : "bg-primary/5 border-primary/10 text-primary"
+                                                )}>
                                                     <Calendar className="h-3 w-3" /> Due {getDueLabel(task.dueDate)}
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-col items-end gap-4 shrink-0">
+                                        <div className="flex flex-col items-end gap-4 shrink-0 self-stretch justify-between">
                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {interlinkUrl && (
+                                                    <Button variant="outline" size="sm" asChild className="h-8 rounded-lg font-black text-[9px] uppercase tracking-tighter gap-1.5 border-blue-200 text-blue-600 hover:bg-blue-50">
+                                                        <Link href={interlinkUrl}>
+                                                            Open Record <ArrowRight className="h-3 w-3" />
+                                                        </Link>
+                                                    </Button>
+                                                )}
                                                 <DropdownMenu modal={false}>
                                                     <DropdownMenuTrigger asChild>
                                                         <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreVertical className="h-4 w-4" /></Button>
@@ -323,11 +412,11 @@ export default function TasksClient() {
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>
                                             </div>
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-bold text-muted-foreground uppercase">{task.assignedToName?.split(' ')[0]}</span>
-                                                <Avatar className="h-6 w-6">
+                                            <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-xl border border-border/50">
+                                                <span className="text-[9px] font-black uppercase text-muted-foreground tracking-tighter px-1">{task.assignedToName?.split(' ')[0]}</span>
+                                                <Avatar className="h-6 w-6 border-2 border-white shadow-sm">
                                                     <AvatarImage src={`https://i.pravatar.cc/150?u=${task.assignedTo}`} />
-                                                    <AvatarFallback><UserIcon className="h-3 w-3" /></AvatarFallback>
+                                                    <AvatarFallback className="text-[8px]">{getInitials(task.assignedToName)}</AvatarFallback>
                                                 </Avatar>
                                             </div>
                                         </div>
@@ -343,6 +432,58 @@ export default function TasksClient() {
                     )}
                 </div>
             </div>
+
+            {/* Bulk Actions Bar */}
+            <AnimatePresence>
+                {selectedIds.length > 0 && (
+                    <motion.div 
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-2xl px-4"
+                    >
+                        <Card className="bg-slate-900 text-white border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
+                            <CardContent className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4 pl-4">
+                                    <div className="flex items-center justify-center h-10 w-10 bg-primary/20 rounded-xl">
+                                        <ListChecks className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-sm font-black uppercase tracking-tight">{selectedIds.length} Tasks Selected</span>
+                                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Bulk CRM Interventions</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        onClick={handleBulkComplete} 
+                                        disabled={isBulkProcessing}
+                                        className="rounded-xl font-black uppercase text-[10px] tracking-widest h-11 px-6 bg-emerald-600 hover:bg-emerald-700"
+                                    >
+                                        {isBulkProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+                                        Mark Done
+                                    </Button>
+                                    <Button 
+                                        onClick={handleBulkDelete} 
+                                        disabled={isBulkProcessing}
+                                        className="rounded-xl font-black uppercase text-[10px] tracking-widest h-11 px-6 bg-rose-600/20 text-rose-500 hover:bg-rose-600 hover:text-white border border-rose-600/30"
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Delete
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => setSelectedIds([])}
+                                        className="h-11 w-11 rounded-xl text-white/40 hover:text-white hover:bg-white/10"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <TaskEditor 
                 open={editorOpen} 
