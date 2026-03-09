@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -88,6 +87,12 @@ export default function VideoHero({ videoUrl, thumbnailUrl, title, className }: 
 
             <Dialog open={isOpen} onOpenChange={setIsOpen}>
                 <DialogContent className="max-w-5xl p-0 overflow-hidden border-none bg-black rounded-[2rem] shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+                    {/* Accessibility Titles (Visually Hidden) */}
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Video: {title || 'Survey Introduction'}</DialogTitle>
+                        <DialogDescription>Interactive video player for the survey welcome message.</DialogDescription>
+                    </DialogHeader>
+
                     <div className="relative aspect-video w-full">
                         <VideoEmbed url={videoUrl} className="w-full h-full border-none shadow-none" />
                         <button 
