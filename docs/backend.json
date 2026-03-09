@@ -86,7 +86,8 @@
         "scoringEnabled": { "type": "boolean" },
         "maxScore": { "type": "number" },
         "videoUrl": { "type": "string" },
-        "videoThumbnailUrl": { "type": "string" }
+        "videoThumbnailUrl": { "type": "string" },
+        "videoCaption": { "type": "string" }
       }
     },
     "PDFForm": {

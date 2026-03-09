@@ -233,6 +233,7 @@ export interface Survey {
   bannerImageUrl?: string;
   videoUrl?: string;
   videoThumbnailUrl?: string;
+  videoCaption?: string;
   backgroundColor?: string;
   backgroundPattern?: 'none' | 'dots' | 'grid' | 'circuit' | 'topography' | 'cubes' | 'gradient';
   patternColor?: string;

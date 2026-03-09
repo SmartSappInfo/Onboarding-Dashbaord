@@ -113,6 +113,7 @@ const ModifySurveyInputSchema = z.object({
     bannerImageUrl: z.string().optional(),
     videoUrl: z.string().optional(),
     videoThumbnailUrl: z.string().optional(),
+    videoCaption: z.string().optional(),
     thankYouTitle: z.string().optional(),
     thankYouDescription: z.string().optional(),
     startButtonText: z.string().optional(),
@@ -139,6 +140,7 @@ const ModifySurveyOutputSchema = z.object({
         bannerImageUrl: z.string().optional(),
         videoUrl: z.string().optional(),
         videoThumbnailUrl: z.string().optional(),
+        videoCaption: z.string().optional(),
         thankYouTitle: z.string().optional(),
         thankYouDescription: z.string().optional(),
         startButtonText: z.string().optional(),
@@ -165,7 +167,8 @@ Review the current survey structure and the user's request. Modify the survey to
 4. **Unique IDs**: Generate unique, descriptive IDs for any new elements (e.g., 'q_satisfaction_level', 'sec_pricing').
 5. **Layouts**: When adding 'heading' blocks, use an appropriate 'variant' (h1, h2, h3).
 6. **Styling & Metadata**: Preserve existing background colors, patterns, video settings, and logo URLs unless specifically asked to change them.
-7. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
+7. **High-Engagement Video**: You can set 'videoUrl', 'videoThumbnailUrl', and 'videoCaption'.
+8. **No Hallucinations**: Only change what is requested or what is logically necessary to support the request.
 
 --- CURRENT SURVEY ---
 Title: {{{currentSurvey.title}}}
@@ -173,7 +176,7 @@ Description: {{{currentSurvey.description}}}
 Elements: {{{json currentSurvey.elements}}}
 Scoring: {{{currentSurvey.scoringEnabled}}} (Max: {{{currentSurvey.maxScore}}})
 Styling: Pattern: {{{currentSurvey.backgroundPattern}}}, Color: {{{currentSurvey.backgroundColor}}}
-Media: Video: {{{currentSurvey.videoUrl}}}, Banner: {{{currentSurvey.bannerImageUrl}}}
+Media: Video: {{{currentSurvey.videoUrl}}}, Caption: {{{currentSurvey.videoCaption}}}, Banner: {{{currentSurvey.bannerImageUrl}}}
 Result Rules: {{{json currentSurvey.resultRules}}}
 Result Pages: {{{json currentSurvey.resultPages}}}
 
