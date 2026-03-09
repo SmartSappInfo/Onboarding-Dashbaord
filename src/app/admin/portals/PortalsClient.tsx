@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -22,7 +23,8 @@ import {
     Activity,
     CheckCircle2,
     Target,
-    GraduationCap
+    GraduationCap,
+    BarChart3
 } from 'lucide-react';
 import { 
     TooltipProvider, 
@@ -87,9 +89,9 @@ export default function PortalsClient() {
     };
 
     const PortalCard = ({ title, school, path, icon: Icon, color }: { title: string, school?: string, path: string, icon: any, color: string }) => (
-        <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full">
+        <Card className="group relative overflow-hidden border-border/50 hover:border-primary/30 hover:shadow-xl transition-all duration-500 rounded-2xl bg-card flex flex-col h-full text-left">
             <div className={cn("absolute top-0 left-0 w-1 h-full", color)} />
-            <CardHeader className="p-5 pb-3 text-left">
+            <CardHeader className="p-5 pb-3">
                 <div className="flex items-start justify-between gap-4">
                     <div className="p-2.5 rounded-xl bg-muted/50 border border-border/50 group-hover:bg-background transition-colors">
                         <Icon className={cn("h-5 w-5", color.replace('bg-', 'text-'))} />
@@ -140,11 +142,11 @@ export default function PortalsClient() {
     );
 
     const StatCard = ({ label, value, icon: Icon }: { label: string, value: number, icon: any }) => (
-        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white">
+        <Card className="rounded-2xl border-none ring-1 ring-border shadow-sm overflow-hidden bg-white text-left">
             <CardContent className="p-5 flex items-center gap-4">
                 <div className="p-3 bg-muted/50 rounded-xl text-muted-foreground"><Icon className="h-5 w-5" /></div>
                 <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1">Total {label}</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground leading-none mb-1.5">Total {label}</p>
                     <p className="text-2xl font-black tabular-nums tracking-tighter">{isLoading ? '...' : value}</p>
                 </div>
             </CardContent>
@@ -178,7 +180,7 @@ export default function PortalsClient() {
                     <StatCard label="Live Surveys" value={surveys?.length || 0} icon={ClipboardList} />
                     <StatCard label="Doc Portals" value={pdfs?.length || 0} icon={FileText} />
                     <StatCard label="Meeting Rooms" value={meetings?.length || 0} icon={Calendar} />
-                    <StatCard label="System Nodes" value={4} icon={Zap} />
+                    <StatCard label="System Nodes" value={5} icon={Zap} />
                 </div>
 
                 {isLoading ? (
@@ -193,6 +195,8 @@ export default function PortalsClient() {
                                 <SectionHeader title="Core System Nodes" icon={Zap} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                     <PortalCard title="Public Homepage" path="/" icon={SmartSappIcon} color="bg-slate-900" />
+                                    <PortalCard title="Campaign Landing" path="/campaign/school-comparison" icon={Target} color="bg-primary" />
+                                    <PortalCard title="Campaign Stats" path="/campaign/school-comparison/statistics" icon={BarChart3} color="bg-emerald-600" />
                                     <PortalCard title="Choice Selection Page" path="/campaign/school-comparison" icon={GraduationCap} color="bg-orange-500" />
                                     <PortalCard title="New School Signup" path="/register-new-signup" icon={PlusCircle} color="bg-emerald-600" />
                                     <PortalCard title="Shared Results Directory" path="/forms/results" icon={Activity} color="bg-primary" />

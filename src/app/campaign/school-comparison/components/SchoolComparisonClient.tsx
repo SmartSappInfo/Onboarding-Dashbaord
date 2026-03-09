@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,14 +13,16 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import SurveyLoader from '@/app/surveys/components/survey-loader';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 /**
- * @fileOverview Persona Selection Dashboard with Seamless Transitions.
- * Features an immediate pre-loader upon selection to provide instant feedback
- * while the target survey environment is initialized.
+ * @fileOverview Persona Selection Dashboard with Integrated Analytics.
+ * Tracks unique visits, specific persona selection, and session duration.
  */
 
 export default function SchoolComparisonClient() {
+  const firestore = useFirestore();
   const router = useRouter();
   const [isTransitioning, setIsTransitioning] = React.useState(false);
   const [selectedLabel, setSelectedLabel] = React.useState('');
@@ -27,10 +30,53 @@ export default function SchoolComparisonClient() {
   const parentImg = PlaceHolderImages.find(img => img.id === 'campaign-parent')?.imageUrl || 'https://picsum.photos/seed/parent/600/800';
   const schoolImg = PlaceHolderImages.find(img => img.id === 'campaign-school')?.imageUrl || 'https://picsum.photos/seed/admin/600/800';
 
-  const handlePersonaSelect = (href: string, label: string) => {
+  // ANALYTICS SESSION TRACKING
+  const [sessionId] = React.useState(() => {
+    if (typeof window === 'undefined') return null;
+    const key = `campaign_sess_school_comparison`;
+    let id = sessionStorage.getItem(key);
+    if (!id) {
+        id = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        sessionStorage.setItem(key, id);
+    }
+    return id;
+  });
+
+  // Initialization & Heartbeat (Duration Tracking)
+  React.useEffect(() => {
+    if (!sessionId || !firestore) return;
+
+    const sessionRef = doc(firestore, 'campaign_sessions', sessionId);
+    
+    // 1. Log Visit (Initialization)
+    setDoc(sessionRef, {
+        campaignId: 'school-comparison',
+        selectedOption: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+    }, { merge: true }).catch(console.error);
+
+    // 2. Heartbeat (Update every 10s to track active time)
+    const interval = setInterval(() => {
+        updateDoc(sessionRef, { updatedAt: new Date().toISOString() }).catch(() => {});
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, firestore]);
+
+  const handlePersonaSelect = (href: string, label: string, option: 'school' | 'parent') => {
     setIsTransitioning(true);
     setSelectedLabel(label);
-    // Instant navigation trigger
+
+    // LOG OPTION SELECTION
+    if (sessionId && firestore) {
+        const sessionRef = doc(firestore, 'campaign_sessions', sessionId);
+        updateDoc(sessionRef, { 
+            selectedOption: option,
+            updatedAt: new Date().toISOString()
+        }).catch(console.error);
+    }
+
     router.push(href);
   };
 
@@ -45,7 +91,6 @@ export default function SchoolComparisonClient() {
         )}
       </AnimatePresence>
 
-      {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 opacity-40">
         <LightRays
           raysOrigin="top-center"
@@ -61,13 +106,12 @@ export default function SchoolComparisonClient() {
       </div>
 
       <div className="relative z-10 w-full max-w-5xl mx-auto space-y-6 py-6 md:py-12 px-4 sm:px-8">
-        {/* Header Section */}
         <div className="text-center space-y-6 animate-in fade-in slide-in-from-top-8 duration-1000">
           <div className="inline-block hover:scale-105 transition-transform mb-2 cursor-pointer" onClick={() => router.push('/')}>
             <SmartSappLogo className="h-6 md:h-7 mx-auto" />
           </div>
           <div className="space-y-2 md:space-y-3">
-            <h1 className="text-2xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4">
+            <h1 className="text-2xl md:text-6xl font-bold tracking-tighter text-foreground leading-tight px-4 uppercase">
               Which of the following <br className="hidden md:block" /> best describes you?
             </h1>
           </div>
@@ -76,13 +120,12 @@ export default function SchoolComparisonClient() {
           </p>
         </div>
 
-        {/* Choice Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-12 px-2">
-          {/* School Option */}
           <SelectionCard
             title="I'm a School Owner / Staff"
             description="How do I know if my school is the preferred choice for parents?"
             href="/surveys/schools-survey"
+            option="school"
             image={schoolImg}
             icon={Building2}
             delay={0.2}
@@ -91,11 +134,11 @@ export default function SchoolComparisonClient() {
             onSelect={handlePersonaSelect}
           />
 
-          {/* Parent Option */}
           <SelectionCard
             title="I'm A Parent"
             description="How do I know if my child’s school is doing the right things?"
             href="/surveys/parents-survey"
+            option="parent"
             image={parentImg}
             icon={Users}
             delay={0.4}
@@ -114,16 +157,17 @@ export default function SchoolComparisonClient() {
   );
 }
 
-function SelectionCard({ title, description, href, image, icon: Icon, delay, color, label, onSelect }: {
+function SelectionCard({ title, description, href, option, image, icon: Icon, delay, color, label, onSelect }: {
   title: string;
   description: string;
   href: string;
+  option: 'school' | 'parent';
   image: string;
   icon: any;
   delay: number;
   color: string;
   label: string;
-  onSelect: (href: string, label: string) => void;
+  onSelect: (href: string, label: string, option: 'school' | 'parent') => void;
 }) {
   return (
     <motion.div
@@ -133,10 +177,9 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
       whileHover={{ y: -8 }}
       whileTap={{ scale: 0.98 }}
       className="group relative h-full cursor-pointer"
-      onClick={() => onSelect(href, label)}
+      onClick={() => onSelect(href, label, option)}
     >
       <Card className="overflow-hidden border-none shadow-2xl rounded-[2.5rem] bg-card/80 backdrop-blur-xl h-full flex flex-col ring-1 ring-white/10 group-hover:ring-primary/30 transition-all duration-500">
-        {/* Image Container */}
         <div className="relative h-40 md:h-80 overflow-hidden shrink-0">
           {image && (
             <Image
@@ -163,7 +206,6 @@ function SelectionCard({ title, description, href, image, icon: Icon, delay, col
           </div>
         </div>
 
-        {/* Content Container */}
         <CardContent className="p-5 md:p-8 space-y-4 md:space-y-6 flex-grow flex flex-col justify-between bg-white dark:bg-card">
           <p className="text-muted-foreground font-semibold text-base md:text-lg leading-relaxed">
             {description}

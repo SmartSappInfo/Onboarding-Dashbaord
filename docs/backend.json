@@ -158,6 +158,18 @@
         "isSubmitted": { "type": "boolean" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
+    },
+    "CampaignSession": {
+      "title": "Campaign Session",
+      "description": "Analytics tracking for marketing campaign pages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "campaignId": { "type": "string" },
+        "selectedOption": { "type": "string", "enum": ["school", "parent"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -203,6 +215,10 @@
     "/survey_sessions/{sessionId}": {
       "schema": "#/entities/SurveySession",
       "description": "Ephemeral tracking of survey progress."
+    },
+    "/campaign_sessions/{sessionId}": {
+      "schema": "#/entities/CampaignSession",
+      "description": "Real-time engagement metrics for marketing pages."
     }
   }
 }

@@ -280,6 +280,14 @@ export interface SurveySession {
   updatedAt: string;
 }
 
+export interface CampaignSession {
+  id: string;
+  campaignId: string;
+  selectedOption: 'school' | 'parent' | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface SurveySummary {
   id: string;
   summary: string;
