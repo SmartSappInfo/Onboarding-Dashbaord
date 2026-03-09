@@ -7,7 +7,7 @@ import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-ki
 import { FieldListItem } from './FieldListItem';
 
 export function SortableFieldList() {
-  const { fields, setFields, selectedFieldIds, selectField, namingFieldId, isSidebarCollapsed, removeField, updateField } = useEditor();
+  const { fields, setFields, selectedFieldIds, selectField, namingFieldId, isSidebarCollapsed, setIsFieldDeleteConfirmOpen, updateField } = useEditor();
   
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -34,7 +34,12 @@ export function SortableFieldList() {
               isNamingField={field.id === namingFieldId}
               isCollapsed={isSidebarCollapsed}
               onSelect={(e) => selectField(field.id, e.shiftKey, e.ctrlKey || e.metaKey)}
-              onRemove={() => removeField(field.id)}
+              onRemove={() => {
+                if (!selectedFieldIds.includes(field.id)) {
+                  selectField(field.id);
+                }
+                setIsFieldDeleteConfirmOpen(true);
+              }}
               onUpdateLabel={(newLabel) => updateField(field.id, { label: newLabel })}
             />
           ))}

@@ -40,7 +40,7 @@ export function Inspector() {
   const { 
     fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, removeField, duplicateFields, alignFields, distributeFields,
-    isSidebarCollapsed, numPages
+    isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen, setFields
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -88,7 +88,7 @@ export function Inspector() {
             <CardHeader className="py-4">
               <CardTitle className="flex justify-between items-center text-sm font-semibold">
                 <span>Field Properties</span>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => removeField(selectedField.id)}>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </CardTitle>
@@ -357,7 +357,7 @@ export function Inspector() {
               <div className="space-y-4 border-t pt-4">
                 <div className="grid grid-cols-2 gap-2">
                   <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
-                  <Button type="button" variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => { setFields(p => p.filter(f => !selectedFieldIds.includes(f.id))); setSelectedFieldIds([]); }}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
+                  <Button type="button" variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
                 </div>
               </div>
             </CardContent>

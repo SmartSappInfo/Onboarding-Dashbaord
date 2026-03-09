@@ -10,7 +10,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import { 
     Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
     Undo, Redo, Sparkles, Loader2, ZoomIn, ZoomOut, Eye, Maximize2, Minimize2, XCircle, Tag,
-    Plus, ChevronRight
+    Plus, ChevronRight, Trash2
 } from 'lucide-react';
 
 import {
@@ -20,6 +20,17 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { 
     EditorProvider, 
@@ -57,7 +68,8 @@ function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
         onDetect, isDetecting, onPreview, isFullScreen, setIsFullScreen,
-        viewMode, setViewMode
+        viewMode, setViewMode, isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen,
+        selectedFieldIds, setFields, setSelectedFieldIds
     } = useEditor();
 
     const isPreviewing = viewMode === 'preview';
@@ -242,6 +254,35 @@ function EditorLayout() {
             </div>
 
             {!isPreviewing && <EditorSidebar />}
+
+            <AlertDialog open={isFieldDeleteConfirmOpen} onOpenChange={setIsFieldDeleteConfirmOpen}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                            <Trash2 className="h-6 w-6 text-destructive" />
+                        </div>
+                        <AlertDialogTitle className="text-center font-black uppercase tracking-tight">
+                            Delete {selectedFieldIds.length === 1 ? 'Field' : 'Fields'}?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-center text-sm font-medium">
+                            Are you sure you want to remove {selectedFieldIds.length === 1 ? 'this field' : `these ${selectedFieldIds.length} fields`} from the document architecture? This action can be undone using Ctrl+Z.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="sm:justify-center gap-3 mt-4">
+                        <AlertDialogCancel className="rounded-xl font-bold px-8">Keep Fields</AlertDialogCancel>
+                        <AlertDialogAction 
+                            onClick={() => {
+                                setFields(prev => prev.filter(f => !selectedFieldIds.includes(f.id)));
+                                setSelectedFieldIds([]);
+                                setIsFieldDeleteConfirmOpen(false);
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-black px-10 shadow-xl"
+                        >
+                            Confirm Deletion
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

@@ -43,7 +43,7 @@ interface FieldOverlayProps {
 
 export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimensions }: FieldOverlayProps) {
   const { 
-    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom 
+    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen 
   } = useEditor();
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -389,7 +389,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                 </Tooltip>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}>
+                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>

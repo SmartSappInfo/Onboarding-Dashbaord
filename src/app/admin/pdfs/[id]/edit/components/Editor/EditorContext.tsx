@@ -18,6 +18,7 @@ interface EditorContextType {
   namingFieldId: string | null;
   marquee: MarqueeState | null;
   isDetecting: boolean;
+  isFieldDeleteConfirmOpen: boolean;
   
   // External settings managed by page but synced here for UI convenience
   password?: string;
@@ -35,6 +36,7 @@ interface EditorContextType {
   setViewMode: React.Dispatch<React.SetStateAction<EditorViewMode>>;
   setNamingFieldId: (id: string | null) => void;
   setMarquee: React.Dispatch<React.SetStateAction<MarqueeState | null>>;
+  setIsFieldDeleteConfirmOpen: React.Dispatch<React.SetStateAction<boolean>>;
   
   // Callbacks
   onDetect: () => void;
@@ -114,6 +116,7 @@ export function EditorProvider({
   const [isFullScreen, setIsFullScreen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<EditorViewMode>('design');
   const [marquee, setMarquee] = React.useState<MarqueeState | null>(null);
+  const [isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen] = React.useState(false);
 
   const addField = React.useCallback((type: LocalPDFFormField['type']) => {
     const newField: LocalPDFFormField = {
@@ -124,8 +127,8 @@ export function EditorProvider({
       position: { x: 10, y: 10 },
       dimensions: { width: 20, height: 5 },
       required: false,
-      alignment: 'center', // Standardized horizontal centering
-      verticalAlignment: 'center', // Standardized vertical centering
+      alignment: 'center', 
+      verticalAlignment: 'center', 
       fontSize: 11,
       staticText: type === 'static-text' ? 'Double-click to edit Label' : undefined,
       options: type === 'dropdown' ? ['Option 1', 'Option 2'] : undefined
@@ -176,13 +179,11 @@ export function EditorProvider({
     setFields(prev => prev.map(f => updates[f.id] ? { ...f, position: updates[f.id] } : f));
   }, [fields, selectedFieldIds, setFields]);
 
-  // Keyboard Nudge Logic
+  // Keyboard Nudge & Delete Logic
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only process arrow keys if fields are selected
       if (selectedFieldIds.length === 0 || viewMode === 'preview') return;
 
-      // Don't nudge if user is typing in an input, textarea or contenteditable
       const activeEl = document.activeElement;
       const isTyping = 
         activeEl instanceof HTMLInputElement || 
@@ -191,14 +192,9 @@ export function EditorProvider({
 
       if (isTyping) return;
 
+      // Nudge Logic
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-        // Prevent default browser behavior (scrolling)
         e.preventDefault();
-
-        // Calculate nudge increments
-        // Standard: 0.5%
-        // Shift: 2.0% (large)
-        // Ctrl/Cmd: 0.1% (precision)
         let nudgeAmount = 0.5;
         if (e.shiftKey) nudgeAmount = 2.0;
         if (e.ctrlKey || e.metaKey) nudgeAmount = 0.1;
@@ -220,6 +216,12 @@ export function EditorProvider({
           return f;
         }));
       }
+
+      // Delete Logic
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        setIsFieldDeleteConfirmOpen(true);
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -228,14 +230,16 @@ export function EditorProvider({
 
   const value = React.useMemo(() => ({
     pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
-    password, passwordProtected, isStatusChanging, isSaving,
+    password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
     setFields, setSelectedFieldIds, setZoom, setNumPages, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
+    setIsFieldDeleteConfirmOpen,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
     pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
-    password, passwordProtected, isStatusChanging, isSaving, setFields, setNamingFieldId, setNumPages,
+    password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
+    setFields, setNamingFieldId, setNumPages, setIsFieldDeleteConfirmOpen,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
