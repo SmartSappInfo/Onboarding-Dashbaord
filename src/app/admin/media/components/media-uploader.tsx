@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useFirestore, useUser, FirestorePermissionError, errorEmitter } from '@/firebase';
@@ -7,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { File as FileIcon, X, CheckCircle, Upload, Loader2 } from 'lucide-react';
+import { File as FileIcon, X, CheckCircle, Upload, Loader2, Info } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
 import { z } from 'zod';
 import { cn } from '@/lib/utils';
@@ -177,7 +178,10 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
         const mediaType = getMediaType(fileState.file);
         if (!mediaType) throw new Error("Invalid file type");
 
-        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels && fileState.dataUrl) {
+        // BYPASS FOR GIFs: Standard processImage strips frames. We bypass for GIFs to preserve animation.
+        const isGif = fileState.file.type === 'image/gif' || fileState.file.name.toLowerCase().endsWith('.gif');
+
+        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels && fileState.dataUrl && !isGif) {
           const { editingState } = fileState;
           const { file, width, height } = await processImage(
             fileState.dataUrl,
@@ -200,6 +204,12 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
           finalFilename = fileState.editingState?.filename 
             ? `${fileState.editingState.filename}.${fileState.file.name.split('.').pop()}` 
             : fileState.file.name;
+          
+          // For GIFs and other raw images, we use the dimensions captured during staging
+          if (fileState.dimensions) {
+              finalWidth = fileState.dimensions.width;
+              finalHeight = fileState.dimensions.height;
+          }
         }
 
         const storagePath = `media/${mediaType}/${Date.now()}-${finalFilename}`;
@@ -216,7 +226,6 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
             async () => {
               const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
               
-              // Clean data object: Firestore Web SDK fails if fields are 'undefined'
               const newAssetData: any = {
                 name: finalFilename,
                 originalName: fileState.file.name,
@@ -271,7 +280,9 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
   };
   
   const activeFileState = activeFileId ? stagedFiles.find(f => f.id === activeFileId) : null;
+  const activeFileMime = activeFileState?.file.type;
   const isImageActive = activeFileState && getMediaType(activeFileState.file) === 'image';
+  const isGifActive = activeFileMime === 'image/gif';
   
   const handleStateChange = useCallback((newState: ImageEditingState) => {
     setStagedFiles(prev => prev.map(fs => fs.id === activeFileId ? { ...fs, editingState: newState } : fs));
@@ -285,21 +296,33 @@ export default function MediaUploader({ onUploadSuccess, onUploadComplete, accep
           <label htmlFor="file-upload" className={cn("flex min-h-[200px] flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 text-center transition-colors", dragActive ? "border-primary bg-primary/10" : "border-muted-foreground/30 hover:bg-muted/50", isUploading ? "cursor-not-allowed opacity-50" : "cursor-pointer")}>
             <Upload className="h-10 w-10 text-muted-foreground mb-4" />
             <p className="text-lg font-medium">Drag & drop files here or browse</p>
-            <p className="text-xs text-muted-foreground mt-2">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
+            <p className="text-xs text-muted-foreground mt-2">GIF support included (Animations preserved)</p>
+            <p className="text-xs text-muted-foreground mt-1">Maximum file size: {MAX_FILE_SIZE_MB}MB</p>
           </label>
           {dragActive && <div className="absolute inset-0" onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}></div>}
         </form>
       )}
 
       {activeFileState && isImageActive && activeFileState.dimensions && activeFileState.dataUrl && (
-        <ImageEditor 
-          imageUrl={activeFileState.dataUrl}
-          originalFileName={activeFileState.file.name}
-          originalFileSize={activeFileState.file.size}
-          imageDimensions={activeFileState.dimensions}
-          initialState={activeFileState.editingState}
-          onStateChange={handleStateChange}
-        />
+        <div className="space-y-4">
+            {isGifActive && (
+                <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3 animate-in fade-in duration-500">
+                    <Info className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+                    <p className="text-xs font-bold text-orange-800 uppercase tracking-tight leading-relaxed">
+                        GIF Animation Preservation active. Resizing and cropping are disabled for GIFs to maintain frame integrity.
+                    </p>
+                </div>
+            )}
+            <ImageEditor 
+                imageUrl={activeFileState.dataUrl}
+                originalFileName={activeFileState.file.name}
+                originalFileSize={activeFileState.file.size}
+                imageDimensions={activeFileState.dimensions}
+                initialState={activeFileState.editingState}
+                onStateChange={handleStateChange}
+                isGif={isGifActive}
+            />
+        </div>
       )}
       
       {activeFileState && !isImageActive && (
