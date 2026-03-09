@@ -1,3 +1,4 @@
+
 rules_version = '2';
 
 service cloud.firestore {
@@ -120,6 +121,12 @@ service cloud.firestore {
       allow create: if isAuthorized() || isSignedIn();
       allow read, list: if isAuthorized();
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
+    }
+
+    match /survey_sessions/{sessionId} {
+      allow create: if true;
+      allow update: if true; // Public update required for progress tracking
+      allow read, list: if isAuthorized();
     }
   }
 }

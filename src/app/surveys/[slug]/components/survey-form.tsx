@@ -1,9 +1,10 @@
+
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addDoc, collection, getDoc, doc } from 'firebase/firestore';
+import { addDoc, collection, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 
 import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook } from '@/lib/types';
@@ -722,6 +723,39 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [lastSubmissionId, setLastSubmissionId] = React.useState<string | null>(null);
 
+    // Drop-off Analytics Session State
+    const [sessionId] = React.useState(() => {
+        if (typeof window === 'undefined' || isPreview) return null;
+        const key = `survey_session_${survey.id}`;
+        let id = sessionStorage.getItem(key);
+        if (!id) {
+            id = `sess_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            sessionStorage.setItem(key, id);
+        }
+        return id;
+    });
+
+    const recordStepPulse = React.useCallback((stepIndex: number) => {
+        if (!sessionId || !firestore || isPreview) return;
+        
+        const currentMaxStr = sessionStorage.getItem(`survey_max_step_${survey.id}`) || '0';
+        const currentMax = parseInt(currentMaxStr, 10);
+
+        if (stepIndex >= currentMax) {
+            sessionStorage.setItem(`survey_max_step_${survey.id}`, String(stepIndex));
+            const sessionRef = doc(firestore, 'survey_sessions', sessionId);
+            setDoc(sessionRef, {
+                surveyId: survey.id,
+                maxStepReached: stepIndex,
+                updatedAt: new Date().toISOString(),
+                isSubmitted: false
+            }, { merge: true }).catch(err => console.warn("Analytics pulse failed:", err));
+        }
+    }, [sessionId, firestore, survey.id, isPreview]);
+
+    // Initial pulse
+    React.useEffect(() => { recordStepPulse(currentPageIndex); }, [currentPageIndex, recordStepPulse]);
+
     // Automation Status Tracking
     const [automationStatuses, setAutomationStatuses] = React.useState<AutomationStatus[]>([]);
     const [isStatusModalOpen, setIsStatusModalOpen] = React.useState(false);
@@ -909,7 +943,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
         setAutomationStatuses(initialTasks);
         
-        // Respect the admin's preference for the processing modal
         if (survey.showDebugProcessingModal) {
             setIsStatusModalOpen(true);
         }
@@ -917,11 +950,10 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         const serializedData = { ...data };
         Object.keys(serializedData).forEach(key => { if (serializedData[key] instanceof Date) serializedData[key] = format(serializedData[key] as Date, 'yyyy-MM-dd'); });
         
-        // Comprehensive Variable Harvesting
         const variables: Record<string, any> = {
             survey_title: survey.title,
             survey_score: score !== undefined ? score : 0,
-            score: score !== undefined ? score : 0, // Legacy support
+            score: score !== undefined ? score : 0,
             max_score: survey.maxScore || 100,
             submission_date: format(new Date(), 'PPPP'),
             outcome_label: outcome?.label || 'Default',
@@ -929,7 +961,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
             schoolName: survey.schoolName || 'SmartSapp'
         };
 
-        // Map every single form answer to its ID as a technical tag
         survey.elements.filter(isQuestion).forEach(q => {
             const val = serializedData[q.id];
             if (val !== undefined) {
@@ -963,22 +994,27 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
         form.control.disabled = true;
 
         try {
-            // Task 1: Save Submission
             const docRef = await addDoc(responsesCollection, responseData);
             const submissionId = docRef.id;
             setLastSubmissionId(submissionId);
             variables.submission_id = submissionId;
             
-            // Populate Dynamic Result URL
             if (typeof window !== 'undefined') {
                 variables.result_url = `${window.location.origin}/surveys/${survey.slug}/result/${submissionId}`;
             }
             
             updateAutomationStatus('db', 'success');
 
+            // Final Analytics Sync
+            if (sessionId) {
+                updateDoc(doc(firestore, 'survey_sessions', sessionId), {
+                    isSubmitted: true,
+                    updatedAt: new Date().toISOString()
+                }).catch(console.warn);
+            }
+
             const automationPromises = [];
 
-            // Task 2: Webhook Dispatch
             if (survey.webhookEnabled && survey.webhookId) {
                 const webhookTask = async () => {
                     try {
@@ -1005,7 +1041,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(webhookTask());
             }
 
-            // Task 3: Respondent Logic-Based Messaging
             if (outcome?.emailTemplateId && outcome.emailTemplateId !== 'none') {
                 const emailTask = async () => {
                     if (!respondentEmail) {
@@ -1052,7 +1087,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(smsTask());
             }
 
-            // Task 4: Administrative Alerting
             if (survey.adminAlertsEnabled) {
                 const adminTask = async () => {
                     try {
@@ -1073,7 +1107,6 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 automationPromises.push(adminTask());
             }
 
-            // Task 5: Activity Log
             logActivity({
                 schoolId: survey.schoolId || '',
                 userId: null, 
@@ -1085,17 +1118,15 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
 
             await Promise.allSettled(automationPromises);
             
-            // If not showing the debug modal, handle redirection
             if (!survey.showDebugProcessingModal) {
                 if (survey.scoringEnabled) {
                     router.push(`/surveys/${survey.slug}/result/${submissionId}`);
-                    // Maintain isSubmitting = true to keep loader visible during navigation
                 } else {
                     onSubmitted();
                     setIsSubmitting(false);
                 }
             } else {
-                setIsSubmitting(false); // Stop loader so the diagnostic modal can be seen
+                setIsSubmitting(false); 
                 setIsStatusModalOpen(true);
             }
 

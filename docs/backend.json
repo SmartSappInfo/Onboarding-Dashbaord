@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -145,6 +146,18 @@
         "isActive": { "type": "boolean" },
         "actions": { "type": "array" }
       }
+    },
+    "SurveySession": {
+      "title": "Survey Session",
+      "description": "Tracking record for an individual survey participant's progress.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "surveyId": { "type": "string" },
+        "maxStepReached": { "type": "number" },
+        "isSubmitted": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -186,6 +199,10 @@
     "/automations/{ruleId}": {
       "schema": "#/entities/AutomationRule",
       "description": "Global trigger hub rules."
+    },
+    "/survey_sessions/{sessionId}": {
+      "schema": "#/entities/SurveySession",
+      "description": "Ephemeral tracking of survey progress."
     }
   }
 }

@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -269,6 +270,14 @@ export interface SurveyResponse {
     questionId: string;
     value: any;
   }[];
+}
+
+export interface SurveySession {
+  id: string;
+  surveyId: string;
+  maxStepReached: number;
+  isSubmitted: boolean;
+  updatedAt: string;
 }
 
 export interface SurveySummary {

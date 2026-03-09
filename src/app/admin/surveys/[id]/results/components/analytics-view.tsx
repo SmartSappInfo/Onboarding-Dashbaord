@@ -1,12 +1,17 @@
+
 'use client';
 
 import * as React from 'react';
-import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveyResultRule } from "@/lib/types";
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveyResultRule, SurveySession } from "@/lib/types";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Trophy, Users, BarChart3, Target } from 'lucide-react';
+import { Trophy, Users, BarChart3, Target, MousePointer2, AlertCircle, TrendingDown, UserMinus } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const CHART_COLORS = [
   "hsl(var(--chart-1))",
@@ -170,8 +175,71 @@ function TextResult({ result }: { result: Extract<AnalyzedResult, { type: 'text'
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
 export default function AnalyticsView({ survey, responses }: { survey: Survey; responses: SurveyResponse[] }) {
-    
-    // 1. Scoring Analytics
+    const firestore = useFirestore();
+
+    // 1. Fetch Sessions for Drop-off Analytics
+    const sessionsQuery = useMemoFirebase(() => {
+        if (!firestore || !survey.id) return null;
+        return query(collection(firestore, 'survey_sessions'), where('surveyId', '==', survey.id));
+    }, [firestore, survey.id]);
+
+    const { data: sessions } = useCollection<SurveySession>(sessionsQuery);
+
+    // 2. Funnel Aggregation
+    const funnelData = React.useMemo(() => {
+        if (!sessions || sessions.length === 0) return [];
+
+        const pagesCount = [];
+        let pageElements: SurveyElement[][] = [];
+        let currentPage: SurveyElement[] = [];
+        
+        if (survey.showCoverPage && survey.showSurveyTitles !== false) pageElements.push([]); 
+        survey.elements.forEach(element => {
+            if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
+                pageElements.push(currentPage);
+                currentPage = [element];
+            } else currentPage.push(element);
+        });
+        if (currentPage.length > 0) pageElements.push(currentPage);
+
+        return pageElements.map((page, index) => {
+            const section = page[0] as any;
+            const label = index === 0 && survey.showCoverPage ? 'Cover Page' : (section?.stepperTitle || section?.title || `Step ${index + 1}`);
+            
+            // Total sessions that reached AT LEAST this step
+            const count = sessions.filter(s => s.maxStepReached >= index).length;
+            
+            return {
+                index,
+                label,
+                count,
+                percentage: (count / sessions.length) * 100,
+                color: CHART_COLORS[index % CHART_COLORS.length]
+            };
+        });
+    }, [sessions, survey]);
+
+    const dropoffInsights = React.useMemo(() => {
+        if (funnelData.length < 2) return [];
+        const insights = [];
+        for (let i = 0; i < funnelData.length - 1; i++) {
+            const current = funnelData[i];
+            const next = funnelData[i+1];
+            const lost = current.count - next.count;
+            const lossPercentage = current.count > 0 ? (lost / current.count) * 100 : 0;
+            if (lossPercentage > 0) {
+                insights.push({
+                    from: current.label,
+                    to: next.label,
+                    lost,
+                    lossPercentage
+                });
+            }
+        }
+        return insights.sort((a, b) => b.lossPercentage - a.lossPercentage);
+    }, [funnelData]);
+
+    // 3. Scoring Analytics
     const scoringMetrics = React.useMemo(() => {
         if (!survey.scoringEnabled || responses.length === 0) return null;
         
@@ -179,7 +247,6 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         const total = scores.reduce((a, b) => a + b, 0);
         const avg = total / responses.length;
         
-        // Outcome breakdown
         const ruleCounts: Record<string, number> = {};
         survey.resultRules?.forEach(rule => { ruleCounts[rule.id] = 0; });
         
@@ -202,7 +269,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
         return { avg, total, outcomeData };
     }, [survey, responses]);
 
-    // 2. Question-by-Question Analytics
+    // 4. Question-by-Question Analytics
     const analyzedResults: AnalyzedResult[] = React.useMemo(() => {
         if (!survey || !responses) return [];
         const questions = survey.elements.filter(isQuestion);
@@ -269,8 +336,17 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                     <CardContent className="p-4 flex items-center gap-4">
                         <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Responses</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Submissions</p>
                             <p className="text-2xl font-black">{responses.length}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-card shadow-sm">
+                    <CardContent className="p-4 flex items-center gap-4">
+                        <div className="bg-orange-100 p-2.5 rounded-xl text-orange-600"><MousePointer2 className="h-5 w-5" /></div>
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Total Visits</p>
+                            <p className="text-2xl font-black">{sessions?.length || 0}</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -285,7 +361,7 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                                 </div>
                             </CardContent>
                         </Card>
-                        <Card className="bg-card shadow-sm md:col-span-2">
+                        <Card className="bg-card shadow-sm">
                             <CardContent className="p-4 flex items-center gap-4">
                                 <div className="bg-purple-500/10 p-2.5 rounded-xl"><Target className="h-5 w-5 text-purple-600" /></div>
                                 <div className="flex-grow">
@@ -302,6 +378,106 @@ export default function AnalyticsView({ survey, responses }: { survey: Survey; r
                     </>
                 )}
             </div>
+
+            {/* DROP-OFF ANALYTICS FUNNEL */}
+            {funnelData.length > 1 && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card className="lg:col-span-2">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-black uppercase tracking-[0.2em] flex items-center gap-2">
+                                <TrendingDown className="h-4 w-4 text-orange-500" /> Progression Funnel
+                            </CardTitle>
+                            <CardDescription>Visualizing step-by-step participant retention.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[300px] p-8">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={funnelData} layout="vertical" margin={{ top: 0, right: 100, left: 20, bottom: 0 }}>
+                                    <XAxis type="number" hide />
+                                    <YAxis dataKey="label" type="category" axisLine={false} tickLine={false} fontSize={10} width={100} tick={{ fontWeight: 'bold' }} />
+                                    <Tooltip 
+                                        cursor={{ fill: 'transparent' }}
+                                        content={({ active, payload }) => {
+                                            if (active && payload && payload.length) {
+                                                const d = payload[0].payload;
+                                                return (
+                                                    <div className="bg-background border rounded-lg p-3 shadow-2xl text-xs space-y-1">
+                                                        <p className="font-black uppercase tracking-widest">{d.label}</p>
+                                                        <p className="text-primary font-bold">{d.count} Sessions Reached</p>
+                                                        <p className="text-muted-foreground">{d.percentage.toFixed(1)}% of total traffic</p>
+                                                    </div>
+                                                );
+                                            }
+                                            return null;
+                                        }}
+                                    />
+                                    <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={32}>
+                                        {funnelData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
+                                        ))}
+                                        <LabelList 
+                                            dataKey="count" 
+                                            position="right" 
+                                            content={(props: any) => {
+                                                const { x, y, width, height, value, index } = props;
+                                                const pct = funnelData[index].percentage;
+                                                return (
+                                                    <text x={x + width + 10} y={y + height / 2 + 4} className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground">
+                                                        {value} ({pct.toFixed(0)}%)
+                                                    </text>
+                                                );
+                                            }}
+                                        />
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="flex flex-col">
+                        <CardHeader>
+                            <CardTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 text-rose-500" /> High Drop-off Audit
+                            </CardTitle>
+                            <CardDescription>Identifying critical friction points.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="flex-1 overflow-hidden">
+                            {dropoffInsights.length > 0 ? (
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow className="hover:bg-transparent bg-muted/30">
+                                            <TableHead className="text-[9px] font-black uppercase">Transition</TableHead>
+                                            <TableHead className="text-right text-[9px] font-black uppercase">Loss %</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {dropoffInsights.slice(0, 5).map((insight, idx) => (
+                                            <TableRow key={idx} className="group transition-colors">
+                                                <TableCell className="py-3">
+                                                    <p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p>
+                                                    <p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Users Lost</p>
+                                                </TableCell>
+                                                <TableCell className="text-right py-3">
+                                                    <Badge variant="outline" className={cn(
+                                                        "h-5 text-[9px] font-black uppercase border-none",
+                                                        insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600"
+                                                    )}>
+                                                        {insight.lossPercentage.toFixed(0)}%
+                                                    </Badge>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            ) : (
+                                <div className="h-full flex flex-col items-center justify-center text-center opacity-30 p-8">
+                                    <UserMinus className="h-10 w-10 mb-2" />
+                                    <p className="text-[10px] font-black uppercase tracking-widest">Optimal Retention</p>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Score & Outcome Visualizations */}
             {survey.scoringEnabled && scoringMetrics && scoringMetrics.outcomeData && scoringMetrics.outcomeData.length > 0 && (
