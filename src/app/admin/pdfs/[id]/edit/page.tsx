@@ -77,6 +77,13 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
+const stepTransition = {
+    initial: { opacity: 0, x: 20 },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: -20 },
+    transition: { type: 'spring', damping: 25, stiffness: 200 }
+};
+
 const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
     const steps = [
         { name: 'Details', icon: Settings2 },
@@ -700,9 +707,7 @@ export default function EditPdfPage() {
                                                 </CardHeader>
                                                 <CardContent className="p-6 space-y-6">
                                                     <div className="p-5 bg-white border border-primary/20 rounded-[2rem] shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                                                        <div className="flex items-center gap-4"><div className="p-3 bg-primary/10 rounded-2xl text-primary"><Mail className="h-6 w-6" /></div><div className="space-y-0.5"><Label className="text-base font-black uppercase tracking-tight">Public Acknowledgement</Label><p className="text-xs text-muted-foreground font-medium">Notify parent/respondent</p></div></div>
-                                                        <Controller name="confirmationMessagingEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />} />
-                                                    </div>
+                                                        <div className="flex items-center gap-4"><div className="p-3 bg-primary/10 rounded-2xl text-primary"><Mail className="h-6 w-6" /></div><div className="space-y-0.5"><Label className="text-base font-black uppercase tracking-tight">Public Acknowledgement</Label><p className="text-xs text-muted-foreground font-medium">Notify parent/respondent</p></div></div><Controller name="confirmationMessagingEnabled" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} className="scale-110" />} /></div>
                                                     <AnimatePresence>{watch('confirmationMessagingEnabled') && (<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="space-y-6"><div className="grid gap-4"><div className="space-y-2"><div className="flex justify-between items-center px-1"><Label className="text-[10px] font-black uppercase tracking-widest text-primary/60">Template</Label><Button type="button" variant="ghost" size="sm" className="h-6 px-2 text-[9px] font-black uppercase tracking-tighter text-primary gap-1" onClick={() => setIsQuickCreateOpen(true)}><PlusCircle className="h-3 w-3" /> New Template</Button></div><Controller name="confirmationTemplateId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all"><SelectValue placeholder="Select template..." /></SelectTrigger><SelectContent className="rounded-2xl"><SelectItem value="none">No Template Selected</SelectItem>{templates?.filter(t => t.isActive).map(t => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}</SelectContent></Select>)} /></div><div className="space-y-2"><Label className="text-[10px] font-black uppercase tracking-widest text-primary/60 ml-1">Resolved From Identity</Label><Controller name="confirmationSenderProfileId" control={form.control} render={({ field }) => (<Select onValueChange={field.onChange} value={field.value || 'none'}><SelectTrigger className="h-12 bg-white rounded-2xl shadow-sm border-primary/10 font-bold transition-all"><ShieldCheck className="h-4 w-4 mr-2 text-primary/40" /><SelectValue placeholder="Auto-Resolve (Default)" /></SelectTrigger><SelectContent className="rounded-2xl"><SelectItem value="none">Auto-Resolve (Channel Default)</SelectItem>{profiles?.map(p => (<SelectItem key={p.id} value={p.id}>{p.name} ({p.identifier})</SelectItem>))}</SelectContent></Select>)} /></div></div></motion.div>)}</AnimatePresence>
                                                 </CardContent>
                                             </Card>

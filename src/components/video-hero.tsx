@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -81,7 +80,7 @@ export default function VideoHero({ videoUrl, thumbnailUrl, title, videoCaption,
                     
                     <div className="text-center">
                         <p className="text-[12px] font-black uppercase tracking-[0.3em] text-white drop-shadow-md">
-                            {videoCaption || 'Click to watch video'}
+                            {videoCaption || 'Click to watch this video'}
                         </p>
                     </div>
                 </div>
