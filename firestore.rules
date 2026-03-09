@@ -123,22 +123,21 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
+    // Publicly accessible for anonymous progress tracking
     match /survey_sessions/{sessionId} {
-      allow create: if true;
-      allow update: if true;
+      allow create, update: if true;
       allow read, list: if isAuthorized();
     }
 
+    // Publicly accessible for anonymous scroll progress tracking
     match /pdf_sessions/{sessionId} {
-      allow create: if true;
-      allow update: if true;
+      allow create, update: if true;
       allow read, list: if isAuthorized();
     }
 
+    // Publicly accessible for campaign metrics
     match /campaign_sessions/{sessionId} {
-      allow create: if true;
-      allow update: if true;
-      allow read, list: if true;
+      allow read, list, create, update: if true;
     }
   }
 }
