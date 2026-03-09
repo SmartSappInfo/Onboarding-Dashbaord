@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { TextCursorInput, ImageIcon, Crop, Percent, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatBytes } from '@/lib/utils';
