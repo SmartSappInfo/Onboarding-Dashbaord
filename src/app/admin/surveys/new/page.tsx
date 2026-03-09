@@ -488,6 +488,7 @@ export default function NewSurveyPage() {
                         </div>
                     </div>
                 </div>
+                <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={(id) => { setIsErrorModalOpen(false); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} />
             </div>
         </FormProvider>
     );

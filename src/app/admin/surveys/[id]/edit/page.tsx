@@ -35,7 +35,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappIcon } from '@/components/icons';
+import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 
@@ -490,10 +490,8 @@ export default function EditSurveyPage() {
                         </div>
                     </div>
                 </div>
+                <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={(id) => { setIsErrorModalOpen(false); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} />
             </div>
-
-            <ValidationErrorModal open={isErrorModalOpen} onOpenChange={setIsErrorModalOpen} errors={validationErrors} onFix={(id) => { setIsErrorModalOpen(false); setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100); }} />
-        </div>
-    </FormProvider>
+        </FormProvider>
     );
 }
