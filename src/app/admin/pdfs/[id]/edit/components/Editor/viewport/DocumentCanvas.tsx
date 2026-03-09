@@ -16,6 +16,7 @@ import { useEditor } from '../EditorContext';
 import { PageRenderer } from './PageRenderer';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useToast } from '@/hooks/use-toast';
+import { EditorContextMenu } from './ContextMenu';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -217,39 +218,41 @@ export function DocumentCanvas() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
-        <div 
-          className="p-8 sm:p-16 pb-64 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
-          style={{ minWidth: 'fit-content' }}
-          onMouseDown={onMouseDown}
-          onMouseMove={onMouseMove}
-          onMouseUp={onMouseUp}
-          onMouseLeave={() => setMarquee(null)}
-        >
-          {!pdfDoc ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" key={i} />
-            ))
-          ) : (
-            Array.from({ length: pdfDoc.numPages }).map((_, i) => (
-              <PageRenderer key={i} pdfDoc={pdfDoc} pageNumber={i + 1} />
-            ))
-          )}
+      <EditorContextMenu>
+        <ScrollArea className="h-full w-full bg-muted/30" viewportRef={viewportRef}>
+          <div 
+            className="p-8 sm:p-16 pb-64 flex flex-col items-center min-w-full relative touch-pan-x touch-pan-y" 
+            style={{ minWidth: 'fit-content' }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={() => setMarquee(null)}
+          >
+            {!pdfDoc ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton className="w-[8.5in] h-[11in] bg-card shadow-xl rounded-lg mb-12" key={i} />
+              ))
+            ) : (
+              Array.from({ length: pdfDoc.numPages }).map((_, i) => (
+                <PageRenderer key={i} pdfDoc={pdfDoc} pageNumber={i + 1} />
+              ))
+            )}
 
-          {marquee && (
-            <div 
-              className="absolute border border-primary bg-primary/10 pointer-events-none z-[100] rounded-sm"
-              style={{
-                left: Math.min(marquee.startX, marquee.endX),
-                top: Math.min(marquee.startY, marquee.endY),
-                width: Math.abs(marquee.endX - marquee.startX),
-                height: Math.abs(marquee.endY - marquee.startY)
-              }}
-            />
-          )}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+            {marquee && (
+              <div 
+                className="absolute border border-primary bg-primary/10 pointer-events-none z-[100] rounded-sm"
+                style={{
+                  left: Math.min(marquee.startX, marquee.endX),
+                  top: Math.min(marquee.startY, marquee.endY),
+                  width: Math.abs(marquee.endX - marquee.startX),
+                  height: Math.abs(marquee.endY - marquee.startY)
+                }}
+              />
+            )}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
+      </EditorContextMenu>
     </DndContext>
   );
 }

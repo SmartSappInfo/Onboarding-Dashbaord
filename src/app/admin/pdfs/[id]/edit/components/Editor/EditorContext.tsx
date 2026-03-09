@@ -12,6 +12,7 @@ interface EditorContextType {
   selectedFieldIds: string[];
   zoom: number;
   numPages: number;
+  activePageNumber: number;
   isSidebarCollapsed: boolean;
   isFullScreen: boolean;
   viewMode: EditorViewMode;
@@ -31,6 +32,7 @@ interface EditorContextType {
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
   setNumPages: React.Dispatch<React.SetStateAction<number>>;
+  setActivePageNumber: React.Dispatch<React.SetStateAction<number>>;
   setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   setIsFullScreen: React.Dispatch<React.SetStateAction<boolean>>;
   setViewMode: React.Dispatch<React.SetStateAction<EditorViewMode>>;
@@ -47,7 +49,7 @@ interface EditorContextType {
   setPasswordProtected: (val: boolean) => void;
   
   // High-level Handlers
-  addField: (type: LocalPDFFormField['type']) => void;
+  addField: (type: LocalPDFFormField['type'], pageNumber?: number, position?: { x: number, y: number }) => void;
   updateField: (id: string, props: Partial<LocalPDFFormField>) => void;
   removeField: (id: string) => void;
   duplicateFields: (ids: string[]) => void;
@@ -112,20 +114,26 @@ export function EditorProvider({
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [zoom, setZoom] = React.useState(1.0);
   const [numPages, setNumPages] = React.useState(0);
+  const [activePageNumber, setActivePageNumber] = React.useState(1);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<EditorViewMode>('design');
   const [marquee, setMarquee] = React.useState<MarqueeState | null>(null);
   const [isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen] = React.useState(false);
 
-  const addField = React.useCallback((type: LocalPDFFormField['type']) => {
+  const addField = React.useCallback((type: LocalPDFFormField['type'], pageNumber?: number, position?: { x: number, y: number }) => {
+    const targetPage = pageNumber || activePageNumber;
+    // Standard default dimensions
+    const width = type === 'signature' ? 25 : type === 'photo' ? 15 : 20;
+    const height = type === 'signature' ? 10 : type === 'photo' ? 15 : 4;
+
     const newField: LocalPDFFormField = {
       id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       label: type === 'static-text' ? 'Label Text' : `New ${type}`,
       type,
-      pageNumber: 1,
-      position: { x: 10, y: 10 },
-      dimensions: { width: 20, height: 5 },
+      pageNumber: targetPage,
+      position: position || { x: (100 - width) / 2, y: 45 }, // Default to horizontal center
+      dimensions: { width, height },
       required: false,
       alignment: 'center', 
       verticalAlignment: 'center', 
@@ -135,7 +143,7 @@ export function EditorProvider({
     };
     setFields(prev => [...prev, newField]);
     setSelectedFieldIds([newField.id]);
-  }, [setFields]);
+  }, [activePageNumber, setFields]);
 
   const updateField = React.useCallback((id: string, props: Partial<LocalPDFFormField>) => {
     setFields(prev => prev.map(f => f.id === id ? { ...f, ...props } : f));
@@ -229,17 +237,17 @@ export function EditorProvider({
   }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
-    setFields, setSelectedFieldIds, setZoom, setNumPages, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
+    setFields, setSelectedFieldIds, setZoom, setNumPages, setActivePageNumber, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     setIsFieldDeleteConfirmOpen,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
-    setFields, setNamingFieldId, setNumPages, setIsFieldDeleteConfirmOpen,
+    setFields, setNamingFieldId, setNumPages, setActivePageNumber, setIsFieldDeleteConfirmOpen,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo

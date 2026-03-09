@@ -5,7 +5,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useEditor } from '../EditorContext';
 import { FieldOverlay } from './FieldOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable } from '@nd-kit/core';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -15,7 +15,8 @@ interface PageRendererProps {
 }
 
 export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumber }: PageRendererProps) {
-  const { fields, zoom } = useEditor();
+  const { fields, zoom, setActivePageNumber } = useEditor();
+  const containerRef = React.useRef<HTMLDivElement>(null);
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
   const renderTaskRef = React.useRef<any>(null);
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
@@ -29,6 +30,26 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
       pageNumber
     }
   });
+
+  // Track page visibility to determine active page for insertion
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+            setActivePageNumber(pageNumber);
+          }
+        });
+      },
+      { threshold: [0.1, 0.5, 0.9] }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [pageNumber, setActivePageNumber]);
 
   React.useEffect(() => {
     let isMounted = true;
@@ -81,9 +102,14 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
     [fields, pageNumber]
   );
 
+  const combinedRef = (node: HTMLDivElement) => {
+    containerRef.current = node;
+    setDroppableRef(node);
+  };
+
   return (
     <div 
-      ref={setDroppableRef}
+      ref={combinedRef}
       data-page-number={pageNumber}
       className="relative mx-auto shadow-2xl mb-12 bg-white flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg"
       style={{ width: dimensions.width || 816, height: dimensions.height || 1056 }}
