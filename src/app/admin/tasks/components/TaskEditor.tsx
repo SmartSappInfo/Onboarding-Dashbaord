@@ -120,8 +120,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl rounded-[2rem] overflow-hidden p-0 border-none shadow-2xl">
-                <form onSubmit={handleSubmit(onSubmit)}>
+            <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+                <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
                     <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
                         <div className="flex items-center gap-4">
                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
@@ -129,153 +129,155 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                             </div>
                             <div>
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tight">
-                                    {task ? 'Modify Intervention' : 'Initialize Action'}
+                                    {task ? 'Update Task' : 'Create Task'}
                                 </DialogTitle>
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                    Define an operational task for the onboarding force.
+                                    Schedule tasks and get reminders when they're due.
                                 </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
 
-                    <ScrollArea className="max-h-[60vh]">
-                        <div className="p-8 space-y-8">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Task Objective</Label>
-                                <Input 
-                                    {...register('title')} 
-                                    placeholder="e.g. Schedule Campus Drone Inspection" 
-                                    className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6 shadow-inner"
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operational Instructions</Label>
-                                <Textarea 
-                                    {...register('description')} 
-                                    placeholder="Describe the steps required to complete this task..." 
-                                    className="min-h-[120px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Priority Level</Label>
-                                    <Controller
-                                        name="priority"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
-                                                {(['low', 'medium', 'high', 'critical'] as const).map(p => (
-                                                    <button
-                                                        key={p}
-                                                        type="button"
-                                                        onClick={() => field.onChange(p)}
-                                                        className={cn(
-                                                            "h-10 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all",
-                                                            field.value === p 
-                                                                ? p === 'critical' ? "bg-rose-600 text-white shadow-lg" : 
-                                                                  p === 'high' ? "bg-orange-500 text-white shadow-lg" :
-                                                                  "bg-white shadow-lg text-primary"
-                                                                : "text-muted-foreground opacity-60 hover:opacity-100"
-                                                        )}
-                                                    >
-                                                        {p}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    />
-                                </div>
-
-                                <div className="space-y-4">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">2. Action Category</Label>
-                                    <Controller
-                                        name="category"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="general">General Task</SelectItem>
-                                                    <SelectItem value="call">Phone Follow-up</SelectItem>
-                                                    <SelectItem value="visit">Physical Visit</SelectItem>
-                                                    <SelectItem value="document">Legal / Document</SelectItem>
-                                                    <SelectItem value="training">Staff Training</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        )}
-                                    />
-                                </div>
-                            </div>
-
-                            <Separator className="bg-border/50" />
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div className="flex-1 overflow-hidden">
+                        <ScrollArea className="h-full">
+                            <div className="p-8 space-y-8">
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
-                                        <User className="h-3 w-3" /> Task Owner
-                                    </Label>
-                                    <Controller
-                                        name="assignedTo"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
-                                                    <SelectValue placeholder="Assign to..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {users?.map(u => (
-                                                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        )}
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Task Objective</Label>
+                                    <Input 
+                                        {...register('title')} 
+                                        placeholder="e.g. Schedule Campus Drone Inspection" 
+                                        className="h-12 rounded-xl bg-muted/20 border-none font-bold text-lg px-6 shadow-inner"
                                     />
                                 </div>
 
                                 <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Operational Instructions</Label>
+                                    <Textarea 
+                                        {...register('description')} 
+                                        placeholder="Describe the steps required to complete this task..." 
+                                        className="min-h-[120px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Priority Level</Label>
+                                        <Controller
+                                            name="priority"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                                    {(['low', 'medium', 'high', 'critical'] as const).map(p => (
+                                                        <button
+                                                            key={p}
+                                                            type="button"
+                                                            onClick={() => field.onChange(p)}
+                                                            className={cn(
+                                                                "h-10 rounded-xl font-black uppercase text-[9px] tracking-widest transition-all",
+                                                                field.value === p 
+                                                                    ? p === 'critical' ? "bg-rose-600 text-white shadow-lg" : 
+                                                                      p === 'high' ? "bg-orange-500 text-white shadow-lg" :
+                                                                      "bg-white shadow-lg text-primary"
+                                                                    : "text-muted-foreground opacity-60 hover:opacity-100"
+                                                            )}
+                                                        >
+                                                            {p}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">2. Action Category</Label>
+                                        <Controller
+                                            name="category"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="general">General Task</SelectItem>
+                                                        <SelectItem value="call">Phone Follow-up</SelectItem>
+                                                        <SelectItem value="visit">Physical Visit</SelectItem>
+                                                        <SelectItem value="document">Legal / Document</SelectItem>
+                                                        <SelectItem value="training">Staff Training</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                <Separator className="bg-border/50" />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
+                                            <User className="h-3 w-3" /> Task Owner
+                                        </Label>
+                                        <Controller
+                                            name="assignedTo"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                                        <SelectValue placeholder="Assign to..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        {users?.map(u => (
+                                                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
+                                            <Building className="h-3 w-3" /> Target School
+                                        </Label>
+                                        <Controller
+                                            name="schoolId"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                                        <SelectValue placeholder="Independent" />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="none">Independent (No School)</SelectItem>
+                                                        {schools?.map(s => (
+                                                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 pb-8">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
-                                        <Building className="h-3 w-3" /> Target School
+                                        <Clock className="h-3 w-3" /> Dead-line Target
                                     </Label>
                                     <Controller
-                                        name="schoolId"
+                                        name="dueDate"
                                         control={control}
                                         render={({ field }) => (
-                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
-                                                    <SelectValue placeholder="Independent" />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    <SelectItem value="none">Independent (No School)</SelectItem>
-                                                    {schools?.map(s => (
-                                                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <DateTimePicker value={field.value} onChange={field.onChange} />
                                         )}
                                     />
                                 </div>
                             </div>
+                        </ScrollArea>
+                    </div>
 
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
-                                    <Clock className="h-3 w-3" /> Dead-line Target
-                                </Label>
-                                <Controller
-                                    name="dueDate"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <DateTimePicker value={field.value} onChange={field.onChange} />
-                                    )}
-                                />
-                            </div>
-                        </div>
-                    </ScrollArea>
-
-                    <DialogFooter className="bg-muted/30 p-6 border-t flex justify-between items-center sm:justify-between">
+                    <DialogFooter className="bg-muted/30 p-6 border-t shrink-0 flex justify-between items-center sm:justify-between">
                         <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl h-12 px-8">Cancel</Button>
                         <Button 
                             type="submit" 
