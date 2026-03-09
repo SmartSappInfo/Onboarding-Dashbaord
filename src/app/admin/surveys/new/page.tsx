@@ -1,11 +1,13 @@
-
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { format } from 'date-fns';
+import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus, Layout, Video } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { collection, addDoc, setDoc, doc, query, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -19,7 +21,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -30,7 +31,7 @@ import { FocalPersonManager } from '../components/FocalPersonManager';
 import { logActivity } from '@/lib/activity-logger';
 import { type UserProfile, type School, type SurveyElement, type SurveyQuestion } from '@/lib/types';
 import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Loader2, Palette, Layout, Eye, ArrowLeft, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle, Video } from 'lucide-react';
+import { Check, Palette, Eye, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import SurveyPreviewButton from '../components/survey-preview-button';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
@@ -43,6 +44,7 @@ import { SmartSappIcon } from '@/components/icons';
 import AiChatEditor from '../components/ai-chat-editor';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
+import { MediaSelect } from '@/app/admin/schools/components/media-select';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -116,7 +118,7 @@ const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSche
 
 const formSchema = z.object({
   internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
-  title: z.string().min(5, { message: 'Public title must be at least 5 characters.' }),
+  title: z.string().min(5, { message: 'Title must be at least 5 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   elements: z.array(elementSchema).min(1, 'Survey must have at least one element.'),
   thankYouTitle: z.string().optional(),
@@ -148,6 +150,9 @@ const formSchema = z.object({
   adminAlertSpecificUserIds: z.array(z.string()).default([]),
   adminAlertEmailTemplateId: z.string().optional(),
   adminAlertSmsTemplateId: z.string().optional(),
+  automationMessagingEnabled: z.boolean().default(false),
+  schoolId: z.string().optional().nullable(),
+  schoolName: z.string().optional().nullable(),
 });
 
 type FormData = z.infer<typeof formSchema>;

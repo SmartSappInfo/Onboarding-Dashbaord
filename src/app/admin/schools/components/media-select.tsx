@@ -9,6 +9,7 @@ import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import * as React from 'react';
+import { motion } from 'framer-motion';
 
 export interface MediaSelectProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
     value?: string;
