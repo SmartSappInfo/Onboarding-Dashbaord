@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -80,8 +79,9 @@ export default function SubmissionsPage() {
   const [isExportingCSV, setIsExportingCSV] = React.useState(false);
   const [isExportingPDF, setIsExportingPDF] = React.useState(false);
 
-  // Multi-select state
+  // Multi-select and Single Delete state
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
+  const [submissionToDelete, setSubmissionToDelete] = React.useState<Submission | null>(null);
   const [isDeletingSelected, setIsDeletingSelected] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
@@ -311,14 +311,17 @@ export default function SubmissionsPage() {
     }
   };
 
-  const handleDeleteSelected = async () => {
-    if (selectedIds.length === 0 || !user || !pdf) return;
+  const handleDeleteConfirmed = async () => {
+    const idsToDelete = submissionToDelete ? [submissionToDelete.id] : selectedIds;
+    if (idsToDelete.length === 0 || !user || !pdf) return;
+    
     setIsDeletingSelected(true);
     try {
-        const result = await deleteSubmissions(pdf.id, selectedIds, user.uid);
+        const result = await deleteSubmissions(pdf.id, idsToDelete, user.uid);
         if (result.success) {
-            toast({ title: 'Submissions Deleted', description: `${selectedIds.length} records have been removed.` });
-            setSelectedIds([]);
+            toast({ title: 'Submissions Deleted', description: `${idsToDelete.length} records have been removed.` });
+            if (submissionToDelete) setSubmissionToDelete(null);
+            else setSelectedIds([]);
         } else {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         }
@@ -491,9 +494,35 @@ export default function SubmissionsPage() {
                                         {format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}
                                     </TableCell>
                                     <TableCell className="text-right pr-6">
-                                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}><Eye className="h-4 w-4 text-primary" /></Link></Button>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => handleDownloadClick(submission.id)} disabled={!!downloadingId}><Download className="h-4 w-4" /></Button>
+                                        <div className="flex items-center justify-end gap-1">
+                                            <DropdownMenu modal={false}>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl">
+                                                    <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Entry Actions</DropdownMenuLabel>
+                                                    <DropdownMenuItem asChild className="rounded-lg p-2.5 gap-3">
+                                                        <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`}>
+                                                            <Eye className="h-4 w-4 text-primary" />
+                                                            <span className="font-bold text-sm">View Detail</span>
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleDownloadClick(submission.id)} className="rounded-lg p-2.5 gap-3">
+                                                        <Download className="h-4 w-4 text-primary" />
+                                                        <span className="font-bold text-sm">Download PDF</span>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem 
+                                                        onClick={() => setSubmissionToDelete(submission)}
+                                                        className="rounded-lg p-2.5 gap-3 text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="font-bold text-sm">Delete Record</span>
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </div>
                                     </TableCell>
                                 </TableRow>
@@ -615,19 +644,32 @@ export default function SubmissionsPage() {
         </Tabs>
       </div>
 
-      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+      {/* Confirmation Dialog for Individual and Bulk Deletion */}
+      <AlertDialog 
+        open={showDeleteConfirm || !!submissionToDelete} 
+        onOpenChange={(o) => { if(!o) { setShowDeleteConfirm(false); setSubmissionToDelete(null); } }}
+      >
         <AlertDialogContent className="rounded-[2rem]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-black text-xl uppercase tracking-tight text-rose-600">Purge {selectedIds.length} Records?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium">
-              This will permanently delete the selected submission records and their high-fidelity signed documents. This action is immutable.
+            <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                <AlertCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <AlertDialogTitle className="font-black text-xl uppercase tracking-tight text-center">
+                {submissionToDelete ? 'Purge Signed Document?' : `Purge ${selectedIds.length} Records?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-center">
+              This will permanently delete the {submissionToDelete ? 'selected submission record' : 'selected records'} and the associated high-fidelity signed document. This action is immutable and cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel disabled={isDeletingSelected} className="rounded-xl font-bold">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteSelected} disabled={isDeletingSelected} className="rounded-xl font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">
+          <AlertDialogFooter className="mt-4 sm:justify-center gap-3">
+            <AlertDialogCancel disabled={isDeletingSelected} className="rounded-xl font-bold px-8">Keep Records</AlertDialogCancel>
+            <AlertDialogAction 
+                onClick={handleDeleteConfirmed} 
+                disabled={isDeletingSelected} 
+                className="rounded-xl font-black px-10 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95"
+            >
               {isDeletingSelected ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Acknowledge & Delete
+              Confirm Deletion
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
