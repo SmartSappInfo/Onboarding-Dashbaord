@@ -1,50 +1,49 @@
+
 'use client';
 
 import * as React from 'react';
-import { useForm, FormProvider, Controller } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
-import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus, Layout, Video } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
-import { collection, addDoc, setDoc, doc, query, orderBy } from 'firebase/firestore';
-
-import { Button } from '@/components/ui/button';
-import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
+import { 
+    Check, 
+    Loader2, 
+    ArrowLeft, 
+    ArrowRight, 
+    Save, 
+    ShieldCheck, 
+    Plus,
+    Layout,
+    Eye,
+    Settings2,
+    Undo,
+    Redo,
+    X,
+    Sparkles,
+    Zap,
+    Share2
+} from 'lucide-react';
+import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useCollection, useMemoFirebase } from '@/firebase';
-import { ModuleSelect } from '../components/ModuleSelect';
-import { ZoneSelect } from '../components/ZoneSelect';
-import { FocalPersonManager } from '../components/FocalPersonManager';
-import { logActivity } from '@/lib/activity-logger';
-import { type UserProfile, type School, type SurveyElement, type SurveyQuestion } from '@/lib/types';
-import SurveyFormBuilder from '../components/survey-form-builder';
-import { Check, Palette, Eye, ArrowRight, Save, Globe, ShieldCheck, Zap, PlusCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import SurveyPreviewButton from '../components/survey-preview-button';
-import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
-import ResultsStep from '../components/results-step';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
-import WebhookManager from '../components/webhook-manager';
+import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useUndoRedo } from '@/hooks/use-undo-redo';
+import { useDebounce } from '@/hooks/use-debounce';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon } from '@/components/icons';
-import AiChatEditor from '../components/ai-chat-editor';
-import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
-import { MediaSelect } from '@/app/admin/schools/components/media-select';
+import { cn } from '@/lib/utils';
+
+// Extracted Modular Components
+import Step1Details from '../components/step-1-details';
+import SurveyFormBuilder from '../components/survey-form-builder';
+import ResultsStep from '../components/results-step';
+import Step4Publish from '../components/step-4-publish';
+import LivePreviewPane from '../components/live-preview-pane';
+import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
+import AiChatEditor from '../components/ai-chat-editor';
 
 const questionSchema = z.object({
   id: z.string(),
@@ -127,12 +126,12 @@ const formSchema = z.object({
   bannerImageUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   videoThumbnailUrl: z.string().url().optional().or(z.literal('')),
+  videoCaption: z.string().optional(),
   backgroundColor: z.string().optional(),
   backgroundPattern: z.enum(['none', 'dots', 'grid', 'circuit', 'topography', 'cubes', 'gradient']).default('none'),
   patternColor: z.string().optional(),
   status: z.enum(['draft', 'published', 'archived']),
   slug: z.string().min(3, 'Slug must be at least 3 characters.').regex(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens.'}),
-  webhookUrl: z.string().url({ message: 'Please enter a valid URL.' }).optional().or(z.literal('')),
   webhookId: z.string().optional(),
   webhookEnabled: z.boolean().default(false),
   showDebugProcessingModal: z.boolean().default(false),
@@ -158,44 +157,49 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
-    const steps = ['Details', 'Builder', 'Results', 'Publish'];
+    const steps = [
+        { n: 1, label: 'Details', icon: Settings2 },
+        { n: 2, label: 'Builder', icon: Layout },
+        { n: 3, label: 'Results', icon: Zap },
+        { n: 4, label: 'Publish', icon: Share2 }
+    ];
 
     return (
         <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
             {steps.map((step, index) => {
-                const stepNum = index + 1;
-                const isCompleted = currentStep > stepNum;
-                const isActive = currentStep === stepNum;
+                const isActive = currentStep === step.n;
+                const isCompleted = currentStep > step.n;
+                const Icon = step.icon;
 
                 return (
-                    <React.Fragment key={step}>
+                    <React.Fragment key={step.label}>
                         <button 
                             type="button"
-                            onClick={() => onStepClick(stepNum)}
+                            onClick={() => onStepClick(step.n)}
                             className="flex flex-col items-center group outline-none"
                         >
                             <div
                                 className={cn(
-                                    'flex items-center justify-center w-8 h-8 rounded-full border-2 transition-all group-hover:scale-110',
-                                    isCompleted ? 'bg-primary border-primary text-primary-foreground' : 
+                                    'flex items-center justify-center w-9 h-9 rounded-2xl border-2 transition-all duration-300 shadow-sm',
+                                    isCompleted ? 'bg-primary border-primary text-white' : 
                                     isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
                                 )}
                             >
-                                {isCompleted ? <Check className="w-4 h-4" /> : <span className="text-[10px] font-black">{stepNum}</span>}
+                                {isCompleted ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
                             </div>
                             <p className={cn(
-                                'mt-2 text-[10px] font-black uppercase tracking-widest transition-colors', 
+                                'mt-3 text-[10px] font-black uppercase tracking-widest transition-colors', 
                                 isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
                             )}>
-                                {step}
+                                {step.label}
                             </p>
                         </button>
                         {index < steps.length - 1 && (
-                            <div className="flex-1 mx-4 h-[1px] bg-border relative overflow-hidden">
+                            <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative">
                                 <motion.div 
                                     initial={false}
                                     animate={{ width: isCompleted ? '100%' : '0%' }}
-                                    className="absolute left-0 top-0 h-full bg-primary"
+                                    className="absolute inset-0 bg-primary"
                                 />
                             </div>
                         )}
@@ -207,13 +211,18 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
 };
 
 export default function NewSurveyPage() {
-    const { toast } = useToast();
     const router = useRouter();
+    const pathname = usePathname();
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const { user } = useUser();
+    
+    // UI State
     const [step, setStep] = React.useState(1);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
     const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
+    const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
     const schoolsQuery = useMemoFirebase(() => {
         if (!firestore) return null;
@@ -227,7 +236,7 @@ export default function NewSurveyPage() {
             internalName: '',
             title: '',
             description: '',
-            status: 'published',
+            status: 'draft',
             elements: [
                 {
                     id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -244,11 +253,11 @@ export default function NewSurveyPage() {
             bannerImageUrl: '',
             videoUrl: '',
             videoThumbnailUrl: '',
+            videoCaption: '',
             backgroundColor: '#F1F5F9',
             backgroundPattern: 'none',
             patternColor: '#3B5FFF',
             slug: '',
-            webhookUrl: '',
             webhookId: '',
             webhookEnabled: false,
             showDebugProcessingModal: false,
@@ -267,76 +276,76 @@ export default function NewSurveyPage() {
         },
     });
 
-    const { getValues, watch, setValue, trigger } = form;
-    const watchedBgColor = watch('backgroundColor');
-    const watchedPattern = watch('backgroundPattern');
-    const watchedPatternColor = watch('patternColor');
-    const watchedInternalName = watch('internalName');
+    const { getValues, setValue, watch, trigger, reset } = form;
+
+    const {
+        state: historyState,
+        set: setHistory,
+        undo: undoHistory,
+        redo: redoHistory,
+        canUndo,
+        canRedo,
+        reset: resetHistory
+    } = useUndoRedo<any>([]);
+
+    const isProgrammaticChange = React.useRef(false);
+    const debouncedFields = useDebounce(watch('elements'), 800);
 
     React.useEffect(() => {
-        const currentTitle = getValues('title');
-        if (watchedInternalName && !currentTitle) {
-            setValue('title', watchedInternalName, { shouldValidate: true });
+        resetHistory(getValues('elements'));
+    }, [getValues, resetHistory]);
+
+    React.useEffect(() => {
+        if (isProgrammaticChange.current) return;
+        setHistory(debouncedFields);
+    }, [debouncedFields, setHistory]);
+
+    React.useEffect(() => {
+        if (isProgrammaticChange.current) {
+            setValue('elements', historyState, { shouldDirty: true });
+            isProgrammaticChange.current = false;
         }
-    }, [watchedInternalName, getValues, setValue]);
+    }, [historyState, setValue]);
 
-    const parseValidationErrors = (errors: any, elements: SurveyElement[]): ValidationError[] => {
-        const parsed: ValidationError[] = [];
-        if (!errors.elements || !Array.isArray(errors.elements)) return parsed;
-
-        errors.elements.forEach((err: any, index: number) => {
-            if (!err) return;
-            const element = elements[index];
-            const blockType = element.type.charAt(0).toUpperCase() + element.type.slice(1);
+    const onSubmit = async (data: FormData) => {
+        setIsSaving(true);
+        const { resultPages, ...mainData } = data;
+        
+        try {
+            const surveyRef = await addDoc(collection(firestore!, 'surveys'), {
+                ...mainData,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            });
             
-            let blockTitle = `Block #${index + 1} (${blockType})`;
-            if ('title' in element && element.title) {
-                blockTitle = `Block #${index + 1}: "${element.title}"`;
-            } else if ('isRequired' in element && (element as SurveyQuestion).title) {
-                blockTitle = `Question #${index + 1}: "${(element as SurveyQuestion).title}"`;
+            if (resultPages && resultPages.length > 0) {
+                const pagesCol = collection(firestore!, `surveys/${surveyRef.id}/resultPages`);
+                for (const page of resultPages) {
+                    await setDoc(doc(pagesCol, page.id), page);
+                }
             }
 
-            Object.keys(err).forEach(field => {
-                const fieldName = field.charAt(0).toUpperCase() + field.slice(1);
-                parsed.push({
-                    elementId: element.id,
-                    blockTitle,
-                    field: fieldName,
-                    message: err[field]?.message || 'Invalid value',
-                });
-            });
-        });
-
-        return parsed;
-    };
-
-    const scrollToError = (elementId: string) => {
-        setIsErrorModalOpen(false);
-        setTimeout(() => {
-            const el = document.getElementById(elementId);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }, 300);
+            toast({ title: 'Survey Created Successfully' });
+            if (data.status === 'published') {
+                syncVariableRegistry().catch(console.error);
+            }
+            router.push('/admin/surveys');
+        } catch (error) {
+            toast({ variant: 'destructive', title: 'Initialization Failed' });
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const handleNext = async () => {
         let fieldsToValidate: any[] = [];
-        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'startButtonText', 'showCoverPage', 'showSurveyTitles', 'logoUrl', 'bannerImageUrl', 'videoUrl', 'videoThumbnailUrl', 'backgroundColor', 'backgroundPattern', 'patternColor'];
+        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
         if (step === 2) fieldsToValidate = ['elements'];
         if (step === 3) fieldsToValidate = ['resultRules', 'resultPages'];
         
         const isStepValid = await trigger(fieldsToValidate);
-        
         if (!isStepValid) {
-            if (step === 2) {
-                const elements = getValues('elements');
-                const elementErrors = parseValidationErrors(form.formState.errors, elements);
-                if (elementErrors.length > 0) {
-                    setValidationErrors(elementErrors);
-                    setIsErrorModalOpen(true);
-                    return;
-                }
-            }
-            toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors before proceeding.' });
+            toast({ variant: 'destructive', title: 'Validation Error', description: 'Please fix the errors in this step before proceeding.' });
             return;
         }
 
@@ -347,349 +356,140 @@ export default function NewSurveyPage() {
                 setValue('slug', slug, { shouldValidate: true });
             }
         }
-        
+
         setStep(s => s + 1);
     };
 
-    const handlePrev = () => {
-        setStep(s => s - 1);
-    };
-
-    const onSubmit = async (data: FormData) => {
-        if (!firestore) return;
-        setIsSaving(true);
-        
-        const { resultPages, ...mainData } = data;
-        
-        try {
-            const surveyRef = await addDoc(collection(firestore, 'surveys'), {
-                ...mainData,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            });
-            
-            if (resultPages && resultPages.length > 0) {
-                const pagesCol = collection(firestore, `surveys/${surveyRef.id}/resultPages`);
-                for (const page of resultPages) {
-                    await setDoc(doc(pagesCol, page.id), page);
-                }
-            }
-
-            toast({ title: 'Survey Initialized' });
-            syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
-            router.push('/admin/surveys');
-        } catch (e) {
-            console.error(e);
-            toast({ variant: 'destructive', title: 'Initialization Failed' });
-        } finally {
-            setIsSaving(false);
+    const handleStepChange = async (target: number) => {
+        if (target === step) return;
+        if (target > step) {
+            const isStepValid = await trigger();
+            if (!isStepValid) return;
         }
+        setStep(target);
     };
 
-    const renderFooter = () => (
-        <div className="flex items-center justify-between mt-12 pt-8 border-t border-border/50">
-            <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground hover:bg-muted/50 rounded-xl px-6 h-12">
-                Cancel
-            </Button>
-            <div className="flex items-center gap-4">
-                {step > 1 && (
-                    <Button type="button" variant="outline" onClick={handlePrev} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2">
-                        <ArrowLeft className="h-4 w-4" /> Back
-                    </Button>
-                )}
-                {step < 4 ? (
-                    <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">
-                        Next Phase 
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                ) : (
+    const handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
+    const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
+
+    return (
+        <FormProvider {...form}>
+            <div className="h-full flex flex-col bg-muted/30">
+                {/* Header Actions */}
+                <header className="sticky top-0 z-50 bg-background/95 backdrop-blur-md border-b px-8 h-16 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-4">
-                        <SurveyPreviewButton variant="outline" className="h-14 px-8 rounded-xl font-bold border-2" />
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <SmartSappIcon className="h-6 w-6 text-primary" />
+                        </div>
+                        <div>
+                            <h1 className="font-black text-sm uppercase tracking-tight leading-none mb-1">
+                                New Survey Blueprint
+                            </h1>
+                            <div className="flex items-center gap-2">
+                                <Badge variant="outline" className="text-[8px] h-4 font-black uppercase border-primary/20 text-primary bg-primary/5">Creation Mode</Badge>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        {step === 2 && (
+                            <div className="flex items-center gap-1 mr-4 bg-muted/30 p-1 rounded-xl border">
+                                <TooltipProvider>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleUndo} disabled={!canUndo}><Undo className="h-4 w-4" /></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Undo</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={handleRedo} disabled={!canRedo}><Redo className="h-4 w-4" /></Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Redo</TooltipContent>
+                                    </Tooltip>
+                                </TooltipProvider>
+                            </div>
+                        )}
+                        <AiChatEditor className="h-9" />
                         <Button 
                             type="submit" 
                             disabled={isSaving} 
                             onClick={form.handleSubmit(onSubmit)}
-                            className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg"
+                            className="rounded-xl font-black shadow-lg gap-2 px-6 h-10 uppercase text-[10px] tracking-widest active:scale-95 transition-all"
                         >
-                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <ShieldCheck className="h-6 w-6" />} 
-                            Initialize Survey
+                            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            Initialize Blueprint
                         </Button>
                     </div>
-                )}
-            </div>
-        </div>
-    );
+                </header>
 
-    const stepTransition = {
-        initial: { opacity: 0, x: 20 },
-        animate: { opacity: 1, x: 0 },
-        exit: { opacity: 0, x: -20 },
-        transition: { type: 'spring', damping: 25, stiffness: 200 }
-    };
-    
-    return (
-        <FormProvider {...form}>
-            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
-                    <div className="mb-8 flex justify-end items-center">
-                        <AiChatEditor className="h-9" />
-                    </div>
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
+                    <div className="max-w-7xl mx-auto">
+                        <Stepper currentStep={step} onStepClick={handleStepChange} />
 
-                    <Stepper currentStep={step} onStepClick={setStep} />
-
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 pb-32">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
-                                <motion.div key="step1" {...stepTransition}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                        <Card className="lg:col-span-2 shadow-sm border-none ring-1 ring-border">
-                                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl"><Layout className="h-5 w-5 text-primary" /></div>
-                                                        <div><CardTitle className="text-sm font-black uppercase tracking-tight">Survey Details</CardTitle></div>
-                                                    </div>
-                                                    <SurveyPreviewButton variant="outline" size="sm" className="h-8 rounded-xl font-bold border-primary/20">
-                                                        <Eye className="mr-2 h-3 w-3" /> Preview Cover
-                                                    </SurveyPreviewButton>
-                                                </div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-8 bg-background">
-                                                <FormField control={form.control} name="internalName" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Internal Name (Administrative)</FormLabel><FormControl><Input placeholder="e.g., Parent Feedback 2024" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name="title" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Public Survey Title</FormLabel><FormControl><Input placeholder="e.g., How are we doing?" {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>
-                                                )} />
-                                                <FormField control={form.control} name="description" render={({ field }) => (
-                                                    <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Description / Instructions</FormLabel><FormControl><Textarea placeholder="Share your honest feedback..." {...field} className="min-h-[150px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 p-4 leading-relaxed" /></FormControl><FormMessage /></FormItem>
-                                                )} />
-                                                <div className="pt-6 border-t border-border/50">
-                                                    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-8">
-                                                        <FormField control={form.control} name="startButtonText" render={({ field }) => (
-                                                            <FormItem className="flex-grow max-w-sm"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Start Button Text</FormLabel><FormControl><Input {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl></FormItem>
-                                                        )} />
-                                                        <div className="flex flex-col gap-4 min-w-[200px] bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                                                            <FormField control={form.control} name="showCoverPage" render={({ field }) => (
-                                                                <FormItem className="flex flex-row items-center justify-between space-y-0 gap-4">
-                                                                    <div className="flex items-center gap-2"><Layout className="h-3.5 w-3.5 text-primary"/><FormLabel className="text-[10px] font-black uppercase tracking-widest leading-none">Use Cover Page</FormLabel></div>
-                                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                                </FormItem>
-                                                            )} />
-                                                            <FormField control={form.control} name="showSurveyTitles" render={({ field }) => (
-                                                                <FormItem className="flex flex-row items-center justify-between space-y-0 gap-4">
-                                                                    <div className="flex items-center gap-2"><Eye className="h-3.5 w-3.5 text-primary"/><FormLabel className="text-[10px] font-black uppercase tracking-widest leading-none">Show Survey Titles</FormLabel></div>
-                                                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                                                </FormItem>
-                                                            )} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                        <div className="space-y-8">
-                                            <Card className="shadow-sm border-none ring-1 ring-border">
-                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Organization</CardTitle>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="p-6 space-y-6">
-                                                    <FormField control={form.control} name="schoolId" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target School</FormLabel>
-                                                            <Select 
-                                                                onValueChange={(val) => {
-                                                                    const school = schools?.find(s => s.id === val);
-                                                                    field.onChange(val);
-                                                                    setValue('schoolName', school ? school.name : null);
-                                                                }} 
-                                                                value={field.value || 'none'}
-                                                            >
-                                                                <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 transition-all font-bold">
-                                                                    <SelectValue placeholder="Link to a school..." />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="rounded-xl">
-                                                                    <SelectItem value="none">General (Global Survey)</SelectItem>
-                                                                    {schools?.map(school => (
-                                                                        <SelectItem key={school.id} value={school.id}>{school.name}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                            <FormDescription className="text-[9px] uppercase tracking-tighter mt-1">Links this survey to a specific school context for better variable resolution.</FormDescription>
-                                                        </FormItem>
-                                                    )} />
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="shadow-sm border-none ring-1 ring-border">
-                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl">
-                                                            <Video className="h-5 w-5 text-primary" />
-                                                        </div>
-                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Hero Media</CardTitle>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="p-6 space-y-6">
-                                                    <FormField control={form.control} name="videoUrl" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Intro Video URL</FormLabel>
-                                                            <FormControl>
-                                                                <Input {...field} placeholder="YouTube, Vimeo, or MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )} />
-                                                    <FormField control={form.control} name="videoThumbnailUrl" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Video Poster (Poster Frame)</FormLabel>
-                                                            <FormControl>
-                                                                <MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )} />
-                                                    <Separator />
-                                                    <FormField control={form.control} name="bannerImageUrl" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Cover / Banner Image (Fallback)</FormLabel>
-                                                            <FormControl>
-                                                                <MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" />
-                                                            </FormControl>
-                                                        </FormItem>
-                                                    )} />
-                                                    <FormField control={form.control} name="logoUrl" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Institutional Logo</FormLabel><FormControl><MediaSelect {...field} filterType="image" className="rounded-xl border-none shadow-none bg-muted/20" /></FormControl></FormItem>
-                                                    )} />
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
-                                                <CardHeader className="bg-muted/30 border-b pb-6 px-6">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="p-2 bg-primary/10 rounded-xl"><Palette className="h-5 w-5 text-primary" /></div>
-                                                        <CardTitle className="text-sm font-black uppercase tracking-tight">Appearance</CardTitle>
-                                                    </div>
-                                                </CardHeader>
-                                                <CardContent className="p-6">
-                                                    <div className="space-y-6">
-                                                        <div className="grid grid-cols-2 gap-4">
-                                                            <FormField control={form.control} name="backgroundColor" render={({ field }) => (
-                                                                <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">BG Color</FormLabel><div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border focus-within:ring-1 focus-within:ring-primary/20"><Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" /><Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" /></div></FormItem>
-                                                            )} />
-                                                            <FormField control={form.control} name="patternColor" render={({ field }) => (
-                                                                <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Color</FormLabel><div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/30 border focus-within:ring-1 focus-within:ring-primary/20"><Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" /><Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] uppercase p-0" /></div></FormItem>
-                                                            )} />
-                                                        </div>
-                                                        <FormField control={form.control} name="backgroundPattern" render={({ field }) => (
-                                                            <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pattern Style</FormLabel><Select onValueChange={field.onChange} value={field.value || 'none'}><FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="none">None</SelectItem><SelectItem value="dots">Dots</SelectItem><SelectItem value="grid">Grid</SelectItem><SelectItem value="circuit">Circuit</SelectItem><SelectItem value="topography">Topography</SelectItem><SelectItem value="cubes">Cubes</SelectItem><SelectItem value="gradient">Gradient</SelectItem></SelectContent></Select></FormItem>
-                                                        )} />
-                                                        <div className="space-y-2">
-                                                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Design Preview</Label>
-                                                            <div className="w-full h-40 rounded-2xl border shadow-inner relative flex items-center justify-center bg-slate-50 overflow-hidden" style={{ backgroundColor: watchedBgColor }}>
-                                                                <div className="absolute inset-0 opacity-20 flex items-center justify-center pointer-events-none">
-                                                                    {watchedPattern === 'none' && <div className="text-[10px] font-black text-muted-foreground/30 uppercase">Solid Preview</div>}
-                                                                    {watchedPattern === 'dots' && <div className="grid grid-cols-10 gap-4">{Array.from({length: 40}).map((_,i) => <div key={i} className="w-1 h-1 rounded-full" style={{backgroundColor: watchedPatternColor}} />)}</div>}
-                                                                    {watchedPattern === 'grid' && <div className="w-full h-full border border-dashed" style={{borderColor: watchedPatternColor, opacity: 0.1}} />}
-                                                                    {watchedPattern === 'gradient' && <div className="w-full h-full bg-gradient-to-br from-primary/20 to-transparent" />}
-                                                                    {(watchedPattern !== 'none' && watchedPattern !== 'dots' && watchedPattern !== 'grid' && watchedPattern !== 'gradient') && <div className="text-[10px] font-black text-primary/40 uppercase">{watchedPattern} active</div>}
-                                                                </div>
-                                                                <div className="relative z-10 p-4 rounded-xl bg-white/80 backdrop-blur-md border shadow-sm flex items-center gap-2">
-                                                                    <SmartSappIcon className="h-4 w-4 text-primary" />
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest text-foreground/60">Live Preview Area</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </CardContent>
-                                            </Card>
+                                <motion.div key="step1" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+                                    {/* Mobile Mode Switcher */}
+                                    <div className="md:hidden flex justify-center mb-6">
+                                        <div className="bg-background border shadow-sm p-1 rounded-2xl flex gap-1">
+                                            <Button variant={mobileMode === 'edit' ? 'default' : 'ghost'} size="sm" onClick={() => setMobileMode('edit')} className="rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-6">Configure</Button>
+                                            <Button variant={mobileMode === 'preview' ? 'default' : 'ghost'} size="sm" onClick={() => setMobileMode('preview')} className="rounded-xl font-black uppercase text-[10px] tracking-widest h-10 px-6">Live View</Button>
                                         </div>
                                     </div>
-                                    {renderFooter()}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+                                        <div className={cn("space-y-8", mobileMode === 'preview' && "hidden md:block")}>
+                                            <Step1Details schools={schools || []} />
+                                        </div>
+                                        <div className={cn("sticky top-0 h-[calc(100vh-250px)]", mobileMode === 'edit' && "hidden md:block")}>
+                                            <LivePreviewPane />
+                                        </div>
+                                    </div>
                                 </motion.div>
                             )}
 
                             {step === 2 && (
-                                <motion.div key="step2" {...stepTransition} className="min-h-[60vh]">
+                                <motion.div key="step2" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                     <SurveyFormBuilder />
-                                    {renderFooter()}
                                 </motion.div>
                             )}
 
                             {step === 3 && (
-                                <motion.div key="step3" {...stepTransition} className="min-h-[60vh]">
+                                <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
                                     <ResultsStep />
-                                    {renderFooter()}
                                 </motion.div>
                             )}
 
                             {step === 4 && (
-                                <motion.div key="step4" {...stepTransition}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                                        <Card className="shadow-sm border-none ring-1 ring-border overflow-hidden">
-                                            <CardHeader className="bg-muted/30 border-b pb-6">
-                                                <div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div><div><CardTitle className="text-sm font-black uppercase tracking-tight">Publish Logic</CardTitle></div></div>
-                                            </CardHeader>
-                                            <CardContent className="p-6 space-y-8 bg-background">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <FormField control={form.control} name="status" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Initial Visibility</FormLabel><Select onValueChange={field.onChange} value={field.value}>
-                                                            <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold"><SelectValue /></SelectTrigger></FormControl><SelectContent className="rounded-xl"><SelectItem value="draft">Draft</SelectItem><SelectItem value="published">Published</SelectItem><SelectItem value="archived">Archived</SelectItem></Select></FormItem>
-                                                    )} />
-                                                    <FormField control={form.control} name="slug" render={({ field }) => (
-                                                        <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">URL Extension</FormLabel><div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner"><div className="bg-muted px-3 flex items-center text-[10px] font-black uppercase tracking-tighter text-muted-foreground/60 border-r">/surveys/</div><Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-bold" /></div></FormItem>
-                                                    )} />
-                                                </div>
-                                                <Separator />
-                                                <div className={cn(
-                                                    "rounded-2xl border-2 transition-all duration-300",
-                                                    watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background")}>
-                                                    <div className="flex items-center justify-between p-4">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                                                <AlertCircle className="h-4 w-4" />
-                                                            </div>
-                                                            <div className="space-y-0.5">
-                                                                <Label className="text-sm font-black uppercase tracking-tight">Debug Mode</Label>
-                                                                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Show detailed automation processing modal</p>
-                                                            </div>
-                                                        </div>
-                                                        <Controller
-                                                            name="showDebugProcessingModal"
-                                                            control={form.control}
-                                                            render={({ field }) => (
-                                                                <Switch 
-                                                                    checked={field.value} 
-                                                                    onCheckedChange={field.onChange} 
-                                                                />
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <Separator />
-                                                <WebhookManager />
-                                            </CardContent>
-                                        </Card>
-
-                                        <div className="space-y-8">
-                                            <InternalNotificationConfig prefix="adminAlert" category="surveys" />
-                                        </div>
-                                    </div>
-                                    {renderFooter()}
+                                <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                                    <Step4Publish />
                                 </motion.div>
                             )}
                         </AnimatePresence>
-                    </form>
+
+                        {/* Sticky Navigation Footer */}
+                        <div className="fixed bottom-0 left-0 right-0 z-40 p-4 sm:p-6 bg-background/80 backdrop-blur-lg border-t shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                            <div className="max-w-7xl mx-auto flex items-center justify-between">
+                                <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
+                                <div className="flex items-center gap-4">
+                                    {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
+                                    {step < 4 ? (
+                                        <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-black shadow-xl rounded-xl transition-all active:scale-95 group">
+                                            Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+                                        </Button>
+                                    ) : (
+                                        <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
+                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />} 
+                                            Finalize & Initialize
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <ValidationErrorModal 
-                open={isErrorModalOpen}
-                onOpenChange={setIsErrorModalOpen}
-                errors={validationErrors}
-                onFix={scrollToError}
-            />
         </FormProvider>
     );
 }

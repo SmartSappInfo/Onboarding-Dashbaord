@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -12,6 +13,7 @@ interface VideoHeroProps {
     videoUrl: string;
     thumbnailUrl?: string;
     title?: string;
+    videoCaption?: string;
     className?: string;
 }
 
@@ -19,7 +21,7 @@ interface VideoHeroProps {
  * @fileOverview High-engagement video hero component.
  * Features a pulsing play button aura and modal playback.
  */
-export default function VideoHero({ videoUrl, thumbnailUrl, title, className }: VideoHeroProps) {
+export default function VideoHero({ videoUrl, thumbnailUrl, title, videoCaption, className }: VideoHeroProps) {
     const [isOpen, setIsOpen] = React.useState(false);
     const [isMounted, setIsMounted] = React.useState(false);
 
@@ -79,7 +81,7 @@ export default function VideoHero({ videoUrl, thumbnailUrl, title, className }: 
                     
                     <div className="text-center">
                         <p className="text-[12px] font-black uppercase tracking-[0.3em] text-white drop-shadow-md">
-                            Click to watch video
+                            {videoCaption || 'Click to watch video'}
                         </p>
                     </div>
                 </div>

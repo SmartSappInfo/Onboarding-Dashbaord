@@ -8,9 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type } from 'lucide-react';
+import { Layout, Building, Video, Palette, Type, MessageSquareText } from 'lucide-react';
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import type { School } from '@/lib/types';
 
@@ -20,12 +19,9 @@ interface Step1DetailsProps {
 
 export default function Step1Details({ schools }: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
-    const watchedBgColor = watch('backgroundColor');
-    const watchedPattern = watch('backgroundPattern');
-    const watchedPatternColor = watch('patternColor');
 
     return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
             {/* Identity Card */}
             <Card className="shadow-sm border-none ring-1 ring-border rounded-2xl overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b pb-6 px-6">
@@ -121,7 +117,7 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                             render={({ field }) => (
                                 <div className="space-y-2">
                                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Feature Video URL</Label>
-                                    <Input {...field} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                    <Input {...field} value={field.value || ''} placeholder="YouTube, Vimeo, or direct MP4 link..." className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
                                 </div>
                             )}
                         />
@@ -130,8 +126,10 @@ export default function Step1Details({ schools }: Step1DetailsProps) {
                             control={control}
                             render={({ field }) => (
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Video Call-to-Action</Label>
-                                    <Input {...field} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
+                                        <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
+                                    </Label>
+                                    <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
                                     <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
                                 </div>
                             )}

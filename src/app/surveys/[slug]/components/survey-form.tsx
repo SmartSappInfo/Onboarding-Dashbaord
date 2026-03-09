@@ -1233,6 +1233,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                             videoUrl={survey.videoUrl} 
                                             thumbnailUrl={survey.videoThumbnailUrl} 
                                             title={survey.title} 
+                                            videoCaption={survey.videoCaption}
                                         />
                                     ) : survey.bannerImageUrl && (
                                         <div className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white bg-white">
@@ -1240,7 +1241,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                         </div>
                                     )}
                                     <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight">{survey.title}</h1>
+                                        <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-foreground leading-tight uppercase">{survey.title}</h1>
                                         <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate font-medium whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: survey.description }} />
                                     </div>
                                 </>
@@ -1263,7 +1264,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                             <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} />
                             
                             <Card className="border-t-8 border-t-primary shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] overflow-hidden bg-white">
-                                <CardContent className="p-6 sm:p-10 space-y-10 sm:space-y-12">
+                                <CardContent className="p-6 sm:p-10 space-y-10 sm:space-y-12 text-left">
                                     <div className="space-y-10 sm:space-y-12">
                                         {currentElements.map((el) => {
                                             if (el.id === pageSection?.id) return null;
@@ -1367,7 +1368,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                                         <task.icon className="h-4 w-4" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-black text-foreground uppercase tracking-tight">{task.label}</p>
+                                        <p className="text-sm font-black text-foreground uppercase tracking-tight text-left">{task.label}</p>
                                         {task.error && <p className="text-[9px] font-bold text-rose-600 uppercase mt-0.5">{task.error}</p>}
                                         {task.status === 'skipped' && <p className="text-[9px] font-bold text-amber-600 uppercase mt-0.5">Not applicable</p>}
                                     </div>

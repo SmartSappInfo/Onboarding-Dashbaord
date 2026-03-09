@@ -4,9 +4,10 @@
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, deleteDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { 
     Check, 
     Loader2, 
@@ -20,7 +21,10 @@ import {
     Settings2,
     Undo,
     Redo,
-    X
+    X,
+    Sparkles,
+    Zap,
+    Share2
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -32,8 +36,9 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappLogo, SmartSappIcon } from '@/components/icons';
+import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
+import { cn } from '@/lib/utils';
 
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
@@ -477,7 +482,7 @@ export default function EditSurveyPage() {
                                         </Button>
                                     ) : (
                                         <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onSubmit)} className="gap-2 px-12 h-14 font-black shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
-                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-6 w-6" />} 
+                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
                                             Finalize & Save
                                         </Button>
                                     )}
