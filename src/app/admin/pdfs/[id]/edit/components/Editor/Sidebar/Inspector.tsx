@@ -17,7 +17,8 @@ import {
   Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
-  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag
+  AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
+  Layers, ArrowRightLeft
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -39,7 +40,7 @@ export function Inspector() {
   const { 
     fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
     updateField, removeField, duplicateFields, alignFields, distributeFields,
-    isSidebarCollapsed
+    isSidebarCollapsed, numPages
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -124,6 +125,30 @@ export function Inspector() {
                   <SelectContent className="rounded-xl">{Object.keys(fieldIcons).map(t => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+
+              {/* Page Selection UI */}
+              <div className="space-y-2 pt-2 border-t">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
+                  <ArrowRightLeft className="h-3 w-3" /> Page Location
+                </Label>
+                <Select 
+                  value={String(selectedField.pageNumber)} 
+                  onValueChange={(v) => updateField(selectedField.id, { pageNumber: parseInt(v, 10) })}
+                >
+                  <SelectTrigger className="h-10 bg-background border-primary/20 rounded-xl font-bold text-xs">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-3.5 w-3.5 opacity-40" />
+                      <SelectValue placeholder="Select page..." />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    {Array.from({ length: numPages || 1 }).map((_, i) => (
+                      <SelectItem key={i+1} value={String(i+1)}>Page {i+1}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {selectedField.type === 'dropdown' && (
                 <div className="space-y-2 pt-2 border-t">
                   <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Options (One per line)</Label>

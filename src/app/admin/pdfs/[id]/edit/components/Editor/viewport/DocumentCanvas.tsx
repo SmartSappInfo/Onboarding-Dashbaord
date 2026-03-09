@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 const pdfjsPromise = import('pdfjs-dist');
 
 export function DocumentCanvas() {
-  const { pdf, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom, setZoom } = useEditor();
+  const { pdf, fields, setFields, selectedFieldIds, setSelectedFieldIds, marquee, setMarquee, zoom, setZoom, setNumPages } = useEditor();
   const { toast } = useToast();
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
@@ -39,13 +39,15 @@ export function DocumentCanvas() {
         const pdfjs = await pdfjsPromise;
         pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
         const loadingTask = pdfjs.getDocument({ url: pdf.downloadUrl });
-        setPdfDoc(await loadingTask.promise);
+        const loadedDoc = await loadingTask.promise;
+        setPdfDoc(loadedDoc);
+        setNumPages(loadedDoc.numPages);
       } catch (e) {
         toast({ variant: 'destructive', title: 'Error Loading PDF' });
       }
     };
     if (pdf.downloadUrl) load();
-  }, [pdf.downloadUrl, toast]);
+  }, [pdf.downloadUrl, toast, setNumPages]);
 
   // Intercept Ctrl + Scroll and Pinch gestures
   React.useEffect(() => {
@@ -116,29 +118,60 @@ export function DocumentCanvas() {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
-    const { active, delta } = event;
+    const { active, over, delta } = event;
     if (active.data.current?.type !== 'FIELD') return;
 
     const movedField = fields.find(f => f.id === active.id);
     if (!movedField || !viewportRef.current) return;
 
-    const pageEl = viewportRef.current.querySelector(`[data-page-number="${movedField.pageNumber}"]`);
-    if (!pageEl) return;
+    // Detect if dropped on a new page
+    const targetPageData = over?.data.current?.type === 'PAGE' ? over.data.current : null;
+    const targetPageNumber = targetPageData ? targetPageData.pageNumber : movedField.pageNumber;
+    const isNewPage = targetPageNumber !== movedField.pageNumber;
 
-    const { width, height } = pageEl.getBoundingClientRect();
-    const dxPercent = (delta.x / width) * 100;
-    const dyPercent = (delta.y / height) * 100;
+    const sourcePageEl = viewportRef.current.querySelector(`[data-page-number="${movedField.pageNumber}"]`);
+    const targetPageEl = viewportRef.current.querySelector(`[data-page-number="${targetPageNumber}"]`);
+    
+    if (!sourcePageEl || !targetPageEl) return;
+
+    const sourceRect = sourcePageEl.getBoundingClientRect();
+    const targetRect = targetPageEl.getBoundingClientRect();
 
     setFields(prev => prev.map(f => {
-      if (selectedFieldIds.includes(f.id) && f.pageNumber === movedField.pageNumber) {
-        return {
-          ...f,
-          position: {
-            x: Math.max(0, Math.min(100 - f.dimensions.width, f.position.x + dxPercent)),
-            y: Math.max(0, Math.min(100 - f.dimensions.height, f.position.y + dyPercent)),
-          },
-          isSuggestion: false
-        };
+      if (selectedFieldIds.includes(f.id)) {
+        if (isNewPage) {
+          // Cross-page coordinate math
+          // 1. Calculate absolute pixel position on source page
+          const absX = (f.position.x / 100) * sourceRect.width + delta.x;
+          const absY = (f.position.y / 100) * sourceRect.height + delta.y;
+          
+          // 2. Map to target page relative space
+          const targetRelX = absX + sourceRect.left - targetRect.left;
+          const targetRelY = absY + sourceRect.top - targetRect.top;
+
+          return {
+            ...f,
+            pageNumber: targetPageNumber,
+            position: {
+              x: Math.max(0, Math.min(100 - f.dimensions.width, (targetRelX / targetRect.width) * 100)),
+              y: Math.max(0, Math.min(100 - f.dimensions.height, (targetRelY / targetRect.height) * 100)),
+            },
+            isSuggestion: false
+          };
+        } else {
+          // Same page movement
+          const dxPercent = (delta.x / sourceRect.width) * 100;
+          const dyPercent = (delta.y / sourceRect.height) * 100;
+
+          return {
+            ...f,
+            position: {
+              x: Math.max(0, Math.min(100 - f.dimensions.width, f.position.x + dxPercent)),
+              y: Math.max(0, Math.min(100 - f.dimensions.height, f.position.y + dyPercent)),
+            },
+            isSuggestion: false
+          };
+        }
       }
       return f;
     }));

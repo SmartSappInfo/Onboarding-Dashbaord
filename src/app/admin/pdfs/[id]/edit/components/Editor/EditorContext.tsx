@@ -11,6 +11,7 @@ interface EditorContextType {
   fields: LocalPDFFormField[];
   selectedFieldIds: string[];
   zoom: number;
+  numPages: number;
   isSidebarCollapsed: boolean;
   isFullScreen: boolean;
   viewMode: EditorViewMode;
@@ -28,6 +29,7 @@ interface EditorContextType {
   setFields: React.Dispatch<React.SetStateAction<LocalPDFFormField[]>>;
   setSelectedFieldIds: React.Dispatch<React.SetStateAction<string[]>>;
   setZoom: React.Dispatch<React.SetStateAction<number>>;
+  setNumPages: React.Dispatch<React.SetStateAction<number>>;
   setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
   setIsFullScreen: React.Dispatch<React.SetStateAction<boolean>>;
   setViewMode: React.Dispatch<React.SetStateAction<EditorViewMode>>;
@@ -107,6 +109,7 @@ export function EditorProvider({
 }) {
   const [selectedFieldIds, setSelectedFieldIds] = React.useState<string[]>([]);
   const [zoom, setZoom] = React.useState(1.0);
+  const [numPages, setNumPages] = React.useState(0);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isFullScreen, setIsFullScreen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<EditorViewMode>('design');
@@ -224,15 +227,15 @@ export function EditorProvider({
   }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving,
-    setFields, setSelectedFieldIds, setZoom, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
+    setFields, setSelectedFieldIds, setZoom, setNumPages, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, fields, selectedFieldIds, zoom, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
-    password, passwordProtected, isStatusChanging, isSaving, setFields, setNamingFieldId,
+    pdf, fields, selectedFieldIds, zoom, numPages, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    password, passwordProtected, isStatusChanging, isSaving, setFields, setNamingFieldId, setNumPages,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
@@ -247,6 +250,6 @@ export function EditorProvider({
 
 export function useEditor() {
   const context = React.useContext(EditorContext);
-  if (!context) throw new Error('useEditor must be used within an EditorProvider');
+  if (!context) throw new Error('useEditor must be used within a EditorProvider');
   return context;
 }

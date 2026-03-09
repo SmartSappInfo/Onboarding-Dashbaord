@@ -5,6 +5,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { useEditor } from '../EditorContext';
 import { FieldOverlay } from './FieldOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDroppable } from '@dnd-kit/core';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -19,6 +20,15 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
   const renderTaskRef = React.useRef<any>(null);
   const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
   const [isRendering, setIsRendering] = React.useState(true);
+
+  // Droppable area for cross-page drag and drop
+  const { setNodeRef: setDroppableRef } = useDroppable({
+    id: `page-${pageNumber}`,
+    data: {
+      type: 'PAGE',
+      pageNumber
+    }
+  });
 
   React.useEffect(() => {
     let isMounted = true;
@@ -73,6 +83,7 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
 
   return (
     <div 
+      ref={setDroppableRef}
       data-page-number={pageNumber}
       className="relative mx-auto shadow-2xl mb-12 bg-white flex-shrink-0 transition-all duration-300 ease-in-out border border-border/50 rounded-lg"
       style={{ width: dimensions.width || 816, height: dimensions.height || 1056 }}
