@@ -43,11 +43,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import ContractWizard from './components/ContractWizard';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
+    const [activeWizardSchool, setActiveWizardSchool] = React.useState<School | null>(null);
 
     // Data Subscriptions
     const schoolsCol = useMemoFirebase(() => 
@@ -217,7 +219,7 @@ export default function AgreementsClient() {
                                                             <Download className="h-3 w-3 mr-1.5" /> Download
                                                         </Button>
                                                     ) : (
-                                                        <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg">
+                                                        <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg" onClick={() => setActiveWizardSchool(item)}>
                                                             <Plus className="h-3 w-3" /> Initialize
                                                         </Button>
                                                     )}
@@ -227,10 +229,10 @@ export default function AgreementsClient() {
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl">
                                                             <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Options</DropdownMenuLabel>
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5">
+                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
                                                                 <Eye className="h-4 w-4 text-primary" /> Preview Logic
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5">
+                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
                                                                 <Send className="h-4 w-4 text-primary" /> Send Agreement
                                                             </DropdownMenuItem>
                                                             <DropdownMenuSeparator />
@@ -258,6 +260,14 @@ export default function AgreementsClient() {
                     </Table>
                 </div>
             </div>
+
+            {activeWizardSchool && (
+                <ContractWizard 
+                    school={activeWizardSchool} 
+                    open={!!activeWizardSchool} 
+                    onOpenChange={(o) => !o && setActiveWizardSchool(null)} 
+                />
+            )}
         </div>
     );
 }
