@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract } from './types';
 import { resolveVariables, renderBlocksToHtml } from './messaging-utils';
 import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
@@ -76,7 +76,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             const schoolData = schoolSnap.data() as School;
             const signatory = (schoolData.focalPersons || []).find(p => p.isSignatory);
             
-            const schoolVars = {
+            const schoolVars: any = {
                 school_name: schoolData.name,
                 school_initials: schoolData.initials,
                 school_location: schoolData.location,
@@ -89,6 +89,14 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 contact_position: signatory?.type || '',
             };
             
+            // Resolve Agreement URL if requested
+            const contractSnap = await adminDb.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
+            if (!contractSnap.empty) {
+                const contractData = contractSnap.docs[0].data() as Contract;
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                schoolVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${schoolId}`;
+            }
+
             // Merge school vars without overwriting already present keys
             Object.entries(schoolVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;

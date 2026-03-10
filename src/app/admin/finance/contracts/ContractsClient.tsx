@@ -25,7 +25,8 @@ import {
     Eye,
     Trash2,
     Loader2,
-    Copy
+    Copy,
+    Globe
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -251,7 +252,7 @@ export default function AgreementsClient() {
                                                 {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
                                             </TableCell>
                                             <TableCell className="text-xs font-medium text-foreground/80">
-                                                {item.contactPerson || 'No Primary Contact'}
+                                                {item.focalPersons?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
                                             </TableCell>
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -291,6 +292,15 @@ export default function AgreementsClient() {
                                                                         <Eye className="h-4 w-4 text-primary" />
                                                                         <span className="font-bold text-sm">View Legal Record</span>
                                                                     </Link>
+                                                                </DropdownMenuItem>
+                                                            )}
+
+                                                            {status !== 'signed' && status !== 'no_contract' && contract?.pdfId && (
+                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
+                                                                    <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                        <Globe className="h-4 w-4 text-primary" />
+                                                                        <span className="font-bold text-sm">View Signing Portal</span>
+                                                                    </a>
                                                                 </DropdownMenuItem>
                                                             )}
 
