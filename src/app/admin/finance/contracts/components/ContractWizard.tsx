@@ -30,7 +30,8 @@ import {
     ShieldCheck, 
     Zap,
     Mail,
-    Smartphone
+    Smartphone,
+    Info
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
