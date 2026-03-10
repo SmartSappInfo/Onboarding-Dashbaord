@@ -48,9 +48,8 @@ const SCHOOL_VARIABLES = [
 
 export function Inspector() {
   const { 
-    pdf, fields, selectedFieldIds, setSelectedFieldIds, namingFieldId, setNamingFieldId,
-    updateField, removeField, duplicateFields, alignFields, distributeFields,
-    isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen, setFields
+    pdf, fields, selectedFieldIds, namingFieldId, setNamingFieldId,
+    updateField, isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -90,7 +89,7 @@ export function Inspector() {
 
   return (
     <ScrollArea className="flex-grow">
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-4 text-left">
         
         {/* Selection Context */}
         {selectedField ? (
@@ -104,7 +103,7 @@ export function Inspector() {
               </CardTitle>
               <CardDescription className="text-[10px] font-mono">ID: {selectedField.id}</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-4 space-y-4">
               {selectedField.type === 'static-text' ? (
                 <div className="space-y-2">
                     <Label className="text-[10px] font-bold uppercase tracking-widest text-primary ml-1">Label Content</Label>
@@ -354,7 +353,7 @@ export function Inspector() {
                     {(['left', 'center-h', 'right', 'top', 'center-v', 'bottom'] as const).map(a => (
                       <Tooltip key={a}>
                         <TooltipTrigger asChild>
-                          <Button type="button" variant="ghost" size="sm" onClick={() => alignFields(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
+                          <Button type="button" variant="ghost" size="sm" onClick={() => alignFields?.(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
                             {a === 'left' && <AlignStartVertical className="h-4 w-4" />}
                             {a === 'center-h' && <AlignCenterVertical className="h-4 w-4" />}
                             {a === 'right' && <AlignEndVertical className="h-4 w-4" />}
@@ -382,7 +381,7 @@ export function Inspector() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('horizontal')}>
+                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields?.('horizontal')}>
                           <AlignHorizontalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Horiz.
                         </Button>
                       </TooltipTrigger>
@@ -390,7 +389,7 @@ export function Inspector() {
                     </Tooltip>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields('vertical')}>
+                        <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold" onClick={() => distributeFields?.('vertical')}>
                           <AlignVerticalDistributeCenter className="h-4 w-4 mr-2 text-primary"/>Vert.
                         </Button>
                       </TooltipTrigger>
@@ -401,7 +400,7 @@ export function Inspector() {
               </div>
               <div className="space-y-4 border-t pt-4">
                 <div className="grid grid-cols-2 gap-2">
-                  <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
+                  <Button type="button" variant="outline" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2" onClick={() => duplicateFields?.(selectedFieldIds)}><Copy className="h-3.5 w-3.5" /> Duplicate</Button>
                   <Button type="button" variant="ghost" size="sm" className="h-9 rounded-xl text-xs font-bold gap-2 text-destructive hover:bg-destructive/10" onClick={() => setIsFieldDeleteConfirmOpen(true)}><Trash2 className="h-3.5 w-3.5" /> Delete</Button>
                 </div>
               </div>

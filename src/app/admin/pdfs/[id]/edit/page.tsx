@@ -192,6 +192,10 @@ export default function EditPdfPage() {
 
   const { reset, watch, setValue, getValues, trigger } = form;
 
+  // DIAGNOSTIC FIX: Watch school data to pass live unsaved context to the editor
+  const watchedSchoolId = watch('schoolId');
+  const watchedSchoolName = watch('schoolName');
+
   const schoolsQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
@@ -379,7 +383,7 @@ export default function EditPdfPage() {
     if (result.success) {
       toast({ title: 'Document Saved' });
       if (data.status === 'published') {
-          syncVariableRegistry().catch(e => console.error("Registry Sync failed:", e));
+          syncVariableRegistry().catch(console.error);
       }
       localStorage.removeItem(storageKey);
       if (redirect) router.push('/admin/pdfs');
@@ -473,6 +477,13 @@ export default function EditPdfPage() {
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
 
+  // RESOLUTION: Merge live form data into the pdf object passed to FieldMapper
+  const livePdf = {
+      ...pdf,
+      schoolId: watchedSchoolId,
+      schoolName: watchedSchoolName
+  } as PDFForm;
+
   return (
     <FormProvider {...form}>
         <div className="h-full flex flex-col bg-muted/30">
@@ -551,7 +562,7 @@ export default function EditPdfPage() {
                                                             <Select 
                                                                 onValueChange={(val) => {
                                                                     const school = schools?.find(s => s.id === val);
-                                                                    field.onChange(val);
+                                                                    field.onChange(val === 'none' ? null : val);
                                                                     setValue('schoolName', school ? school.name : 'SmartSapp');
                                                                 }} 
                                                                 value={field.value || 'none'}
@@ -658,7 +669,7 @@ export default function EditPdfPage() {
                                 <motion.div key="step2" {...stepTransition} className="h-full">
                                     <div className="h-[80vh] border-none ring-1 ring-border rounded-[2rem] overflow-hidden shadow-2xl bg-background">
                                         <FieldMapper
-                                            pdf={pdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
+                                            pdf={livePdf} fields={fields} setFields={setFields} namingFieldId={namingFieldId} setNamingFieldId={setNamingFieldId}
                                             onSave={() => {}} isSaving={isSaving} onPreview={() => setIsPreviewOpen(true)} isStatusChanging={isStatusChanging}
                                             onStatusChange={(s) => setValue('status', s, { shouldDirty: true })} onDetect={() => fields.length > 0 ? setIsDetectionModeOpen(true) : handleDetectClick('overwrite')}
                                             isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo}
