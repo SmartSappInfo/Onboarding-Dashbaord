@@ -34,7 +34,8 @@ import {
     Smartphone,
     Info,
     Copy,
-    Globe
+    Globe,
+    FlaskConical
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -47,6 +48,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfFormRenderer from '@/app/forms/[pdfId]/components/PdfFormRenderer';
+import TestDispatchDialog from '@/app/admin/messaging/components/TestDispatchDialog';
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),
@@ -76,6 +78,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
     const [step, setStep] = React.useState(1);
     const [isSaving, setIsSaving] = React.useState(false);
     const [contractId, setContractId] = React.useState<string | null>(null);
+    const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
 
     // Form Initialization
     const methods = useForm<WizardData>({
@@ -395,27 +398,54 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                         <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-bold h-12 px-8">Discard</Button>
                     </div>
                     
-                    {step < 3 ? (
-                        <Button 
-                            onClick={handleNext} 
-                            disabled={isSaving || (step === 1 && !watchedPdfId)}
-                            className="rounded-2xl font-black h-14 px-16 shadow-2xl uppercase tracking-[0.1em] active:scale-95 transition-all gap-2"
-                        >
-                            {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-                            Next Phase <ChevronRight className="h-5 w-5" />
-                        </Button>
-                    ) : (
-                        <Button 
-                            onClick={handleSubmit(onSubmit)} 
-                            disabled={isSaving || !watchedTemplateId || watchedRecipients.length === 0}
-                            className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
-                        >
-                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
-                            Execute Dispatch
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-3">
+                        {step === 3 && (
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsTestModalOpen(true)}
+                                disabled={!watchedTemplateId}
+                                className="rounded-xl font-bold h-14 border-primary/20 text-primary px-8 gap-2"
+                            >
+                                <FlaskConical className="h-5 w-5" /> Send Test
+                            </Button>
+                        )}
+                        {step < 3 ? (
+                            <Button 
+                                onClick={handleNext} 
+                                disabled={isSaving || (step === 1 && !watchedPdfId)}
+                                className="rounded-2xl font-black h-14 px-16 shadow-2xl uppercase tracking-[0.1em] active:scale-95 transition-all gap-2"
+                            >
+                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+                                Next Phase <ChevronRight className="h-5 w-5" />
+                            </Button>
+                        ) : (
+                            <Button 
+                                onClick={handleSubmit(onSubmit)} 
+                                disabled={isSaving || !watchedTemplateId || watchedRecipients.length === 0}
+                                className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
+                            >
+                                {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
+                                Execute Dispatch
+                            </Button>
+                        )}
+                    </div>
                 </DialogFooter>
             </DialogContent>
+
+            <TestDispatchDialog 
+                open={isTestModalOpen}
+                onOpenChange={setIsTestModalOpen}
+                channel="email"
+                templateId={watchedTemplateId}
+                variables={{
+                    school_name: school.name,
+                    contact_name: 'Test Recipient',
+                    contract_link: publicUrl,
+                    link: publicUrl,
+                    event_type: 'Agreement Signature Required (Test)'
+                }}
+                schoolId={school.id}
+            />
         </Dialog>
     );
 }

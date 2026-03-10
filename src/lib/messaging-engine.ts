@@ -215,3 +215,58 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * Sends a raw, non-templated message. Used primarily for testing unsaved drafts.
+ * Does not create a persistent audit log in message_logs.
+ */
+export async function sendRawMessage(input: {
+    channel: 'email' | 'sms',
+    recipient: string,
+    body: string,
+    subject?: string,
+    senderProfileId?: string
+}) {
+    const { channel, recipient, body, subject, senderProfileId } = input;
+
+    try {
+        let senderProfileSnap;
+        if (senderProfileId && senderProfileId !== 'default') {
+            senderProfileSnap = await adminDb.collection('sender_profiles').doc(senderProfileId).get();
+        }
+
+        if (!senderProfileSnap || !senderProfileSnap.exists) {
+            const defaultSnap = await adminDb.collection('sender_profiles')
+                .where('channel', '==', channel)
+                .where('isDefault', '==', true)
+                .where('isActive', '==', true)
+                .limit(1)
+                .get();
+            
+            if (defaultSnap.empty) throw new Error(`No active sender profile found for ${channel}`);
+            senderProfileSnap = defaultSnap.docs[0];
+        }
+
+        const sender = senderProfileSnap.data() as SenderProfile;
+
+        if (channel === 'sms') {
+            await sendSms({
+                recipient,
+                message: body,
+                sender: sender.identifier
+            });
+        } else {
+            await sendEmail({
+                from: sender.identifier,
+                to: recipient,
+                subject: subject || 'Test Message — SmartSapp',
+                html: body
+            });
+        }
+
+        return { success: true };
+    } catch (error: any) {
+        console.error(">>> [MESSAGING] RAW DISPATCH ERROR:", error.message);
+        return { success: false, error: error.message };
+    }
+}

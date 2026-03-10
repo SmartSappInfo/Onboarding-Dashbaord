@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -57,7 +56,8 @@ import {
     Calendar,
     Database,
     PlusCircle,
-    Search
+    Search,
+    FlaskConical
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { SmartSappIcon } from '@/components/icons';
@@ -68,6 +68,7 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import QuickTemplateDialog from '../../components/quick-template-dialog';
+import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
@@ -99,6 +100,7 @@ export default function ComposerWizard() {
     const [step, setStep] = React.useState(1);
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
+    const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     
     // AI Refiner State
     const [isRefining, setIsRefining] = React.useState(false);
@@ -594,7 +596,7 @@ export default function ComposerWizard() {
                             )}
                         </CardContent>
                         <CardFooter className="justify-end bg-muted/30 p-8 border-t">
-                            <Button type="button" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-16 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 group">
+                            <Button type="button" size="lg" onClick={handleNext} disabled={!watchedTemplateId} className="px-12 rounded-2xl font-black shadow-2xl h-16 uppercase tracking-[0.1em] active:scale-95 group">
                                 Next Phase <ChevronRight className="ml-2 h-6 w-6 transition-transform group-hover:translate-x-1" />
                             </Button>
                         </CardFooter>
@@ -1062,6 +1064,15 @@ export default function ComposerWizard() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    <Button 
+                                        type="button" 
+                                        variant="outline" 
+                                        onClick={() => setIsTestModalOpen(true)}
+                                        className="w-full h-14 rounded-2xl font-black border-primary/20 text-primary hover:bg-primary/5 gap-3 uppercase tracking-widest text-sm shadow-lg"
+                                    >
+                                        <FlaskConical className="h-5 w-5" /> Send Test Dispatch
+                                    </Button>
                                 </div>
 
                                 <div className="space-y-6">
@@ -1136,6 +1147,16 @@ export default function ComposerWizard() {
                 channel={watchedChannel}
                 category="general"
                 onCreated={(id) => setValue('templateId', id, { shouldDirty: true })}
+            />
+
+            <TestDispatchDialog 
+                open={isTestModalOpen}
+                onOpenChange={setIsTestModalOpen}
+                channel={watchedChannel}
+                templateId={watchedTemplateId}
+                variables={getValues('variables')}
+                senderProfileId={getValues('senderProfileId')}
+                schoolId={watchedSchoolId}
             />
         </div>
     );

@@ -37,11 +37,13 @@ import {
     Save,
     CopyPlus,
     Pencil,
-    Banknote
+    Banknote,
+    FlaskConical
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
+import TestDispatchDialog from './TestDispatchDialog';
 
 interface QuickTemplateDialogProps {
     open: boolean;
@@ -74,6 +76,7 @@ export default function QuickTemplateDialog({
     const [aiPrompt, setAiPrompt] = React.useState('');
     const [showAiInput, setShowAiInput] = React.useState(false);
     const [isLoadingTemplate, setIsLoadingTemplate] = React.useState(false);
+    const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     
     // Context Selection
     const [selectedSurveyId, setSelectedSurveyId] = React.useState<string | undefined>(fixedSourceId);
@@ -322,17 +325,27 @@ export default function QuickTemplateDialog({
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Drafting {channel} protocol for {category}</DialogDescription>
                             </div>
                         </div>
-                        {!templateId && (
+                        <div className="flex items-center gap-3">
                             <Button 
                                 variant="outline" 
                                 size="sm" 
                                 className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
-                                onClick={() => setShowAiInput(!showAiInput)}
+                                onClick={() => setIsTestModalOpen(true)}
                             >
-                                <Sparkles className="h-4 w-4" />
-                                {showAiInput ? 'Designer Mode' : 'Draft with AI'}
+                                <FlaskConical className="h-4 w-4" /> Send Test
                             </Button>
-                        )}
+                            {!templateId && (
+                                <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="rounded-xl font-bold gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+                                    onClick={() => setShowAiInput(!showAiInput)}
+                                >
+                                    <Sparkles className="h-4 w-4" />
+                                    {showAiInput ? 'Designer Mode' : 'Draft with AI'}
+                                </Button>
+                            )}
+                        </div>
                     </div>
                 </DialogHeader>
 
@@ -366,7 +379,7 @@ export default function QuickTemplateDialog({
                                         disabled={isAiProcessing || !aiPrompt.trim()}
                                         className="w-full h-14 rounded-2xl font-black shadow-2xl text-lg uppercase tracking-widest active:scale-95 transition-all"
                                     >
-                                        {isAiProcessing ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Sparkles className="mr-2 h-5 w-5" />}
+                                        {isAiProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
                                         Generate Draft Structure
                                     </Button>
                                 </div>
@@ -500,6 +513,15 @@ export default function QuickTemplateDialog({
                     </div>
                 </DialogFooter>
             </DialogContent>
+
+            <TestDispatchDialog 
+                open={isTestModalOpen}
+                onOpenChange={setIsTestModalOpen}
+                channel={channel as 'email' | 'sms'}
+                rawBody={body}
+                rawSubject={subject}
+                templateId={templateId}
+            />
         </Dialog>
     );
 }

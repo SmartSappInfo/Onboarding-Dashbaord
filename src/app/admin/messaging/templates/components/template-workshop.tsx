@@ -18,7 +18,8 @@ import {
     Smartphone as PhoneIcon,
     Code,
     Sparkles,
-    ChevronRight
+    ChevronRight,
+    FlaskConical
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import { SortableBlockItem, blockIcons } from './visual-block';
 import { BlockInspector } from './block-inspector';
 import { SimulationStudio } from './simulation-studio';
 import { useToast } from '@/hooks/use-toast';
+import TestDispatchDialog from '../../components/TestDispatchDialog';
 
 interface TemplateWorkshopProps {
     initialTemplate?: MessageTemplate | null;
@@ -74,6 +76,7 @@ export function TemplateWorkshop({
     const [sidebarTab, setSidebarTab] = React.useState<'blocks' | 'tags' | 'properties'>('blocks');
     const [variablesWidth, setVariablesWidth] = React.useState(320);
     const [isResizing, setIsResizing] = React.useState(false);
+    const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
 
     // Form State
     const [name, setName] = React.useState(initialTemplate?.name || '');
@@ -134,8 +137,17 @@ export function TemplateWorkshop({
         onSave({ name, category, channel, subject, previewText, body, blocks, styleId });
     };
 
+    const resolvedPreviewHtml = React.useMemo(() => {
+        if (channel === 'email') {
+            const activeStyle = styleId !== 'none' ? styles.find(s => s.id === styleId) : null;
+            return renderBlocksToHtml(blocks, simVariables, {
+                wrapper: activeStyle?.htmlWrapper
+            });
+        }
+        return resolveVariables(body, simVariables);
+    }, [channel, blocks, simVariables, styleId, styles, body]);
+
     const filteredVars = React.useMemo(() => {
-        // Broaden filter to ensure finance variables (like agreement_url) show for contracts/finance templates
         return variables.filter(v => (
             v.category === 'general' || 
             v.category === category || 
@@ -172,6 +184,15 @@ export function TemplateWorkshop({
                     ))}
                 </div>
                 <div className="flex items-center gap-3 pb-6">
+                    {step > 1 && (
+                        <Button 
+                            variant="outline" 
+                            onClick={() => setIsTestModalOpen(true)} 
+                            className="rounded-xl font-bold border-primary/20 text-primary h-11 px-6 gap-2"
+                        >
+                            <FlaskConical className="h-4 w-4" /> Send Test
+                        </Button>
+                    )}
                     <Button variant="ghost" onClick={onCancel} className="font-bold h-11">Discard</Button>
                     <Button onClick={handleCommit} disabled={isSaving || !name} className="rounded-xl font-black px-10 shadow-xl bg-primary text-white h-11 transition-all active:scale-95 uppercase tracking-widest">
                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -412,6 +433,16 @@ export function TemplateWorkshop({
                     )}
                 </AnimatePresence>
             </div>
+
+            <TestDispatchDialog 
+                open={isTestModalOpen}
+                onOpenChange={setIsTestModalOpen}
+                channel={channel as 'email' | 'sms'}
+                rawBody={resolvedPreviewHtml}
+                rawSubject={resolveVariables(subject, simVariables)}
+                variables={simVariables}
+                schoolId={simEntity === 'School' ? simRecordId : undefined}
+            />
         </div>
     );
 }
