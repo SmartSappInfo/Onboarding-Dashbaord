@@ -257,7 +257,12 @@ export function TemplateWorkshop({
                                             <div className="flex items-center gap-2 px-2 h-10"><Database className="h-4 w-4 text-primary" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Contextual Registry</span></div>
                                         )}
                                     </div>
-                                    <TabsContent value="blocks" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t">
+                                    
+                                    {/* 
+                                        CONSTRAIN HEIGHT: We use flex-1 and min-h-0 on the TabsContent to ensure it ONLY takes available space.
+                                        data-[state=active]:flex is used to ensure only the active tab is treated as a flex child.
+                                    */}
+                                    <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-muted/5 border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
                                         <ScrollArea className="flex-1">
                                             <div className="p-4 space-y-8 text-left">
                                                 <div className="grid grid-cols-2 gap-3">
@@ -271,7 +276,8 @@ export function TemplateWorkshop({
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    <TabsContent value="tags" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t text-left">
+                                    
+                                    <TabsContent value="tags" className="m-0 flex-1 min-h-0 bg-muted/5 border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
                                         <ScrollArea className="flex-1">
                                             <div className="p-4 space-y-2">
                                                 {filteredVars.map(v => (
@@ -284,7 +290,8 @@ export function TemplateWorkshop({
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    <TabsContent value="properties" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t text-left">
+                                    
+                                    <TabsContent value="properties" className="m-0 flex-1 min-h-0 bg-muted/5 border-t text-left outline-none data-[state=active]:flex data-[state=active]:flex-col">
                                         <ScrollArea className="flex-1">
                                             <div className="p-4">
                                                 {selectedBlockId ? (
