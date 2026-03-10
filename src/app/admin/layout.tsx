@@ -42,7 +42,8 @@ import {
     Receipt,
     Package,
     Timer,
-    Settings2
+    Settings2,
+    FileCheck
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -87,6 +88,7 @@ const studioNavItems = [
 ];
 
 const financeNavItems = [
+  { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements' },
   { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices' },
   { href: '/admin/finance/packages', icon: Package, label: 'Packages' },
   { href: '/admin/finance/periods', icon: Timer, label: 'Cycles' },
