@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Trash2, Plus, User, Mail, Phone, ShieldCheck, Star, BadgeCheck } from 'lucide-react';
+import { Trash2, Plus, User, Mail, Phone, ShieldCheck, Star, BadgeCheck, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 const STANDARD_ROLES = ['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner'] as const;
 
@@ -199,7 +200,7 @@ export function FocalPersonManager() {
       
       {errors.focalPersons?.message && (
         <div className="p-4 rounded-xl bg-rose-50 border border-rose-100 flex items-center gap-3 animate-pulse">
-            <ShieldAlert className="h-5 w-5 text-rose-600" />
+            <AlertCircle className="h-5 w-5 text-rose-600" />
             <p className="text-[10px] font-black uppercase text-rose-900 tracking-widest">
                 Logic Integrity Failure: {String(errors.focalPersons.message)}
             </p>
@@ -208,9 +209,3 @@ export function FocalPersonManager() {
     </div>
   );
 }
-
-function ShieldAlert(props: any) {
-    return <AlertCircle {...props} />;
-}
-
-import { AlertCircle } from 'lucide-react';
