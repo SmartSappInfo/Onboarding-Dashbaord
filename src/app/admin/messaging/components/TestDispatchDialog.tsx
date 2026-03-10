@@ -19,7 +19,8 @@ import {
     Loader2, 
     CheckCircle2, 
     AlertCircle,
-    FlaskConical
+    FlaskConical,
+    Info
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendMessage, sendRawMessage } from '@/lib/messaging-engine';
