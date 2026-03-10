@@ -565,7 +565,7 @@ export interface MessageBlock {
 export interface MessageTemplate {
   id: string;
   name: string;
-  category: 'forms' | 'surveys' | 'meetings' | 'general' | 'contracts';
+  category: 'forms' | 'surveys' | 'meetings' | 'general' | 'contracts' | 'finance';
   channel: 'sms' | 'email';
   subject?: string;
   previewText?: string;
@@ -631,7 +631,7 @@ export interface VariableDefinition {
   id: string;
   key: string;
   label: string;
-  category: 'general' | 'meetings' | 'surveys' | 'forms';
+  category: 'general' | 'meetings' | 'surveys' | 'forms' | 'finance';
   source: 'static' | 'survey' | 'pdf' | 'constant';
   sourceId?: string; 
   sourceName?: string; 

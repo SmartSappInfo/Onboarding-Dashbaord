@@ -135,7 +135,7 @@ export function TemplateWorkshop({
     };
 
     const filteredVars = React.useMemo(() => {
-        return variables.filter(v => (v.category === 'general' || v.category === category) && !v.hidden);
+        return variables.filter(v => (v.category === 'general' || v.category === category || v.category === 'finance') && !v.hidden);
     }, [variables, category]);
 
     const stepTransition = {
@@ -201,6 +201,7 @@ export function TemplateWorkshop({
                                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none font-bold"><SelectValue /></SelectTrigger>
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem value="general">General</SelectItem>
+                                                        <SelectItem value="finance">Finance Hub</SelectItem>
                                                         <SelectItem value="meetings">Meetings</SelectItem>
                                                         <SelectItem value="surveys">Surveys</SelectItem>
                                                         <SelectItem value="forms">Forms</SelectItem>

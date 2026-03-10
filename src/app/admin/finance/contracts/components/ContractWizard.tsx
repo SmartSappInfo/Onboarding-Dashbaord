@@ -98,7 +98,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
     [firestore]);
 
     const templatesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'message_templates'), where('category', '==', 'contracts'), where('isActive', '==', true)) : null, 
+        firestore ? query(collection(firestore, 'message_templates'), where('category', '==', 'finance'), where('isActive', '==', true)) : null, 
     [firestore]);
 
     const { data: pdfTemplates } = useCollection<PDFForm>(pdfsQuery);

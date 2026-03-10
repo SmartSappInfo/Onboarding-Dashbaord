@@ -157,7 +157,7 @@ export function TemplateGallery({
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
                             <SelectItem value="all">All Types</SelectItem>
-                            {['general', 'meetings', 'surveys', 'forms'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
+                            {['general', 'meetings', 'surveys', 'forms', 'finance'].map(c => <SelectItem key={c} value={c} className="capitalize">{c}</SelectItem>)}
                         </SelectContent>
                     </Select>
                     <div className="h-12 w-px bg-border mx-1 hidden md:block" />

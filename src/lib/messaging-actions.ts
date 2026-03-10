@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -41,11 +40,11 @@ export async function syncVariableRegistry() {
       { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'contactPerson', type: 'string' },
       
       // Billing Data
-      { key: 'school_package', label: 'Subscription Tier', category: 'general', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
-      { key: 'subscription_rate', label: 'Effective Unit Rate', category: 'general', source: 'static', entity: 'School', path: 'subscriptionRate', type: 'number' },
-      { key: 'subscription_total', label: 'Total Amount', category: 'general', source: 'static', entity: 'School', path: 'nominalRoll * subscriptionRate', type: 'number' },
+      { key: 'school_package', label: 'Subscription Tier', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
+      { key: 'subscription_rate', label: 'Effective Unit Rate', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionRate', type: 'number' },
+      { key: 'subscription_total', label: 'Total Amount', category: 'finance', source: 'static', entity: 'School', path: 'nominalRoll * subscriptionRate', type: 'number' },
       { key: 'nominal_roll', label: 'Student Count', category: 'general', source: 'static', entity: 'School', path: 'nominalRoll', type: 'number' },
-      { key: 'arrears_balance', label: 'Outstanding Arrears', category: 'general', source: 'static', entity: 'School', path: 'arrearsBalance', type: 'number' },
+      { key: 'arrears_balance', label: 'Outstanding Arrears', category: 'finance', source: 'static', entity: 'School', path: 'arrearsBalance', type: 'number' },
 
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },

@@ -36,7 +36,8 @@ import {
     Trophy,
     Save,
     CopyPlus,
-    Pencil
+    Pencil,
+    Banknote
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -121,11 +122,12 @@ export default function QuickTemplateDialog({
 
     // Filtered & Grouped Variables Logic
     const groupedVariables = React.useMemo(() => {
-        if (!allVariables) return { survey: [], metrics: [], core: [], constants: [] };
+        if (!allVariables) return { survey: [], metrics: [], core: [], finance: [], constants: [] };
 
         const surveyVars: VariableDefinition[] = [];
         const metricVars: VariableDefinition[] = [];
         const coreVars: VariableDefinition[] = [];
+        const financeVars: VariableDefinition[] = [];
         const constantVars: VariableDefinition[] = [];
 
         allVariables.forEach(v => {
@@ -141,25 +143,24 @@ export default function QuickTemplateDialog({
                 metricVars.push(v);
             } else if (isQuestionFromSurvey) {
                 surveyVars.push(v);
+            } else if (v.category === 'finance') {
+                financeVars.push(v);
             } else if (v.category === category && v.source === 'survey' && !selectedSurveyId) {
-                // If in survey mode but no survey picked, show all survey questions as possibilities
                 surveyVars.push(v);
-            }
-            // 3. Institutional Core Data
-            else if (v.source === 'static' && v.category === 'general') {
+            } else if (v.source === 'static' && v.category === 'general') {
                 coreVars.push(v);
-            }
-            // 4. Manual Constants
-            else if (v.source === 'constant') {
+            } else if (v.source === 'constant') {
                 constantVars.push(v);
             }
         });
 
-        // Alphabetical sorts
-        surveyVars.sort((a, b) => a.label.localeCompare(b.label));
-        metricVars.sort((a, b) => a.label.localeCompare(b.label));
-
-        return { survey: surveyVars, metrics: metricVars, core: coreVars, constants: constantVars };
+        return { 
+            survey: surveyVars.sort((a, b) => a.label.localeCompare(b.label)), 
+            metrics: metricVars.sort((a, b) => a.label.localeCompare(b.label)), 
+            core: coreVars, 
+            finance: financeVars,
+            constants: constantVars 
+        };
     }, [allVariables, selectedSurveyId, category]);
 
     const handleAiArchitect = async () => {
@@ -170,6 +171,7 @@ export default function QuickTemplateDialog({
                 ...groupedVariables.survey.map(v => v.key),
                 ...groupedVariables.metrics.map(v => v.key),
                 ...groupedVariables.core.map(v => v.key),
+                ...groupedVariables.finance.map(v => v.key),
                 ...groupedVariables.constants.map(v => v.key)
             ];
 
@@ -451,6 +453,7 @@ export default function QuickTemplateDialog({
                                     </>
                                 )}
                                 <VariableSection title="Institutional Tags" icon={Building} items={groupedVariables.core} />
+                                <VariableSection title="Financial Logic" icon={Banknote} items={groupedVariables.finance} />
                                 <VariableSection title="Custom Constants" icon={Globe} items={groupedVariables.constants} />
                                 
                                 {category === 'surveys' && groupedVariables.survey.length === 0 && !selectedSurveyId && (
