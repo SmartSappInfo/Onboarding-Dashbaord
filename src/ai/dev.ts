@@ -10,3 +10,4 @@ import './flows/modify-survey-flow';
 import './flows/generate-visual-style-flow';
 import './flows/generate-email-template-flow';
 import './flows/refine-message-flow';
+import './flows/extract-school-data-flow';

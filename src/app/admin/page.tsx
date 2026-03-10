@@ -3,9 +3,10 @@ import { getDashboardData } from "@/lib/dashboard";
 import { DashboardSkeleton } from "./components/DashboardSkeleton";
 import DashboardGrid from "./components/DashboardGrid";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, CalendarPlus, FilePlus, Upload } from "lucide-react";
+import { PlusCircle, CalendarPlus, FilePlus, Upload, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Metadata } from 'next';
+import { RainbowButton } from "@/components/ui/rainbow-button";
 
 export const metadata: Metadata = {
   title: 'Operational Hub',
@@ -25,6 +26,11 @@ export default async function AdminDashboardPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 shrink-0">
                         <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground whitespace-nowrap shrink-0 ml-1">Quick Actions:</h3>
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+                            <RainbowButton asChild size="sm" className="justify-start rounded-xl font-bold h-9 shadow-lg">
+                                <Link href="/admin/schools/new/ai">
+                                    <Sparkles className="h-4 w-4 mr-2" /> AI Initialize
+                                </Link>
+                            </RainbowButton>
                             <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9">
                                 <Link href="/admin/schools/new">
                                     <PlusCircle className="h-4 w-4 mr-2" /> Add School

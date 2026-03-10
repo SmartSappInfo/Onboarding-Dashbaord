@@ -8,7 +8,7 @@ import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +44,7 @@ import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { cn } from '@/lib/utils';
+import { RainbowButton } from '@/components/ui/rainbow-button';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -132,10 +133,15 @@ export default function SchoolsClient() {
 
   return (
     <TooltipProvider>
-      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
+      <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
-                <div className="flex justify-end items-center shrink-0">
+                <div className="flex justify-end items-center gap-3 shrink-0">
+                    <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95">
+                        <Link href="/admin/schools/new/ai">
+                            <Sparkles className="h-4 w-4" /> AI Architect
+                        </Link>
+                    </RainbowButton>
                     <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
                         <Link href="/admin/schools/new">
                             <PlusCircle className="mr-2 h-5 w-5" />
