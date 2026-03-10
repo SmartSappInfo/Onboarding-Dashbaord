@@ -13,7 +13,96 @@
         "photoURL": { "type": "string" },
         "color": { "type": "string" },
         "isAuthorized": { "type": "boolean" },
+        "role": { "type": "string", "enum": ["admin", "finance"] },
         "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "SubscriptionPackage": {
+      "title": "Subscription Package",
+      "description": "Predefined pricing tiers for school subscriptions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "ratePerStudent": { "type": "number" },
+        "billingTerm": { "type": "string", "enum": ["term", "semester", "year"] },
+        "currency": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      }
+    },
+    "BillingPeriod": {
+      "title": "Billing Period",
+      "description": "Definition of a specific invoicing cycle.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "startDate": { "type": "string", "format": "date-time" },
+        "endDate": { "type": "string", "format": "date-time" },
+        "invoiceDate": { "type": "string", "format": "date-time" },
+        "paymentDueDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["open", "closed"] }
+      }
+    },
+    "InvoiceItem": {
+      "title": "Invoice Item",
+      "description": "A single line item on an invoice.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unitPrice": { "type": "number" },
+        "amount": { "type": "number" }
+      }
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "A financial record for a school for a specific billing period.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "periodId": { "type": "string" },
+        "periodName": { "type": "string" },
+        "nominalRoll": { "type": "number" },
+        "packageId": { "type": "string" },
+        "packageName": { "type": "string" },
+        "ratePerStudent": { "type": "number" },
+        "currency": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "discount": { "type": "number" },
+        "levyAmount": { "type": "number" },
+        "vatAmount": { "type": "number" },
+        "arrearsAdded": { "type": "number" },
+        "creditDeducted": { "type": "number" },
+        "totalPayable": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "sent", "paid", "partial", "overdue"] },
+        "items": { "type": "array", "items": { "$ref": "#/entities/InvoiceItem" } },
+        "paymentInstructions": { "type": "string" },
+        "signatureName": { "type": "string" },
+        "signatureDesignation": { "type": "string" },
+        "signatureUrl": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "BillingSettings": {
+      "title": "Billing Settings",
+      "description": "Global configuration for the invoicing engine.",
+      "type": "object",
+      "properties": {
+        "levyPercent": { "type": "number" },
+        "vatPercent": { "type": "number" },
+        "defaultDiscount": { "type": "number" },
+        "paymentInstructions": { "type": "string" },
+        "signatureName": { "type": "string" },
+        "signatureDesignation": { "type": "string" },
+        "signatureUrl": { "type": "string" }
       }
     },
     "Zone": {
@@ -34,7 +123,9 @@
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
-        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal", "School Owner"] }
+        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal", "School Owner"] },
+        "isBillingOfficer": { "type": "boolean" },
+        "isContractSignatory": { "type": "boolean" }
       }
     },
     "School": {
@@ -46,7 +137,14 @@
         "name": { "type": "string" },
         "slug": { "type": "string" },
         "location": { "type": "string" },
+        "billingAddress": { "type": "string" },
+        "currency": { "type": "string" },
+        "subscriptionPackageId": { "type": "string" },
+        "subscriptionRate": { "type": "number" },
+        "billingTerm": { "type": "string" },
         "nominalRoll": { "type": "number" },
+        "arrearsBalance": { "type": "number" },
+        "creditBalance": { "type": "number" },
         "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
         "zone": { "$ref": "#/entities/Zone" },
         "focalPersons": { "type": "array", "items": { "$ref": "#/entities/FocalPerson" } },
@@ -238,6 +336,22 @@
     "/campaign_sessions/{sessionId}": {
       "schema": "#/entities/CampaignSession",
       "description": "Real-time engagement metrics for marketing pages."
+    },
+    "/subscription_packages/{packageId}": {
+      "schema": "#/entities/SubscriptionPackage",
+      "description": "Pricing tiers."
+    },
+    "/billing_periods/{periodId}": {
+      "schema": "#/entities/BillingPeriod",
+      "description": "Billing cycles."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": "#/entities/Invoice",
+      "description": "Generated invoices."
+    },
+    "/billing_settings/{settingId}": {
+      "schema": "#/entities/BillingSettings",
+      "description": "Global tax and signature rules."
     }
   }
 }

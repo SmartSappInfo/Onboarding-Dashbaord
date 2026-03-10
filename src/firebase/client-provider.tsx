@@ -54,15 +54,16 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         const userDocRef = doc(firestore, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
         
-        if (!userSnap.exists() || !userSnap.data().isAuthorized) {
+        if (!userSnap.exists() || !userSnap.data().isAuthorized || userSnap.data().role !== 'finance') {
             await setDoc(userDocRef, {
                 name: 'Default Admin',
                 email: user.email,
                 phone: '000-000-0000',
                 isAuthorized: true,
+                role: 'finance', // Assign finance role to default admin
                 createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
             }, { merge: true });
-            console.log("Default admin Firestore record ensured.");
+            console.log("Default admin (Finance) Firestore record ensured.");
         }
 
       } catch (error: any) {
@@ -81,9 +82,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               email: user.email,
               phone: '000-000-0000',
               isAuthorized: true,
+              role: 'finance',
               createdAt: new Date().toISOString(),
             });
-            console.log("Default admin user created and authorized.");
+            console.log("Default admin user created and authorized with Finance role.");
           } catch (creationError) {
             console.error("Failed to create default admin user:", creationError);
           }

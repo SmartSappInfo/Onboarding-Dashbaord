@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -15,12 +16,16 @@ export interface FocalPerson {
   phone: string;
   email: string;
   type: FocalPersonType;
+  isBillingOfficer?: boolean;
+  isContractSignatory?: boolean;
 }
 
 export interface Zone {
   id: string;
   name: string;
 }
+
+export type UserRole = 'admin' | 'finance';
 
 export interface UserProfile {
   id: string;
@@ -30,6 +35,7 @@ export interface UserProfile {
   photoURL?: string;
   color?: string;
   isAuthorized: boolean;
+  role: UserRole;
   createdAt: string; // ISO string
 }
 
@@ -59,7 +65,14 @@ export interface School {
   zone?: Zone;
   focalPersons?: FocalPerson[];
   location?: string;
+  billingAddress?: string;
+  currency?: string;
+  subscriptionPackageId?: string;
+  subscriptionRate?: number;
+  billingTerm?: string;
   nominalRoll?: number;
+  arrearsBalance?: number;
+  creditBalance?: number;
   modules?: {
     id: string;
     name: string;
@@ -81,6 +94,77 @@ export interface School {
     color?: string;
   };
   createdAt: string; // ISO string
+}
+
+export interface SubscriptionPackage {
+  id: string;
+  name: string;
+  description: string;
+  ratePerStudent: number;
+  billingTerm: 'term' | 'semester' | 'year';
+  currency: string;
+  isActive: boolean;
+}
+
+export interface BillingPeriod {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  invoiceDate: string;
+  paymentDueDate: string;
+  status: 'open' | 'closed';
+}
+
+export interface InvoiceItem {
+  name: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'partial' | 'overdue';
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  schoolId: string;
+  schoolName: string;
+  periodId: string;
+  periodName: string;
+  nominalRoll: number;
+  packageId: string;
+  packageName: string;
+  ratePerStudent: number;
+  currency: string;
+  subtotal: number;
+  discount: number;
+  levyAmount: number;
+  vatAmount: number;
+  arrearsAdded: number;
+  creditDeducted: number;
+  totalPayable: number;
+  status: InvoiceStatus;
+  items: InvoiceItem[];
+  paymentInstructions: string;
+  signatureName: string;
+  signatureDesignation: string;
+  signatureUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+  sentAt?: string;
+}
+
+export interface BillingSettings {
+  id: string;
+  levyPercent: number;
+  vatPercent: number;
+  defaultDiscount: number;
+  paymentInstructions: string;
+  signatureName: string;
+  signatureDesignation: string;
+  signatureUrl?: string;
 }
 
 export interface Meeting {

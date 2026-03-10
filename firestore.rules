@@ -16,10 +16,38 @@ service cloud.firestore {
       );
     }
 
+    function isFinance() {
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'finance';
+    }
+
+    function isAnyAdmin() {
+      return isAuthorized() || isFinance();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
     
+    // --- Billing Rules ---
+    match /subscription_packages/{packageId} {
+      allow read: if isAnyAdmin();
+      allow write: if isFinance();
+    }
+    match /billing_periods/{periodId} {
+      allow read: if isAnyAdmin();
+      allow write: if isFinance();
+    }
+    match /invoices/{invoiceId} {
+      allow read: if isAnyAdmin() || true; // Public read for public invoice page
+      allow write: if isFinance();
+    }
+    match /billing_settings/{settingId} {
+      allow read: if isAnyAdmin();
+      allow write: if isFinance();
+    }
+
     match /onboardingStages/{document=**} {
       allow read, write: if isAuthorized();
     }
