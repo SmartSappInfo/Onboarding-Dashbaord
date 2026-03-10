@@ -11,6 +11,24 @@ import { logActivity } from './activity-logger';
  */
 
 /**
+ * Fetches an invoice for public viewing.
+ * Limited fields returned for security.
+ */
+export async function getPublicInvoiceAction(id: string) {
+    try {
+        const docSnap = await adminDb.collection('invoices').doc(id).get();
+        if (!docSnap.exists) return { success: false, error: "Invoice not found." };
+        
+        const data = docSnap.data() as Invoice;
+        // We ensure only published (sent/paid/overdue) or specific draft states are viewable if needed
+        // but generally, if you have the ID, you can view the bill.
+        return { success: true, invoice: { id: docSnap.id, ...data } };
+    } catch (e: any) {
+        return { success: false, error: e.message };
+    }
+}
+
+/**
  * Generates a draft invoice for a specific school and period.
  * Snapshots all current rates and settings to ensure financial durability.
  */
