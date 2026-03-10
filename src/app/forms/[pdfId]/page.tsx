@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import PasswordGatedForm from './components/PasswordGatedForm';
 import { Metadata } from 'next';
 
-async function getPdfFormData(id: string): Promise<{ pdfForm: PDFForm, school?: School } | null> {
+async function getPdfFormData(id: string, querySchoolId?: string): Promise<{ pdfForm: PDFForm, school?: School } | null> {
     try {
         // 1. Fetch PDF Metadata
         let docSnap = await adminDb.collection('pdfs').doc(id).get();
@@ -23,10 +23,13 @@ async function getPdfFormData(id: string): Promise<{ pdfForm: PDFForm, school?: 
 
         const pdfForm = { ...docSnap.data(), id: docSnap.id } as PDFForm;
         
-        // 2. Fetch associated School if applicable
+        // 2. Resolve associated School Context
+        // Priority: Query Parameter (for unique shared links) > Stored schoolId (for dedicated forms)
         let school: School | undefined = undefined;
-        if (pdfForm.schoolId) {
-            const schoolSnap = await adminDb.collection('schools').doc(pdfForm.schoolId).get();
+        const targetSchoolId = querySchoolId || pdfForm.schoolId;
+
+        if (targetSchoolId) {
+            const schoolSnap = await adminDb.collection('schools').doc(targetSchoolId).get();
             if (schoolSnap.exists) {
                 school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
             }
@@ -39,9 +42,10 @@ async function getPdfFormData(id: string): Promise<{ pdfForm: PDFForm, school?: 
     }
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ pdfId: string }> }): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ schoolId?: string }> }): Promise<Metadata> {
     const { pdfId } = await params;
-    const data = await getPdfFormData(pdfId);
+    const sParams = await searchParams;
+    const data = await getPdfFormData(pdfId, sParams.schoolId);
 
     if (!data) {
         return {
@@ -55,9 +59,10 @@ export async function generateMetadata({ params }: { params: Promise<{ pdfId: st
     };
 }
 
-export default async function PublicPdfFormPage({ params }: { params: Promise<{ pdfId: string }> }) {
+export default async function PublicPdfFormPage({ params, searchParams }: { params: Promise<{ pdfId: string }>, searchParams: Promise<{ schoolId?: string }> }) {
     const { pdfId } = await params;
-    const data = await getPdfFormData(pdfId);
+    const sParams = await searchParams;
+    const data = await getPdfFormData(pdfId, sParams.schoolId);
 
     if (!data) {
         notFound();

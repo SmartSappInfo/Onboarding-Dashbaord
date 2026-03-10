@@ -423,7 +423,11 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfId: pdfForm.id, formData: pendingFormData }),
+            body: JSON.stringify({ 
+                pdfId: pdfForm.id, 
+                formData: pendingFormData,
+                schoolId: school?.id // Pass schoolId for unique contract tracking
+            }),
         });
 
         const result = await response.json();

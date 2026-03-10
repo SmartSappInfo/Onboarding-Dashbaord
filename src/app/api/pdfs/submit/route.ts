@@ -1,4 +1,3 @@
-
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
 import { sendMessage } from '@/lib/messaging-engine';
@@ -13,7 +12,7 @@ import type { PDFForm } from '@/lib/types';
 
 export async function POST(req: Request) {
   try {
-    const { pdfId, formData } = await req.json();
+    const { pdfId, formData, schoolId: submittedSchoolId } = await req.json();
 
     if (!pdfId || !formData) {
       return Response.json({ error: 'Missing required data' }, { status: 400 });
@@ -31,6 +30,10 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Form is not published' }, { status: 403 });
     }
 
+    // Determine the target school for contract logic
+    // Priority: Explicitly submitted schoolId (from unique shared link) > Template-bound schoolId
+    const targetSchoolId = submittedSchoolId || pdfData.schoolId;
+
     const timestamp = new Date().toISOString();
 
     const submissionData = {
@@ -38,17 +41,18 @@ export async function POST(req: Request) {
       submittedAt: timestamp,
       formData,
       status: 'submitted',
+      schoolId: targetSchoolId || null
     };
 
     const submissionRef = await pdfRef.collection('submissions').add(submissionData);
 
     // 1. CONTRACT CLOSURE LOGIC
-    // If this is a formal contract, we find the institutional record and close it.
-    if (pdfData.isContractDocument && pdfData.schoolId) {
-        console.log(`>>> [CONTRACT:SYNC] Closing agreement for school: ${pdfData.schoolId}`);
+    // If this is a formal contract and we have a target school, find the institutional record and close it.
+    if (pdfData.isContractDocument && targetSchoolId) {
+        console.log(`>>> [CONTRACT:SYNC] Closing agreement for school: ${targetSchoolId}`);
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol
-            .where('schoolId', '==', pdfData.schoolId)
+            .where('schoolId', '==', targetSchoolId)
             .where('status', 'in', ['sent', 'draft'])
             .limit(1)
             .get();
@@ -64,7 +68,7 @@ export async function POST(req: Request) {
             
             // Log specific legal activity
             await logActivity({
-                schoolId: pdfData.schoolId,
+                schoolId: targetSchoolId,
                 userId: null,
                 type: 'pdf_status_changed',
                 source: 'public',
@@ -103,7 +107,8 @@ export async function POST(req: Request) {
                     form_name: pdfData.name,
                     submission_id: submissionRef.id,
                     submission_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-                }
+                },
+                schoolId: targetSchoolId || undefined
             });
         }
     }
@@ -111,7 +116,7 @@ export async function POST(req: Request) {
     // 3. INTERNAL TEAM NOTIFICATION
     if (pdfData.adminAlertsEnabled) {
         await triggerInternalNotification({
-            schoolId: pdfData.schoolId || '',
+            schoolId: targetSchoolId || '',
             notifyManager: pdfData.adminAlertNotifyManager,
             specificUserIds: pdfData.adminAlertSpecificUserIds,
             emailTemplateId: pdfData.adminAlertEmailTemplateId,
@@ -128,9 +133,9 @@ export async function POST(req: Request) {
     }
 
     // Log general activity if not already logged by contract closure
-    if (!pdfData.isContractDocument) {
+    if (!pdfData.isContractDocument || !targetSchoolId) {
         await logActivity({
-            schoolId: pdfData?.schoolId || '',
+            schoolId: targetSchoolId || '',
             userId: null,
             type: 'pdf_form_submitted',
             source: 'public',

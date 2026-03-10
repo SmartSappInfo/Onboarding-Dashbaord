@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,7 +24,8 @@ import {
     MoreHorizontal,
     Eye,
     Trash2,
-    Loader2
+    Loader2,
+    Copy
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -105,6 +105,15 @@ export default function AgreementsClient() {
 
         return { total, signed, pending, actionRequired, coverage };
     }, [schools, contracts]);
+
+    const handleCopyLink = (item: any) => {
+        if (!item.contract?.pdfId) return;
+        if (typeof window === 'undefined') return;
+        
+        const url = `${window.location.origin}/forms/${item.contract.pdfId}?schoolId=${item.id}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: 'Link Copied', description: 'Unique signing URL is ready to share.' });
+    };
 
     const handleDownload = async (contract: Contract) => {
         if (!contract.pdfId || !contract.submissionId) return;
@@ -269,6 +278,13 @@ export default function AgreementsClient() {
                                                         <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl">
                                                             <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Options</DropdownMenuLabel>
                                                             
+                                                            {status !== 'no_contract' && (
+                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => handleCopyLink(item)}>
+                                                                    <Copy className="h-4 w-4 text-primary" />
+                                                                    <span className="font-bold text-sm">Copy Signing Link</span>
+                                                                </DropdownMenuItem>
+                                                            )}
+
                                                             {status === 'signed' && contract?.submissionId && (
                                                                 <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
                                                                     <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>

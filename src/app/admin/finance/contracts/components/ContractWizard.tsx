@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
     FileText, 
     Plus, 
@@ -31,7 +32,9 @@ import {
     Zap,
     Mail,
     Smartphone,
-    Info
+    Info,
+    Copy,
+    Globe
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -105,6 +108,18 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
         pdfTemplates?.find(p => p.id === watchedPdfId),
     [pdfTemplates, watchedPdfId]);
 
+    const publicUrl = React.useMemo(() => {
+        if (!selectedPdf) return '';
+        const base = typeof window !== 'undefined' ? window.location.origin : '';
+        return `${base}/forms/${selectedPdf.slug || selectedPdf.id}?schoolId=${school.id}`;
+    }, [selectedPdf, school.id]);
+
+    const handleCopyUrl = () => {
+        if (!publicUrl) return;
+        navigator.clipboard.writeText(publicUrl);
+        toast({ title: 'Link Copied', description: 'Institutional signing URL is ready to share.' });
+    };
+
     const handleNext = async () => {
         if (step === 1) {
             if (!watchedPdfId) return;
@@ -136,8 +151,6 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
         const recipients = (school.focalPersons || [])
             .filter(p => data.selectedRecipientEmails.includes(p.email))
             .map(p => ({ name: p.name, email: p.email, phone: p.phone, type: p.type }));
-
-        const publicUrl = `${window.location.origin}/forms/${selectedPdf.slug || selectedPdf.id}`;
 
         const result = await sendContractAction({
             contractId,
@@ -263,78 +276,108 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
 
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
-                                    <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
-                                        <div className="space-y-10 text-left">
-                                            <div className="space-y-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
-                                                    <Label className="text-base font-black uppercase tracking-tight">Select Recipients</Label>
-                                                </div>
-                                                <div className="space-y-3">
-                                                    {school.focalPersons?.map(person => (
-                                                        <div key={person.email} className={cn(
-                                                            "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
-                                                            watchedRecipients.includes(person.email) ? "border-primary/20 bg-primary/5 shadow-sm" : "border-border/50 bg-background opacity-60"
-                                                        )}>
-                                                            <div className="flex items-center gap-4">
-                                                                <Checkbox 
-                                                                    id={`rec-${person.email}`} 
-                                                                    checked={watchedRecipients.includes(person.email)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        const current = [...watchedRecipients];
-                                                                        if (checked) current.push(person.email);
-                                                                        else {
-                                                                            const idx = current.indexOf(person.email);
-                                                                            if (idx > -1) current.splice(idx, 1);
-                                                                        }
-                                                                        setValue('selectedRecipientEmails', current);
-                                                                    }}
-                                                                />
-                                                                <div className="text-left leading-none">
-                                                                    <p className="text-sm font-black uppercase tracking-tight">{person.name}</p>
-                                                                    <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">{person.type}</p>
+                                    <div className="max-w-4xl mx-auto space-y-12 text-left">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                                            <div className="space-y-10 text-left">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
+                                                        <Label className="text-base font-black uppercase tracking-tight">Select Recipients</Label>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        {school.focalPersons?.map(person => (
+                                                            <div key={person.email} className={cn(
+                                                                "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
+                                                                watchedRecipients.includes(person.email) ? "border-primary/20 bg-primary/5 shadow-sm" : "border-border/50 bg-background opacity-60"
+                                                            )}>
+                                                                <div className="flex items-center gap-4">
+                                                                    <Checkbox 
+                                                                        id={`rec-${person.email}`} 
+                                                                        checked={watchedRecipients.includes(person.email)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const current = [...watchedRecipients];
+                                                                            if (checked) current.push(person.email);
+                                                                            else {
+                                                                                const idx = current.indexOf(person.email);
+                                                                                if (idx > -1) current.splice(idx, 1);
+                                                                            }
+                                                                            setValue('selectedRecipientEmails', current);
+                                                                        }}
+                                                                    />
+                                                                    <div className="text-left leading-none">
+                                                                        <p className="text-sm font-black uppercase tracking-tight">{person.name}</p>
+                                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">{person.type}</p>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    {person.email && <Mail className="h-3.5 w-3.5 text-blue-500" />}
+                                                                    {person.phone && <Smartphone className="h-3.5 w-3.5 text-orange-500" />}
                                                                 </div>
                                                             </div>
-                                                            <div className="flex gap-2">
-                                                                {person.email && <Mail className="h-3.5 w-3.5 text-blue-500" />}
-                                                                {person.phone && <Smartphone className="h-3.5 w-3.5 text-orange-500" />}
-                                                            </div>
-                                                        </div>
-                                                    ))}
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-10 text-left">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
+                                                        <Label className="text-base font-black uppercase tracking-tight">Communication Template</Label>
+                                                    </div>
+                                                    <Controller
+                                                        name="templateId"
+                                                        control={methods.control}
+                                                        render={({ field }) => (
+                                                            <Select value={field.value} onValueChange={field.onChange}>
+                                                                <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-lg px-6">
+                                                                    <SelectValue placeholder="Pick a template..." />
+                                                                </SelectTrigger>
+                                                                <SelectContent className="rounded-2xl">
+                                                                    {msgTemplates?.map(t => (
+                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                    ))}
+                                                                </SelectContent>
+                                                            </Select>
+                                                        )}
+                                                    />
+                                                    <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
+                                                        <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
+                                                        <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed tracking-widest opacity-80">
+                                                            Selected templates will be resolved with the institutional contract link and school context before dispatch.
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-10 text-left">
-                                            <div className="space-y-4">
+                                        {/* PUBLIC LINK HUB */}
+                                        <Card className="rounded-3xl border-none ring-1 ring-primary/20 bg-primary/5 shadow-inner overflow-hidden">
+                                            <CardContent className="p-8 space-y-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
-                                                    <Label className="text-base font-black uppercase tracking-tight">Communication Template</Label>
+                                                    <div className="p-2 bg-primary text-white rounded-xl shadow-lg"><Globe className="h-4 w-4" /></div>
+                                                    <Label className="text-sm font-black uppercase tracking-tight text-primary">Public Signing Hub</Label>
                                                 </div>
-                                                <Controller
-                                                    name="templateId"
-                                                    control={methods.control}
-                                                    render={({ field }) => (
-                                                        <Select value={field.value} onValueChange={field.onChange}>
-                                                            <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-lg px-6">
-                                                                <SelectValue placeholder="Pick a template..." />
-                                                            </SelectTrigger>
-                                                            <SelectContent className="rounded-2xl">
-                                                                {msgTemplates?.map(t => (
-                                                                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    )}
-                                                />
-                                                <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
-                                                    <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
-                                                    <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed tracking-widest opacity-80">
-                                                        Selected templates will be resolved with the institutional contract link and school context before dispatch.
-                                                    </p>
+                                                <div className="flex flex-col sm:flex-row items-center gap-4">
+                                                    <Input 
+                                                        value={publicUrl} 
+                                                        readOnly 
+                                                        className="h-12 rounded-xl bg-white border-primary/10 font-mono text-[10px] text-primary px-4 shadow-sm flex-1" 
+                                                    />
+                                                    <Button 
+                                                        type="button" 
+                                                        variant="outline" 
+                                                        onClick={handleCopyUrl}
+                                                        className="h-12 px-6 rounded-xl font-bold gap-2 border-primary/20 text-primary hover:bg-primary/5 shrink-0"
+                                                    >
+                                                        <Copy className="h-4 w-4" /> Copy Unique Link
+                                                    </Button>
                                                 </div>
-                                            </div>
-                                        </div>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter px-1">
+                                                    This unique URL allows the respondent to sign the document while automatically resolving variables for {school.name}.
+                                                </p>
+                                            </CardContent>
+                                        </Card>
                                     </div>
                                 </motion.div>
                             )}
