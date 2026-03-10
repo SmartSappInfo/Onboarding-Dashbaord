@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -22,12 +21,15 @@ import {
     ShieldCheck,
     Target,
     Zap,
-    MoreHorizontal
+    MoreHorizontal,
+    Eye,
+    Trash2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
