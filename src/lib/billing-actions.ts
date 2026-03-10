@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -56,19 +55,22 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
 
         const pkgSnap = await db.collection('subscription_packages').doc(school.subscriptionPackageId).get();
         if (!pkgSnap.exists) throw new Error("Subscription package not found.");
-        const pkg = pkgSnap.data() as SubscriptionPackage;
+        
+        const pkgData = pkgSnap.data();
+        const pkgId = pkgSnap.id;
+        const pkgName = pkgData?.name || "Standard Package";
 
         // 2. Calculation Logic
         const nominalRoll = school.nominalRoll || 0;
         
         // PRIORITY: Use school-specific effective rate if defined, otherwise fallback to package rate
-        const rate = school.subscriptionRate || pkg.ratePerStudent;
+        const rate = school.subscriptionRate || pkgData?.ratePerStudent || 0;
         
         const subtotal = nominalRoll * rate;
         
-        const levyAmount = (subtotal * settings.levyPercent) / 100;
-        const vatAmount = (subtotal * settings.vatPercent) / 100;
-        const discount = (subtotal * settings.defaultDiscount) / 100;
+        const levyAmount = (subtotal * (settings.levyPercent || 0)) / 100;
+        const vatAmount = (subtotal * (settings.vatPercent || 0)) / 100;
+        const discount = (subtotal * (settings.defaultDiscount || 0)) / 100;
 
         const arrears = school.arrearsBalance || 0;
         const credits = school.creditBalance || 0;
@@ -82,8 +84,8 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
         // 4. Prepare Primary Line Item
         const items: InvoiceItem[] = [
             { 
-                name: `SmartSapp Subscription (${pkg.name})`, 
-                description: `Subscription fee for ${nominalRoll} students @ ${school.currency} ${rate} per ${pkg.billingTerm}.`,
+                name: `SmartSapp Subscription (${pkgName})`, 
+                description: `Subscription fee for ${nominalRoll} students @ ${school.currency} ${rate} per ${pkgData?.billingTerm || 'term'}.`,
                 quantity: nominalRoll,
                 unitPrice: rate,
                 amount: subtotal
@@ -94,12 +96,12 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
         const invoiceData: Omit<Invoice, 'id'> = {
             invoiceNumber,
             schoolId,
-            schoolName: school.name,
+            schoolName: school.name || 'Unknown School',
             periodId,
-            periodName: period.name,
+            periodName: period.name || 'Current Period',
             nominalRoll,
-            packageId: pkg.id,
-            packageName: pkg.name,
+            packageId: pkgId,
+            packageName: pkgName,
             ratePerStudent: rate,
             currency: school.currency || 'GHS',
             subtotal,
@@ -111,15 +113,20 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
             totalPayable,
             status: 'draft',
             items,
-            paymentInstructions: settings.paymentInstructions,
-            signatureName: settings.signatureName,
-            signatureDesignation: settings.signatureDesignation,
+            paymentInstructions: settings.paymentInstructions || '',
+            signatureName: settings.signatureName || '',
+            signatureDesignation: settings.signatureDesignation || '',
             signatureUrl: settings.signatureUrl || '',
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
         };
 
-        const docRef = await db.collection('invoices').add(invoiceData);
+        // Ensure no undefined values reach Firestore
+        const sanitizedInvoiceData = Object.fromEntries(
+            Object.entries(invoiceData).filter(([_, v]) => v !== undefined)
+        );
+
+        const docRef = await db.collection('invoices').add(sanitizedInvoiceData);
         
         await logActivity({
             schoolId,
