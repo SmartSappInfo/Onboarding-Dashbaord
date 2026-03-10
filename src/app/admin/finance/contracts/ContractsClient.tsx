@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -23,7 +24,8 @@ import {
     Zap,
     MoreHorizontal,
     Eye,
-    Trash2
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,12 +46,15 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ContractWizard from './components/ContractWizard';
+import { useToast } from '@/hooks/use-toast';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [activeWizardSchool, setActiveWizardSchool] = React.useState<School | null>(null);
+    const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
     // Data Subscriptions
     const schoolsCol = useMemoFirebase(() => 
@@ -101,6 +106,32 @@ export default function AgreementsClient() {
         return { total, signed, pending, actionRequired, coverage };
     }, [schools, contracts]);
 
+    const handleDownload = async (contract: Contract) => {
+        if (!contract.pdfId || !contract.submissionId) return;
+        setDownloadingId(contract.id);
+        
+        try {
+            const response = await fetch(`/api/pdfs/${contract.pdfId}/generate/${contract.submissionId}`);
+            if (!response.ok) throw new Error("Failed to generate PDF");
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${contract.schoolName}_Signed_Agreement.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            toast({ title: 'Download Successful' });
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
+        } finally {
+            setDownloadingId(null);
+        }
+    };
+
     const getStatusBadge = (status: string) => {
         switch (status) {
             case 'signed': return <Badge className="bg-emerald-500 text-white border-none text-[8px] h-5 uppercase px-2 font-black gap-1"><ShieldCheck className="h-2.5 w-2.5" /> Signed</Badge>;
@@ -147,7 +178,7 @@ export default function AgreementsClient() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest">
+                            <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all">
                                 <SelectValue placeholder="All Status" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl">
@@ -191,6 +222,7 @@ export default function AgreementsClient() {
                                 filteredList.map((item) => {
                                     const contract = item.contract;
                                     const status = contract?.status || 'no_contract';
+                                    const isSigningInProcess = downloadingId === contract?.id;
                                     
                                     return (
                                         <TableRow key={item.id} className="group hover:bg-muted/30 transition-colors">
@@ -215,8 +247,15 @@ export default function AgreementsClient() {
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     {status === 'signed' ? (
-                                                        <Button variant="outline" size="sm" className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50">
-                                                            <Download className="h-3 w-3 mr-1.5" /> Download
+                                                        <Button 
+                                                            variant="outline" 
+                                                            size="sm" 
+                                                            disabled={isSigningInProcess}
+                                                            className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
+                                                            onClick={() => contract && handleDownload(contract)}
+                                                        >
+                                                            {isSigningInProcess ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Download className="h-3 w-3 mr-1.5" />}
+                                                            Download
                                                         </Button>
                                                     ) : (
                                                         <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg" onClick={() => setActiveWizardSchool(item)}>
@@ -227,17 +266,28 @@ export default function AgreementsClient() {
                                                         <DropdownMenuTrigger asChild>
                                                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreHorizontal className="h-4 w-4" /></Button>
                                                         </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl">
+                                                        <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl">
                                                             <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Options</DropdownMenuLabel>
+                                                            
+                                                            {status === 'signed' && contract?.submissionId && (
+                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
+                                                                    <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>
+                                                                        <Eye className="h-4 w-4 text-primary" />
+                                                                        <span className="font-bold text-sm">View Legal Record</span>
+                                                                    </Link>
+                                                                </DropdownMenuItem>
+                                                            )}
+
                                                             <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
-                                                                <Eye className="h-4 w-4 text-primary" /> Preview Logic
+                                                                <FileText className="h-4 w-4 text-primary" /> Preview Logic
                                                             </DropdownMenuItem>
                                                             <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
                                                                 <Send className="h-4 w-4 text-primary" /> Send Agreement
                                                             </DropdownMenuItem>
+                                                            
                                                             <DropdownMenuSeparator />
                                                             <DropdownMenuItem className="text-destructive gap-3 rounded-lg p-2.5 focus:bg-destructive/10">
-                                                                <Trash2 className="h-4 w-4" /> Purge Draft
+                                                                <Trash2 className="h-4 w-4" /> Purge Protocol
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
