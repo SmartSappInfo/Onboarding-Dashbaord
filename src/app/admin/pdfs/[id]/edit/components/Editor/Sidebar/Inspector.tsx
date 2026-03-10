@@ -18,7 +18,7 @@ import {
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
-  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette
+  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
