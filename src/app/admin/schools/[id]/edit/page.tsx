@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from '@/components/form-base';
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
