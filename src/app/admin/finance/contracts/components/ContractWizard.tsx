@@ -15,6 +15,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { 
     FileText, 
     Plus, 
@@ -28,12 +30,11 @@ import {
     ShieldCheck, 
     Zap,
     Mail,
-    Smartphone,
-    Building
+    Smartphone
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { PDFForm, School, MessageTemplate, FocalPerson } from '@/lib/types';
+import type { PDFForm, School, MessageTemplate } from '@/lib/types';
 import { upsertContractAction, sendContractAction } from '@/lib/contract-actions';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -85,6 +86,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
     const { watch, setValue, handleSubmit } = methods;
     const watchedPdfId = watch('pdfId');
     const watchedRecipients = watch('selectedRecipientEmails');
+    const watchedTemplateId = watch('templateId');
 
     // Data Subscriptions
     const pdfsQuery = useMemoFirebase(() => 
@@ -179,7 +181,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                                 <ShieldCheck className="h-6 w-6" />
                             </div>
-                            <div>
+                            <div className="text-left">
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tight">Legal Execution</DialogTitle>
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{school.name}</DialogDescription>
                             </div>
@@ -196,8 +198,8 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                     <FormProvider {...methods}>
                         <AnimatePresence mode="wait">
                             {step === 1 && (
-                                <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-12">
-                                    <div className="max-w-2xl mx-auto space-y-10">
+                                <motion.div key="step1" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
+                                    <div className="max-w-2xl mx-auto space-y-10 text-left">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
                                             <Label className="text-base font-black uppercase tracking-tight">Select Contract Template</Label>
@@ -212,7 +214,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                                                     )}
                                                     onClick={() => setValue('pdfId', p.id)}
                                                 >
-                                                    <CardContent className="p-6 flex items-center gap-4">
+                                                    <CardContent className="p-6 flex items-center gap-4 text-left">
                                                         <div className={cn("p-2 rounded-xl", watchedPdfId === p.id ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
                                                             <FileText className="h-5 w-5" />
                                                         </div>
@@ -259,9 +261,9 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                             )}
 
                             {step === 3 && (
-                                <motion.div key="step3" {...stepTransition} className="absolute inset-0 p-12">
+                                <motion.div key="step3" {...stepTransition} className="absolute inset-0 p-12 overflow-y-auto">
                                     <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
-                                        <div className="space-y-10">
+                                        <div className="space-y-10 text-left">
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-primary/10 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
@@ -302,7 +304,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                                             </div>
                                         </div>
 
-                                        <div className="space-y-10">
+                                        <div className="space-y-10 text-left">
                                             <div className="space-y-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
@@ -353,7 +355,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                         <Button 
                             onClick={handleNext} 
                             disabled={isSaving || (step === 1 && !watchedPdfId)}
-                            className="rounded-2xl font-black h-14 px-16 shadow-2xl uppercase tracking-[0.2em] active:scale-95 transition-all gap-2"
+                            className="rounded-2xl font-black h-14 px-16 shadow-2xl uppercase tracking-[0.1em] active:scale-95 transition-all gap-2"
                         >
                             {isSaving ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
                             Next Phase <ChevronRight className="h-5 w-5" />
@@ -362,7 +364,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                         <Button 
                             onClick={handleSubmit(onSubmit)} 
                             disabled={isSaving || !watchedTemplateId || watchedRecipients.length === 0}
-                            className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
+                            className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
                         >
                             {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
                             Execute Dispatch
