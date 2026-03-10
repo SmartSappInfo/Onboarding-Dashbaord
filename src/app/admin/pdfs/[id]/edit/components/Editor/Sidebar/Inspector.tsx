@@ -14,8 +14,8 @@ import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   Text, Signature, Calendar, ChevronDownSquare, Phone, Mail, Clock, Camera, 
-  Trash2, Key, AlignStartHorizontal, AlignCenterHorizontal, 
-  AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
+  Trash2, Key, AlignVerticalJustifyStart, AlignVerticalJustifyCenter, 
+  AlignVerticalJustifyEnd, AlignHorizontalJustifyStart, AlignHorizontalJustifyCenter, AlignHorizontalJustifyEnd,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
   Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw,
@@ -58,7 +58,8 @@ const SCHOOL_VARIABLES = [
 export function Inspector() {
   const { 
     pdf, fields, selectedFieldIds, namingFieldId, setNamingFieldId,
-    updateField, isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen
+    updateField, isSidebarCollapsed, numPages, setIsFieldDeleteConfirmOpen,
+    alignFields, distributeFields, duplicateFields
   } = useEditor();
 
   const selectedField = selectedFieldIds.length === 1 ? fields.find(f => f.id === selectedFieldIds[0]) : null;
@@ -179,7 +180,6 @@ export function Inspector() {
                 </Select>
               </div>
 
-              {/* Page Selection UI */}
               <div className="space-y-2 pt-2 border-t">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
                   <ArrowRightLeft className="h-3 w-3" /> Page Location
@@ -405,9 +405,9 @@ export function Inspector() {
                                 onClick={() => updateField(selectedField.id, { verticalAlignment: a })} 
                                 className={cn("h-9 rounded-lg", selectedField.verticalAlignment === a && "bg-primary/10 text-primary")}
                               >
-                                {a === 'top' && <AlignStartHorizontal className="h-4 w-4" />}
-                                {a === 'center' && <AlignCenterHorizontal className="h-4 w-4" />}
-                                {a === 'bottom' && <AlignEndHorizontal className="h-4 w-4" />}
+                                {a === 'top' && <AlignVerticalJustifyStart className="h-4 w-4" />}
+                                {a === 'center' && <AlignVerticalJustifyCenter className="h-4 w-4" />}
+                                {a === 'bottom' && <AlignVerticalJustifyEnd className="h-4 w-4" />}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>Align {a.charAt(0).toUpperCase() + a.slice(1)}</TooltipContent>
@@ -445,12 +445,12 @@ export function Inspector() {
                       <Tooltip key={a}>
                         <TooltipTrigger asChild>
                           <Button type="button" variant="ghost" size="sm" onClick={() => alignFields?.(a)} className="h-9 rounded-lg hover:bg-primary/10 hover:text-primary">
-                            {a === 'left' && <AlignStartVertical className="h-4 w-4" />}
-                            {a === 'center-h' && <AlignCenterVertical className="h-4 w-4" />}
-                            {a === 'right' && <AlignEndVertical className="h-4 w-4" />}
-                            {a === 'top' && <AlignStartHorizontal className="h-4 w-4" />}
-                            {a === 'center-v' && <AlignCenterHorizontal className="h-4 w-4" />}
-                            {a === 'bottom' && <AlignEndHorizontal className="h-4 w-4" />}
+                            {a === 'left' && <AlignHorizontalJustifyStart className="h-4 w-4" />}
+                            {a === 'center-h' && <AlignHorizontalJustifyCenter className="h-4 w-4" />}
+                            {a === 'right' && <AlignHorizontalJustifyEnd className="h-4 w-4" />}
+                            {a === 'top' && <AlignVerticalJustifyStart className="h-4 w-4" />}
+                            {a === 'center-v' && <AlignVerticalJustifyCenter className="h-4 w-4" />}
+                            {a === 'bottom' && <AlignVerticalJustifyEnd className="h-4 w-4" />}
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
