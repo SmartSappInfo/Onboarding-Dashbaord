@@ -15,6 +15,7 @@ import { useEditor } from '../EditorContext';
 import { PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, ResizeHandle } from '../types';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
