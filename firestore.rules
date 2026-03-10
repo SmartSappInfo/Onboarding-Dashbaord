@@ -64,7 +64,7 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
     match /messaging_variables/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAnyAdmin();
     }
     
     match /sender_profiles/{profileId} {
@@ -119,9 +119,8 @@ service cloud.firestore {
     }
     
     match /surveys/{surveyId} {
-      allow write: if isAuthorized();
-      allow get: resource.data.status == 'published' || isAuthorized();
-      allow list: if isAuthorized();
+      allow write, list: if isAnyAdmin();
+      allow get: if isAnyAdmin() || resource.data.status == 'published';
       match /resultPages/{pageId} {
         allow read: if true;
         allow write: if isAuthorized();
@@ -136,8 +135,8 @@ service cloud.firestore {
     }
 
     match /pdfs/{pdfId} {
-      allow write, list: if isAuthorized();
-      allow get: resource.data.status == 'published' || resource.data.resultsShared == true || isAuthorized();
+      allow write, list: if isAnyAdmin();
+      allow get: if isAnyAdmin() || resource.data.status == 'published' || resource.data.resultsShared == true;
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
         allow read, list: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.resultsShared == true || isAuthorized();
