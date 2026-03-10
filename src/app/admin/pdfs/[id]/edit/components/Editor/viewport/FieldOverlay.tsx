@@ -8,7 +8,7 @@ import {
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
     AlignStartVertical, AlignCenterVertical, AlignEndVertical,
     AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-    ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database
+    ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database, Pipette
 } from 'lucide-react';
 import { cn, resolveVariableValue } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 
 const fieldIcons: { [key in PDFFormField['type']]: React.ElementType } = {
   text: Text,
@@ -138,6 +139,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     alignItems: hAlign === 'center' ? 'center' : hAlign === 'right' ? 'flex-end' : 'flex-start',
     textAlign: hAlign || 'left',
     fontSize: dynamicFontSize,
+    color: field.color || 'inherit',
     fontWeight: field.bold ? 'bold' : 'normal',
     fontStyle: field.italic ? 'italic' : 'normal',
     textDecoration: field.underline ? 'underline' : 'none',
@@ -193,7 +195,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
             fontWeight: 'inherit',
             fontStyle: 'inherit',
             textDecoration: 'inherit',
-            color: 'hsl(var(--primary))'
+            color: field.color || 'hsl(var(--primary))'
           }}
           value={displayText}
           onChange={(e) => {
@@ -207,8 +209,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
         />
       ) : (
         <div 
-            className={cn("z-10 pointer-events-none truncate block w-full px-1", (field.type === 'static-text' || field.type === 'variable') ? "text-primary font-bold" : "text-muted-foreground italic")}
-            style={{ fontSize: 'inherit' }}
+            className={cn("z-10 pointer-events-none truncate block w-full px-1", (field.type === 'static-text' || field.type === 'variable') ? "font-bold" : "italic")}
+            style={{ fontSize: 'inherit', color: field.color || 'inherit' }}
         >
             {displayText}
         </div>
@@ -269,6 +271,37 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
               {isTextType && (
                 <>
                   <div className="flex items-center gap-0.5 px-1">
+                    <DropdownMenu>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                        <Pipette className="h-4 w-4" style={{ color: field.color || 'inherit' }} />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>Font Color</TooltipContent>
+                        </Tooltip>
+                        <DropdownMenuContent className="p-3 w-48 rounded-xl" side="top">
+                            <div className="space-y-3">
+                                <Label className="text-[10px] font-black uppercase tracking-widest opacity-60">Custom HEX</Label>
+                                <div className="flex gap-2">
+                                    <Input 
+                                        type="color" 
+                                        value={field.color || '#000000'} 
+                                        onChange={e => updateField(field.id, { color: e.target.value })} 
+                                        className="w-8 h-8 p-0 border-none rounded-lg"
+                                    />
+                                    <Input 
+                                        value={field.color || '#000000'} 
+                                        onChange={e => updateField(field.id, { color: e.target.value })}
+                                        className="h-8 text-[10px] font-mono p-1 uppercase"
+                                    />
+                                </div>
+                            </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button 

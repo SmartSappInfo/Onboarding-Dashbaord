@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -19,7 +18,7 @@ import {
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
-  Layers, ArrowRightLeft, Database, Building, AlertCircle
+  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -230,6 +229,36 @@ export function Inspector() {
                         step={1}
                         onValueChange={([val]) => updateField(selectedField.id, { fontSize: val })}
                       />
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 px-1">
+                    <Label className="text-xs flex items-center gap-1.5"><Pipette className="h-3 w-3 text-muted-foreground" /> Font Color</Label>
+                    <div className="flex items-center gap-2">
+                        <div className="flex h-10 border border-border/50 rounded-xl overflow-hidden bg-background focus-within:ring-1 focus-within:ring-primary/20 transition-all shadow-inner flex-1">
+                            <div className="bg-muted px-2.5 flex items-center border-r">
+                                <Input 
+                                    type="color" 
+                                    value={selectedField.color || '#000000'} 
+                                    onChange={e => updateField(selectedField.id, { color: e.target.value })} 
+                                    className="w-6 h-6 p-0 border-none bg-transparent cursor-pointer"
+                                />
+                            </div>
+                            <Input 
+                                value={selectedField.color || '#000000'} 
+                                onChange={e => updateField(selectedField.id, { color: e.target.value })}
+                                className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent font-mono text-[10px] uppercase" 
+                            />
+                        </div>
+                        <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-10 w-10 rounded-xl hover:bg-muted"
+                            onClick={() => updateField(selectedField.id, { color: '#000000' })}
+                            title="Reset to Black"
+                        >
+                            <RefreshCw className="h-3.5 w-3.5 opacity-40" />
+                        </Button>
                     </div>
                   </div>
 

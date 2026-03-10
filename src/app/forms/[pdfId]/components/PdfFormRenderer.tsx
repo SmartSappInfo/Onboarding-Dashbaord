@@ -553,6 +553,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
 
     const fieldStyle: React.CSSProperties = {
         fontSize: dynamicFontSize,
+        color: field.color || 'inherit',
         fontWeight: field.bold ? 'bold' : 'normal',
         fontStyle: field.italic ? 'italic' : 'normal',
         textDecoration: field.underline ? 'underline' : 'none',
@@ -565,7 +566,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
 
     if (field.type === 'static-text') {
         return (
-            <div className="w-full h-full flex overflow-visible text-primary" style={fieldStyle}>
+            <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
                 <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
                     {field.staticText}
                 </span>
@@ -576,7 +577,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     if (field.type === 'variable') {
         const resolvedValue = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey || 'context'}}}`;
         return (
-            <div className="w-full h-full flex overflow-visible text-primary" style={fieldStyle}>
+            <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
                 <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
                     {resolvedValue}
                 </span>
@@ -609,7 +610,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         control={control}
                         render={({ field: selectField }) => (
                             <Select onValueChange={selectField.onChange} value={selectField.value}>
-                                <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary", field.bold && "font-bold")} style={{ fontSize: 'inherit' }}>
+                                <SelectTrigger className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none", field.bold && "font-bold")} style={{ fontSize: 'inherit', color: field.color || 'inherit' }}>
                                     <SelectValue placeholder={field.placeholder || field.label} />
                                     <ChevronDown className="h-4 w-4 opacity-50" />
                                 </SelectTrigger>
@@ -630,7 +631,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                                 value={dateField.value} 
                                 onChange={(d) => dateField.onChange(d?.toISOString())}
                                 placeholder={field.placeholder || field.label}
-                                style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit' }}
+                                style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', color: field.color || 'inherit' }}
                                 className={cn(errors[field.id] && "bg-destructive/5")}
                             />
                         )}
@@ -641,10 +642,10 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         type={field.type === 'time' ? 'time' : 'text'}
                         placeholder={field.placeholder || field.label}
                         className={cn(
-                            "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none text-primary transition-all",
+                            "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none transition-all",
                             errors[field.id] && "border-destructive/40 bg-destructive/5"
                         )}
-                        style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit' }}
+                        style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit', color: field.color || 'inherit' }}
                     />
                 )}
                 {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover:desktop-field:opacity-60" />}
@@ -674,7 +675,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                 isInteractiveMedia ? (
                     <img src={value} alt="Captured" className="w-full h-full object-contain" />
                 ) : (
-                    <span className="text-primary block truncate w-full" style={{ fontSize: 'inherit' }}>
+                    <span className="block truncate w-full" style={{ fontSize: 'inherit', color: field.color || 'inherit' }}>
                         {field.type === 'date' ? format(new Date(value), 'PPP') : value}
                     </span>
                 )

@@ -7,6 +7,19 @@ import type { PDFForm, PDFFormField, School } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 /**
+ * Converts a HEX color string to an RGB object for pdf-lib.
+ * @param hex HEX color string (e.g. #FF0000)
+ */
+function hexToRgb(hex: string) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex || '#000000');
+    return result ? {
+        r: parseInt(result[1], 16) / 255,
+        g: parseInt(result[2], 16) / 255,
+        b: parseInt(result[3], 16) / 255
+    } : { r: 0, g: 0, b: 0 };
+}
+
+/**
  * Resolves technical variable tags (e.g. {{school_name}}) using school data.
  */
 function resolvePdfVariables(text: string, school?: School): string {
@@ -128,12 +141,14 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                 if (vAlign === 'center') textY = y_top - (fieldHeight + fontSize) / 2;
                 else if (vAlign === 'bottom') textY = y_top - fieldHeight + 2;
 
+                const { r, g, b } = hexToRgb(field.color || '#000000');
+
                 page.drawText(displayValue, {
                     x: textX,
                     y: textY,
                     font,
                     size: fontSize,
-                    color: rgb(0, 0, 0),
+                    color: rgb(r, g, b),
                     maxWidth: fieldWidth - 4,
                 });
 
@@ -143,7 +158,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                         start: { x: textX, y: textY - 1 },
                         end: { x: textX + textWidth, y: textY - 1 },
                         thickness: 0.5,
-                        color: rgb(0, 0, 0),
+                        color: rgb(r, g, b),
                     });
                 }
             } else {

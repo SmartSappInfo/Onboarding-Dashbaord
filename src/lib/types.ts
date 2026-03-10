@@ -334,6 +334,16 @@ export interface Survey {
   webhookId?: string;
   webhookEnabled?: boolean;
   showDebugProcessingModal?: boolean;
+  scoringEnabled?: boolean;
+  scoreDisplayMode?: 'points' | 'percentage';
+  maxScore?: number;
+  resultRules?: SurveyResultRule[];
+  startButtonText?: string;
+  showCoverPage?: boolean;
+  showSurveyTitles?: boolean;
+  webhookId?: string;
+  webhookEnabled?: boolean;
+  showDebugProcessingModal?: boolean;
   adminAlertsEnabled?: boolean;
   adminAlertChannel?: 'email' | 'sms' | 'both';
   adminAlertNotifyManager?: boolean;
@@ -436,6 +446,7 @@ export interface PDFFormField {
   position: { x: number; y: number };
   dimensions: { width: number; height: number };
   fontSize?: number;
+  color?: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
