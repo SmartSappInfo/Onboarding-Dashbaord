@@ -1,4 +1,3 @@
-
 import { collection, query, where, getDocs, orderBy, limit, getFirestore } from 'firebase/firestore';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { firebaseConfig } from '@/firebase/config';
@@ -10,6 +9,18 @@ function getDb() {
     initializeApp(firebaseConfig);
   }
   return getFirestore(getApp());
+}
+
+/**
+ * Resilient fetcher that returns an empty array if a collection is missing or restricted.
+ */
+async function safeGetDocs(q: any) {
+    try {
+        return await getDocs(q);
+    } catch (e) {
+        console.warn(`Dashboard: Skipping source due to error:`, e);
+        return { docs: [], size: 0, empty: true } as any;
+    }
 }
 
 export async function getDashboardData() {
@@ -26,54 +37,33 @@ export async function getDashboardData() {
     zonesSnapshot,
     logsSnapshot,
   ] = await Promise.all([
-    getDocs(collection(db, 'schools')),
-    getDocs(collection(db, 'meetings')),
-    getDocs(collection(db, 'surveys')),
-    getDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
-    getDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
-    getDocs(query(collection(db, 'modules'))),
-    getDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
-    getDocs(collection(db, 'zones')),
-    getDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
-  ].map(p => p.catch(e => {
-    console.error("Dashboard data fetching error:", e);
-    return e;
-  }))); 
+    safeGetDocs(collection(db, 'schools')),
+    safeGetDocs(collection(db, 'meetings')),
+    safeGetDocs(collection(db, 'surveys')),
+    safeGetDocs(query(collection(db, 'onboardingStages'), orderBy('order'))),
+    safeGetDocs(query(collection(db, 'users'), where('isAuthorized', '==', true))),
+    safeGetDocs(query(collection(db, 'modules'))),
+    safeGetDocs(query(collection(db, 'activities'), orderBy('timestamp', 'desc'), limit(10))),
+    safeGetDocs(collection(db, 'zones')),
+    safeGetDocs(query(collection(db, 'message_logs'), orderBy('sentAt', 'desc'), limit(100))),
+  ]); 
 
-  if (schoolsSnapshot instanceof Error || meetingsSnapshot instanceof Error || surveysSnapshot instanceof Error || stagesSnapshot instanceof Error || usersSnapshot instanceof Error || modulesSnapshot instanceof Error || activitiesSnapshot instanceof Error || zonesSnapshot instanceof Error || logsSnapshot instanceof Error) {
-      console.error("Failed to fetch one or more dashboard data sources.");
-      return {
-          metrics: { totalSchools: 0, upcomingMeetings: 0, publishedSurveys: 0, totalResponses: 0, totalStudents: 0 },
-          latestSurveys: [],
-          upcomingMeetings: [],
-          pipelineCounts: [],
-          userAssignments: [],
-          monthlySchools: [],
-          moduleImplementations: [],
-          activities: [],
-          allUsers: [],
-          allSchools: [],
-          zoneDistribution: [],
-          messagingMetrics: { emailSuccess: 0, smsSuccess: 0, recentLogs: [] }
-      };
-  }
-
-  const schools = schoolsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as School));
-  const zones = zonesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Zone));
-  const logs = logsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as MessageLog));
+  const schools = schoolsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as School));
+  const zones = zonesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Zone));
+  const logs = logsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as MessageLog));
   
   const now = startOfToday();
   const totalSchools = schools.length;
   const totalStudents = schools.reduce((sum, school) => sum + (school.nominalRoll || 0), 0);
   
-  const upcomingMeetingsCount = meetingsSnapshot.docs.filter(doc => {
+  const upcomingMeetingsCount = meetingsSnapshot.docs.filter((doc: any) => {
     const meetingTime = doc.data().meetingTime;
     return meetingTime && isAfter(new Date(meetingTime), now);
   }).length;
 
-  const publishedSurveysCount = surveysSnapshot.docs.filter(doc => doc.data().status === 'published').length;
+  const publishedSurveysCount = surveysSnapshot.docs.filter((doc: any) => doc.data().status === 'published').length;
   
-  const responseCountPromises = surveysSnapshot.docs.map(doc => getDocs(collection(db, 'surveys', doc.id, 'responses')).then(snap => snap.size));
+  const responseCountPromises = surveysSnapshot.docs.map((doc: any) => safeGetDocs(collection(db, 'surveys', doc.id, 'responses')).then(snap => snap.size));
   const totalResponsesCount = (await Promise.all(responseCountPromises)).reduce((sum, count) => sum + count, 0);
 
   const metrics = {
@@ -84,13 +74,13 @@ export async function getDashboardData() {
     totalResponses: totalResponsesCount,
   };
 
-  const surveyResponseCounts = await Promise.all(surveysSnapshot.docs.map(async (doc) => {
-    const responsesSnapshot = await getDocs(collection(db, 'surveys', doc.id, 'responses'));
+  const surveyResponseCounts = await Promise.all(surveysSnapshot.docs.map(async (doc: any) => {
+    const responsesSnapshot = await safeGetDocs(collection(db, 'surveys', doc.id, 'responses'));
     return { id: doc.id, responseCount: responsesSnapshot.size };
   }));
   const surveyResponseCountMap = new Map(surveyResponseCounts.map(item => [item.id, item.responseCount]));
   const latestSurveys = surveysSnapshot.docs
-    .map(doc => ({ id: doc.id, ...doc.data() } as Survey))
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Survey))
     .sort((a, b) => {
         const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
@@ -103,7 +93,7 @@ export async function getDashboardData() {
     }));
 
   const upcomingMeetings = meetingsSnapshot.docs
-    .map(doc => ({ id: doc.id, ...doc.data() } as Meeting))
+    .map((doc: any) => ({ id: doc.id, ...doc.data() } as Meeting))
     .filter(meeting => meeting.meetingTime && new Date(meeting.meetingTime) >= now)
     .sort((a, b) => new Date(a.meetingTime).getTime() - new Date(b.meetingTime).getTime())
     .slice(0, 5)
@@ -113,7 +103,7 @@ export async function getDashboardData() {
       status: 'Upcoming',
     }));
 
-  const stages = stagesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as OnboardingStage));
+  const stages = stagesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as OnboardingStage));
   const pipelineCounts = stages.map(stage => {
     const schoolsInStage = schools.filter(school => school.stage?.id === stage.id);
     const schoolCount = schoolsInStage.length;
@@ -126,7 +116,7 @@ export async function getDashboardData() {
     };
   });
 
-  const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as UserProfile));
+  const users = usersSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as UserProfile));
   const userAssignments = users.map(user => {
       const assignedSchools = schools.filter(s => s.assignedTo?.userId === user.id);
       const totalAssigned = assignedSchools.length;
@@ -167,7 +157,7 @@ export async function getDashboardData() {
 
   const monthlySchoolsData = Object.entries(monthlySchools).map(([name, total]) => ({ name, total }));
   
-  const allModules = modulesSnapshot.docs.map(doc => doc.data() as Module);
+  const allModules = modulesSnapshot.docs.map((doc: any) => doc.data() as Module);
   const moduleNameMap = new Map(allModules.map(m => [m.abbreviation, m.name]));
   
   const moduleCounts: Record<string, { abbreviation: string, name: string, count: number }> = {};
@@ -185,7 +175,7 @@ export async function getDashboardData() {
   });
   const moduleImplementationData = Object.values(moduleCounts);
 
-  const activities = activitiesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+  const activities = activitiesSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Activity));
 
   const zoneDistribution = zones.map(zone => {
     const schoolsInZone = schools.filter(s => s.zone?.id === zone.id);

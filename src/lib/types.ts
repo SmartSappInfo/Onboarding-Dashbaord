@@ -1,4 +1,3 @@
-
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -485,6 +484,7 @@ export interface PDFForm {
     adminAlertSpecificUserIds?: string[];
     adminAlertEmailTemplateId?: string;
     adminAlertSmsTemplateId?: string;
+    isContractDocument?: boolean;
 }
 
 export interface Submission {
@@ -492,6 +492,22 @@ export interface Submission {
   pdfId: string;
   submittedAt: string;
   formData: { [key: string]: any };
+}
+
+export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'signed';
+
+export interface Contract {
+    id: string;
+    schoolId: string;
+    schoolName: string;
+    pdfId: string; // The template used
+    pdfName: string;
+    status: ContractStatus;
+    submissionId?: string; // The final signed record
+    sentAt?: string;
+    signedAt?: string;
+    updatedAt: string;
+    recipients: { name: string; email?: string; phone?: string; type: string }[];
 }
 
 export interface SenderProfile {
@@ -552,7 +568,7 @@ export interface MessageBlock {
 export interface MessageTemplate {
   id: string;
   name: string;
-  category: 'forms' | 'surveys' | 'meetings' | 'general';
+  category: 'forms' | 'surveys' | 'meetings' | 'general' | 'contracts';
   channel: 'sms' | 'email';
   subject?: string;
   previewText?: string;

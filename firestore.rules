@@ -1,4 +1,3 @@
-
 rules_version = '2';
 
 service cloud.firestore {
@@ -30,7 +29,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
     
-    // --- Billing Rules ---
+    // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
       allow read: if isAnyAdmin();
       allow write: if isFinance();
@@ -44,6 +43,10 @@ service cloud.firestore {
       allow write: if isFinance();
     }
     match /billing_settings/{settingId} {
+      allow read: if isAnyAdmin();
+      allow write: if isFinance();
+    }
+    match /contracts/{contractId} {
       allow read: if isAnyAdmin();
       allow write: if isFinance();
     }

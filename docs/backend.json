@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -154,6 +153,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
+    "Contract": {
+      "title": "Contract",
+      "description": "A legal agreement between SmartSapp and a school.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "schoolId": { "type": "string" },
+        "schoolName": { "type": "string" },
+        "pdfId": { "type": "string" },
+        "status": { "type": "string", "enum": ["no_contract", "draft", "sent", "signed"] },
+        "submissionId": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" },
+        "signedAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Meeting": {
       "title": "Meeting",
       "description": "Onboarding session or parent engagement meeting.",
@@ -198,7 +213,8 @@
         "publicTitle": { "type": "string" },
         "slug": { "type": "string" },
         "status": { "type": "string", "enum": ["draft", "published", "archived"] },
-        "fields": { "type": "array" }
+        "fields": { "type": "array" },
+        "isContractDocument": { "type": "boolean" }
       }
     },
     "Activity": {
@@ -312,6 +328,10 @@
     "/pdfs/{pdfId}": {
       "schema": "#/entities/PDFForm",
       "description": "Doc signing templates."
+    },
+    "/contracts/{contractId}": {
+      "schema": "#/entities/Contract",
+      "description": "Institutional agreement records."
     },
     "/activities/{activityId}": {
       "schema": "#/entities/Activity",

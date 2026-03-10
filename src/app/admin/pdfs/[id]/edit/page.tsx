@@ -62,6 +62,7 @@ const formSchema = z.object({
   webhookId: z.string().optional(),
   passwordProtected: z.boolean().default(false),
   password: z.string().optional(),
+  isContractDocument: z.boolean().default(false),
   // Public Notification
   confirmationMessagingEnabled: z.boolean().default(false),
   confirmationTemplateId: z.string().optional(),
@@ -180,6 +181,7 @@ export default function EditPdfPage() {
         webhookId: '',
         passwordProtected: false,
         password: '',
+        isContractDocument: false,
         confirmationMessagingEnabled: false,
         confirmationTemplateId: '',
         confirmationSenderProfileId: '',
@@ -208,7 +210,7 @@ export default function EditPdfPage() {
 
   const templatesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('category', '==', 'forms'));
+    return query(collection(firestore, 'message_templates'), where('isActive', '==', true), where('category', 'in', ['forms', 'contracts']));
   }, [firestore]);
   const { data: templates } = useCollection<MessageTemplate>(templatesQuery);
 
@@ -269,6 +271,7 @@ export default function EditPdfPage() {
         webhookId: pdf.webhookId || '',
         passwordProtected: pdf.passwordProtected || false,
         password: pdf.password || '',
+        isContractDocument: pdf.isContractDocument || false,
         confirmationMessagingEnabled: pdf.confirmationMessagingEnabled || false,
         confirmationTemplateId: pdf.confirmationTemplateId || '',
         confirmationSenderProfileId: pdf.confirmationSenderProfileId || '',
@@ -686,7 +689,7 @@ export default function EditPdfPage() {
 
                             {step === 3 && (
                                 <motion.div key="step3" {...stepTransition}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start text-left">
                                         <div className="space-y-8">
                                             <Card className="shadow-sm overflow-hidden border-none ring-1 ring-border">
                                                 <CardHeader className="bg-muted/30 border-b pb-6">
@@ -707,6 +710,25 @@ export default function EditPdfPage() {
                                                         </div>
                                                     </div>
                                                     <div className="px-6 pb-6 space-y-4">
+                                                        <div className={cn("rounded-2xl border-2 transition-all duration-300", watch('isContractDocument') ? "border-primary/20 bg-primary/5 shadow-sm" : "border-border/50 bg-background")}>
+                                                            <div className="flex items-center justify-between p-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className={cn("p-2 rounded-lg transition-colors", watch('isContractDocument') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+                                                                        <ShieldCheck className="h-4 w-4" />
+                                                                    </div>
+                                                                    <div className="space-y-0.5">
+                                                                        <Label className="text-sm font-black uppercase tracking-tight">Formal Contract Template</Label>
+                                                                        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Mark as a binding institutional agreement</p>
+                                                                    </div>
+                                                                </div>
+                                                                <Controller 
+                                                                    name="isContractDocument" 
+                                                                    control={form.control} 
+                                                                    render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} 
+                                                                />
+                                                            </div>
+                                                        </div>
+
                                                         <div className={cn("rounded-2xl border-2 transition-all duration-300", watch('passwordProtected') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background")}>
                                                             <div className="flex items-center justify-between p-4"><div className="flex items-center gap-3"><div className={cn("p-2 rounded-lg transition-colors", watch('passwordProtected') ? "bg-primary text-white" : "bg-muted text-muted-foreground")}><Lock className="h-4 w-4" /></div><div className="space-y-0.5"><Label className="text-sm font-black uppercase tracking-tight">Password Protection</Label><p className="text-[10px] text-muted-foreground font-medium uppercase tracking-tighter">Restrict access via global password</p></div></div><Controller name="passwordProtected" control={form.control} render={({ field }) => <Switch checked={field.value} onCheckedChange={field.onChange} />} /></div>
                                                             <AnimatePresence>{watch('passwordProtected') && (<motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden"><div className="px-4 pb-4 pt-0"><Controller name="password" control={form.control} render={({ field }) => (<Input {...field} type="password" placeholder="Set access password..." className="h-10 rounded-xl bg-white border-primary/20 shadow-inner" />)} /></div></motion.div>)}</AnimatePresence>
