@@ -37,7 +37,12 @@ export async function syncVariableRegistry() {
       { key: 'school_location', label: 'School Location', category: 'general', source: 'static', entity: 'School', path: 'location', type: 'string' },
       { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
       { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
-      { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'contactPerson', type: 'string' },
+      
+      // Signatory Data (Primary variables)
+      { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'signatory.name', type: 'string' },
+      { key: 'contact_position', label: 'Primary Contact Role', category: 'general', source: 'static', entity: 'School', path: 'signatory.type', type: 'string' },
+      { key: 'contact_email', label: 'Primary Contact Email', category: 'general', source: 'static', entity: 'School', path: 'signatory.email', type: 'string' },
+      { key: 'contact_phone', label: 'Primary Contact Phone', category: 'general', source: 'static', entity: 'School', path: 'signatory.phone', type: 'string' },
       
       // Billing Data
       { key: 'school_package', label: 'Subscription Tier', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },

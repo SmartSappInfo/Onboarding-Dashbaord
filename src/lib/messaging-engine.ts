@@ -74,20 +74,25 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         const schoolSnap = await adminDb.collection('schools').doc(schoolId).get();
         if (schoolSnap.exists) {
             const schoolData = schoolSnap.data() as School;
+            const signatory = (schoolData.focalPersons || []).find(p => p.isSignatory);
+            
             const schoolVars = {
                 school_name: schoolData.name,
                 school_initials: schoolData.initials,
                 school_location: schoolData.location,
                 school_phone: schoolData.phone,
                 school_email: schoolData.email,
-                school_contact_name: schoolData.contactPerson,
+                // Signatory based variables
+                contact_name: signatory?.name || '',
+                contact_email: signatory?.email || '',
+                contact_phone: signatory?.phone || '',
+                contact_position: signatory?.type || '',
             };
+            
             // Merge school vars without overwriting already present keys
             Object.entries(schoolVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
-            // Fallback for contact_name if not provided by form
-            if (finalVariables.contact_name === undefined) finalVariables.contact_name = schoolData.contactPerson;
         }
     }
 
