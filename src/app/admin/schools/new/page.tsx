@@ -1,14 +1,11 @@
-
 'use client';
 
 import * as React from 'react';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { format } from 'date-fns';
-import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
+import { Loader2, Building, MapPin, User, UserCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
@@ -29,6 +26,8 @@ import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useColle
 import { ModuleSelect } from '../components/ModuleSelect';
 import { ZoneSelect } from '../components/ZoneSelect';
 import { FocalPersonManager } from '../components/FocalPersonManager';
+import { ManagerSelect } from '../components/ManagerSelect';
+import { PackageSelect } from '../components/PackageSelect';
 import { logActivity } from '@/lib/activity-logger';
 import { type UserProfile, type SubscriptionPackage } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -105,19 +104,18 @@ export default function NewSchoolPage() {
       modules: [],
       referee: '',
       includeDroneFootage: false,
-      assignedToId: user?.uid || '',
+      assignedToId: 'unassigned',
       currency: 'GHS',
       subscriptionRate: 0,
       discountPercentage: 0,
       arrearsBalance: 0,
       creditBalance: 0,
+      subscriptionPackageId: 'none'
     },
   });
 
   const watchName = methods.watch("name");
   const watchPackageId = methods.watch("subscriptionPackageId");
-  const watchDiscount = methods.watch("discountPercentage");
-  const watchRate = methods.watch("subscriptionRate");
 
   // Auto-generate initials
   React.useEffect(() => {
@@ -127,16 +125,11 @@ export default function NewSchoolPage() {
     }
   }, [watchName, methods]);
 
-  // Handle Package Selection -> Set Default Rate
   React.useEffect(() => {
-    if (watchPackageId && packages) {
-        const pkg = packages.find(p => p.id === watchPackageId);
-        if (pkg) {
-            methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
-            methods.setValue('discountPercentage', 0, { shouldDirty: true });
-        }
-    }
-  }, [watchPackageId, packages, methods]);
+      if (user && methods.getValues('assignedToId') === 'unassigned') {
+          methods.setValue('assignedToId', user.uid);
+      }
+  }, [user, methods]);
 
   // Handle Discount -> Calculate Rate
   const handleDiscountChange = (val: number) => {
@@ -153,12 +146,6 @@ export default function NewSchoolPage() {
     const newDiscount = ((pkg.ratePerStudent - val) / pkg.ratePerStudent) * 100;
     methods.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
   };
-
-  React.useEffect(() => {
-      if (user && !methods.getValues('assignedToId')) {
-          methods.setValue('assignedToId', user.uid);
-      }
-  }, [user, methods]);
 
   const onSubmit = async (data: FormData) => {
     if (!firestore || !user || !users) return;
@@ -178,6 +165,7 @@ export default function NewSchoolPage() {
       ...rest,
       slug,
       assignedTo,
+      subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
       stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
@@ -222,10 +210,10 @@ export default function NewSchoolPage() {
                             <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl><SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"><SelectValue /></SelectTrigger></FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="Active">Active</SelectItem>
-                                        <SelectItem value="Inactive">Inactive</SelectItem>
-                                        <SelectItem value="Archived">Archived</SelectItem>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                                        <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                                        <SelectItem value="Archived" className="font-bold">Archived</SelectItem>
                                     </SelectContent>
                                 </Select>
                             <FormMessage /></FormItem>
@@ -250,22 +238,22 @@ export default function NewSchoolPage() {
                     </CardHeader>
                     <CardContent className="p-6 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField control={methods.control} name="subscriptionPackageId" render={({ field }) => (
+                            <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                        <FormControl>
-                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                                <SelectValue placeholder="Pick a package..." />
-                                            </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="none">No Subscription</SelectItem>
-                                            {packages?.map(pkg => (
-                                                <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                    <FormControl>
+                                        <PackageSelect 
+                                            value={field.value} 
+                                            onValueChange={(val, pkg) => {
+                                                field.onChange(val);
+                                                if (pkg) {
+                                                    methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
+                                                    methods.setValue('discountPercentage', 0, { shouldDirty: true });
+                                                }
+                                            }}
+                                            error={!!fieldState.error}
+                                        />
+                                    </FormControl>
                                 </FormItem>
                             )} />
                             <FormField control={methods.control} name="currency" render={({ field }) => (
@@ -277,9 +265,9 @@ export default function NewSchoolPage() {
                                                 <SelectValue />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="GHS">Ghanaian Cedi (GH¢)</SelectItem>
-                                            <SelectItem value="USD">US Dollar ($)</SelectItem>
+                                        <SelectContent className="rounded-xl shadow-2xl border-none">
+                                            <SelectItem value="GHS" className="font-black">Ghanaian Cedi (GH¢)</SelectItem>
+                                            <SelectItem value="USD" className="font-black">US Dollar ($)</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </FormItem>
@@ -342,7 +330,7 @@ export default function NewSchoolPage() {
                             <FormItem>
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -379,24 +367,16 @@ export default function NewSchoolPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="p-6">
-                        <FormField control={methods.control} name="assignedToId" render={({ field }) => (
+                        <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
                             <FormItem>
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assign Account Manager</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
-                                    <FormControl>
-                                        <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                            <SelectValue placeholder="Select manager..." />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="unassigned">Unassigned</SelectItem>
-                                        {isUsersLoading ? (
-                                            <div className="p-4 flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
-                                        ) : users?.map(u => (
-                                            <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <FormControl>
+                                    <ManagerSelect 
+                                        value={field.value} 
+                                        onValueChange={field.onChange}
+                                        error={!!fieldState.error}
+                                    />
+                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )} />
@@ -404,11 +384,11 @@ export default function NewSchoolPage() {
                 </Card>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><User className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Contact Directory</CardTitle></div></CardHeader><CardContent className="p-6"><FocalPersonManager /></CardContent></Card>
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><CheckCircle2 className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Functional Selection</CardTitle></div></CardHeader><CardContent className="p-6"><FormField control={methods.control} name="modules" render={({ field }) => (<FormItem><FormControl><ModuleSelect {...field} /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Plus className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Functional Selection</CardTitle></div></CardHeader><CardContent className="p-6"><FormField control={methods.control} name="modules" render={({ field }) => (<FormItem><FormControl><ModuleSelect {...field} /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
               </div>
               <div className="space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle></div></CardHeader><CardContent className="p-6 space-y-6"><FormField control={methods.control} name="zone" render={({ field, fieldState }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel><FormControl><ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</FormLabel><FormControl><Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="nominalRoll" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Total Roll</FormLabel><FormControl><Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
-                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" disabled={methods.formState.isSubmitting}>{methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Building className="h-6 w-6" />} Initialize School</Button></div>
+                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" disabled={methods.formState.isSubmitting || isUsersLoading}>{methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Building className="h-6 w-6" />} Initialize School</Button></div>
               </div>
             </div>
           </form>

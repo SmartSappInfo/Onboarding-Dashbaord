@@ -1,13 +1,11 @@
-
 'use client';
 
 import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
 import type { School, UserProfile, SubscriptionPackage } from '@/lib/types';
@@ -30,6 +28,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ModuleSelect } from '../../components/ModuleSelect';
 import { ZoneSelect } from '../../components/ZoneSelect';
 import { FocalPersonManager } from '../../components/FocalPersonManager';
+import { ManagerSelect } from '../../components/ManagerSelect';
+import { PackageSelect } from '../../components/PackageSelect';
 import { logActivity } from '@/lib/activity-logger';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { cn } from '@/lib/utils';
@@ -86,6 +86,8 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
   const firestore = useFirestore();
   const { user } = useUser();
 
+  const [hasInitialized, setHasInitialized] = React.useState(false);
+
   const schoolDocRef = useMemoFirebase(() => {
     if (!firestore || !schoolId) return null;
     return doc(firestore, 'schools', schoolId);
@@ -97,7 +99,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'users'), orderBy('name', 'asc'));
+    return query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name', 'asc'));
   }, [firestore]);
   const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
 
@@ -112,17 +114,16 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     defaultValues: {
       name: '', initials: '', slogan: '', status: 'Active',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
-      referee: '', includeDroneFootage: false, assignedToId: '',
+      referee: '', includeDroneFootage: false, assignedToId: 'unassigned',
       currency: 'GHS', subscriptionRate: 0, discountPercentage: 0, arrearsBalance: 0, creditBalance: 0,
+      subscriptionPackageId: 'none'
     }
   });
 
   const watchPackageId = methods.watch("subscriptionPackageId");
-  const watchDiscount = methods.watch("discountPercentage");
-  const watchRate = methods.watch("subscriptionRate");
 
   React.useEffect(() => {
-    if (school && !methods.formState.isDirty) {
+    if (school && !hasInitialized) {
       methods.reset({
         name: school.name || '',
         initials: school.initials || '',
@@ -141,14 +142,15 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         assignedToId: school.assignedTo?.userId || 'unassigned',
         billingAddress: school.billingAddress || '',
         currency: school.currency || 'GHS',
-        subscriptionPackageId: school.subscriptionPackageId || '',
+        subscriptionPackageId: school.subscriptionPackageId || 'none',
         subscriptionRate: school.subscriptionRate || 0,
         discountPercentage: school.discountPercentage || 0,
         arrearsBalance: school.arrearsBalance || 0,
         creditBalance: school.creditBalance || 0,
       });
+      setHasInitialized(true);
     }
-  }, [school, methods]);
+  }, [school, methods, hasInitialized]);
 
   // Handle Discount -> Calculate Rate
   const handleDiscountChange = (val: number) => {
@@ -180,7 +182,8 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     const updateData = { 
         ...rest, 
         assignedTo, 
-        subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId ? 'Assigned' : 'Standard'),
+        subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
+        subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId && data.subscriptionPackageId !== 'none' ? 'Assigned' : 'Standard'),
         implementationDate: data.implementationDate?.toISOString() || null 
     };
 
@@ -204,7 +207,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
     });
   };
 
-  const isGlobalLoading = isSchoolLoading || isUsersLoading;
+  const isGlobalLoading = isSchoolLoading || isUsersLoading || !hasInitialized;
 
   if (isGlobalLoading) {
     return (
@@ -260,10 +263,10 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                                         <SelectValue />
                                     </SelectTrigger>
                                 </FormControl>
-                                <SelectContent className="rounded-xl">
-                                    <SelectItem value="Active">Active</SelectItem>
-                                    <SelectItem value="Inactive">Inactive</SelectItem>
-                                    <SelectItem value="Archived">Archived</SelectItem>
+                                <SelectContent className="rounded-xl shadow-2xl border-none">
+                                    <SelectItem value="Active" className="font-bold">Active</SelectItem>
+                                    <SelectItem value="Inactive" className="font-bold">Inactive</SelectItem>
+                                    <SelectItem value="Archived" className="font-bold">Archived</SelectItem>
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -307,32 +310,23 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                 </CardHeader>
                 <CardContent className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField control={methods.control} name="subscriptionPackageId" render={({ field }) => (
+                        <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
                             <FormItem>
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
-                                <Select 
-                                    onValueChange={(val) => {
-                                        field.onChange(val);
-                                        const pkg = packages?.find(p => p.id === val);
-                                        if (pkg) {
-                                            methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
-                                            methods.setValue('discountPercentage', 0, { shouldDirty: true });
-                                        }
-                                    }} 
-                                    value={field.value || 'none'}
-                                >
-                                    <FormControl>
-                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                            <SelectValue placeholder="Pick a package..." />
-                                        </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="none">No Subscription</SelectItem>
-                                        {packages?.map(pkg => (
-                                            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
+                                <FormControl>
+                                    <PackageSelect 
+                                        value={field.value} 
+                                        onValueChange={(val, pkg) => {
+                                            field.onChange(val);
+                                            if (pkg) {
+                                                methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
+                                                methods.setValue('discountPercentage', 0, { shouldDirty: true });
+                                            }
+                                        }}
+                                        error={!!fieldState.error}
+                                    />
+                                </FormControl>
+                                <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={methods.control} name="currency" render={({ field }) => (
@@ -344,9 +338,9 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                                             <SelectValue />
                                         </SelectTrigger>
                                     </FormControl>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="GHS">Ghanaian Cedi (GH¢)</SelectItem>
-                                        <SelectItem value="USD">US Dollar ($)</SelectItem>
+                                    <SelectContent className="rounded-xl shadow-2xl border-none">
+                                        <SelectItem value="GHS" className="font-black">Ghanaian Cedi (GH¢)</SelectItem>
+                                        <SelectItem value="USD" className="font-black">US Dollar ($)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </FormItem>
@@ -450,22 +444,16 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
-                    <FormField control={methods.control} name="assignedToId" render={({ field }) => (
+                    <FormField control={methods.control} name="assignedToId" render={({ field, fieldState }) => (
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Account Manager</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold transition-all">
-                                        <SelectValue placeholder="Select manager..." />
-                                    </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="rounded-xl">
-                                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                                    {users?.map(u => (
-                                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <FormControl>
+                                <ManagerSelect 
+                                    value={field.value} 
+                                    onValueChange={field.onChange}
+                                    error={!!fieldState.error}
+                                />
+                            </FormControl>
                             <FormMessage />
                         </FormItem>
                     )} />
