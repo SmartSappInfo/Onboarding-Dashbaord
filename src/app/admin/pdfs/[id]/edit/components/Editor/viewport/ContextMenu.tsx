@@ -37,8 +37,7 @@ export function EditorContextMenu({ children }: { children: React.ReactNode }) {
 
   const handleViewProperties = () => {
     setIsSidebarCollapsed(false);
-    // @ts-ignore - Internal state sync
-    if (setSidebarTab) setSidebarTab('properties');
+    setSidebarTab('properties');
   };
 
   return (
@@ -117,7 +116,7 @@ export function EditorContextMenu({ children }: { children: React.ReactNode }) {
             </ContextMenuItem>
           </>
         )}
-      </を開くContent>
+      </ContextMenuContent>
     </ContextMenu>
   );
 }

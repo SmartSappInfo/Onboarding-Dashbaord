@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { BillingPeriod } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -9,18 +9,16 @@ import {
     Timer, 
     Plus, 
     Pencil, 
-    Trash2, 
-    Check, 
-    X, 
     Loader2, 
     Calendar,
     ArrowRight,
     Clock,
     Lock,
     Unlock,
-    Info
+    Info,
+    Check
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

@@ -5,6 +5,8 @@ import type { PDFForm, PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState, EditorViewMode } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
 
+export type SidebarTab = 'blocks' | 'tags' | 'properties';
+
 interface EditorContextType {
   // State
   pdf: PDFForm;
@@ -14,6 +16,7 @@ interface EditorContextType {
   numPages: number;
   activePageNumber: number;
   isSidebarCollapsed: boolean;
+  sidebarTab: SidebarTab;
   isFullScreen: boolean;
   viewMode: EditorViewMode;
   namingFieldId: string | null;
@@ -34,6 +37,7 @@ interface EditorContextType {
   setNumPages: React.Dispatch<React.SetStateAction<number>>;
   setActivePageNumber: React.Dispatch<React.SetStateAction<number>>;
   setIsSidebarCollapsed: React.Dispatch<React.SetStateAction<boolean>>;
+  setSidebarTab: React.Dispatch<React.SetStateAction<SidebarTab>>;
   setIsFullScreen: React.Dispatch<React.SetStateAction<boolean>>;
   setViewMode: React.Dispatch<React.SetStateAction<EditorViewMode>>;
   setNamingFieldId: (id: string | null) => void;
@@ -116,6 +120,7 @@ export function EditorProvider({
   const [numPages, setNumPages] = React.useState(0);
   const [activePageNumber, setActivePageNumber] = React.useState(1);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
+  const [sidebarTab, setSidebarTab] = React.useState<SidebarTab>('blocks');
   const [isFullScreen, setIsFullScreen] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<EditorViewMode>('design');
   const [marquee, setMarquee] = React.useState<MarqueeState | null>(null);
@@ -237,17 +242,17 @@ export function EditorProvider({
   }, [selectedFieldIds, setFields, viewMode]);
 
   const value = React.useMemo(() => ({
-    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
-    setFields, setSelectedFieldIds, setZoom, setNumPages, setActivePageNumber, setIsSidebarCollapsed, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
+    setFields, setSelectedFieldIds, setZoom, setNumPages, setActivePageNumber, setIsSidebarCollapsed, setSidebarTab, setIsFullScreen, setViewMode, setNamingFieldId, setMarquee,
     setIsFieldDeleteConfirmOpen,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo
   }), [
-    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
+    pdf, fields, selectedFieldIds, zoom, numPages, activePageNumber, isSidebarCollapsed, sidebarTab, isFullScreen, viewMode, namingFieldId, marquee, isDetecting,
     password, passwordProtected, isStatusChanging, isSaving, isFieldDeleteConfirmOpen,
-    setFields, setNamingFieldId, setNumPages, setActivePageNumber, setIsFieldDeleteConfirmOpen,
+    setFields, setNamingFieldId, setNumPages, setActivePageNumber, setIsFieldDeleteConfirmOpen, setSidebarTab,
     onDetect, onStatusChange, onSave, onPreview, setPassword, setPasswordProtected,
     addField, updateField, removeField, duplicateFields, alignFields, distributeFields, selectField,
     undo, redo, canUndo, canRedo

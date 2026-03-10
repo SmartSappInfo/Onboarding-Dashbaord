@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import type { Invoice, InvoiceItem, BillingSettings } from '@/lib/types';
 import { updateInvoiceAction } from '@/lib/billing-actions';
@@ -15,25 +15,17 @@ import {
     Trash2, 
     ArrowLeft,
     CheckCircle2,
-    ShieldCheck,
-    Banknote,
-    UserCheck,
-    Clock,
     Layout,
-    AlertCircle,
-    BadgePercent,
     Calculator,
-    Zap
+    Zap,
+    X
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { cn } from '@/lib/utils';
-import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InvoiceStudioClient() {
     const params = useParams();
@@ -222,7 +214,7 @@ export default function InvoiceStudioClient() {
                                             <TableCell className="text-right pr-8">
                                                 <div className="flex items-center justify-end gap-3">
                                                     <span className="font-black text-sm tabular-nums">{(item.quantity * item.unitPrice).toLocaleString()}</span>
-                                                    <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} disabled={isFinalized} className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <Button variant="ghost" size="icon" onClick={() => removeItem(idx)} disabled={isFinalized} className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-all">
                                                         <X className="h-3.5 w-3.5" />
                                                     </Button>
                                                 </div>

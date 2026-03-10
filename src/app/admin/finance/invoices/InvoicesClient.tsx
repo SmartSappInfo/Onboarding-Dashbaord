@@ -22,7 +22,8 @@ import {
     Clock,
     AlertCircle,
     FileText,
-    TrendingUp
+    TrendingUp,
+    Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 export default function InvoicesClient() {
     const firestore = useFirestore();
@@ -143,10 +145,10 @@ export default function InvoicesClient() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard label="Total Expected" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" />
-                    <StatCard label="Resolved (Paid)" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" />
-                    <StatCard label="Outstanding Drafts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" />
-                    <StatCard label="Recovery Action" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" />
+                    <StatCard label="Total Expected" value={isLoading ? '...' : filteredInvoices.reduce((a,c) => a + c.totalPayable, 0).toLocaleString()} icon={TrendingUp} color="text-primary" bg="bg-primary/10" sub="" />
+                    <StatCard label="Resolved (Paid)" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'paid').length} icon={CheckCircle2} color="text-emerald-600" bg="bg-emerald-50" sub="" />
+                    <StatCard label="Outstanding Drafts" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'draft').length} icon={Clock} color="text-orange-600" bg="bg-orange-50" sub="" />
+                    <StatCard label="Recovery Action" value={isLoading ? '...' : filteredInvoices.filter(i => i.status === 'overdue').length} icon={AlertCircle} color="text-rose-600" bg="bg-rose-50" sub="" />
                 </div>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
@@ -310,7 +312,7 @@ export default function InvoicesClient() {
                         <Button 
                             onClick={handleGenerate} 
                             disabled={isGenerating || !selectedSchoolId || !selectedPeriodId}
-                            className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-xs"
+                            className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-sm"
                         >
                             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
                             Execute Logic
