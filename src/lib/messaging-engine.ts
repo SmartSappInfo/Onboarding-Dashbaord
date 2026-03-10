@@ -150,7 +150,8 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         providerStatus = providerResponse?.status;
     } else {
         const providerResponse = await sendEmail({
-            from: sender.identifier, 
+            // Construct branded "From" address using customized profile name
+            from: `${sender.name} <${sender.identifier}>`, 
             to: recipient,
             subject: resolvedSubject || 'Notification',
             html: resolvedBody,
@@ -257,7 +258,7 @@ export async function sendRawMessage(input: {
             });
         } else {
             await sendEmail({
-                from: sender.identifier,
+                from: `${sender.name} <${sender.identifier}>`,
                 to: recipient,
                 subject: resolvedSubject,
                 html: resolvedBody

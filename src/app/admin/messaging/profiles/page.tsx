@@ -276,8 +276,10 @@ export default function SenderProfilesPage() {
                     <CardContent className="p-8">
                         <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-8 items-end">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
-                                <Input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Enrollment Team" className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" required />
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                    {channel === 'email' ? 'Display Name (Recipient sees this)' : 'Internal Friendly Label'}
+                                </Label>
+                                <Input value={name} onChange={e => setName(e.target.value)} placeholder={channel === 'email' ? 'SmartSapp Onboarding' : 'Main SMS Gateway'} className="h-12 rounded-xl bg-white border-none shadow-inner font-bold" required />
                             </div>
                             <div className="space-y-2">
                                 <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Channel Medium</Label>
@@ -290,11 +292,11 @@ export default function SenderProfilesPage() {
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID' : 'Verified Address'}</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{channel === 'sms' ? 'Alphanumeric ID (Max 11)' : 'Verified Address'}</Label>
                                 <Input 
                                     value={identifier} 
                                     onChange={e => setIdentifier(e.target.value)} 
-                                    placeholder={channel === 'sms' ? 'SMARTSAPP' : 'notifications@enroll.smartsapp.com'} 
+                                    placeholder={channel === 'sms' ? 'SMARTSAPP' : 'onboarding@enroll.smartsapp.com'} 
                                     required 
                                     maxLength={channel === 'sms' ? 11 : undefined}
                                     className="h-12 rounded-xl bg-white border-none shadow-inner font-mono font-bold"
@@ -450,11 +452,13 @@ export default function SenderProfilesPage() {
                         </DialogHeader>
                         <div className="p-8 space-y-8">
                             <div className="space-y-2">
-                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Friendly Label</Label>
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                                    {editingProfile?.channel === 'email' ? 'Display Name (Recipient sees this)' : 'Internal Friendly Label'}
+                                </Label>
                                 <Input 
                                     value={editName} 
                                     onChange={e => setEditName(e.target.value)} 
-                                    placeholder="e.g. Alerts Channel" 
+                                    placeholder={editingProfile?.channel === 'email' ? 'SmartSapp Onboarding' : 'Alerts Channel'} 
                                     className="h-12 rounded-xl bg-muted/20 border-none font-bold shadow-inner"
                                     required 
                                 />

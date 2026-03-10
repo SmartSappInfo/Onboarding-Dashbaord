@@ -1,4 +1,3 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
@@ -135,7 +134,8 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
                 name: schoolSource.contactPerson || 'Primary Contact',
                 email: schoolSource.email || '',
                 phone: schoolSource.phone || '',
-                type: 'Administrator'
+                type: 'Administrator',
+                isSignatory: true
             });
         }
 
@@ -410,11 +410,11 @@ export async function seedMessaging(firestore: Firestore): Promise<number> {
 
     const batch = writeBatch(firestore);
 
-    // 1. Sender Profiles
+    // 1. Sender Profiles - Updated Branded Names
     const profilesCol = collection(firestore, 'sender_profiles');
     const profiles = [
-        { name: 'Default SMS', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { name: 'Official Email', channel: 'email', identifier: 'onboarding@smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
+        { name: 'SmartSapp Info', channel: 'sms', identifier: 'SMARTSAPP', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { name: 'SmartSapp Onboarding', channel: 'email', identifier: 'onboarding@enroll.smartsapp.com', isDefault: true, isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }
     ];
     profiles.forEach(p => batch.set(doc(profilesCol), p));
 
