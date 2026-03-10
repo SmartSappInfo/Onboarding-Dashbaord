@@ -17,22 +17,23 @@ import {
     Mail, 
     Smartphone, 
     Loader2, 
-    CheckCircle2, 
-    AlertCircle,
     FlaskConical,
-    Info
+    Info,
+    Database,
+    ChevronDown,
+    Zap
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { sendMessage, sendRawMessage } from '@/lib/messaging-engine';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface TestDispatchDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    // Context data for the test
     channel: 'email' | 'sms';
-    templateId?: string; // If provided, uses the saved template
-    // Raw data for testing unsaved drafts
+    templateId?: string;
     rawBody?: string;
     rawSubject?: string;
     senderProfileId?: string;
@@ -41,8 +42,9 @@ interface TestDispatchDialogProps {
 }
 
 /**
- * @fileOverview Reusable Test Dispatch Dialog.
- * Allows administrators to send a real sample of their current design to verify delivery.
+ * @fileOverview Upgraded Test Dispatch Dialog.
+ * Automatically extracts variable tags from content and provides an interactive form
+ * to populate them before delivery.
  */
 export default function TestDispatchDialog({ 
     open, 
@@ -58,6 +60,26 @@ export default function TestDispatchDialog({
     const { toast } = useToast();
     const [recipient, setRecipient] = React.useState('');
     const [isSending, setIsSending] = React.useState(false);
+    const [localVariables, setLocalVariables] = React.useState<Record<string, string>>({});
+    const [detectedTags, setDetectedTags] = React.useState<string[]>([]);
+
+    // 1. Tag Discovery Logic
+    React.useEffect(() => {
+        if (!open) return;
+
+        const contentToScan = `${rawSubject || ''} ${rawBody || ''}`;
+        const matches = contentToScan.match(/\{\{(.*?)\}\}/g);
+        const tags = matches ? [...new Set(matches.map(m => m.replace(/\{\{|\}\}/g, '').trim()))] : [];
+        
+        setDetectedTags(tags);
+        
+        // Initialize local values from simulation context
+        const initial: Record<string, string> = {};
+        tags.forEach(tag => {
+            initial[tag] = variables[tag] !== undefined ? String(variables[tag]) : '';
+        });
+        setLocalVariables(initial);
+    }, [open, rawBody, rawSubject, variables]);
 
     const handleSend = async () => {
         if (!recipient.trim()) {
@@ -67,28 +89,28 @@ export default function TestDispatchDialog({
 
         setIsSending(true);
         try {
+            // Merge test-specific overrides into context
+            const finalVars = { ...variables, ...localVariables };
+
             if (templateId) {
-                // Testing a saved template with context
                 const result = await sendMessage({
                     templateId,
                     senderProfileId: senderProfileId || 'default',
                     recipient: recipient.trim(),
-                    variables,
+                    variables: finalVars,
                     schoolId
                 });
                 if (!result.success) throw new Error(result.error);
             } else if (rawBody) {
-                // Testing an unsaved draft (Workshop mode)
                 const result = await sendRawMessage({
                     channel,
                     recipient: recipient.trim(),
                     body: rawBody,
                     subject: rawSubject,
-                    senderProfileId
+                    senderProfileId,
+                    variables: finalVars
                 });
                 if (!result.success) throw new Error(result.error);
-            } else {
-                throw new Error("Missing content for test dispatch.");
             }
 
             toast({ 
@@ -106,7 +128,7 @@ export default function TestDispatchDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md rounded-[2rem] overflow-hidden p-0 border-none shadow-2xl">
+            <DialogContent className="sm:max-w-2xl h-[85vh] flex flex-col p-0 border-none shadow-2xl overflow-hidden rounded-[2.5rem]">
                 <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
                     <div className="flex items-center gap-4">
                         <div className={cn(
@@ -115,49 +137,84 @@ export default function TestDispatchDialog({
                         )}>
                             <FlaskConical className="h-6 w-6" />
                         </div>
-                        <div>
-                            <DialogTitle className="text-xl font-black uppercase tracking-tight">Test Delivery</DialogTitle>
-                            <DialogDescription className="text-xs font-bold uppercase tracking-widest">Verify ${channel} fidelity before launch.</DialogDescription>
+                        <div className="text-left">
+                            <DialogTitle className="text-2xl font-black uppercase tracking-tight">Test Delivery Hub</DialogTitle>
+                            <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Populate context and verify resolution.</DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
 
-                <div className="p-8 space-y-6">
-                    <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-4">
-                        <div className="p-2 bg-white rounded-xl text-primary shadow-sm border border-primary/10"><Info className="h-4 w-4" /></div>
-                        <p className="text-[10px] font-bold text-primary leading-relaxed uppercase tracking-tighter">
-                            This is a real dispatch using our production gateway. All variable tags in your current view will be resolved using the active simulation context.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                            {channel === 'email' ? 'Test Inbox Address' : 'Test Handset Number'}
-                        </Label>
-                        <div className="relative group">
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
-                                {channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
+                <div className="flex-1 overflow-hidden relative bg-background">
+                    <ScrollArea className="h-full">
+                        <div className="p-8 space-y-10">
+                            {/* RECIPIENT BLOCK */}
+                            <div className="space-y-4">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Target Terminal</Label>
+                                <div className="relative group">
+                                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground/40 group-focus-within:text-primary transition-colors">
+                                        {channel === 'email' ? <Mail className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
+                                    </div>
+                                    <Input 
+                                        value={recipient} 
+                                        onChange={e => setRecipient(e.target.value)}
+                                        placeholder={channel === 'email' ? 'your-email@example.com' : 'e.g. 024XXXXXXX'}
+                                        className="h-14 pl-12 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-xl"
+                                        autoFocus
+                                    />
+                                </div>
                             </div>
-                            <Input 
-                                value={recipient} 
-                                onChange={e => setRecipient(e.target.value)}
-                                placeholder={channel === 'email' ? 'you@example.com' : 'e.g. 024XXXXXXX'}
-                                className="h-14 pl-12 rounded-xl bg-muted/20 border-none shadow-inner font-bold text-lg"
-                                autoFocus
-                            />
+
+                            {/* VARIABLE RESOLUTION BLOCK */}
+                            {detectedTags.length > 0 && (
+                                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                    <div className="flex items-center justify-between px-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <Database className="h-3 w-3" /> 2. Contextual Resolution
+                                        </Label>
+                                        <Badge variant="outline" className="bg-primary/5 text-primary border-primary/20 text-[8px] font-black uppercase h-5">{detectedTags.length} Dynamic Tags</Badge>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-6 rounded-3xl bg-muted/10 border-2 border-dashed border-border shadow-inner">
+                                        {detectedTags.map(tag => (
+                                            <div key={tag} className="space-y-2">
+                                                <Label className="text-[9px] font-black uppercase text-muted-foreground flex items-center gap-1.5 ml-1">
+                                                    <div className="w-1 h-1 rounded-full bg-primary" />
+                                                    {tag.replace(/_/g, ' ')}
+                                                </Label>
+                                                <Input 
+                                                    value={localVariables[tag] || ''} 
+                                                    onChange={e => setLocalVariables(prev => ({ ...prev, [tag]: e.target.value }))}
+                                                    placeholder={`Value for {{${tag}}}`}
+                                                    className="h-10 rounded-xl bg-white border border-primary/5 shadow-sm font-bold text-sm px-4"
+                                                />
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-sm">
+                                <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap className="h-6 w-6" /></div>
+                                <div className="space-y-1">
+                                    <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Institutional Fidelity</p>
+                                    <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
+                                        This test will resolve all tags using the values above. Emails will be delivered with premium Figtree typography and high-density line spacing.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    </ScrollArea>
                 </div>
 
-                <DialogFooter className="bg-muted/30 p-6 border-t flex flex-col sm:flex-row gap-3">
-                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending} className="font-bold rounded-xl h-12 flex-1">Discard</Button>
+                <DialogFooter className="bg-muted/30 p-8 border-t shrink-0 flex flex-col sm:flex-row gap-4">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={isSending} className="font-bold rounded-xl h-14 px-10 flex-1">Discard</Button>
                     <Button 
                         onClick={handleSend} 
                         disabled={isSending || !recipient.trim()}
-                        className="rounded-xl font-black h-12 px-10 shadow-xl bg-primary text-white flex-[2] uppercase tracking-widest text-xs gap-2"
+                        className="rounded-2xl font-black h-14 px-12 shadow-2xl bg-primary text-white flex-[2] uppercase tracking-[0.1em] text-sm gap-3 active:scale-95 transition-all"
                     >
-                        {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        {isSending ? 'Launching...' : 'Execute Test'}
+                        {isSending ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
+                        {isSending ? 'Launching Test...' : 'Execute Dispatch'}
                     </Button>
                 </DialogFooter>
             </DialogContent>

@@ -31,7 +31,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     const template = { id: templateSnap.id, ...templateSnap.data() } as MessageTemplate;
 
     // 2. Resolve Sender Profile (Resolution Hierarchy)
-    // Hierarchy: 1. Input ID (Explicit) -> 2. Channel Default -> 3. Any Active
     let senderProfileSnap;
     
     if (senderProfileId && senderProfileId !== 'default' && senderProfileId !== 'none') {
@@ -82,14 +81,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 school_location: schoolData.location,
                 school_phone: schoolData.phone,
                 school_email: schoolData.email,
-                // Signatory based variables
                 contact_name: signatory?.name || '',
                 contact_email: signatory?.email || '',
                 contact_phone: signatory?.phone || '',
                 contact_position: signatory?.type || '',
             };
             
-            // Resolve Agreement URL if requested
             const contractSnap = await adminDb.collection('contracts').where('schoolId', '==', schoolId).limit(1).get();
             if (!contractSnap.empty) {
                 const contractData = contractSnap.docs[0].data() as Contract;
@@ -97,14 +94,13 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 schoolVars.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?schoolId=${schoolId}`;
             }
 
-            // Merge school vars without overwriting already present keys
             Object.entries(schoolVars).forEach(([k, v]) => {
                 if (finalVariables[k] === undefined) finalVariables[k] = v;
             });
         }
     }
 
-    // 5. Resolve Global Constants (Lowest Priority - only if key is missing)
+    // 5. Resolve Global Constants
     const constantsSnap = await adminDb.collection('messaging_variables').where('source', '==', 'constant').get();
     constantsSnap.forEach(doc => {
         const v = doc.data() as VariableDefinition;
@@ -115,7 +111,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     // 6. Resolve Style Wrapper
     let styleWrapper = '';
-    if (template.channel === 'email' && template.styleId && template.styleId !== 'none') {
+    if (template.styleId && template.styleId !== 'none') {
         const styleSnap = await adminDb.collection('message_styles').doc(template.styleId).get();
         if (styleSnap.exists) {
             styleWrapper = (styleSnap.data() as MessageStyle).htmlWrapper;
@@ -130,12 +126,12 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         });
     } else {
         resolvedBody = resolveVariables(template.body, finalVariables);
-        if (styleWrapper && styleWrapper.includes('{{content}}')) {
+        if (template.channel === 'email' && styleWrapper && styleWrapper.includes('{{content}}')) {
             resolvedBody = styleWrapper.replace('{{content}}', resolvedBody);
         }
     }
 
-    // 8. Resolve Metadata (Email only)
+    // 8. Resolve Metadata
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
 
@@ -192,7 +188,6 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     const logRef = await adminDb.collection('message_logs').add(sanitizedLogData);
 
-    // 11. Sync Activity Timeline
     await logActivity({
         schoolId: (logData.schoolId as string) || '',
         userId: null, 
@@ -217,17 +212,18 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 }
 
 /**
- * Sends a raw, non-templated message. Used primarily for testing unsaved drafts.
- * Does not create a persistent audit log in message_logs.
+ * Sends a raw, non-templated message.
+ * Now upgraded to support variable resolution before dispatch.
  */
 export async function sendRawMessage(input: {
     channel: 'email' | 'sms',
     recipient: string,
     body: string,
     subject?: string,
-    senderProfileId?: string
+    senderProfileId?: string,
+    variables?: Record<string, any>
 }) {
-    const { channel, recipient, body, subject, senderProfileId } = input;
+    const { channel, recipient, body, subject, senderProfileId, variables = {} } = input;
 
     try {
         let senderProfileSnap;
@@ -249,18 +245,22 @@ export async function sendRawMessage(input: {
 
         const sender = senderProfileSnap.data() as SenderProfile;
 
+        // Resolve variables in the raw content
+        const resolvedBody = resolveVariables(body, variables);
+        const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Test Message — SmartSapp';
+
         if (channel === 'sms') {
             await sendSms({
                 recipient,
-                message: body,
+                message: resolvedBody,
                 sender: sender.identifier
             });
         } else {
             await sendEmail({
                 from: sender.identifier,
                 to: recipient,
-                subject: subject || 'Test Message — SmartSapp',
-                html: body
+                subject: resolvedSubject,
+                html: resolvedBody
             });
         }
 

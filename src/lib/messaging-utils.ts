@@ -79,6 +79,7 @@ export function shouldShowBlock(block: MessageBlock, variables: Record<string, a
  * Renders an array of MessageBlocks into a clean, high-compatibility HTML string.
  * Optimized for Outlook, Gmail, and Mobile clients.
  * Includes hidden metadata markers for bidirectional sync.
+ * Upgraded with Figtree font and improved line-spacing.
  */
 export function renderBlocksToHtml(
   blocks: MessageBlock[], 
@@ -89,7 +90,7 @@ export function renderBlocksToHtml(
     wrapper?: string 
   }
 ): string {
-  if (!blocks || blocks.length === 0) return '';
+  if (!blocks || !blocks.length) return '';
 
   const maxWidth = options?.width || '600px';
   const bgColor = options?.backgroundColor || '#ffffff';
@@ -99,7 +100,6 @@ export function renderBlocksToHtml(
       return '';
     }
 
-    // Embed metadata for bidirectional synchronization using UTF-8 safe encoding
     const metadata = `<!-- BLOCK_DATA:${toBase64(JSON.stringify(block))} -->`;
 
     const align = block.style?.textAlign || 'left';
@@ -108,7 +108,9 @@ export function renderBlocksToHtml(
     const padding = block.style?.padding || '10px 0';
     const borderRadius = block.style?.borderRadius ? `border-radius: ${block.style.borderRadius};` : '';
     
-    const wrapperStyle = `padding: ${padding}; ${alignStyle} ${blockBgColor} ${borderRadius}`;
+    // Core typography inheritance
+    const baseStyle = `font-family: 'Figtree', Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b;`;
+    const wrapperStyle = `padding: ${padding}; ${alignStyle} ${blockBgColor} ${borderRadius} ${baseStyle}`;
 
     let blockHtml = '';
 
@@ -117,13 +119,13 @@ export function renderBlocksToHtml(
         const tag = block.variant || 'h2';
         const fontSize = tag === 'h1' ? '28px' : tag === 'h2' ? '22px' : '18px';
         const title = resolveVariables(block.title || '', variables);
-        blockHtml = `<div style="${wrapperStyle}"><${tag} style="font-family: sans-serif; color: #1e293b; margin: 0; font-size: ${fontSize}; font-weight: 800; line-height: 1.2;">${title}</${tag}></div>`;
+        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${baseStyle} margin: 0; font-size: ${fontSize}; font-weight: 800; line-height: 1.2;">${title}</${tag}></div>`;
         break;
       }
       
       case 'text': {
         const content = resolveVariables(block.content || '', variables);
-        blockHtml = `<div style="${wrapperStyle}"><p style="font-family: sans-serif; color: #475569; font-size: 16px; line-height: 1.6; margin: 0;">${content}</p></div>`;
+        blockHtml = `<div style="${wrapperStyle}"><p style="${baseStyle} font-size: 16px; margin: 0;">${content}</p></div>`;
         break;
       }
 
@@ -146,10 +148,9 @@ export function renderBlocksToHtml(
       case 'button': {
         const title = resolveVariables(block.title || 'Click Here', variables);
         const link = resolveVariables(block.link || '#', variables);
-        // CRITICAL: Added font-size: 16px to override parent td font-size: 0px inheritance
         blockHtml = `
           <div style="${wrapperStyle} margin: 20px 0;">
-            <a href="${link}" style="background-color: #3B5FFF; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 800; font-family: sans-serif; display: inline-block; font-size: 16px;">
+            <a href="${link}" style="background-color: #3B5FFF; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 10px; font-weight: 800; font-family: 'Figtree', sans-serif; display: inline-block; font-size: 16px;">
               ${title}
             </a>
           </div>
@@ -160,7 +161,7 @@ export function renderBlocksToHtml(
       case 'quote': {
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
-          <div style="margin: 20px 0; padding: 20px; border-left: 4px solid #3B5FFF; background-color: #f8fafc; font-family: sans-serif; font-style: italic; color: #1e293b; font-size: 18px; ${alignStyle}">
+          <div style="margin: 20px 0; padding: 20px; border-left: 4px solid #3B5FFF; background-color: #f8fafc; font-family: 'Figtree', sans-serif; font-style: italic; color: #1e293b; font-size: 18px; line-height: 1.6; ${alignStyle}">
             ${content}
           </div>
         `;
@@ -170,7 +171,7 @@ export function renderBlocksToHtml(
       case 'list': {
         const tag = block.listStyle === 'ordered' ? 'ol' : 'ul';
         const items = (block.items || []).map(item => `<li style="margin-bottom: 8px;">${resolveVariables(item, variables)}</li>`).join('');
-        blockHtml = `<div style="${wrapperStyle}"><${tag} style="font-family: sans-serif; color: #475569; font-size: 16px; line-height: 1.6; margin: 0; padding-left: 20px; text-align: left;">${items}</${tag}></div>`;
+        blockHtml = `<div style="${wrapperStyle}"><${tag} style="${baseStyle} font-size: 16px; margin: 0; padding-left: 20px; text-align: left;">${items}</${tag}></div>`;
         break;
       }
 
@@ -182,7 +183,7 @@ export function renderBlocksToHtml(
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
           <div style="padding: 20px 0; border-bottom: 1px solid #f1f5f9; ${alignStyle}">
-            <div style="font-family: sans-serif; color: #1e293b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.6;">
+            <div style="font-family: 'Figtree', sans-serif; color: #1e293b; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; opacity: 0.6;">
               ${content || 'Organization Header'}
             </div>
           </div>
@@ -194,7 +195,7 @@ export function renderBlocksToHtml(
         const content = resolveVariables(block.content || '', variables);
         blockHtml = `
           <div style="background-color: #f8fafc; padding: 40px 20px; border-radius: 16px; margin-top: 40px; text-align: center; border: 1px solid #f1f5f9;">
-            <div style="font-family: sans-serif; color: #64748b; font-size: 12px; font-weight: 500; line-height: 1.8;">
+            <div style="font-family: 'Figtree', sans-serif; color: #64748b; font-size: 12px; font-weight: 500; line-height: 1.8;">
               ${content || '© ' + new Date().getFullYear() + ' SmartSapp. All rights reserved.'}
               <br />
               You are receiving this because you are part of an onboarding school.
@@ -208,7 +209,7 @@ export function renderBlocksToHtml(
         const score = variables.score || 0;
         const maxScore = variables.max_score || 100;
         blockHtml = `
-          <div style="background-color: #3B5FFF; color: #ffffff; padding: 40px; border-radius: 24px; text-align: center; margin: 30px 0; font-family: sans-serif;">
+          <div style="background-color: #3B5FFF; color: #ffffff; padding: 40px; border-radius: 24px; text-align: center; margin: 30px 0; font-family: 'Figtree', sans-serif;">
             <div style="text-transform: uppercase; font-size: 10px; font-weight: 900; letter-spacing: 2px; margin-bottom: 15px; opacity: 0.8;">Assessment Result</div>
             <div style="font-size: 64px; font-weight: 900; line-height: 1;">${score}</div>
             <div style="font-size: 14px; font-weight: 700; opacity: 0.6; margin-top: 5px;">OUT OF ${maxScore} POINTS</div>
@@ -221,16 +222,16 @@ export function renderBlocksToHtml(
         blockHtml = '';
     }
 
-    // Append metadata to the block
     return blockHtml + '\n' + metadata;
   };
 
   const contentHtml = blocks.map(renderBlock).join('\n');
 
-  if (options?.wrapper && options.wrapper.includes('{{content}}')) {
-    return options.wrapper.replace('{{content}}', contentHtml);
-  }
+  const wrapperHtml = options?.wrapper && options.wrapper.includes('{{content}}')
+    ? options.wrapper.replace('{{content}}', contentHtml)
+    : contentHtml;
 
+  // Insert Figtree Google Font and base styles
   return `<!doctype html>
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
@@ -238,12 +239,14 @@ export function renderBlocksToHtml(
 <!--[if !mso]><!--><meta http-equiv="X-UA-Compatible" content="IE=edge"><!--<![endif]-->
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;700;900&display=swap" rel="stylesheet">
 <style type="text/css">
   #outlook a { padding:0; }
-  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; }
+  body { margin:0;padding:0;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%; font-family: 'Figtree', Helvetica, Arial, sans-serif !important; }
   table, td { border-collapse:collapse;mso-table-lspace:0pt;mso-table-rspace:0pt; }
   img { border:0;height:auto;line-height:100%; outline:none;text-decoration:none;-ms-interpolation-mode:bicubic; }
-  p { display:block;margin:13px 0; }
+  p { display:block;margin:13px 0; line-height: 1.6; }
+  * { font-family: 'Figtree', Helvetica, Arial, sans-serif !important; }
 </style>
 </head>
 <body style="word-spacing:normal;background-color:${bgColor};">
@@ -252,8 +255,8 @@ export function renderBlocksToHtml(
       <table align="center" border="0" cellpadding="0" cellspacing="0" role="presentation" style="width:100%;">
         <tbody>
           <tr>
-            <td style="direction:ltr;font-size:0px;padding:20px 0;text-align:center;">
-              ${contentHtml}
+            <td style="direction:ltr;font-size:0px;padding:20px 0;text-align:center;font-family: 'Figtree', sans-serif;">
+              ${wrapperHtml}
             </td>
           </tr>
         </tbody>
@@ -266,109 +269,22 @@ export function renderBlocksToHtml(
 
 /**
  * Reconstructs a MessageBlock array from an HTML string.
- * First tries metadata markers (full state), then falls back to a heuristic parser for raw code.
  */
 export function parseHtmlToBlocks(html: string): MessageBlock[] {
   if (!html) return [];
-  
-  // 1. Try metadata markers first (Preserves full state and IDs)
   const blocks: MessageBlock[] = [];
   const markerRegex = /<!--\s*BLOCK_DATA:(.*?)\s*-->/g;
   let match;
-  let foundMarkers = false;
-
   while ((match = markerRegex.exec(html)) !== null) {
     try {
       const base64Data = match[1];
       const blockJson = fromBase64(base64Data);
       if (blockJson) {
-        const block = JSON.parse(blockJson);
-        blocks.push(block);
-        foundMarkers = true;
+        blocks.push(JSON.parse(blockJson));
       }
     } catch (e) {
-      console.warn("Failed to parse block metadata from HTML:", e);
+      console.warn("Failed to parse block metadata:", e);
     }
   }
-
-  if (foundMarkers) return blocks;
-
-  // 2. Fallback: Heuristic Parsing for Raw HTML (Browser only)
-  if (typeof window === 'undefined') return [];
-
-  try {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    const container = doc.body;
-    const heuristicBlocks: MessageBlock[] = [];
-
-    // Identification Helper
-    const isSignificant = (el: HTMLElement) => {
-        const tag = el.tagName.toLowerCase();
-        if (['h1', 'h2', 'h3', 'p', 'img', 'hr', 'ul', 'ol', 'blockquote', 'a'].includes(tag)) return true;
-        if (el.classList.contains('title') || el.classList.contains('text') || el.classList.contains('button') || el.classList.contains('logo') || el.classList.contains('footer')) return true;
-        return false;
-    };
-
-    const walk = (node: Node) => {
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement;
-        const tag = el.tagName.toLowerCase();
-        
-        // Skip purely system or invisible containers
-        if (['script', 'style', 'meta', 'head', 'title'].includes(tag)) return;
-
-        if (isSignificant(el)) {
-            const id = `blk_ext_${Math.random().toString(36).substr(2, 9)}`;
-            let block: MessageBlock | null = null;
-
-            if (tag === 'h1' || tag === 'h2' || tag === 'h3' || el.classList.contains('title')) {
-                block = { id, type: 'heading', variant: (tag.startsWith('h') ? tag : 'h2') as any, title: el.innerText.trim() };
-            } else if (tag === 'hr' || el.classList.contains('divider')) {
-                block = { id, type: 'divider' };
-            } else if (tag === 'img' || el.classList.contains('logo')) {
-                block = { id, type: el.classList.contains('logo') ? 'logo' : 'image', url: el.getAttribute('src') || '' };
-            } else if (tag === 'a' && (el.classList.contains('button') || el.getAttribute('style')?.includes('background'))) {
-                block = { id, type: 'button', title: el.innerText.trim(), link: el.getAttribute('href') || '#', style: { textAlign: 'center', variant: 'default' } };
-            } else if (tag === 'ul' || tag === 'ol') {
-                const items = Array.from(el.querySelectorAll('li')).map(li => li.innerText.trim());
-                block = { id, type: 'list', listStyle: tag === 'ol' ? 'ordered' : 'unordered', items };
-            } else if (tag === 'blockquote') {
-                block = { id, type: 'quote', content: el.innerText.trim() };
-            } else if (el.classList.contains('footer')) {
-                block = { id, type: 'footer', content: el.innerHTML.trim() };
-            } else if (tag === 'p' || el.classList.contains('text') || (el.innerText.trim().length > 0 && el.children.length === 0)) {
-                const content = el.innerHTML.trim();
-                if (content) {
-                    block = { id, type: 'text', content };
-                }
-            }
-
-            if (block) {
-                // Normalize variables {var} -> {{var}} for SmartSapp compatibility
-                const normalize = (val?: string) => val?.replace(/\{(\w+)\}/g, '{{$1}}') || '';
-                if (block.title) block.title = normalize(block.title);
-                if (block.content) block.content = normalize(block.content);
-                if (block.url) block.url = normalize(block.url);
-                if (block.link) block.link = normalize(block.link);
-                
-                heuristicBlocks.push(block);
-                return; // Stop branch traversal once a block is identified
-            }
-        }
-      }
-
-      // Recurse into children
-      for (let i = 0; i < node.childNodes.length; i++) {
-        walk(node.childNodes[i]);
-      }
-    };
-
-    walk(container);
-    return heuristicBlocks;
-
-  } catch (e) {
-    console.error("Heuristic parsing failure:", e);
-    return [];
-  }
+  return blocks;
 }
