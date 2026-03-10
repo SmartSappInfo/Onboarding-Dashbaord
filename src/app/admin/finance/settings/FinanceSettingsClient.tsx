@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import type { BillingSettings } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -11,25 +11,25 @@ import {
     Save, 
     Loader2, 
     BadgePercent, 
-    Receipt, 
     Signature, 
     CreditCard,
     Info,
-    AlertCircle
+    Edit3
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Separator } from '@/components/ui/separator';
-import { MediaSelect } from '../../schools/components/media-select';
 import { Skeleton } from '@/components/ui/skeleton';
+import SignaturePadModal from '@/components/SignaturePadModal';
+import { cn } from '@/lib/utils';
 
 export default function FinanceSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isSigModalOpen, setIsSigModalOpen] = React.useState(false);
 
     const settingsRef = useMemoFirebase(() => firestore ? doc(firestore, 'billing_settings', 'global') : null, [firestore]);
     const { data: settings, isLoading } = useDoc<BillingSettings>(settingsRef);
@@ -198,13 +198,27 @@ export default function FinanceSettingsClient() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Digital Signature Image</Label>
-                                    <MediaSelect 
-                                        value={localSettings.signatureUrl} 
-                                        onValueChange={val => setLocalSettings(p => ({ ...p, signatureUrl: val }))}
-                                        filterType="image"
-                                        className="rounded-2xl overflow-hidden"
-                                    />
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Digital Signature Identity</Label>
+                                    <div 
+                                        onClick={() => setIsSigModalOpen(true)}
+                                        className="group relative h-32 w-full rounded-2xl border-2 border-dashed border-primary/20 bg-muted/10 hover:bg-primary/5 hover:border-primary/40 transition-all cursor-pointer overflow-hidden flex flex-col items-center justify-center gap-2"
+                                    >
+                                        {localSettings.signatureUrl ? (
+                                            <div className="relative w-full h-full p-4">
+                                                <img src={localSettings.signatureUrl} alt="Signature" className="w-full h-full object-contain" />
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <p className="text-white font-black text-[10px] uppercase tracking-widest">Click to Change</p>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <div className="p-3 bg-white rounded-full shadow-sm text-primary group-hover:scale-110 transition-transform">
+                                                    <Edit3 className="h-5 w-5" />
+                                                </div>
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Click to Sign Document</p>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </CardContent>
@@ -232,6 +246,15 @@ export default function FinanceSettingsClient() {
                     </div>
                 </form>
             </div>
+
+            <SignaturePadModal 
+                open={isSigModalOpen}
+                onClose={() => setIsSigModalOpen(false)}
+                onSave={(dataUrl) => {
+                    setLocalSettings(p => ({ ...p, signatureUrl: dataUrl }));
+                    setIsSigModalOpen(false);
+                }}
+            />
         </div>
     );
 }
