@@ -68,6 +68,7 @@ export interface School {
   billingAddress?: string;
   currency?: string;
   subscriptionPackageId?: string;
+  subscriptionPackageName?: string;
   subscriptionRate?: number; // Effective rate after discount
   discountPercentage?: number; // School-specific discount
   billingTerm?: string;

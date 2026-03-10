@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -44,6 +45,11 @@ const SCHOOL_VARIABLES = [
     { key: 'school_phone', label: 'School Phone' },
     { key: 'school_email', label: 'School Email' },
     { key: 'contact_name', label: 'Primary Contact' },
+    { key: 'school_package', label: 'Subscription Tier' },
+    { key: 'subscription_rate', label: 'Effective Rate' },
+    { key: 'subscription_total', label: 'Total Amount' },
+    { key: 'nominal_roll', label: 'Student Count' },
+    { key: 'arrears_balance', label: 'Outstanding Arrears' },
 ];
 
 export function Inspector() {

@@ -39,6 +39,14 @@ export async function syncVariableRegistry() {
       { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
       { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
       { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'contactPerson', type: 'string' },
+      
+      // Billing Data
+      { key: 'school_package', label: 'Subscription Tier', category: 'general', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
+      { key: 'subscription_rate', label: 'Effective Unit Rate', category: 'general', source: 'static', entity: 'School', path: 'subscriptionRate', type: 'number' },
+      { key: 'subscription_total', label: 'Total Amount', category: 'general', source: 'static', entity: 'School', path: 'nominalRoll * subscriptionRate', type: 'number' },
+      { key: 'nominal_roll', label: 'Student Count', category: 'general', source: 'static', entity: 'School', path: 'nominalRoll', type: 'number' },
+      { key: 'arrears_balance', label: 'Outstanding Arrears', category: 'general', source: 'static', entity: 'School', path: 'arrearsBalance', type: 'number' },
+
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },

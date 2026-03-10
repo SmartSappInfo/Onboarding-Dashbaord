@@ -5,7 +5,7 @@ import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
+import type { PDFForm, Submission, PDFFormField, School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Download, Loader2, Monitor, Clock } from 'lucide-react';
@@ -45,6 +45,13 @@ export default function SubmissionDetailPage() {
 
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submission, isLoading: isLoadingSubmission } = useDoc<Submission>(submissionDocRef);
+
+  // Fetch school data for variable resolution
+  const schoolDocRef = useMemoFirebase(() => {
+    if (!firestore || !pdfForm?.schoolId) return null;
+    return doc(firestore, 'schools', pdfForm.schoolId);
+  }, [firestore, pdfForm?.schoolId]);
+  const { data: school } = useDoc<School>(schoolDocRef);
 
   // Phase 2: Dynamic Label Resolution - Ensure ID segment is replaced with Name
   useSetBreadcrumb(pdfForm?.name, `/admin/pdfs/${pdfId}`);
@@ -219,6 +226,7 @@ export default function SubmissionDetailPage() {
                                     pageNumber={index + 1}
                                     fields={pdfForm.fields}
                                     formData={submission.formData}
+                                    school={school || undefined}
                                 />
                             </div>
                         ))
@@ -237,7 +245,7 @@ export default function SubmissionDetailPage() {
   );
 }
 
-function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any } }) {
+function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any }, school?: School }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const renderTaskRef = React.useRef<any>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
@@ -300,7 +308,34 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PD
             {!isRendering && (
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
-                        const value = formData[field.id];
+                        let value = formData[field.id];
+                        
+                        // Handle Static Labels and Dynamic Variables
+                        if (field.type === 'static-text') {
+                            value = field.staticText;
+                        } else if (field.type === 'variable') {
+                            value = `{{${field.variableKey}}}`;
+                            if (school && field.variableKey) {
+                                const currency = school.currency || 'GHS';
+                                const rate = school.subscriptionRate || 0;
+                                const roll = school.nominalRoll || 0;
+                                
+                                switch(field.variableKey) {
+                                    case 'school_name': value = school.name; break;
+                                    case 'school_initials': value = school.initials || ''; break;
+                                    case 'school_location': value = school.location || ''; break;
+                                    case 'school_phone': value = school.phone || ''; break;
+                                    case 'school_email': value = school.email || ''; break;
+                                    case 'contact_name': value = school.contactPerson || ''; break;
+                                    case 'school_package': value = school.subscriptionPackageName || 'Standard'; break;
+                                    case 'subscription_rate': value = `${currency} ${rate.toLocaleString()}`; break;
+                                    case 'subscription_total': value = `${currency} ${(rate * roll).toLocaleString()}`; break;
+                                    case 'nominal_roll': value = roll.toLocaleString(); break;
+                                    case 'arrears_balance': value = `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`; break;
+                                }
+                            }
+                        }
+
                         if (!value) return null;
 
                         // Font size is synchronized with the 1.5x display scale

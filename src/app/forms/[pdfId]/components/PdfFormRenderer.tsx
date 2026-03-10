@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -41,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Dialog, 
     DialogContent, 
@@ -571,6 +572,10 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     if (field.type === 'variable') {
         let resolvedValue = `{{${field.variableKey}}}`;
         if (school && field.variableKey) {
+            const currency = school.currency || 'GHS';
+            const rate = school.subscriptionRate || 0;
+            const roll = school.nominalRoll || 0;
+            
             switch(field.variableKey) {
                 case 'school_name': resolvedValue = school.name; break;
                 case 'school_initials': resolvedValue = school.initials || ''; break;
@@ -578,6 +583,11 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                 case 'school_phone': resolvedValue = school.phone || ''; break;
                 case 'school_email': resolvedValue = school.email || ''; break;
                 case 'contact_name': resolvedValue = school.contactPerson || ''; break;
+                case 'school_package': resolvedValue = school.subscriptionPackageName || 'Standard'; break;
+                case 'subscription_rate': resolvedValue = `${currency} ${rate.toLocaleString()}`; break;
+                case 'subscription_total': resolvedValue = `${currency} ${(rate * roll).toLocaleString()}`; break;
+                case 'nominal_roll': resolvedValue = roll.toLocaleString(); break;
+                case 'arrears_balance': resolvedValue = `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`; break;
             }
         }
         return (

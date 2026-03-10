@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-} from '@/components/ui/form';
+} from '@/components/form-base';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
@@ -174,10 +174,13 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         ? { userId: selectedManager.id, name: selectedManager.name, email: selectedManager.email }
         : { userId: null, name: 'Unassigned', email: null };
 
+    const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
+
     const { assignedToId, ...rest } = data;
     const updateData = { 
         ...rest, 
         assignedTo, 
+        subscriptionPackageName: selectedPackage ? selectedPackage.name : (data.subscriptionPackageId ? 'Assigned' : 'Standard'),
         implementationDate: data.implementationDate?.toISOString() || null 
     };
 
@@ -406,7 +409,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
                             <FormControl>
-                                <Textarea {...field} placeholder="If different from campus location..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                                <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

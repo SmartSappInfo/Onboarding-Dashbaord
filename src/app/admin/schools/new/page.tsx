@@ -170,11 +170,15 @@ export default function NewSchoolPage() {
 
     const slug = data.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     
+    // Resolve Package Name for variables
+    const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
+
     const { assignedToId, ...rest } = data;
     const schoolData = {
       ...rest,
       slug,
       assignedTo,
+      subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
       stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
       createdAt: new Date().toISOString(),
@@ -338,7 +342,7 @@ export default function NewSchoolPage() {
                             <FormItem>
                                 <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-inner" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
