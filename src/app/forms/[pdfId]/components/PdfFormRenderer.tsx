@@ -17,6 +17,7 @@ import {
     Send, 
     ShieldAlert, 
     AlertTriangle, 
+    AlertCircle,
     ZoomIn, 
     ZoomOut, 
     Edit3, 
@@ -642,7 +643,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit' }}
                     />
                 )}
-                {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover/desktop-field:opacity-60" />}
+                {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover:desktop-field:opacity-60" />}
             </div>
         );
     }
@@ -900,7 +901,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         </div>
                         <DialogTitle className="text-center text-xl font-bold">Required Questions Missing</DialogTitle>
                         <DialogDescription className="text-center pt-2 text-sm font-medium">
-                            Please complete the following fields before submitting the document:
+                            Please answer the following questions before submitting:
                         </DialogDescription>
                     </DialogHeader>
                     <ScrollArea className="max-h-[30vh] border rounded-md my-4">
@@ -914,7 +915,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         </ul>
                     </ScrollArea>
                     <DialogFooter>
-                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">OK, take me there</Button>
+                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base">Go Fix These</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
