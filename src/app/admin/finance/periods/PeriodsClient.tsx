@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -39,6 +38,7 @@ import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 export default function PeriodsClient() {
     const firestore = useFirestore();

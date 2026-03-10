@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -25,6 +24,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { MediaSelect } from '../../schools/components/media-select';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function FinanceSettingsClient() {
     const firestore = useFirestore();
