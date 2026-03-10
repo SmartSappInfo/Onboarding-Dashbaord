@@ -135,7 +135,13 @@ export function TemplateWorkshop({
     };
 
     const filteredVars = React.useMemo(() => {
-        return variables.filter(v => (v.category === 'general' || v.category === category || v.category === 'finance') && !v.hidden);
+        // Broaden filter to ensure finance variables (like agreement_url) show for contracts/finance templates
+        return variables.filter(v => (
+            v.category === 'general' || 
+            v.category === category || 
+            v.category === 'finance' ||
+            (category === 'contracts' && v.category === 'finance')
+        ) && !v.hidden);
     }, [variables, category]);
 
     const stepTransition = {
@@ -202,6 +208,7 @@ export function TemplateWorkshop({
                                                     <SelectContent className="rounded-xl">
                                                         <SelectItem value="general">General</SelectItem>
                                                         <SelectItem value="finance">Finance Hub</SelectItem>
+                                                        <SelectItem value="contracts">Legal Contracts</SelectItem>
                                                         <SelectItem value="meetings">Meetings</SelectItem>
                                                         <SelectItem value="surveys">Surveys</SelectItem>
                                                         <SelectItem value="forms">Forms</SelectItem>
@@ -258,10 +265,6 @@ export function TemplateWorkshop({
                                         )}
                                     </div>
                                     
-                                    {/* 
-                                        CONSTRAIN HEIGHT: We use flex-1 and min-h-0 on the TabsContent to ensure it ONLY takes available space.
-                                        data-[state=active]:flex is used to ensure only the active tab is treated as a flex child.
-                                    */}
                                     <TabsContent value="blocks" className="m-0 flex-1 min-h-0 bg-muted/5 border-t outline-none data-[state=active]:flex data-[state=active]:flex-col">
                                         <ScrollArea className="flex-1">
                                             <div className="p-4 space-y-8 text-left">
