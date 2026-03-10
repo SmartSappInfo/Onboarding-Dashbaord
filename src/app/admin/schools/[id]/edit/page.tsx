@@ -51,8 +51,10 @@ const schoolEditSchema = z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.'),
     phone: z.string().min(10, 'Invalid phone.'),
-    type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']),
-  })).min(1, 'At least one focal person is required.'),
+    type: z.string().min(1, 'Role required.'),
+    isSignatory: z.boolean().default(false),
+  })).min(1, 'At least one focal person is required.')
+    .refine(people => people.some(p => p.isSignatory), { message: 'Exactly one signatory must be selected.' }),
   modules: z.array(z.object({
     id: z.string(),
     name: z.string(),

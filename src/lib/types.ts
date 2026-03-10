@@ -6,7 +6,7 @@ export const MEETING_TYPES = [
 
 export type MeetingType = typeof MEETING_TYPES[number];
 
-export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner';
+export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
 
 export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
 
@@ -15,8 +15,8 @@ export interface FocalPerson {
   phone: string;
   email: string;
   type: FocalPersonType;
+  isSignatory: boolean;
   isBillingOfficer?: boolean;
-  isContractSignatory?: boolean;
 }
 
 export interface Zone {
@@ -57,12 +57,9 @@ export interface School {
   slogan?: string;
   logoUrl?: string;
   heroImageUrl?: string;
-  contactPerson?: string; 
-  email?: string;
-  phone?: string;
   status: SchoolStatus;
   zone?: Zone;
-  focalPersons?: FocalPerson[];
+  focalPersons: FocalPerson[];
   location?: string;
   billingAddress?: string;
   currency?: string;

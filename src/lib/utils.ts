@@ -17,25 +17,39 @@ export function formatBytes(bytes: number, decimals = 2) {
 /**
  * Resolves a technical variable key to its actual value based on school context.
  * Used for high-fidelity previews and final PDF generation.
+ * Upgraded to look for the designated 'Signatory' in focal persons.
  */
 export function resolveVariableValue(key: string, school?: any): string | null {
     if (!school) return null;
+    
+    // 1. Resolve Signatory Context
+    const signatory = (school.focalPersons || []).find((p: any) => p.isSignatory);
+    
     const currency = school.currency || 'GHS';
     const rate = school.subscriptionRate || 0;
     const roll = school.nominalRoll || 0;
     
     switch(key) {
+        // Institutional Data
         case 'school_name': return school.name;
         case 'school_initials': return school.initials || '';
         case 'school_location': return school.location || '';
         case 'school_phone': return school.phone || '';
         case 'school_email': return school.email || '';
-        case 'contact_name': return school.contactPerson || '';
+        
+        // Signatory Data (Primary variables)
+        case 'contact_name': return signatory?.name || '';
+        case 'contact_email': return signatory?.email || '';
+        case 'contact_phone': return signatory?.phone || '';
+        case 'contact_position': return signatory?.type || '';
+        
+        // Financial Logic
         case 'school_package': return school.subscriptionPackageName || 'Standard';
         case 'subscription_rate': return `${currency} ${rate.toLocaleString()}`;
         case 'subscription_total': return `${currency} ${(rate * roll).toLocaleString()}`;
         case 'nominal_roll': return roll.toLocaleString();
         case 'arrears_balance': return `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`;
+        
         default: return null;
     }
 }

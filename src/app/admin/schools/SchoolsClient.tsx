@@ -207,7 +207,9 @@ export default function SchoolsClient() {
                         <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-12 w-full rounded-lg" /></TableCell></TableRow>
                         ))
                     ) : sortedSchools.length > 0 ? (
-                        sortedSchools.map((school) => (
+                        sortedSchools.map((school) => {
+                        const signatory = (school.focalPersons || []).find(p => p.isSignatory) || school.focalPersons?.[0];
+                        return (
                         <TableRow key={school.id} className={cn("group hover:bg-muted/30 transition-colors", assigningSchool?.id === school.id && "bg-primary/5")}>
                             <TableCell className="pl-6">
                             <Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
@@ -215,8 +217,13 @@ export default function SchoolsClient() {
                                 <AvatarFallback className="font-bold text-xs">{school.initials || getInitials(school.name)}</AvatarFallback>
                             </Avatar>
                             </TableCell>
-                            <TableCell className="font-black text-sm text-foreground">
-                            <Link href={`/admin/schools/${school.id}`} className="hover:text-primary hover:underline transition-colors">{school.name}</Link>
+                            <TableCell className="py-4">
+                                <div className="flex flex-col">
+                                    <Link href={`/admin/schools/${school.id}`} className="font-black text-sm text-foreground hover:text-primary hover:underline transition-colors uppercase tracking-tight">{school.name}</Link>
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 flex items-center gap-1">
+                                        <User className="h-2 w-2" /> {signatory?.name || 'No Primary Contact'}
+                                    </span>
+                                </div>
                             </TableCell>
                             <TableCell className="text-center">
                                 <Badge variant={getStatusBadgeVariant(school.status)} className="rounded-full text-[10px] font-black uppercase px-2.5 h-5">{school.status}</Badge>
@@ -258,7 +265,7 @@ export default function SchoolsClient() {
                                     <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
                                     <DropdownMenuItem asChild>
-                                        <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${school.phone || school.email || ''}`}>
+                                        <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
                                             <Send className="mr-2 h-4 w-4" /> Send Message
                                         </Link>
                                     </DropdownMenuItem>
@@ -269,7 +276,7 @@ export default function SchoolsClient() {
                             </div>
                             </TableCell>
                         </TableRow>
-                        ))
+                        )})
                     ) : (
                         <TableRow><TableCell colSpan={7} className="h-48 text-center text-muted-foreground italic">No school records found matching your current filters.</TableCell></TableRow>
                     )}
