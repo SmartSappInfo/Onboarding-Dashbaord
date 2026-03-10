@@ -28,7 +28,8 @@ import {
     CheckCircle2,
     Clock,
     Plus,
-    Circle
+    Circle,
+    Receipt
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -41,6 +42,7 @@ import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
+import SchoolBillingTab from '../components/SchoolBillingTab';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -155,11 +157,14 @@ export default function SchoolDetailPage() {
                                 <Badge className="h-4 w-4 p-0 flex items-center justify-center rounded-full bg-primary text-[8px] border-none">{tasks.filter(t => t.status !== 'completed').length}</Badge>
                             )}
                         </TabsTrigger>
+                        <TabsTrigger value="billing" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2">
+                            <Receipt className="h-4 w-4" /> Billing & Finance
+                        </TabsTrigger>
                         <TabsTrigger value="timeline" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8">Activity Feed</TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="overview" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 text-left">
                             <Card className="lg:col-span-2 border-none shadow-sm rounded-[2rem] bg-white overflow-hidden">
                                 <CardHeader className="border-b bg-muted/10 pb-5 px-8 pt-8">
                                     <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2"><Contact className="h-4 w-4" /> Staff Focal Directory</CardTitle>
@@ -215,7 +220,7 @@ export default function SchoolDetailPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <TabsContent value="tasks" className="m-0 space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="flex justify-between items-center mb-2 px-2">
                             <h3 className="text-xl font-black uppercase tracking-tight">Pending Interventions</h3>
                             <Button size="sm" variant="outline" className="rounded-xl font-bold h-9 border-primary/20 hover:bg-primary/5 text-primary gap-2" asChild>
@@ -253,7 +258,11 @@ export default function SchoolDetailPage() {
                         </div>
                     </TabsContent>
 
-                    <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <TabsContent value="billing" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <SchoolBillingTab school={school} />
+                    </TabsContent>
+
+                    <TabsContent value="timeline" className="m-0 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <div className="bg-card rounded-[2rem] p-6 sm:p-10 shadow-sm ring-1 ring-border min-h-[400px]">
                             <div className="mb-10 flex items-center gap-3">
                                 <div className="flex flex-col">

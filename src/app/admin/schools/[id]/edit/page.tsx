@@ -4,12 +4,12 @@ import * as React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { ArrowLeft, Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { doc, updateDoc, collection, query, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
 
-import type { School, UserProfile } from '@/lib/types';
+import type { School, UserProfile, SubscriptionPackage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -17,6 +17,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,6 +61,12 @@ const schoolEditSchema = z.object({
   referee: z.string().optional(),
   includeDroneFootage: z.boolean().default(false),
   assignedToId: z.string().min(1, 'Please select an account manager.'),
+  // Billing Fields
+  billingAddress: z.string().optional(),
+  currency: z.string().default('GHS'),
+  subscriptionPackageId: z.string().optional(),
+  arrearsBalance: z.coerce.number().default(0),
+  creditBalance: z.coerce.number().default(0),
 });
 
 type SchoolEditValues = z.infer<typeof schoolEditSchema>;
@@ -82,15 +89,19 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
   const { data: school, isLoading: isSchoolLoading } = useDoc<School>(schoolDocRef);
 
-  // Phase 2: Navigation Entity Resolution
   useSetBreadcrumb(school?.name, pathname.replace('/edit', ''));
 
-  // Fetch all authorized users to ensure the selection list is comprehensive
   const usersQuery = useMemoFirebase(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'users'), orderBy('name', 'asc'));
   }, [firestore]);
   const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
+
+  const packagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'subscription_packages'), where('isActive', '==', true), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
 
   const methods = useForm<SchoolEditValues>({
     resolver: zodResolver(schoolEditSchema),
@@ -98,6 +109,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
       name: '', initials: '', slogan: '', status: 'Active',
       location: '', nominalRoll: 0, focalPersons: [], modules: [],
       referee: '', includeDroneFootage: false, assignedToId: '',
+      currency: 'GHS', arrearsBalance: 0, creditBalance: 0,
     }
   });
 
@@ -119,6 +131,11 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
         referee: school.referee || '',
         includeDroneFootage: school.includeDroneFootage || false,
         assignedToId: school.assignedTo?.userId || 'unassigned',
+        billingAddress: school.billingAddress || '',
+        currency: school.currency || 'GHS',
+        subscriptionPackageId: school.subscriptionPackageId || '',
+        arrearsBalance: school.arrearsBalance || 0,
+        creditBalance: school.creditBalance || 0,
       });
     }
   }, [school, methods]);
@@ -171,7 +188,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
 
   return (
     <FormProvider {...methods}>
-      <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24">
+      <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-8">
             {/* Identity Card */}
@@ -246,6 +263,88 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     )} />
                 </div>
               </CardContent>
+            </Card>
+
+            {/* Financial Profile Card */}
+            <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                <CardHeader className="bg-muted/30 border-b pb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl"><Banknote className="h-5 w-5 text-primary" /></div>
+                        <div>
+                            <CardTitle className="text-lg font-black uppercase tracking-tight">Financial Profile</CardTitle>
+                            <CardDescription className="text-xs font-medium">Configure billing preferences and initial balances.</CardDescription>
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent className="p-6 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField control={methods.control} name="subscriptionPackageId" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                            <SelectValue placeholder="Pick a package..." />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="none">No Subscription</SelectItem>
+                                        {packages?.map(pkg => (
+                                            <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="currency" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl">
+                                        <SelectItem value="GHS">Ghanaian Cedi (GH¢)</SelectItem>
+                                        <SelectItem value="USD">US Dollar ($)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </FormItem>
+                        )} />
+                    </div>
+
+                    <FormField control={methods.control} name="billingAddress" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
+                            <FormControl>
+                                <Textarea {...field} placeholder="If different from campus location..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                        <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Outstanding Arrears</FormLabel>
+                                <FormControl>
+                                    <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
+                                </FormControl>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Manual adjustment for unpaid balance</FormDescription>
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="creditBalance" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Available Credit</FormLabel>
+                                <FormControl>
+                                    <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
+                                </FormControl>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Manual adjustment for overpayments</FormDescription>
+                            </FormItem>
+                        )} />
+                    </div>
+                </CardContent>
             </Card>
             
             {/* Account Assignment Card */}

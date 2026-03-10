@@ -5,14 +5,15 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { format } from 'date-fns';
-import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus } from 'lucide-react';
+import { ArrowLeft, Loader2, Building, MapPin, CheckCircle2, User, UserCheck, Plus, Banknote, CreditCard, Wallet } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { collection, addDoc, query, where } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
 
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -21,14 +22,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, errorEmitter, FirestorePermissionError, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { ModuleSelect } from '../components/ModuleSelect';
 import { ZoneSelect } from '../components/ZoneSelect';
 import { FocalPersonManager } from '../components/FocalPersonManager';
 import { logActivity } from '@/lib/activity-logger';
-import { type UserProfile } from '@/lib/types';
+import { type UserProfile, type SubscriptionPackage } from '@/lib/types';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'School name must be at least 2 characters.' }),
@@ -59,6 +60,12 @@ const formSchema = z.object({
   referee: z.string().optional(),
   includeDroneFootage: z.boolean().default(false),
   assignedToId: z.string().min(1, 'Please select an account manager.'),
+  // Billing Fields
+  billingAddress: z.string().optional(),
+  currency: z.string().default('GHS'),
+  subscriptionPackageId: z.string().optional(),
+  arrearsBalance: z.coerce.number().default(0),
+  creditBalance: z.coerce.number().default(0),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -75,6 +82,12 @@ export default function NewSchoolPage() {
   }, [firestore]);
   const { data: users, isLoading: isUsersLoading } = useCollection<UserProfile>(usersQuery);
 
+  const packagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'subscription_packages'), where('isActive', '==', true), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
+
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -89,6 +102,9 @@ export default function NewSchoolPage() {
       referee: '',
       includeDroneFootage: false,
       assignedToId: user?.uid || '',
+      currency: 'GHS',
+      arrearsBalance: 0,
+      creditBalance: 0,
     },
   });
 
@@ -146,7 +162,7 @@ export default function NewSchoolPage() {
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
       <div className="max-w-5xl mx-auto space-y-8">
         <FormProvider {...methods}>
-          <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24">
+          <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-8 pb-24 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -178,6 +194,88 @@ export default function NewSchoolPage() {
                         )} />
                     </div>
                   </CardContent>
+                </Card>
+
+                {/* Financial Profile Card */}
+                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-muted/30 border-b pb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-primary/10 rounded-xl"><Banknote className="h-5 w-5 text-primary" /></div>
+                            <div>
+                                <CardTitle className="text-lg font-black uppercase tracking-tight">Financial Profile</CardTitle>
+                                <CardDescription className="text-xs font-medium">Configure billing preferences and initial balances.</CardDescription>
+                            </div>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField control={methods.control} name="subscriptionPackageId" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value || 'none'}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
+                                                <SelectValue placeholder="Pick a package..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="none">No Subscription</SelectItem>
+                                            {packages?.map(pkg => (
+                                                <SelectItem key={pkg.id} value={pkg.id}>{pkg.name} ({pkg.currency} {pkg.ratePerStudent}/student)</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="currency" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="GHS">Ghanaian Cedi (GH¢)</SelectItem>
+                                            <SelectItem value="USD">US Dollar ($)</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </FormItem>
+                            )} />
+                        </div>
+
+                        <FormField control={methods.control} name="billingAddress" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner" />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                            <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Initial Arrears</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Carried forward from old system</FormDescription>
+                                </FormItem>
+                            )} />
+                            <FormField control={methods.control} name="creditBalance" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Initial Credit</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
+                                    </FormControl>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Existing overpayments</FormDescription>
+                                </FormItem>
+                            )} />
+                        </div>
+                    </CardContent>
                 </Card>
 
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
@@ -217,7 +315,7 @@ export default function NewSchoolPage() {
               </div>
               <div className="space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden"><CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><MapPin className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">Geographic Assignment</CardTitle></div></CardHeader><CardContent className="p-6 space-y-6"><FormField control={methods.control} name="zone" render={({ field, fieldState }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Assigned Zone</FormLabel><FormControl><ZoneSelect value={field.value} onValueChange={field.onChange} error={!!fieldState.error} /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="location" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Address</FormLabel><FormControl><Textarea {...field} className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-sm p-4" /></FormControl><FormMessage /></FormItem>)} /> <FormField control={methods.control} name="nominalRoll" render={({ field }) => (<FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Total Roll</FormLabel><FormControl><Input type="number" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" /></FormControl><FormMessage /></FormItem>)} /></CardContent></Card>
-                <div className="pt-4"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" disabled={methods.formState.isSubmitting}>{methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Building className="h-6 w-6" />} Initialize School</Button></div>
+                <div className="pt-4 sticky top-24"><Button type="submit" className="w-full h-14 rounded-2xl font-black text-lg shadow-xl gap-3 transition-all active:scale-95" disabled={methods.formState.isSubmitting}>{methods.formState.isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : <Building className="h-6 w-6" />} Initialize School</Button></div>
               </div>
             </div>
           </form>
