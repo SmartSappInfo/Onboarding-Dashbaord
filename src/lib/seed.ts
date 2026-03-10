@@ -1,8 +1,9 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -74,6 +75,12 @@ const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'cre
   { name: 'Tema International School', initials: 'TIS', slogan: 'Service, Strength and Stability.', location: 'Tema, Ghana', nominalRoll: 500, includeDroneFootage: false, referee: 'IB Network', contactPerson: 'Admissions Dean', email: 'admissions@tis.edu.gh', phone: '+233 30 330 5134' },
   { name: 'Ridge School', initials: 'Ridge', slogan: 'Loyalty and Service.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: false, referee: 'Parent Alumni', contactPerson: 'Mrs. S. Nelson', email: 'info@ridgeschool.edu.gh', phone: '+233 30 222 2962' },
   { name: 'Faith Montessori School', initials: 'Faith', slogan: 'Godliness and Academic Excellence.', location: 'Gbawe, Accra', nominalRoll: 1000, includeDroneFootage: true, referee: 'SmartSapp Support', contactPerson: 'Mr. Oswald Amoo', email: 'admin@faithmontessori.edu.gh', phone: '+233 30 231 2345' },
+];
+
+const defaultPackages: Omit<SubscriptionPackage, 'id'>[] = [
+    { name: 'Level A (Platinum)', description: 'Premium institutional tier with high-fidelity analytics.', ratePerStudent: 89.95, billingTerm: 'term', currency: 'GHS', isActive: true },
+    { name: 'Level B (Growth)', description: 'Standard tier for growing institutions.', ratePerStudent: 49.97, billingTerm: 'term', currency: 'GHS', isActive: true },
+    { name: 'Level C (Foundation)', description: 'Entry-level tier for security basics.', ratePerStudent: 39.97, billingTerm: 'term', currency: 'GHS', isActive: true },
 ];
 
 // --- SEEDING FUNCTIONS ---
@@ -163,6 +170,9 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
             modules: schoolModulesForSchool.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
             zone: schoolSource.zone || (allZones.length > 0 ? allZones[index % allZones.length] : defaultZone),
             focalPersons: focalPersons,
+            arrearsBalance: schoolSource.arrearsBalance || 0,
+            creditBalance: schoolSource.creditBalance || 0,
+            currency: schoolSource.currency || 'GHS',
         };
         batch.set(docRef, school);
     });
@@ -553,6 +563,44 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
 
     await batch.commit();
     return count;
+}
+
+export async function seedBillingData(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'subscription_packages');
+    await clearCollection(firestore, 'billing_periods');
+    
+    const batch = writeBatch(firestore);
+
+    // 1. Packages
+    const pkgCol = collection(firestore, 'subscription_packages');
+    defaultPackages.forEach(pkg => batch.set(doc(pkgCol), pkg));
+
+    // 2. Periods
+    const periodCol = collection(firestore, 'billing_periods');
+    const currentPeriod = {
+        name: 'Term 1 (2026)',
+        startDate: new Date('2026-01-05').toISOString(),
+        endDate: new Date('2026-04-15').toISOString(),
+        invoiceDate: new Date('2026-01-12').toISOString(),
+        paymentDueDate: new Date('2026-03-20').toISOString(),
+        status: 'open'
+    };
+    batch.set(doc(periodCol), currentPeriod);
+
+    // 3. Settings
+    const settingsCol = collection(firestore, 'billing_settings');
+    const globalSettings: BillingSettings = {
+        levyPercent: 5,
+        vatPercent: 15,
+        defaultDiscount: 0,
+        paymentInstructions: 'Please make all payments (cheque/cash/bank transfer) into our Fidelity GH¢ Account.',
+        signatureName: 'Director of Finance',
+        signatureDesignation: 'Finance Dept, SmartSapp',
+    };
+    batch.set(doc(settingsCol, 'global'), globalSettings);
+
+    await batch.commit();
+    return defaultPackages.length + 2;
 }
 
 const surveyData = [

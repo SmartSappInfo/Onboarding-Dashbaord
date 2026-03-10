@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -5,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks } from '@/lib/seed';
-import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare } from 'lucide-react';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData } from '@/lib/seed';
+import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -28,7 +29,7 @@ export default function SettingsClient() {
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
-    logs: 'idle', tasks: 'idle',
+    logs: 'idle', tasks: 'idle', billing: 'idle',
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -56,6 +57,7 @@ export default function SettingsClient() {
         else if (seeder === 'zones') { count = await seedZones(firestore); name = 'Organizational Zones'; }
         else if (seeder === 'logs') { count = await seedMessageLogs(firestore); name = 'Communication Logs'; }
         else if (seeder === 'tasks') { count = await seedTasks(firestore); name = 'CRM Tasks'; }
+        else if (seeder === 'billing') { count = await seedBillingData(firestore); name = 'Billing Hubs'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -74,7 +76,7 @@ export default function SettingsClient() {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 space-y-12 bg-muted/5 text-left">
       <div className="max-w-7xl mx-auto space-y-12">
         <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
             <CardHeader className="bg-muted/30 border-b pb-6">
@@ -84,7 +86,7 @@ export default function SettingsClient() {
                 </div>
                 <div>
                     <CardTitle className="text-lg font-black uppercase tracking-tight">System Infrastructure</CardTitle>
-                    <CardDescription className="text-xs font-medium">Core system management and data initialization tools.</CardDescription>
+                    <CardDescription className="text-xs font-medium text-left">Core system management and data initialization tools.</CardDescription>
                 </div>
             </div>
             </CardHeader>
@@ -103,6 +105,10 @@ export default function SettingsClient() {
                     <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.zones === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4 text-primary" />}
                         Seed Zones
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('billing')} disabled={seedingStatus.billing === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.billing === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Banknote className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Billing Hubs
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}

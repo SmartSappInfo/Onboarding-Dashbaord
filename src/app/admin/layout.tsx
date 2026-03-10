@@ -37,7 +37,12 @@ import {
     Globe,
     CheckSquare,
     Zap,
-    BarChart3
+    BarChart3,
+    Banknote,
+    Receipt,
+    Package,
+    Timer,
+    Settings2
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -63,7 +68,7 @@ import { NavigationProvider } from '@/context/NavigationContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 
-const navItems = [
+const coreNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/admin/schools', icon: School, label: 'Schools' },
   { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline' },
@@ -71,12 +76,27 @@ const navItems = [
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
   { href: '/admin/automations', icon: Zap, label: 'Automations' },
   { href: '/admin/reports', icon: BarChart3, label: 'Intelligence' },
+];
+
+const studioNavItems = [
   { href: '/admin/portals', icon: Globe, label: 'Public Portals' },
   { href: '/admin/media', icon: Film, label: 'Media' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
   { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing' },
   { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging' },
+];
+
+const financeNavItems = [
+  { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices' },
+  { href: '/admin/finance/packages', icon: Package, label: 'Packages' },
+  { href: '/admin/finance/periods', icon: Timer, label: 'Cycles' },
+  { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup' },
+];
+
+const systemNavItems = [
   { href: '/admin/activities', icon: History, label: 'Activities' },
+  { href: '/admin/users', icon: Users, label: 'Users' },
+  { href: '/admin/settings', icon: Settings, label: 'System' },
 ];
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
@@ -92,6 +112,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
   const [retryCount, setRetryCount] = React.useState(0);
+  const [userRole, setUserRole] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (isUserLoading) {
@@ -103,6 +124,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       getDoc(userDocRef)
         .then(docSnap => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
+            setUserRole(docSnap.data().role || 'admin');
             setLoaderStatus('success');
             setTimeout(() => {
               setIsReady(true);
@@ -163,6 +185,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
+  const isFinance = userRole === 'finance' || userRole === 'admin';
+
   return (
     <ThemeProvider
       attribute="class"
@@ -187,15 +211,77 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <SidebarContent>
                   <SidebarGroup>
                     <div className="flex h-10 items-center justify-between group-data-[collapsible=icon]:justify-center">
-                      <SidebarGroupLabel>Onboarding Workspace</SidebarGroupLabel>
+                      <SidebarGroupLabel>Operations</SidebarGroupLabel>
                       <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
                     </div>
                     <SidebarMenu>
-                      {navItems.map((item) => (
+                      {coreNavItems.map((item) => (
                         <SidebarMenuItem key={item.href}>
                           <SidebarMenuButton
                               asChild
                               isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))}
+                              tooltip={item.label}
+                            >
+                              <Link href={item.href}>
+                                <item.icon />
+                                <span>{item.label}</span>
+                              </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroup>
+
+                  {isFinance && (
+                    <SidebarGroup>
+                        <SidebarGroupLabel>Finance Hub</SidebarGroupLabel>
+                        <SidebarMenu>
+                        {financeNavItems.map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                                asChild
+                                isActive={pathname.startsWith(item.href)}
+                                tooltip={item.label}
+                                >
+                                <Link href={item.href}>
+                                    <item.icon />
+                                    <span>{item.label}</span>
+                                </Link>
+                            </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                        </SidebarMenu>
+                    </SidebarGroup>
+                  )}
+
+                  <SidebarGroup>
+                    <SidebarGroupLabel>Studios</SidebarGroupLabel>
+                    <SidebarMenu>
+                      {studioNavItems.map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                              asChild
+                              isActive={pathname.startsWith(item.href)}
+                              tooltip={item.label}
+                            >
+                              <Link href={item.href}>
+                                <item.icon />
+                                <span>{item.label}</span>
+                              </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroup>
+
+                  <SidebarGroup className="mt-auto">
+                    <SidebarGroupLabel>Management</SidebarGroupLabel>
+                    <SidebarMenu>
+                      {systemNavItems.map((item) => (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton
+                              asChild
+                              isActive={pathname.startsWith(item.href)}
                               tooltip={item.label}
                             >
                               <Link href={item.href}>
