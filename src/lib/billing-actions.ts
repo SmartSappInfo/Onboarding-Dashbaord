@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -59,7 +60,10 @@ export async function generateInvoiceAction(schoolId: string, periodId: string, 
 
         // 2. Calculation Logic
         const nominalRoll = school.nominalRoll || 0;
-        const rate = pkg.ratePerStudent;
+        
+        // PRIORITY: Use school-specific effective rate if defined, otherwise fallback to package rate
+        const rate = school.subscriptionRate || pkg.ratePerStudent;
+        
         const subtotal = nominalRoll * rate;
         
         const levyAmount = (subtotal * settings.levyPercent) / 100;
