@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, UserCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
 
@@ -170,7 +170,7 @@ export default function NewSchoolPage() {
       subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
       subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
       implementationDate: data.implementationDate?.toISOString() || null,
-      stage: { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585' },
+      stage: { id: 'welcome', name: 'Welcome', order: 1 },
       createdAt: new Date().toISOString(),
     };
 
