@@ -39,7 +39,7 @@ import {
     useEditor, 
     LocalPDFFormField 
 } from './Editor';
-import type { PDFForm, PDFFormField } from '@/lib/types';
+import type { PDFForm, PDFFormField, School } from '@/lib/types';
 
 interface FieldMapperProps {
   pdf: PDFForm;
@@ -62,6 +62,7 @@ interface FieldMapperProps {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
+  school?: School;
 }
 
 function EditorLayout() {

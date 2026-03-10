@@ -192,7 +192,6 @@ export default function EditPdfPage() {
 
   const { reset, watch, setValue, getValues, trigger } = form;
 
-  // DIAGNOSTIC FIX: Watch school data to pass live unsaved context to the editor
   const watchedSchoolId = watch('schoolId');
   const watchedSchoolName = watch('schoolName');
 
@@ -201,6 +200,11 @@ export default function EditPdfPage() {
     return query(collection(firestore, 'schools'), orderBy('name', 'asc'));
   }, [firestore]);
   const { data: schools } = useCollection<School>(schoolsQuery);
+
+  const selectedSchool = React.useMemo(() => 
+    schools?.find(s => s.id === watchedSchoolId),
+    [schools, watchedSchoolId]
+  );
 
   const templatesQuery = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -477,7 +481,6 @@ export default function EditPdfPage() {
   if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   if (!pdf) return <div className="text-center py-20"><p>Document not found.</p></div>;
 
-  // RESOLUTION: Merge live form data into the pdf object passed to FieldMapper
   const livePdf = {
       ...pdf,
       schoolId: watchedSchoolId,
@@ -488,7 +491,7 @@ export default function EditPdfPage() {
     <FormProvider {...form}>
         <div className="h-full flex flex-col bg-muted/30">
             <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8">
-                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl">
+                <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-max-7xl">
                     <div className="mb-8 flex justify-end items-center">
                         {step === 2 && (
                             <div className="flex items-center gap-3 pb-1 text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -675,6 +678,7 @@ export default function EditPdfPage() {
                                             isDetecting={isDetecting} undo={handleUndo} redo={handleRedo} canUndo={canUndo} canRedo={canRedo}
                                             password={watch('password')} setPassword={(val) => setValue('password', val, { shouldDirty: true })}
                                             passwordProtected={watch('passwordProtected')} setPasswordProtected={(val) => setValue('passwordProtected', val, { shouldDirty: true })}
+                                            school={selectedSchool}
                                         />
                                     </div>
                                 </motion.div>
@@ -740,7 +744,7 @@ export default function EditPdfPage() {
             </div>
         </div>
 
-        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} />
+        <PdfPreviewDialog isOpen={isPreviewOpen} onClose={() => setIsPreviewOpen(false)} pdfForm={{ ...pdf, fields, namingFieldId, ...watch() } as PDFForm} school={selectedSchool} />
         <QuickTemplateDialog open={isQuickCreateOpen} onOpenChange={setIsQuickCreateOpen} channel="email" category="forms" fixedSourceId={pdfId} onCreated={(id) => setValue('confirmationTemplateId', id, { shouldDirty: true })} />
         <AlertDialog open={isDetectionModeOpen} onOpenChange={setIsDetectionModeOpen}><AlertDialogContent className="sm:max-w-md"><AlertDialogHeader><div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><Sparkles className="h-6 w-6 text-primary" /></div><AlertDialogTitle className="text-center font-black">AI Field Detection</AlertDialogTitle><AlertDialogDescription className="text-center">You already have {fields.length} fields. How should the AI proceed?</AlertDialogDescription></AlertDialogHeader><div className="grid gap-4 py-4"><Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl transition-all hover:bg-primary/5 group" onClick={() => handleDetectClick('continue')}><div className="flex items-center gap-2 font-bold group-hover:text-primary transition-colors"><Play className="h-4 w-4 text-primary" />Continue Designing</div><span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Keep existing work and find missing fields.</span></Button><Button variant="outline" type="button" className="h-auto flex-col items-start gap-1 p-4 text-left rounded-xl border-destructive/20 hover:bg-destructive/5 group" onClick={() => handleDetectClick('overwrite')}><div className="flex items-center gap-2 font-bold text-destructive"><RefreshCcw className="h-4 w-4" />Re-design from Scratch</div><span className="text-[10px] text-muted-foreground font-normal uppercase tracking-wider">Wipe the canvas and let AI build the entire form.</span></Button></div><AlertDialogFooter><AlertDialogCancel type="button" className="w-full rounded-xl">Cancel</AlertDialogCancel></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </FormProvider>

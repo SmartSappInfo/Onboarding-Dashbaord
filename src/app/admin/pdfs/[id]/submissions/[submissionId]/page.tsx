@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -13,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { cn } from '@/lib/utils';
+import { cn, resolveVariableValue } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 // Shared PDF.js promise
@@ -183,7 +182,7 @@ export default function SubmissionDetailPage() {
   const isLoading = isLoadingPdf || isLoadingSubmission || (!pdfDoc && pdfForm?.downloadUrl);
 
   return (
-    <div className="h-full overflow-hidden flex flex-col bg-muted/10">
+    <div className="h-full overflow-hidden flex flex-col bg-muted/10 text-left">
        <div className="flex-shrink-0 border-b p-2 flex items-center justify-between bg-card shadow-sm h-14 print:hidden">
         <div className="flex items-center gap-2 min-w-0">
             <h1 className="text-sm sm:text-base font-black uppercase tracking-tight truncate px-2">
@@ -314,26 +313,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: {
                         if (field.type === 'static-text') {
                             value = field.staticText;
                         } else if (field.type === 'variable') {
-                            value = `{{${field.variableKey}}}`;
-                            if (school && field.variableKey) {
-                                const currency = school.currency || 'GHS';
-                                const rate = school.subscriptionRate || 0;
-                                const roll = school.nominalRoll || 0;
-                                
-                                switch(field.variableKey) {
-                                    case 'school_name': value = school.name; break;
-                                    case 'school_initials': value = school.initials || ''; break;
-                                    case 'school_location': value = school.location || ''; break;
-                                    case 'school_phone': value = school.phone || ''; break;
-                                    case 'school_email': value = school.email || ''; break;
-                                    case 'contact_name': value = school.contactPerson || ''; break;
-                                    case 'school_package': value = school.subscriptionPackageName || 'Standard'; break;
-                                    case 'subscription_rate': value = `${currency} ${rate.toLocaleString()}`; break;
-                                    case 'subscription_total': value = `${currency} ${(rate * roll).toLocaleString()}`; break;
-                                    case 'nominal_roll': value = roll.toLocaleString(); break;
-                                    case 'arrears_balance': value = `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`; break;
-                                }
-                            }
+                            value = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey}}}`;
                         }
 
                         if (!value) return null;

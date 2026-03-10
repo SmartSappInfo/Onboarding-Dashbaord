@@ -10,7 +10,7 @@ import {
     AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
     ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, resolveVariableValue } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
 import { PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, ResizeHandle } from '../types';
@@ -44,7 +44,7 @@ interface FieldOverlayProps {
 
 export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimensions }: FieldOverlayProps) {
   const { 
-    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen 
+    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, school
   } = useEditor();
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -146,7 +146,19 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
   const Icon = fieldIcons[field.type];
   const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
 
-  const displayText = field.type === 'static-text' ? (field.staticText || '') : field.type === 'variable' ? `{{${field.variableKey || 'context'}}}` : (field.placeholder || '');
+  const displayText = React.useMemo(() => {
+    if (field.type === 'static-text') return field.staticText || '';
+    
+    if (field.type === 'variable') {
+        const tag = `{{${field.variableKey || 'context'}}}`;
+        if (viewMode === 'preview' && field.variableKey) {
+            return resolveVariableValue(field.variableKey, school) || tag;
+        }
+        return tag;
+    }
+    
+    return field.placeholder || '';
+  }, [field, viewMode, school]);
 
   return (
     <div 

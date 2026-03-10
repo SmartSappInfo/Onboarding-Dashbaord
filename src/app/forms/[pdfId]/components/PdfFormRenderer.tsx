@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -51,7 +50,7 @@ import {
     DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
-import { cn } from '@/lib/utils';
+import { cn, resolveVariableValue } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -570,26 +569,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     }
 
     if (field.type === 'variable') {
-        let resolvedValue = `{{${field.variableKey}}}`;
-        if (school && field.variableKey) {
-            const currency = school.currency || 'GHS';
-            const rate = school.subscriptionRate || 0;
-            const roll = school.nominalRoll || 0;
-            
-            switch(field.variableKey) {
-                case 'school_name': resolvedValue = school.name; break;
-                case 'school_initials': resolvedValue = school.initials || ''; break;
-                case 'school_location': resolvedValue = school.location || ''; break;
-                case 'school_phone': resolvedValue = school.phone || ''; break;
-                case 'school_email': resolvedValue = school.email || ''; break;
-                case 'contact_name': resolvedValue = school.contactPerson || ''; break;
-                case 'school_package': resolvedValue = school.subscriptionPackageName || 'Standard'; break;
-                case 'subscription_rate': resolvedValue = `${currency} ${rate.toLocaleString()}`; break;
-                case 'subscription_total': resolvedValue = `${currency} ${(rate * roll).toLocaleString()}`; break;
-                case 'nominal_roll': resolvedValue = roll.toLocaleString(); break;
-                case 'arrears_balance': resolvedValue = `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`; break;
-            }
-        }
+        const resolvedValue = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey || 'context'}}}`;
         return (
             <div className="w-full h-full flex overflow-visible text-primary" style={fieldStyle}>
                 <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
