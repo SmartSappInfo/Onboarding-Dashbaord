@@ -257,8 +257,8 @@ export function TemplateWorkshop({
                                             <div className="flex items-center gap-2 px-2 h-10"><Database className="h-4 w-4 text-primary" /><span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Contextual Registry</span></div>
                                         )}
                                     </div>
-                                    <TabsContent value="blocks" className="m-0 flex-1 bg-muted/5 border-t">
-                                        <ScrollArea className="h-full">
+                                    <TabsContent value="blocks" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t">
+                                        <ScrollArea className="flex-1">
                                             <div className="p-4 space-y-8 text-left">
                                                 <div className="grid grid-cols-2 gap-3">
                                                     {Object.entries(blockIcons).slice(0, 8).map(([type, Icon]) => (
@@ -271,8 +271,8 @@ export function TemplateWorkshop({
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    <TabsContent value="tags" className="m-0 flex-1 bg-muted/5 border-t text-left">
-                                        <ScrollArea className="h-full">
+                                    <TabsContent value="tags" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t text-left">
+                                        <ScrollArea className="flex-1">
                                             <div className="p-4 space-y-2">
                                                 {filteredVars.map(v => (
                                                     <button key={v.id} onClick={() => { navigator.clipboard.writeText(`{{${v.key}}}`); toast({ title: 'Tag Copied' }); }} className="w-full text-left p-3 rounded-xl border border-border/50 hover:border-primary/30 hover:bg-primary/5 transition-all group bg-white shadow-sm">
@@ -284,8 +284,8 @@ export function TemplateWorkshop({
                                             </div>
                                         </ScrollArea>
                                     </TabsContent>
-                                    <TabsContent value="properties" className="m-0 flex-1 bg-muted/5 border-t text-left">
-                                        <ScrollArea className="h-full">
+                                    <TabsContent value="properties" className="m-0 flex-1 flex flex-col min-h-0 bg-muted/5 border-t text-left">
+                                        <ScrollArea className="flex-1">
                                             <div className="p-4">
                                                 {selectedBlockId ? (
                                                     <BlockInspector block={blocks.find(b => b.id === selectedBlockId)!} variables={variables} onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))} />
