@@ -27,6 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
 import { FocalPersonManager } from "@/app/admin/schools/components/FocalPersonManager";
 
