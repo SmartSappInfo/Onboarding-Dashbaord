@@ -22,13 +22,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Calendar } from "./ui/calendar";
-import { Separator } from "./ui/separator";
-import { Switch } from "./ui/switch";
-import { Badge } from "./ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
-import { FocalPersonManager } from "./admin/schools/components/FocalPersonManager";
+import { FocalPersonManager } from "@/app/admin/schools/components/FocalPersonManager";
 
 const formSchema = z.object({
   organization: z.string().min(2, { message: "Organization must be at least 2 characters." }),
@@ -244,7 +244,6 @@ export default function NewSchoolSignupForm() {
             </CardContent>
         </Card>
 
-        {/* Focal Person Management - REUSED COMPONENT */}
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-muted/30 border-b p-8">
                 <div className="flex items-center gap-4">
