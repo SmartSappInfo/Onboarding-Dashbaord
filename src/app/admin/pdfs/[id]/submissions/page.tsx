@@ -29,7 +29,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn } from '@/lib/utils';
+import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -476,16 +476,30 @@ export default function SubmissionsPage() {
                                     <TableCell className="pl-6"><Checkbox checked={selectedIds.includes(submission.id)} onCheckedChange={() => toggleSelect(submission.id)} /></TableCell>
                                     {displayFields.map((field, idx) => {
                                         const value = submission.formData[field.id];
+                                        
+                                        const applyTransform = (val: string) => {
+                                            if (field.textTransform === 'uppercase') return val.toUpperCase();
+                                            if (field.textTransform === 'capitalize') return toTitleCase(val);
+                                            return val;
+                                        };
+
+                                        const content = field.type === 'signature' ? (
+                                            <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="S" className="w-full h-full object-contain" />}</div>
+                                        ) : <span className="truncate max-w-[200px] block font-bold text-sm">{value ? applyTransform(String(value)) : <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
+                                        
+                                        const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
+                                        const verticalAlign = field.verticalAlignment || 'center';
+
                                         return (
                                             <TableCell key={field.id}>
-                                                <div className="flex flex-col justify-center min-h-[40px]">
-                                                    {field.type === 'signature' ? (
-                                                        <div className="h-8 w-16 relative bg-muted/50 rounded border overflow-hidden">{value && <img src={value} alt="S" className="w-full h-full object-contain" />}</div>
-                                                    ) : (
-                                                        <span className="truncate max-w-[200px] block font-bold text-sm">
-                                                            {idx === 0 ? <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:text-primary hover:underline">{value || submission.id.substring(0,8)}</Link> : (value || '—')}
-                                                        </span>
-                                                    )}
+                                                <div 
+                                                    className="flex flex-col justify-center min-h-[40px]"
+                                                    style={{ 
+                                                        fontSize: dynamicFontSize,
+                                                        justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start'
+                                                    }}
+                                                >
+                                                    {idx === 0 ? <Link href={`/admin/pdfs/${pdfId}/submissions/${submission.id}`} className="hover:text-primary hover:underline">{content}</Link> : content}
                                                 </div>
                                             </TableCell>
                                         );
@@ -614,7 +628,7 @@ export default function SubmissionsPage() {
                                     </TableHeader>
                                     <TableBody>
                                         {dropoffInsights.slice(0, 5).map((insight, idx) => (
-                                            <TableRow key={idx} className="group transition-colors">
+                                            <TableRow key={insight.from + insight.to} className="group transition-colors">
                                                 <TableCell className="pl-8 py-4">
                                                     <p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p>
                                                     <p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Signers Lost</p>
@@ -734,7 +748,7 @@ function ShareResultsDialog({ pdf, open, onOpenChange }: { pdf: PDFForm; open: b
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
                 <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
-                    <DialogTitle className="text-2xl font-black tracking-tight uppercase">Share Records Portal</DialogTitle>
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight uppercase">Share Records Portal</DialogTitle>
                     <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Allow stakeholders to view and audit submissions.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-8 p-8">
@@ -978,11 +992,18 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
                         const value = formData[field.id]; if (!value) return null;
+                        
+                        const applyTransform = (val: string) => {
+                            if (field.textTransform === 'uppercase') return val.toUpperCase();
+                            if (field.textTransform === 'capitalize') return toTitleCase(val);
+                            return val;
+                        };
+
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
                         return (
                             <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', flexDirection: 'column', justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start', alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start' }}>
-                                {field.type === 'signature' ? <img src={value} alt="S" className="w-full h-full object-contain" crossOrigin="anonymous" /> : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")} style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}>{field.type === 'date' && value ? format(new Date(value), 'PPP') : value}</span>}
+                                {field.type === 'signature' ? <img src={value} alt="S" className="w-full h-full object-contain" crossOrigin="anonymous" /> : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")} style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}>{field.type === 'date' && value ? format(new Date(value), 'PPP') : applyTransform(String(value || ''))}</span>}
                             </div>
                         );
                     })}

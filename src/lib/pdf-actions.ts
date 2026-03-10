@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { PDFForm, PDFFormField, School } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { toTitleCase } from './utils';
 
 /**
  * Converts a HEX color string to an RGB object for pdf-lib.
@@ -118,6 +119,13 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
             if (!isImageField) {
                 let displayValue = String(rawValue);
                 if (Array.isArray(rawValue)) displayValue = rawValue.join(', ');
+                
+                // APPLY TEXT TRANSFORMATIONS
+                if (field.textTransform === 'uppercase') {
+                    displayValue = displayValue.toUpperCase();
+                } else if (field.textTransform === 'capitalize') {
+                    displayValue = toTitleCase(displayValue);
+                }
                 
                 if (!displayValue || displayValue === 'undefined' || displayValue === 'null') continue;
 

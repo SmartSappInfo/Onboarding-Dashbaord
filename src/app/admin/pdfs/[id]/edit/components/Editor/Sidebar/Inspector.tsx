@@ -18,7 +18,8 @@ import {
   AlignEndHorizontal, AlignStartVertical, AlignCenterVertical, AlignEndVertical,
   Copy, Bold, Italic, Underline, Type, FileText, Settings, AlignLeft, AlignCenter, AlignRight,
   AlignHorizontalDistributeCenter, AlignVerticalDistributeCenter, Tag, 
-  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw
+  Layers, ArrowRightLeft, Database, Building, AlertCircle, Pipette, RefreshCw,
+  CaseUpper, CaseSensitive, Baseline
 } from 'lucide-react';
 import { PDFFormField } from '@/lib/types';
 import { SortableFieldList } from './SortableFieldList';
@@ -265,51 +266,103 @@ export function Inspector() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            type="button"
-                            variant={selectedField.bold ? "secondary" : "outline"} 
-                            size="icon" 
-                            className={cn("h-9 w-full rounded-xl", selectedField.bold && "bg-primary/10 text-primary border-primary/20")}
-                            onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
-                          >
-                            <Bold className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Bold</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            type="button"
-                            variant={selectedField.italic ? "secondary" : "outline"} 
-                            size="icon" 
-                            className={cn("h-9 w-full rounded-xl", selectedField.italic && "bg-primary/10 text-primary border-primary/20")}
-                            onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
-                          >
-                            <Italic className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Italic</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button 
-                            type="button"
-                            variant={selectedField.underline ? "secondary" : "outline"} 
-                            size="icon" 
-                            className={cn("h-9 w-full rounded-xl", selectedField.underline && "bg-primary/10 text-primary border-primary/20")}
-                            onClick={() => updateField(selectedField.id, { underline: !selectedField.underline })}
-                          >
-                            <Underline className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Underline</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                  <div className="grid grid-cols-1 gap-4 px-1">
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Style</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                            <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                <Button 
+                                    type="button"
+                                    variant={selectedField.bold ? "secondary" : "outline"} 
+                                    size="icon" 
+                                    className={cn("h-9 w-full rounded-xl", selectedField.bold && "bg-primary/10 text-primary border-primary/20")}
+                                    onClick={() => updateField(selectedField.id, { bold: !selectedField.bold })}
+                                >
+                                    <Bold className="h-4 w-4" />
+                                </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Bold</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                <Button 
+                                    type="button"
+                                    variant={selectedField.italic ? "secondary" : "outline"} 
+                                    size="icon" 
+                                    className={cn("h-9 w-full rounded-xl", selectedField.italic && "bg-primary/10 text-primary border-primary/20")}
+                                    onClick={() => updateField(selectedField.id, { italic: !selectedField.italic })}
+                                >
+                                    <Italic className="h-4 w-4" />
+                                </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Italic</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                <Button 
+                                    type="button"
+                                    variant={selectedField.underline ? "secondary" : "outline"} 
+                                    size="icon" 
+                                    className={cn("h-9 w-full rounded-xl", selectedField.underline && "bg-primary/10 text-primary border-primary/20")}
+                                    onClick={() => updateField(selectedField.id, { underline: !selectedField.underline })}
+                                >
+                                    <Underline className="h-4 w-4" />
+                                </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Underline</TooltipContent>
+                            </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest ml-1">Case Transformation</Label>
+                        <div className="grid grid-cols-3 gap-2 bg-muted/20 p-1 rounded-xl">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant={!selectedField.textTransform || selectedField.textTransform === 'none' ? 'secondary' : 'ghost'} 
+                                            className={cn("h-8 rounded-lg text-[9px] font-black uppercase", (!selectedField.textTransform || selectedField.textTransform === 'none') && "bg-white shadow-sm")} 
+                                            onClick={() => updateField(selectedField.id, { textTransform: 'none' })}
+                                        >
+                                            <Baseline className="h-3 w-3 mr-1" /> Aa
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Normal</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant={selectedField.textTransform === 'uppercase' ? 'secondary' : 'ghost'} 
+                                            className={cn("h-8 rounded-lg text-[9px] font-black uppercase", selectedField.textTransform === 'uppercase' && "bg-white shadow-sm")} 
+                                            onClick={() => updateField(selectedField.id, { textTransform: 'uppercase' })}
+                                        >
+                                            <CaseUpper className="h-3 w-3 mr-1" /> ABC
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>UPPERCASE</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button 
+                                            type="button" 
+                                            variant={selectedField.textTransform === 'capitalize' ? 'secondary' : 'ghost'} 
+                                            className={cn("h-8 rounded-lg text-[9px] font-black uppercase", selectedField.textTransform === 'capitalize' && "bg-white shadow-sm")} 
+                                            onClick={() => updateField(selectedField.id, { textTransform: 'capitalize' })}
+                                        >
+                                            <CaseSensitive className="h-3 w-3 mr-1" /> Title
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Title Case</TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </div>
+                    </div>
                   </div>
 
                   <div className="space-y-3">

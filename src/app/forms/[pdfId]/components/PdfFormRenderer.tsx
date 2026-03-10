@@ -51,7 +51,7 @@ import {
     DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
-import { cn, resolveVariableValue } from '@/lib/utils';
+import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -356,7 +356,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     };
     updateBaseScale();
     window.addEventListener('resize', updateBaseScale);
-    return () => window.removeEventListener('resize', updateBaseScale);
+    return () => window.removeResizeListener('resize', updateBaseScale);
   }, []);
 
   React.useEffect(() => {
@@ -562,13 +562,20 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
         flexDirection: 'column',
         justifyContent: vAlign === 'center' ? 'center' : vAlign === 'bottom' ? 'flex-end' : 'flex-start',
         alignItems: hAlign === 'center' ? 'center' : hAlign === 'right' ? 'flex-end' : 'flex-start',
+        textTransform: field.textTransform === 'capitalize' ? 'none' : (field.textTransform || 'none')
+    };
+
+    const applyTransform = (val: string) => {
+        if (field.textTransform === 'uppercase') return val.toUpperCase();
+        if (field.textTransform === 'capitalize') return toTitleCase(val);
+        return val;
     };
 
     if (field.type === 'static-text') {
         return (
             <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
                 <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
-                    {field.staticText}
+                    {applyTransform(field.staticText || '')}
                 </span>
             </div>
         );
@@ -579,7 +586,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
         return (
             <div className="w-full h-full flex overflow-visible" style={fieldStyle}>
                 <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold" : "font-medium")}>
-                    {resolvedValue}
+                    {applyTransform(resolvedValue)}
                 </span>
             </div>
         );
@@ -592,7 +599,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                     value && <img src={value} alt="Media" className="w-full h-full object-contain" crossOrigin="anonymous" />
                 ) : (
                     <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "text-black" : "text-black/80")}>
-                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
+                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : applyTransform(String(value || ''))}
                     </span>
                 )}
             </div>
@@ -645,7 +652,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                             "w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 hover:border-primary/20 focus:ring-0 focus:border-primary/40 shadow-none rounded-none transition-all",
                             errors[field.id] && "border-destructive/40 bg-destructive/5"
                         )}
-                        style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit', color: field.color || 'inherit' }}
+                        style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit', color: field.color || 'inherit', textTransform: field.textTransform === 'capitalize' ? 'none' : (field.textTransform || 'none') }}
                     />
                 )}
                 {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover:desktop-field:opacity-60" />}
@@ -676,7 +683,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                     <img src={value} alt="Captured" className="w-full h-full object-contain" />
                 ) : (
                     <span className="block truncate w-full" style={{ fontSize: 'inherit', color: field.color || 'inherit' }}>
-                        {field.type === 'date' ? format(new Date(value), 'PPP') : value}
+                        {field.type === 'date' ? format(new Date(value), 'PPP') : applyTransform(String(value || ''))}
                     </span>
                 )
             ) : (

@@ -8,9 +8,10 @@ import {
     ALargeSmall, Copy, Replace, Trash2, Key, ChevronDown, Bold, Italic, Underline,
     AlignStartVertical, AlignCenterVertical, AlignEndVertical,
     AlignStartHorizontal, AlignCenterHorizontal, AlignEndHorizontal,
-    ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database, Pipette
+    ChevronUp, ChevronDown as ChevronDownIcon, Tag, Database, Pipette,
+    CaseUpper, CaseSensitive, Baseline
 } from 'lucide-react';
-import { cn, resolveVariableValue } from '@/lib/utils';
+import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { useEditor } from '../EditorContext';
 import { PDFFormField } from '@/lib/types';
 import type { LocalPDFFormField, ResizeHandle } from '../types';
@@ -144,23 +145,30 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     fontWeight: field.bold ? 'bold' : 'normal',
     fontStyle: field.italic ? 'italic' : 'normal',
     textDecoration: field.underline ? 'underline' : 'none',
+    textTransform: field.textTransform === 'capitalize' ? 'none' : field.textTransform || 'none', // Handle title case manually
   };
 
   const Icon = fieldIcons[field.type];
   const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
 
   const displayText = React.useMemo(() => {
-    if (field.type === 'static-text') return field.staticText || '';
-    
-    if (field.type === 'variable') {
+    let text = '';
+    if (field.type === 'static-text') {
+        text = field.staticText || '';
+    } else if (field.type === 'variable') {
         const tag = `{{${field.variableKey || 'context'}}}`;
         if (viewMode === 'preview' && field.variableKey) {
-            return resolveVariableValue(field.variableKey, school) || tag;
+            text = resolveVariableValue(field.variableKey, school) || tag;
+        } else {
+            text = tag;
         }
-        return tag;
+    } else {
+        text = field.placeholder || '';
     }
-    
-    return field.placeholder || '';
+
+    if (field.textTransform === 'uppercase') return text.toUpperCase();
+    if (field.textTransform === 'capitalize') return toTitleCase(text);
+    return text;
   }, [field, viewMode, school]);
 
   return (
@@ -196,7 +204,8 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
             fontWeight: 'inherit',
             fontStyle: 'inherit',
             textDecoration: 'inherit',
-            color: field.color || 'hsl(var(--primary))'
+            color: field.color || 'hsl(var(--primary))',
+            textTransform: field.textTransform === 'capitalize' ? 'none' : field.textTransform || 'none'
           }}
           value={displayText}
           onChange={(e) => {
@@ -347,6 +356,34 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
                       </TooltipTrigger>
                       <TooltipContent>Underline</TooltipContent>
                     </Tooltip>
+                  </div>
+
+                  <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />
+
+                  <div className="flex items-center gap-0.5 px-1">
+                    <DropdownMenu>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <DropdownMenuTrigger asChild>
+                                    <Button type="button" variant={field.textTransform && field.textTransform !== 'none' ? 'secondary' : 'ghost'} size="icon" className={cn("h-8 w-8 rounded-lg", field.textTransform && field.textTransform !== 'none' && "text-primary bg-primary/10")}>
+                                        {field.textTransform === 'uppercase' ? <CaseUpper className="h-4 w-4" /> : field.textTransform === 'capitalize' ? <CaseSensitive className="h-4 w-4" /> : <Baseline className="h-4 w-4" />}
+                                    </Button>
+                                </DropdownMenuTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent>Text Case</TooltipContent>
+                        </Tooltip>
+                        <DropdownMenuContent className="w-40 p-1" side="top">
+                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'none' })}>
+                                <Baseline className="h-3.5 w-3.5" /> Normal
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'uppercase' })}>
+                                <CaseUpper className="h-3.5 w-3.5" /> UPPERCASE
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-xs gap-2" onClick={() => updateField(field.id, { textTransform: 'capitalize' })}>
+                                <CaseSensitive className="h-3.5 w-3.5" /> Title Case
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
                   <Separator orientation="vertical" className="h-6 mx-0.5 bg-border/50" />

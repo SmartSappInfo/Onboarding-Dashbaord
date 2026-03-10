@@ -454,6 +454,7 @@ export interface PDFFormField {
   verticalAlignment?: 'top' | 'center' | 'bottom';
   required?: boolean;
   options?: string[];
+  textTransform?: 'none' | 'uppercase' | 'capitalize';
 }
     
 export interface PDFForm {

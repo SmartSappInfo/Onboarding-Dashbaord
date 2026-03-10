@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { cn, resolveVariableValue } from '@/lib/utils';
+import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 
 // Shared PDF.js promise
@@ -322,6 +322,12 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: {
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
+                        const applyTransform = (val: string) => {
+                            if (field.textTransform === 'uppercase') return val.toUpperCase();
+                            if (field.textTransform === 'capitalize') return toTitleCase(val);
+                            return val;
+                        };
+
                         return (
                             <div 
                                 key={field.id} 
@@ -345,7 +351,7 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: {
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
                                         style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
-                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : value}
+                                        {field.type === 'date' && value ? format(new Date(value), 'PPP') : applyTransform(String(value))}
                                     </span>
                                 )}
                             </div>

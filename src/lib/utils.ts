@@ -15,6 +15,18 @@ export function formatBytes(bytes: number, decimals = 2) {
 }
 
 /**
+ * Robust Title Case normalization for multi-word strings.
+ */
+export function toTitleCase(str: string): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
+/**
  * Resolves a technical variable key to its actual value based on school context.
  * Used for high-fidelity previews and final PDF generation.
  * Upgraded to look for the designated 'Signatory' in focal persons.
