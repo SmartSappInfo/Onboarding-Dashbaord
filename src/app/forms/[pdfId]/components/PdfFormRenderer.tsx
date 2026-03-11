@@ -735,8 +735,19 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                     <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
                 )}
                 <div className="flex flex-col min-w-0 -ml-1 text-left">
-                    <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
-                    <p className="text-[10px] text-muted-foreground leading-none">{school?.name || pdfForm.schoolName || 'SmartSapp'}</p>
+                    <h1 className="font-bold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">
+                        {school?.name || pdfForm.publicTitle || pdfForm.name}
+                    </h1>
+                    {school?.name && (
+                        <p className="text-[10px] text-muted-foreground leading-none">
+                            {pdfForm.publicTitle || pdfForm.name}
+                        </p>
+                    )}
+                    {!school?.name && (
+                        <p className="text-[10px] text-muted-foreground leading-none">
+                            {pdfForm.schoolName || 'SmartSapp'}
+                        </p>
+                    )}
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2 relative">

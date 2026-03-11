@@ -12,7 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { 
     ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Clock, Users, Trash2, 
-    CheckSquare, MoreVertical, FileText, BarChart3, TrendingDown, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2
+    CheckSquare, MoreVertical, MoreHorizontal, FileText, BarChart3, TrendingUp, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
@@ -589,7 +589,7 @@ export default function SubmissionsPage() {
             <HighFidelityDownloader 
                 pdfForm={pdf} submissionId={downloadingId} fileName={getSubmissionFileName(submissions?.find(s => s.id === downloadingId) || { id: downloadingId, formData: {} } as Submission)}
                 batchProgress={isProcessingBatch ? { current: currentBatchIndex, total: totalBatchSize } : undefined}
-                onFinished={onDownloadFinished} onCancel={handleCancelBatch}
+                onDownloadFinished={onDownloadFinished} onCancel={handleCancelBatch}
             />
         )}
       </div>
@@ -636,43 +636,42 @@ function HighFidelityDownloader({
     pdfForm, 
     submissionId, 
     fileName, 
-    batchProgress, 
-    onFinished, 
+    batchProgress,
+    onDownloadFinished, 
     onCancel 
 }: { 
     pdfForm: PDFForm, 
     submissionId: string, 
     fileName: string, 
     batchProgress?: { current: number, total: number },
-    onFinished: (success: boolean, url?: string) => void, 
+    onDownloadFinished: (success: boolean) => void, 
     onCancel: () => void 
 }) {
     const firestore = useFirestore();
     const { toast } = useToast();
-    const submissionRef = useMemoFirebase(() => {
-        if (!firestore) return null;
-        return doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId);
-    }, [firestore, pdfForm.id, submissionId]);
-    const { data: submission, isLoading } = useDoc<Submission>(submissionRef);
+    const submissionRef = useMemoFirebase(() => firestore ? doc(firestore, `pdfs/${pdfForm.id}/submissions`, submissionId) : null, [firestore, pdfForm.id, submissionId]);
+    const { data: submission } = useDoc<Submission>(submissionRef);
     const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
     const [isCapturing, setIsCapturing] = React.useState(false);
     const containerRef = React.useRef<HTMLDivElement>(null);
+
     React.useEffect(() => {
-        const loadPdf = async () => {
+        const load = async () => {
             try {
                 const pdfjs = await pdfjsPromise;
                 const pdfjsVersion = '4.4.168';
                 pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
-                const loadingTask = pdfjs.getDocument({ url: pdfForm.downloadUrl });
-                const loadedPdf = await loadingTask.promise;
-                setPdfDoc(loadedPdf);
+                const loaded = await pdfjs.getDocument({ url: pdfForm.downloadUrl }).promise;
+                setPdfDoc(loaded);
             } catch (e) {
+                console.error("Renderer: Failed to load PDF", e);
                 setTimeout(() => toast({ variant: 'destructive', title: 'Rendering Error' }), 0);
-                onFinished(false);
+                onDownloadFinished(false);
             }
         };
-        loadPdf();
-    }, [pdfForm.downloadUrl, onFinished, toast]);
+        load();
+    }, [pdfForm.downloadUrl, onDownloadFinished, toast]);
+
     const handleGenerate = React.useCallback(async () => {
         if (isCapturing || !containerRef.current) return;
         setIsCapturing(true);
@@ -681,106 +680,139 @@ function HighFidelityDownloader({
             const { PDFDocument } = await import('pdf-lib');
             const pdfBundle = await PDFDocument.create();
             const pageWrappers = containerRef.current.querySelectorAll('.page-capture-wrapper');
-            if (!pageWrappers.length) throw new Error("No pages rendered.");
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
             for (let i = 0; i < pageWrappers.length; i++) {
                 const el = pageWrappers[i] as HTMLElement;
-                const canvas = await html2canvas(el, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
-                const imgData = canvas.toDataURL('image/jpeg', 0.9);
-                const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-                const image = await pdfBundle.embedJpg(imgBytes);
+                const canvas = await html2canvas(el, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+                const image = await pdfBundle.embedJpg(await fetch(canvas.toDataURL('image/jpeg', 0.9)).then(res => res.arrayBuffer()));
                 const page = pdfBundle.addPage([595.28, 841.89]);
                 page.drawImage(image, { x: 0, y: 0, width: 595.28, height: 841.89 });
             }
-            const pdfBytes = await pdfBundle.save();
-            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const blob = new Blob([await pdfBundle.save()], { type: 'application/pdf' });
             const url = window.URL.createObjectURL(blob);
-            if (!batchProgress) {
-                if (isIOS) window.location.assign(url);
-                else {
-                    const a = document.createElement('a'); a.href = url; a.download = fileName;
-                    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                }
-            }
-            onFinished(true, url);
-        } catch (e: any) {
-            onFinished(false);
+            const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            onDownloadFinished(true);
+        } catch (e) {
+            onDownloadFinished(false);
         } finally { setIsCapturing(false); }
-    }, [fileName, onFinished, isCapturing, batchProgress]);
+    }, [fileName, onDownloadFinished, isCapturing]);
+
     React.useEffect(() => {
         if (pdfDoc && submission && !isCapturing) {
-            const timer = setTimeout(() => { handleGenerate(); }, 1500);
+            const timer = setTimeout(() => handleGenerate(), 1500);
             return () => clearTimeout(timer);
         }
     }, [pdfDoc, submission, handleGenerate, isCapturing]);
+
     return (
         <div className="fixed inset-0 z-[100] flex flex-col bg-background/95 backdrop-blur-md animate-in fade-in duration-300">
-            <div className="flex items-center justify-between p-4 border-b shrink-0 bg-card shadow-sm"><div className="flex items-center gap-3 text-left"><Loader2 className="h-5 w-5 animate-spin text-primary" /><div><h2 className="text-lg font-bold">{batchProgress ? `Processing Document ${batchProgress.current} of ${batchProgress.total}` : 'Generating Signed Document'}</h2><p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Capturing high-fidelity pages...</p></div></div><Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full"><X className="h-5 w-5" /></Button></div>
-            {batchProgress && (<div className="w-full h-1.5 bg-muted"><div className="h-full bg-primary transition-all duration-500 ease-in-out" style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}/></div>)}
-            <div className="flex-1 overflow-hidden relative"><ScrollArea className="h-full w-full"><div ref={containerRef} className="p-8 flex flex-col items-center min-w-full">{(!pdfDoc || isLoading) ? (<div className="flex flex-col gap-8"><Skeleton className="w-[8.5in] h-[11in] bg-white shadow-xl rounded-lg" /></div>) : (<div className="flex flex-col gap-8 pb-20">{Array.from({ length: pdfDoc.numPages }).map((_, index) => (<div key={index} className="page-capture-wrapper"><SilentPageRenderer pdf={pdfDoc} pageNumber={index + 1} fields={pdfForm.fields} formData={submission?.formData || {}} /></div>))}</div>)}</div><ScrollBar orientation="horizontal" /></ScrollArea></div>
-            <div className="p-4 border-t bg-card text-center print:hidden"><Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">Stop Operation</Button></div>
+            <div className="flex items-center justify-between p-4 border-b bg-card shadow-sm">
+                <div className="flex items-center gap-3">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <div>
+                        <h2 className="text-lg font-bold">
+                            {batchProgress ? `Downloading Record ${batchProgress.current} of ${batchProgress.total}` : 'Processing PDF'}
+                        </h2>
+                        <p className="text-sm text-muted-foreground font-medium">Generating high-fidelity document...</p>
+                    </div>
+                </div>
+                <Button variant="ghost" size="icon" onClick={onCancel} className="hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full">
+                    <X className="h-5 w-5" />
+                </Button>
+            </div>
+            
+            {batchProgress && (
+                <div className="w-full h-1.5 bg-muted">
+                    <div 
+                        className="h-full bg-primary transition-all duration-500 ease-in-out" 
+                        style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                    />
+                </div>
+            )}
+
+            <div className="flex-1 overflow-hidden relative">
+                <ScrollArea className="h-full w-full">
+                    <div ref={containerRef} className="p-8 flex flex-col items-center">
+                        {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] bg-white rounded-lg" /> : (
+                            <div className="flex flex-col gap-8">
+                                {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
+                                    <div key={index} className="page-capture-wrapper">
+                                        <SilentPageRenderer pdf={pdfDoc} pageNumber={index + 1} fields={pdfForm.fields} formData={submission?.formData || {}} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    <ScrollBar orientation="horizontal" />
+                </ScrollArea>
+            </div>
+            
+            <div className="p-4 border-t bg-card text-center print:hidden">
+                <Button variant="outline" size="sm" onClick={onCancel} className="font-bold border-destructive/20 text-destructive hover:bg-destructive/5 hover:border-destructive">
+                    Stop Batch Download
+                </Button>
+            </div>
         </div>
     );
 }
 
 function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any } }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
-    const renderTaskRef = React.useRef<any>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [isRendering, setIsRendering] = React.useState(true);
+
     React.useEffect(() => {
-        let isCancelled = false;
         const render = async () => {
-            setIsRendering(true);
-            try {
-                if (renderTaskRef.current) renderTaskRef.current.cancel();
-                const page = await pdf.getPage(pageNumber);
-                const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
-                if (isCancelled) return;
-                setDimensions({ width: viewport.width, height: viewport.height });
-                if (canvasRef.current) {
-                    const canvas = canvasRef.current;
-                    const context = canvas.getContext('2d');
-                    if (context) {
-                        canvas.height = viewport.height; canvas.width = viewport.width;
-                        const renderTask = page.render({ canvasContext: context, viewport });
-                        renderTaskRef.current = renderTask;
-                        await renderTask.promise;
-                    }
-                }
-            } catch (e: any) {
-                if (e.name === 'RenderingCancelledException') return;
-            } finally {
-                if (!isCancelled) setIsRendering(false);
+            const page = await pdf.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: 1.5, rotation: page.rotate });
+            setDimensions({ width: viewport.width, height: viewport.height });
+            if (canvasRef.current) {
+                const canvas = canvasRef.current;
+                canvas.height = viewport.height; canvas.width = viewport.width;
+                await page.render({ canvasContext: canvas.getContext('2d')!, viewport }).promise;
+                setIsRendering(false);
             }
         };
         render();
-        return () => { isCancelled = true; if (renderTaskRef.current) renderTaskRef.current.cancel(); };
     }, [pdf, pageNumber]);
+
     return (
-        <div className="relative mx-auto shadow-2xl bg-white border border-border flex-shrink-0" style={{ width: dimensions.width, height: dimensions.height }}>
+        <div className="relative mx-auto bg-white border border-border/50 flex-shrink-0 shadow-lg" style={{ width: dimensions.width, height: dimensions.height }}>
             {isRendering && <Skeleton className="absolute inset-0" />}
             <canvas ref={canvasRef} className="w-full h-full block" />
             {!isRendering && (
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
-                        const storedValue = formData[field.id];
-                        let value = storedValue;
-                        if (value === undefined || value === null) {
-                            if (field.type === 'static-text') value = field.staticText;
-                            else if (field.type === 'variable') value = `{{${field.variableKey}}}`;
-                        }
-                        if (!value) return null;
-                        const applyTransform = (val: string) => {
-                            if (field.textTransform === 'uppercase') return val.toUpperCase();
-                            if (field.textTransform === 'capitalize') return toTitleCase(val);
-                            return val;
-                        };
+                        const val = formData[field.id]; if (!val) return null;
+                        
+                        // Font scaling synchronized with 1.5x viewport scale
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
+
                         return (
-                            <div key={field.id} style={{ position: 'absolute', left: `${field.position.x}%`, top: `${field.position.y}%`, width: `${field.dimensions.width}%`, height: `${field.dimensions.height}%`, display: 'flex', flexDirection: 'column', justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start', alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start' }}>
-                                {field.type === 'signature' ? <img src={value} alt="S" className="w-full h-full object-contain" crossOrigin="anonymous" /> : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")} style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}>{field.type === 'date' && value ? format(new Date(value), 'PPP') : applyTransform(String(value || ''))}</span>}
+                            <div 
+                                key={field.id} 
+                                style={{ 
+                                    position: 'absolute', 
+                                    left: `${field.position.x}%`, 
+                                    top: `${field.position.y}%`, 
+                                    width: `${field.dimensions.width}%`, 
+                                    height: `${field.dimensions.height}%`, 
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
+                                }}
+                            >
+                                {field.type === 'signature' ? (
+                                    <img src={val} alt="S" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                ) : (
+                                    <span 
+                                        className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
+                                        style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
+                                    >
+                                        {field.type === 'date' ? format(new Date(val), 'PPP') : val}
+                                    </span>
+                                )}
                             </div>
                         );
                     })}

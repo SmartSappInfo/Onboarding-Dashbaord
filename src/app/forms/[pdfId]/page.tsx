@@ -53,8 +53,9 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
         };
     }
 
+    // Prioritize School Name in the browser tab title for professional branding
     const title = data.school 
-        ? `${data.pdfForm.publicTitle || data.pdfForm.name} — ${data.school.name}`
+        ? `${data.school.name} — ${data.pdfForm.publicTitle || data.pdfForm.name}`
         : data.pdfForm.publicTitle || data.pdfForm.name;
 
     return {
