@@ -709,6 +709,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
 
   const hasSignature = pdfForm.fields.some(f => f.type === 'signature');
   const bgColor = pdfForm.backgroundColor || '#F1F5F9';
+  const logoUrl = school?.logoUrl || pdfForm.logoUrl;
 
   return (
     <FormProvider {...methods}>
@@ -716,16 +717,16 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
             <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
             
             <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
-                {pdfForm.logoUrl ? (
+                {logoUrl ? (
                     <div className="relative h-9 w-12 shrink-0">
-                        <Image src={pdfForm.logoUrl} alt="Logo" fill className="object-contain object-left" />
+                        <Image src={logoUrl} alt="Logo" fill className="object-contain object-left" />
                     </div>
                 ) : (
                     <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
                 )}
                 <div className="flex flex-col min-w-0 -ml-1">
                     <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
-                    <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.schoolName || 'SmartSapp'}</p>
+                    <p className="text-[10px] text-muted-foreground leading-none">{school?.name || pdfForm.schoolName || 'SmartSapp'}</p>
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2 relative">

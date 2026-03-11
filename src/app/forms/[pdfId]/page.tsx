@@ -53,9 +53,13 @@ export async function generateMetadata({ params, searchParams }: { params: Promi
         };
     }
 
+    const title = data.school 
+        ? `${data.pdfForm.publicTitle || data.pdfForm.name} — ${data.school.name}`
+        : data.pdfForm.publicTitle || data.pdfForm.name;
+
     return {
-        title: data.pdfForm.name,
-        description: 'Powered by SmartSapp',
+        title,
+        description: 'Institutional document signing powered by SmartSapp.',
     };
 }
 
@@ -69,7 +73,7 @@ export default async function PublicPdfFormPage({ params, searchParams }: { para
     }
     
     if (data.pdfForm.passwordProtected && data.pdfForm.password) {
-        return <PasswordGatedForm pdfForm={data.pdfForm} />;
+        return <PasswordGatedForm pdfForm={data.pdfForm} school={data.school} />;
     }
 
     return <PdfFormRenderer pdfForm={data.pdfForm} school={data.school} />;
