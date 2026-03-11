@@ -45,7 +45,7 @@ export default function SubmissionDetailPage() {
   const { data: pdfForm, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submission, isLoading: isLoadingSubmission } = useDoc<Submission>(submissionDocRef);
 
-  // Fetch school data for variable resolution
+  // Fetch school data for variable resolution (as backup)
   const schoolDocRef = useMemoFirebase(() => {
     if (!firestore || !pdfForm?.schoolId) return null;
     return doc(firestore, 'schools', pdfForm.schoolId);
@@ -307,16 +307,19 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, school }: {
             {!isRendering && (
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
-                        let value = formData[field.id];
+                        // RESOLUTION HIERARCHY: Stored Value (Snapshot) > Template Definition
+                        const storedValue = formData[field.id];
+                        let value = storedValue;
                         
-                        // Handle Static Labels and Dynamic Variables
-                        if (field.type === 'static-text') {
-                            value = field.staticText;
-                        } else if (field.type === 'variable') {
-                            value = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey}}}`;
+                        if (value === undefined || value === null) {
+                            if (field.type === 'static-text') {
+                                value = field.staticText;
+                            } else if (field.type === 'variable') {
+                                value = resolveVariableValue(field.variableKey || '', school) || `{{${field.variableKey}}}`;
+                            }
                         }
 
-                        if (!value) return null;
+                        if (value === undefined || value === null) return null;
 
                         // Font size is synchronized with the 1.5x display scale
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;

@@ -703,7 +703,7 @@ export default function SubmissionsPage() {
             onCancel={handleCancelBatch}
           />
       )}
-    </TooltipProvider>
+    </div>
   );
 }
 
@@ -991,7 +991,20 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
             {!isRendering && (
                 <div className="absolute inset-0 pointer-events-none">
                     {fields.filter(f => f.pageNumber === pageNumber).map(field => {
-                        const value = formData[field.id]; if (!value) return null;
+                        // RESOLUTION HIERARCHY: Stored Value (Snapshot) > Template Definition
+                        const storedValue = formData[field.id];
+                        let value = storedValue;
+                        
+                        if (value === undefined || value === null) {
+                            if (field.type === 'static-text') {
+                                value = field.staticText;
+                            } else if (field.type === 'variable') {
+                                // Live fallback if snapshot missing
+                                value = `{{${field.variableKey}}}`;
+                            }
+                        }
+
+                        if (!value) return null;
                         
                         const applyTransform = (val: string) => {
                             if (field.textTransform === 'uppercase') return val.toUpperCase();

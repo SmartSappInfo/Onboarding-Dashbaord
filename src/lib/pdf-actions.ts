@@ -48,7 +48,7 @@ function resolvePdfVariables(text: string, school?: School): string {
 export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
     console.log(`>>> [PDF:GEN] START: "${pdfForm.name}" (ID: ${pdfForm.id})`);
     
-    // Fetch school data for variable resolution if associated
+    // Fetch school data for variable resolution if associated (Backup resolution)
     let school: School | undefined = undefined;
     if (pdfForm.schoolId) {
         const schoolSnap = await adminDb.collection('schools').doc(pdfForm.schoolId).get();
@@ -91,14 +91,15 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
     for (const field of fields) {
         try {
-            let rawValue: any;
+            // RESOLUTION HIERARCHY: Stored Value (Snapshot) > Template Definition (Dynamic Resolution)
+            let rawValue = formData[field.id];
             
-            if (field.type === 'static-text') {
-                rawValue = field.staticText;
-            } else if (field.type === 'variable') {
-                rawValue = resolvePdfVariables(`{{${field.variableKey}}}`, school);
-            } else {
-                rawValue = formData[field.id];
+            if (rawValue === undefined || rawValue === null) {
+                if (field.type === 'static-text') {
+                    rawValue = field.staticText;
+                } else if (field.type === 'variable') {
+                    rawValue = resolvePdfVariables(`{{${field.variableKey}}}`, school);
+                }
             }
             
             if (rawValue === undefined || rawValue === null || field.pageNumber < 1 || field.pageNumber > pages.length) {

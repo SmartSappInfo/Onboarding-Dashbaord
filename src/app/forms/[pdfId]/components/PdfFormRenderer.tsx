@@ -427,12 +427,22 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     setShowConfirmDialog(false);
 
     try {
+        // ENRICH FORM DATA WITH RESOLVED VARIABLES AND STATIC TEXT (FLATTENING)
+        const enrichedData = { ...pendingFormData };
+        pdfForm.fields.forEach(field => {
+            if (field.type === 'static-text') {
+                enrichedData[field.id] = field.staticText || '';
+            } else if (field.type === 'variable') {
+                enrichedData[field.id] = resolveVariableValue(field.variableKey || '', school) || '';
+            }
+        });
+
         const response = await fetch('/api/pdfs/submit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
                 pdfId: pdfForm.id, 
-                formData: pendingFormData,
+                formData: enrichedData,
                 schoolId: school?.id // Pass schoolId for unique contract tracking
             }),
         });
