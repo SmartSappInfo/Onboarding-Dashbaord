@@ -24,7 +24,15 @@ import {
     RefreshCw,
     AlertTriangle,
     Wand2,
-    Check
+    Check,
+    Eye,
+    Pencil,
+    User,
+    BadgePercent,
+    MapPin,
+    Trash2,
+    Info,
+    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,13 +40,21 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { suggestBulkMapping } from '@/ai/flows/bulk-mapping-flow';
+import { normalizeBulkRow } from '@/ai/flows/bulk-normalization-flow';
 import { ingestSchoolRowAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter 
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { collection, query, orderBy, limit } from 'firebase/firestore';
+import type { Zone, UserProfile, SubscriptionPackage, Module } from '@/lib/types';
 
-type Step = 'UPLOAD' | 'MAPPING' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
+type Step = 'UPLOAD' | 'MAPPING' | 'REVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
 
 const TARGET_FIELDS = [
     { key: 'name', label: 'School Name', required: true },
@@ -56,6 +72,7 @@ const TARGET_FIELDS = [
 
 export default function BulkUploadClient() {
     const router = useRouter();
+    const firestore = useFirestore();
     const { user } = useUser();
     const { toast } = useToast();
 
@@ -67,10 +84,27 @@ export default function BulkUploadClient() {
     const [mapping, setMapping] = React.useState<Record<string, string>>({});
     const [isAiMapping, setIsAiMapping] = React.useState(false);
     
+    // Normalization / Review State
+    const [normalizedResults, setNormalizedResults] = React.useState<any[]>([]);
+    const [isValidating, setIsValidating] = React.useState(false);
+    const [validationProgress, setValidationProgress] = React.useState(0);
+    const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
+
     // Execution State
-    const [results, setResults] = React.useState<{ row: number; status: 'success' | 'error'; schoolName?: string; error?: string }[]>([]);
+    const [executionResults, setExecutionResults] = React.useState<{ row: number; status: 'success' | 'error'; schoolName?: string; error?: string }[]>([]);
     const [currentRowIdx, setCurrentRowIdx] = React.useState(0);
     const [failedRowIndices, setFailedRowIndices] = React.useState<number[]>([]);
+
+    // Context for Normalization
+    const zonesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
+    const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true)) : null, [firestore]);
+    const packagesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'subscription_packages'), where('isActive', '==', true)) : null, [firestore]);
+    const modulesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules')) : null, [firestore]);
+
+    const { data: zones } = useCollection<Zone>(zonesQuery);
+    const { data: users } = useCollection<UserProfile>(usersQuery);
+    const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
+    const { data: modules } = useCollection<Module>(modulesQuery);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -79,33 +113,28 @@ export default function BulkUploadClient() {
         setFileName(file.name);
         const extension = file.name.split('.').pop()?.toLowerCase();
 
+        const processResults = (data: any[]) => {
+            if (data.length > 0) {
+                const h = Object.keys(data[0] as object);
+                setHeaders(h);
+                setRawData(data);
+                triggerAiMapping(h, data.slice(0, 3));
+            }
+        };
+
         if (extension === 'csv') {
              Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
-                complete: (results) => {
-                    if (results.data.length > 0) {
-                        const h = Object.keys(results.data[0] as object);
-                        setHeaders(h);
-                        setRawData(results.data);
-                        triggerAiMapping(h, results.data.slice(0, 3));
-                    }
-                }
+                complete: (results) => processResults(results.data)
             });
         } else if (extension === 'xlsx' || extension === 'xls') {
             const reader = new FileReader();
             reader.onload = (evt) => {
                 const bstr = evt.target?.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
-                if (data.length > 0) {
-                    const h = Object.keys(data[0] as object);
-                    setHeaders(h);
-                    setRawData(data);
-                    triggerAiMapping(h, data.slice(0, 3));
-                }
+                const data = XLSX.utils.sheet_to_json(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                processResults(data);
             };
             reader.readAsBinaryString(file);
         }
@@ -125,6 +154,35 @@ export default function BulkUploadClient() {
         }
     };
 
+    const startValidation = async () => {
+        if (!zones || !users || !packages || !modules) return;
+        
+        setCurrentStep('REVIEW');
+        setIsValidating(true);
+        setValidationProgress(0);
+        const newNormalized: any[] = [];
+
+        const context = {
+            zones: zones.map(z => ({ id: z.id, name: z.name })),
+            users: users.map(u => ({ id: u.id, name: u.name })),
+            packages: packages.map(p => ({ id: p.id, name: p.name, ratePerStudent: p.ratePerStudent })),
+            modules: modules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
+        };
+
+        for (let i = 0; i < rawData.length; i++) {
+            try {
+                const result = await normalizeBulkRow({ rawData: rawData[i], mapping, context });
+                newNormalized.push({ ...result, originalIndex: i });
+            } catch (e: any) {
+                newNormalized.push({ error: e.message, originalIndex: i });
+            }
+            setValidationProgress(Math.round(((i + 1) / rawData.length) * 100));
+        }
+
+        setNormalizedResults(newNormalized);
+        setIsValidating(false);
+    };
+
     const startExecution = async (indicesToProcess?: number[]) => {
         if (!user) return;
         
@@ -132,7 +190,7 @@ export default function BulkUploadClient() {
         
         setCurrentStep('EXECUTING');
         setCurrentRowIdx(0);
-        setResults([]);
+        setExecutionResults([]);
         const freshFailedIndices: number[] = [];
 
         for (let i = 0; i < rowsToProcess.length; i++) {
@@ -141,14 +199,14 @@ export default function BulkUploadClient() {
             try {
                 const result = await ingestSchoolRowAction(rawData[actualIdx], mapping, user.uid, fileName);
                 if (result.success) {
-                    setResults(prev => [...prev, { row: actualIdx, status: 'success', schoolName: result.schoolName }]);
+                    setExecutionResults(prev => [...prev, { row: actualIdx, status: 'success', schoolName: result.schoolName }]);
                 } else {
                     freshFailedIndices.push(actualIdx);
-                    setResults(prev => [...prev, { row: actualIdx, status: 'error', error: result.error }]);
+                    setExecutionResults(prev => [...prev, { row: actualIdx, status: 'error', error: result.error }]);
                 }
             } catch (e: any) {
                 freshFailedIndices.push(actualIdx);
-                setResults(prev => [...prev, { row: actualIdx, status: 'error', error: e.message }]);
+                setExecutionResults(prev => [...prev, { row: actualIdx, status: 'error', error: e.message }]);
             }
             await new Promise(r => setTimeout(r, 100));
         }
@@ -157,23 +215,39 @@ export default function BulkUploadClient() {
         setCurrentStep('COMPLETE');
     };
 
-    const handleRetryFailures = () => {
-        if (failedRowIndices.length === 0) return;
-        startExecution(failedRowIndices);
+    const handleUpdateRow = (idx: number, updatedData: any) => {
+        const next = [...rawData];
+        next[idx] = updatedData;
+        setRawData(next);
+        setEditingRowIdx(null);
+        toast({ title: 'Row Protocol Updated' });
+        // If we are in REVIEW or CORRECTION, we might want to trigger a re-normalization for that row specifically
+        // but for now, we'll just let the user re-launch.
     };
 
-    const successCount = results.filter(r => r.status === 'success').length;
-    const errorCount = results.filter(r => r.status === 'error').length;
-    const totalToProcess = currentStep === 'EXECUTING' ? (failedRowIndices.length > 0 && results.length < failedRowIndices.length ? failedRowIndices.length : rawData.length) : rawData.length;
-    const progress = results.length > 0 ? Math.round((results.length / totalToProcess) * 100) : 0;
+    const handleDiscardRow = (idx: number) => {
+        setRawData(prev => prev.filter((_, i) => i !== idx));
+        setNormalizedResults(prev => prev.filter(r => r.originalIndex !== idx));
+        toast({ title: 'Row Discarded' });
+    };
+
+    const successCount = executionResults.filter(r => r.status === 'success').length;
+    const errorCount = executionResults.filter(r => r.status === 'error').length;
+    
+    const stepTransition = {
+        initial: { opacity: 0, x: 20 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: -20 },
+        transition: { type: 'spring', damping: 25, stiffness: 200 }
+    };
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-7xl mx-auto space-y-8">
                 
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
-                        <motion.div key="upload" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }}>
+                        <motion.div key="upload" {...stepTransition}>
                             <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
                                 <CardHeader className="text-center py-16 bg-muted/30 border-b relative">
                                     <div className="absolute top-0 left-0 p-8 opacity-5"><Layers size={120} /></div>
@@ -212,7 +286,7 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'MAPPING' && (
-                        <motion.div key="mapping" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                        <motion.div key="mapping" {...stepTransition}>
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between">
                                     <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="font-bold gap-2">
@@ -277,19 +351,160 @@ export default function BulkUploadClient() {
                                         <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-inner w-full">
                                             <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Sparkles className="h-6 w-6" /></div>
                                             <div className="space-y-1">
-                                                <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Institutional Intelligence Note</p>
+                                                <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Normalization Engine</p>
                                                 <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                                    AI will Fuzzy-Match your regional zones and manager names during execution. Multiple focal persons will be automatically extracted if found in the mapped contact columns.
+                                                    In the next step, AI will validate every row, extract focal persons, and fuzzy-match your regional zones and managers.
                                                 </p>
                                             </div>
                                         </div>
                                         <Button 
-                                            onClick={() => startExecution()} 
+                                            onClick={startValidation} 
                                             disabled={!mapping['name']}
                                             className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
                                         >
-                                            <CheckCircle2 className="h-6 w-6" /> Initialize Mission Execution
+                                            <ShieldCheck className="h-6 w-6" /> Validate & Review Data
                                         </Button>
+                                    </CardFooter>
+                                </Card>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {currentStep === 'REVIEW' && (
+                        <motion.div key="review" {...stepTransition}>
+                            <div className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="font-bold gap-2">
+                                        <ArrowLeft className="h-4 w-4" /> Back to Mapping
+                                    </Button>
+                                    <div className="flex items-center gap-3">
+                                        <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-600 font-black px-4 h-8 uppercase text-[10px]">
+                                            <Target className="h-3 w-3 mr-2" /> Validation Layer Active
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+                                    <CardHeader className="bg-muted/30 border-b p-8">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                                                    <Eye className="h-6 w-6" />
+                                                </div>
+                                                <div>
+                                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Institutional Normalization Audit</CardTitle>
+                                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Review exactly how the AI has architected your data.</CardDescription>
+                                                </div>
+                                            </div>
+                                            {isValidating && (
+                                                <div className="flex flex-col items-end gap-2">
+                                                    <span className="text-primary font-black text-[10px] uppercase tracking-[0.2em] animate-pulse">Analyzing Logic ({validationProgress}%)</span>
+                                                    <Progress value={validationProgress} className="w-48 h-1.5" />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        <ScrollArea className="h-[500px]">
+                                            <div className="divide-y divide-border/50">
+                                                {normalizedResults.map((res, idx) => {
+                                                    const school = res.normalizedSchool;
+                                                    const raw = rawData[res.originalIndex];
+                                                    return (
+                                                        <div key={idx} className="p-6 flex items-start justify-between gap-8 group hover:bg-muted/10 transition-colors">
+                                                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-8">
+                                                                {/* Identity */}
+                                                                <div className="flex items-start gap-4">
+                                                                    <div className="p-3 bg-muted rounded-2xl border font-black text-primary text-lg flex items-center justify-center shrink-0 w-14 h-14 uppercase">
+                                                                        {school?.initials || school?.name?.substring(0, 2) || '?'}
+                                                                    </div>
+                                                                    <div className="min-w-0">
+                                                                        <p className="font-black text-base uppercase tracking-tight truncate leading-tight mb-1">{school?.name || 'Incomplete Record'}</p>
+                                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                                                            <MapPin className="h-3 w-3" /> {school?.location || 'No Physical Address'}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Logistics & Finance */}
+                                                                <div className="space-y-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary">
+                                                                            {school?.nominalRoll || 0} Students
+                                                                        </Badge>
+                                                                        <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-emerald-200 bg-emerald-50 text-emerald-600">
+                                                                            {school?.subscriptionRate ? `GHS ${school.subscriptionRate}` : 'Rate Pending'}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-muted-foreground opacity-60">
+                                                                        <UserCheck className="h-3 w-3" /> Assigned: {users?.find(u => u.id === school?.assignedToId)?.name || 'Unassigned'}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Contacts Extraction */}
+                                                                <div className="flex flex-wrap gap-2">
+                                                                    {school?.focalPersons?.map((p: any, i: number) => (
+                                                                        <TooltipProvider key={i}>
+                                                                            <Tooltip>
+                                                                                <TooltipTrigger asChild>
+                                                                                    <Badge variant="secondary" className={cn(
+                                                                                        "h-6 text-[9px] font-bold uppercase gap-1.5 rounded-lg px-2 shadow-sm",
+                                                                                        p.isSignatory && "bg-primary/10 text-primary border-primary/20 ring-1 ring-primary/10"
+                                                                                    )}>
+                                                                                        {p.isSignatory && <ShieldCheck className="h-3 w-3" />}
+                                                                                        {p.name.split(' ')[0]}
+                                                                                    </Badge>
+                                                                                </TooltipTrigger>
+                                                                                <TooltipContent className="p-3 rounded-xl border-none shadow-2xl">
+                                                                                    <div className="space-y-1">
+                                                                                        <p className="font-black text-xs uppercase">{p.name}</p>
+                                                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{p.type}</p>
+                                                                                        <p className="text-[9px] font-mono opacity-60">{p.email}</p>
+                                                                                    </div>
+                                                                                </TooltipContent>
+                                                                            </Tooltip>
+                                                                        </TooltipProvider>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary"
+                                                                    onClick={() => setEditingRowIdx(res.originalIndex)}
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button 
+                                                                    variant="ghost" 
+                                                                    size="icon" 
+                                                                    className="h-9 w-9 rounded-xl text-rose-600 hover:bg-rose-50"
+                                                                    onClick={() => handleDiscardRow(res.originalIndex)}
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        </ScrollArea>
+                                    </CardContent>
+                                    <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
+                                        <div className="flex items-center justify-between w-full">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
+                                                All set? Launching will create {rawData.length} institutional hubs.
+                                            </p>
+                                            <Button 
+                                                onClick={() => startExecution()} 
+                                                disabled={isValidating || rawData.length === 0}
+                                                className="h-16 px-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-emerald-600 text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
+                                            >
+                                                <CheckCircle2 className="h-6 w-6" /> Commit & Synchronize Hubs
+                                            </Button>
+                                        </div>
                                     </CardFooter>
                                 </Card>
                             </div>
@@ -306,7 +521,7 @@ export default function BulkUploadClient() {
                                     </div>
                                     <CardTitle className="text-4xl font-black tracking-tighter uppercase leading-none text-foreground">Mission Execution</CardTitle>
                                     <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-muted-foreground mt-4">
-                                        {failedRowIndices.length > 0 ? 'Retrying' : 'Architecting'} institutional hubs: {currentRowIdx + 1} of {totalToProcess}
+                                        Architecting institutional hubs: {currentRowIdx + 1} of {totalToProcess}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="py-20 px-12 space-y-16">
@@ -325,7 +540,7 @@ export default function BulkUploadClient() {
                                     </div>
 
                                     <div className="max-w-xl mx-auto space-y-4">
-                                        {results.slice(-3).reverse().map((res, i) => (
+                                        {executionResults.slice(-3).reverse().map((res, i) => (
                                             <motion.div 
                                                 key={res.row} 
                                                 initial={{ opacity: 0, x: -20 }} 
@@ -400,11 +615,15 @@ export default function BulkUploadClient() {
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="divide-y divide-rose-100">
-                                                                {results.filter(r => r.status === 'error').map(err => (
+                                                                {executionResults.filter(r => r.status === 'error').map(err => (
                                                                     <tr key={err.row}>
                                                                         <td className="p-4 pl-8 text-xs font-bold text-rose-900 uppercase">Row {err.row + 1}</td>
                                                                         <td className="p-4 text-xs font-medium text-rose-800">{err.error}</td>
-                                                                        <td className="p-4 text-right pr-8"></td>
+                                                                        <td className="p-4 text-right pr-8">
+                                                                            <Button variant="ghost" size="sm" onClick={() => setEditingRowIdx(err.row)} className="h-8 rounded-lg font-bold text-rose-600 hover:bg-rose-100 gap-2">
+                                                                                <Pencil className="h-3 w-3" /> Fix
+                                                                            </Button>
+                                                                        </td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -429,7 +648,7 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'CORRECTION' && (
-                        <motion.div key="correction" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                        <motion.div key="correction" {...stepTransition}>
                             <div className="space-y-8">
                                 <div className="flex items-center justify-between">
                                     <Button variant="ghost" onClick={() => setCurrentStep('COMPLETE')} className="font-bold gap-2">
@@ -446,7 +665,7 @@ export default function BulkUploadClient() {
                                             </div>
                                             <div>
                                                 <CardTitle className="text-xl font-black uppercase tracking-tight text-rose-900">Failure Reconciliation</CardTitle>
-                                                <CardDescription className="text-xs font-bold text-rose-700/60 uppercase">Adjust field mapping or discard invalid rows before retrying.</CardDescription>
+                                                <CardDescription className="text-xs font-bold text-rose-700/60 uppercase">Adjust field mapping or fix row content before retrying.</CardDescription>
                                             </div>
                                         </div>
                                     </CardHeader>
@@ -481,13 +700,13 @@ export default function BulkUploadClient() {
                                                         <TableHead className="pl-8 text-[10px] font-black uppercase py-4">Source Row</TableHead>
                                                         <TableHead className="text-[10px] font-black uppercase py-4">Context</TableHead>
                                                         <TableHead className="text-[10px] font-black uppercase py-4">Failure Reason</TableHead>
-                                                        <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4">Action</TableHead>
+                                                        <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4">Actions</TableHead>
                                                     </TableRow>
                                                 </TableHeader>
                                                 <TableBody>
                                                     {failedRowIndices.map(idx => {
                                                         const rowData = rawData[idx];
-                                                        const rowError = results.find(r => r.row === idx)?.error;
+                                                        const rowError = executionResults.find(r => r.row === idx)?.error;
                                                         return (
                                                             <TableRow key={idx} className="group hover:bg-rose-50/20 transition-colors">
                                                                 <TableCell className="pl-8 font-black text-xs">#{idx + 1}</TableCell>
@@ -502,7 +721,10 @@ export default function BulkUploadClient() {
                                                                         {rowError || 'Validation Logic Failure'}
                                                                     </Badge>
                                                                 </TableCell>
-                                                                <TableCell className="text-right pr-8">
+                                                                <TableCell className="text-right pr-8 flex items-center justify-end gap-2 pt-4">
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-rose-600 hover:bg-rose-100" onClick={() => setEditingRowIdx(idx)}>
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
                                                                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-rose-600 rounded-lg" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))}>
                                                                         <X className="h-4 w-4" />
                                                                     </Button>
@@ -520,14 +742,14 @@ export default function BulkUploadClient() {
                                             <div className="space-y-1">
                                                 <p className="text-sm font-black text-rose-900 uppercase tracking-tight">Recovery Protocol</p>
                                                 <p className="text-[10px] text-rose-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                                    Retrying will only process the {failedRowIndices.length} rows listed above. Ensure your field mappings align with the document structure.
+                                                    Retrying will only process the {failedRowIndices.length} rows listed above. Ensure your field mappings or row content align with the system structure.
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="flex gap-4 w-full">
                                             <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="h-16 flex-1 rounded-2xl font-black uppercase text-xs tracking-widest border-2">Discard & Restart</Button>
                                             <Button 
-                                                onClick={handleRetryFailures} 
+                                                onClick={() => startExecution(failedRowIndices)} 
                                                 disabled={failedRowIndices.length === 0}
                                                 className="h-16 flex-[2] rounded-2xl font-black text-xl shadow-2xl bg-rose-600 text-white hover:bg-rose-700 uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
                                             >
@@ -541,6 +763,14 @@ export default function BulkUploadClient() {
                     )}
                 </AnimatePresence>
             </div>
+
+            <RowEditorDialog 
+                open={editingRowIdx !== null} 
+                onOpenChange={(o) => !o && setEditingRowIdx(null)}
+                rowIndex={editingRowIdx || 0}
+                data={editingRowIdx !== null ? rawData[editingRowIdx] : {}}
+                onSave={handleUpdateRow}
+            />
         </div>
     );
 }
@@ -552,5 +782,64 @@ function ResultStat({ label, value, sub, color }: { label: string, value: string
             <p className={cn("text-5xl font-black tabular-nums tracking-tighter", color)}>{value}</p>
             <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{sub}</p>
         </div>
+    );
+}
+
+function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: { 
+    open: boolean, 
+    onOpenChange: (o: boolean) => void, 
+    rowIndex: number, 
+    data: any, 
+    onSave: (idx: number, updated: any) => void 
+}) {
+    const [localData, setLocalData] = React.useState<any>(data);
+
+    React.useEffect(() => { if (open) setLocalData(data); }, [open, data]);
+
+    const handleSave = () => {
+        onSave(rowIndex, localData);
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-xl rounded-[2rem] overflow-hidden p-0 border-none shadow-2xl">
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary text-white rounded-xl shadow-lg">
+                            <Pencil className="h-5 w-5" />
+                        </div>
+                        <div className="text-left">
+                            <DialogTitle className="text-xl font-black uppercase tracking-tight">Row Protocol Modification</DialogTitle>
+                            <DialogDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Editing data for record #{rowIndex + 1}</DialogDescription>
+                        </div>
+                    </div>
+                </DialogHeader>
+                <div className="flex-1 overflow-hidden">
+                    <ScrollArea className="h-[400px]">
+                        <div className="p-8 space-y-6">
+                            {Object.entries(localData).map(([key, val]) => (
+                                <div key={key} className="space-y-1.5">
+                                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">{key}</Label>
+                                    <Input 
+                                        value={String(val || '')} 
+                                        onChange={e => setLocalData((p: any) => ({ ...p, [key]: e.target.value }))}
+                                        className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                </div>
+                <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center">
+                    <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
+                    <Button 
+                        onClick={handleSave} 
+                        className="rounded-xl font-black h-12 px-10 shadow-2xl bg-primary text-white gap-2 uppercase tracking-widest text-xs"
+                    >
+                        <Save className="h-4 w-4" /> Apply Corrections
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }
