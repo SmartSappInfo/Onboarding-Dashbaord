@@ -51,7 +51,7 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
+import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import type { Zone, UserProfile, SubscriptionPackage, Module } from '@/lib/types';
 
 type Step = 'UPLOAD' | 'MAPPING' | 'REVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
@@ -131,9 +131,9 @@ export default function BulkUploadClient() {
         } else if (extension === 'xlsx' || extension === 'xls') {
             const reader = new FileReader();
             reader.onload = (evt) => {
-                const bstr = evt.target?.result;
+                const bstr = evt.target?.result as string;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const data = XLSX.utils.sheet_to_json(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
                 processResults(data);
             };
             reader.readAsBinaryString(file);
@@ -221,8 +221,6 @@ export default function BulkUploadClient() {
         setRawData(next);
         setEditingRowIdx(null);
         toast({ title: 'Row Protocol Updated' });
-        // If we are in REVIEW or CORRECTION, we might want to trigger a re-normalization for that row specifically
-        // but for now, we'll just let the user re-launch.
     };
 
     const handleDiscardRow = (idx: number) => {
@@ -233,6 +231,8 @@ export default function BulkUploadClient() {
 
     const successCount = executionResults.filter(r => r.status === 'success').length;
     const errorCount = executionResults.filter(r => r.status === 'error').length;
+    const totalToProcess = rawData.length;
+    const progress = totalToProcess > 0 ? Math.round((executionResults.length / totalToProcess) * 100) : 0;
     
     const stepTransition = {
         initial: { opacity: 0, x: 20 },
@@ -409,7 +409,6 @@ export default function BulkUploadClient() {
                                             <div className="divide-y divide-border/50">
                                                 {normalizedResults.map((res, idx) => {
                                                     const school = res.normalizedSchool;
-                                                    const raw = rawData[res.originalIndex];
                                                     return (
                                                         <div key={idx} className="p-6 flex items-start justify-between gap-8 group hover:bg-muted/10 transition-colors">
                                                             <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -823,7 +822,7 @@ function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: {
                                     <Input 
                                         value={String(val || '')} 
                                         onChange={e => setLocalData((p: any) => ({ ...p, [key]: e.target.value }))}
-                                        className="h-11 rounded-xl bg-muted/20 border-none font-bold"
+                                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none font-bold"
                                     />
                                 </div>
                             ))}
