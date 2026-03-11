@@ -34,7 +34,8 @@ import {
     Info,
     ArrowRight,
     Save,
-    Download
+    Download,
+    Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +45,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { suggestBulkMapping } from '@/ai/flows/bulk-mapping-flow';
-import { normalizeBulkRow } from '@/ai/flows/bulk-normalization-flow';
 import { ingestSchoolRowAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -64,7 +64,7 @@ import {
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import type { Zone, UserProfile, SubscriptionPackage, Module } from '@/lib/types';
 
-type Step = 'UPLOAD' | 'MAPPING' | 'REVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
+type Step = 'UPLOAD' | 'MAPPING' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
 
 const TARGET_FIELDS = [
     { key: 'name', label: 'School Name', required: true },
@@ -107,10 +107,6 @@ export default function BulkUploadClient() {
     const [mapping, setMapping] = React.useState<Record<string, string>>({});
     const [isAiMapping, setIsAiMapping] = React.useState(false);
     
-    // Normalization / Review State
-    const [normalizedResults, setNormalizedResults] = React.useState<any[]>([]);
-    const [isValidating, setIsValidating] = React.useState(false);
-    const [validationProgress, setValidationProgress] = React.useState(0);
     const [editingRowIdx, setEditingRowIdx] = React.useState<number | null>(null);
 
     // Execution State
@@ -119,15 +115,8 @@ export default function BulkUploadClient() {
     const [failedRowIndices, setFailedRowIndices] = React.useState<number[]>([]);
 
     // Context for Normalization
-    const zonesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'zones'), orderBy('name')) : null, [firestore]);
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true)) : null, [firestore]);
-    const packagesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'subscription_packages'), where('isActive', '==', true)) : null, [firestore]);
-    const modulesQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'modules')) : null, [firestore]);
-
-    const { data: zones } = useCollection<Zone>(zonesQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
-    const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
-    const { data: modules } = useCollection<Module>(modulesQuery);
 
     const handleDownloadTemplate = () => {
         const headers = [
@@ -250,44 +239,6 @@ export default function BulkUploadClient() {
         }
     };
 
-    const startValidation = async () => {
-        if (!zones || !users || !packages || !modules) return;
-        
-        setCurrentStep('REVIEW');
-        setIsValidating(true);
-        setValidationProgress(0);
-        const newNormalized: any[] = [];
-
-        const context = {
-            zones: zones.map(z => ({ id: z.id, name: z.name })),
-            users: users.map(u => ({ id: u.id, name: u.name })),
-            packages: packages.map(p => ({ id: p.id, name: p.name, ratePerStudent: p.ratePerStudent })),
-            modules: modules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
-        };
-
-        for (let i = 0; i < rawData.length; i++) {
-            try {
-                // Ensure plain objects for Server Function
-                const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[i]));
-                const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
-                const sanitizedContext = JSON.parse(JSON.stringify(context));
-
-                const result = await normalizeBulkRow({ 
-                    rawData: sanitizedRawRow, 
-                    mapping: sanitizedMapping, 
-                    context: sanitizedContext 
-                });
-                newNormalized.push({ ...result, originalIndex: i });
-            } catch (e: any) {
-                newNormalized.push({ error: e.message, originalIndex: i });
-            }
-            setValidationProgress(Math.round(((i + 1) / rawData.length) * 100));
-        }
-
-        setNormalizedResults(newNormalized);
-        setIsValidating(false);
-    };
-
     const startExecution = async (indicesToProcess?: number[]) => {
         if (!user) return;
         
@@ -333,7 +284,6 @@ export default function BulkUploadClient() {
 
     const handleDiscardRow = (idx: number) => {
         setRawData(prev => prev.filter((_, i) => i !== idx));
-        setNormalizedResults(prev => prev.filter(r => r.originalIndex !== idx));
         toast({ title: 'Row Discarded' });
     };
 
@@ -468,140 +418,17 @@ export default function BulkUploadClient() {
                                             <div className="space-y-1">
                                                 <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Normalization Engine</p>
                                                 <p className="text-[10px] text-blue-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
-                                                    In the next step, AI will validate every row, extract focal persons, and fuzzy-match your regional zones and managers.
+                                                    AI will automatically validate every row, extract focal persons, and fuzzy-match your regional zones and managers during the ingestion phase.
                                                 </p>
                                             </div>
                                         </div>
                                         <Button 
-                                            onClick={startValidation} 
+                                            onClick={() => startExecution()} 
                                             disabled={!mapping['name']}
                                             className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
                                         >
-                                            <ShieldCheck className="h-6 w-6" /> Validate & Review Data
+                                            <Zap className="h-6 w-6" /> Launch Hub Ingestion
                                         </Button>
-                                    </CardFooter>
-                                </Card>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {currentStep === 'REVIEW' && (
-                        <motion.div key="review" {...stepTransition}>
-                            <div className="space-y-8">
-                                <div className="flex items-center justify-between">
-                                    <Button variant="ghost" onClick={() => setCurrentStep('MAPPING')} className="font-bold gap-2">
-                                        <ArrowLeft className="h-4 w-4" /> Back to Mapping
-                                    </Button>
-                                    <div className="flex items-center gap-3">
-                                        <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-600 font-black px-4 h-8 uppercase text-[10px]">
-                                            <Target className="h-3 w-3 mr-2" /> Validation Layer Active
-                                        </Badge>
-                                    </div>
-                                </div>
-
-                                <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
-                                    <CardHeader className="bg-muted/30 border-b p-8">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-4">
-                                                <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                                                    <Eye className="h-6 w-6" />
-                                                </div>
-                                                <div>
-                                                    <CardTitle className="text-2xl font-black uppercase tracking-tight">Institutional Normalization Audit</CardTitle>
-                                                    <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground/60">Review exactly how the AI has architected your data.</CardDescription>
-                                                </div>
-                                            </div>
-                                            {isValidating && (
-                                                <div className="flex flex-col items-end gap-2">
-                                                    <span className="text-primary font-black text-[10px] uppercase tracking-[0.2em] animate-pulse">Analyzing Logic ({validationProgress}%)</span>
-                                                    <Progress value={validationProgress} className="w-48 h-1.5" />
-                                                </div>
-                                            )}
-                                        </div>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <ScrollArea className="h-[500px]">
-                                            <div className="divide-y divide-border/50">
-                                                {normalizedResults.map((res, idx) => {
-                                                    const school = res.normalizedSchool;
-                                                    return (
-                                                        <div key={idx} className="p-6 flex items-start justify-between gap-8 group hover:bg-muted/10 transition-colors">
-                                                            <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-8">
-                                                                <div className="flex items-start gap-4">
-                                                                    <div className="p-3 bg-muted rounded-2xl border font-black text-primary text-lg flex items-center justify-center shrink-0 w-14 h-14 uppercase">
-                                                                        {school?.initials || school?.name?.substring(0, 2) || '?'}
-                                                                    </div>
-                                                                    <div className="min-w-0">
-                                                                        <p className="font-black text-base uppercase tracking-tight truncate leading-tight mb-1">{school?.name || 'Incomplete Record'}</p>
-                                                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                                                                            <MapPin className="h-3 w-3" /> {school?.location || 'No Physical Address'}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="space-y-3">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary">
-                                                                            {school?.nominalRoll || 0} Students
-                                                                        </Badge>
-                                                                        <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-emerald-200 bg-emerald-50 text-emerald-600">
-                                                                            {school?.subscriptionRate ? `${school.currency || 'GHS'} ${school.subscriptionRate}` : 'Rate Pending'}
-                                                                        </Badge>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-muted-foreground opacity-60">
-                                                                        <UserCheck className="h-3 w-3" /> Assigned: {users?.find(u => u.id === school?.assignedToId)?.name || 'Unassigned'}
-                                                                    </div>
-                                                                </div>
-
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {school?.focalPersons?.map((p: any, i: number) => (
-                                                                        <TooltipProvider key={i}>
-                                                                            <Tooltip>
-                                                                                <TooltipTrigger asChild>
-                                                                                    <Badge variant="secondary" className={cn(
-                                                                                        "h-6 text-[9px] font-bold uppercase gap-1.5 rounded-lg px-2 shadow-sm",
-                                                                                        p.isSignatory && "bg-primary/10 text-primary border-primary/20 ring-1 ring-primary/10"
-                                                                                    )}>
-                                                                                        {p.isSignatory && <ShieldCheck className="h-3 w-3" />}
-                                                                                        {p.name.split(' ')[0]}
-                                                                                    </Badge>
-                                                                                </TooltipTrigger>
-                                                                                <TooltipContent className="p-3 rounded-xl border-none shadow-2xl">
-                                                                                    <div className="space-y-1">
-                                                                                        <p className="font-black text-xs uppercase">{p.name}</p>
-                                                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{p.type}</p>
-                                                                                        <p className="text-[9px] font-mono opacity-60">{p.email}</p>
-                                                                                    </div>
-                                                                                </TooltipContent>
-                                                                            </Tooltip>
-                                                                        </TooltipProvider>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10" onClick={() => setEditingRowIdx(res.originalIndex)}><Pencil className="h-4 w-4" /></Button>
-                                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-rose-600 hover:bg-rose-50" onClick={() => handleDiscardRow(res.originalIndex)}><Trash2 className="h-4 w-4" /></Button>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </ScrollArea>
-                                    </CardContent>
-                                    <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
-                                        <div className="flex items-center justify-between w-full">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60">
-                                                All set? Launching will create {rawData.length} institutional hubs.
-                                            </p>
-                                            <Button 
-                                                onClick={() => startExecution()} 
-                                                disabled={isValidating || rawData.length === 0}
-                                                className="h-16 px-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-emerald-600 text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
-                                            >
-                                                <CheckCircle2 className="h-6 w-6" /> Commit & Synchronize Hubs
-                                            </Button>
-                                        </div>
                                     </CardFooter>
                                 </Card>
                             </div>
