@@ -62,6 +62,14 @@ export function resolveVariableValue(key: string, school?: any): string | null {
         case 'nominal_roll': return roll.toLocaleString();
         case 'arrears_balance': return `${currency} ${(school.arrearsBalance || 0).toLocaleString()}`;
         
+        // Smart URL Resolution for Simulation
+        case 'agreement_url': {
+            // Note: In a real simulation, we'd need to know which contract/PDF is in context.
+            // For general preview, we point to a representative portal.
+            const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://onboarding.smartsapp.com';
+            return `${baseUrl}/forms/contract-simulation?schoolId=${school.id}`;
+        }
+        
         default: return null;
     }
 }

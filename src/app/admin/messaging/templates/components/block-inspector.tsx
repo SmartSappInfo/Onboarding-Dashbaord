@@ -18,9 +18,11 @@ import {
     AlignJustify,
     Type,
     List,
-    ListOrdered
+    ListOrdered,
+    Link as LinkIcon,
+    FileText
 } from 'lucide-react';
-import type { MessageBlock, VariableDefinition } from '@/lib/types';
+import type { MessageBlock, VariableDefinition, MessageTemplate } from '@/lib/types';
 import { MediaSelect } from '@/app/admin/schools/components/media-select';
 import { cn } from '@/lib/utils';
 
@@ -28,12 +30,16 @@ interface BlockInspectorProps {
     block: MessageBlock;
     variables: VariableDefinition[];
     onUpdate: (props: Partial<MessageBlock>) => void;
+    templateCategory?: MessageTemplate['category'];
 }
 
-export function BlockInspector({ block, onUpdate }: BlockInspectorProps) {
+export function BlockInspector({ block, onUpdate, templateCategory }: BlockInspectorProps) {
     if (!block) return null;
 
     const isTextType = ['text', 'heading', 'quote', 'button', 'header', 'footer', 'list'].includes(block.type);
+    
+    // Logic to identify if we are in a finance context to show the smart link suggestion
+    const isFinanceContext = templateCategory === 'finance' || templateCategory === 'contracts';
 
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-left-4 duration-500">
@@ -123,8 +129,34 @@ export function BlockInspector({ block, onUpdate }: BlockInspectorProps) {
                             <Input value={block.title || ''} onChange={e => onUpdate({ title: e.target.value })} className="font-bold rounded-xl h-11" />
                         </div>
                         <div className="space-y-2">
-                            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Target Link</Label>
-                            <Input value={block.link || ''} onChange={e => onUpdate({ link: e.target.value })} className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px]" />
+                            <div className="flex justify-between items-center px-1">
+                                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Target Link</Label>
+                                {isFinanceContext && (
+                                    <TooltipProvider>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => onUpdate({ link: '{{agreement_url}}' })}
+                                                    className="flex items-center gap-1 text-[9px] font-black uppercase text-primary bg-primary/5 px-2 py-0.5 rounded-full border border-primary/20 hover:bg-primary/10 transition-all"
+                                                >
+                                                    <FileText className="h-2.5 w-2.5" /> Use Agreement Link
+                                                </button>
+                                            </TooltipTrigger>
+                                            <TooltipContent>Inject unique institutional signing URL</TooltipContent>
+                                        </Tooltip>
+                                    </TooltipProvider>
+                                )}
+                            </div>
+                            <div className="relative group">
+                                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40"><LinkIcon className="h-3.5 w-3.5" /></div>
+                                <Input 
+                                    value={block.link || ''} 
+                                    onChange={e => onUpdate({ link: e.target.value })} 
+                                    placeholder="https://..."
+                                    className="rounded-xl h-11 bg-muted/20 border-none font-mono text-[10px] pl-9" 
+                                />
+                            </div>
                         </div>
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Style</Label>

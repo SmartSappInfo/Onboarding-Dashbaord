@@ -319,7 +319,12 @@ export function TemplateWorkshop({
                                         <ScrollArea className="flex-1">
                                             <div className="p-4">
                                                 {selectedBlockId ? (
-                                                    <BlockInspector block={blocks.find(b => b.id === selectedBlockId)!} variables={variables} onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))} />
+                                                    <BlockInspector 
+                                                        block={blocks.find(b => b.id === selectedBlockId)!} 
+                                                        variables={variables} 
+                                                        templateCategory={category}
+                                                        onUpdate={u => setBlocks(p => p.map(b => b.id === selectedBlockId ? { ...b, ...u } : b))} 
+                                                    />
                                                 ) : (
                                                     <div className="py-20 text-center opacity-30 px-4 text-left"><Layout className="h-8 w-8 mx-auto mb-2" /><p className="text-[10px] font-black uppercase tracking-widest leading-relaxed">Select a block on the canvas<br/>to edit properties</p></div>
                                                 )}
