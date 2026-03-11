@@ -33,7 +33,8 @@ import {
     Trash2,
     Info,
     ArrowRight,
-    Save
+    Save,
+    Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,14 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
+import { 
+    Table, 
+    TableBody, 
+    TableCell, 
+    TableHead, 
+    TableHeader, 
+    TableRow 
+} from '@/components/ui/table';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import type { Zone, UserProfile, SubscriptionPackage, Module } from '@/lib/types';
 
@@ -107,6 +116,33 @@ export default function BulkUploadClient() {
     const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
     const { data: modules } = useCollection<Module>(modulesQuery);
 
+    const handleDownloadTemplate = () => {
+        const headers = [
+            "School Name",
+            "Initials",
+            "Slogan",
+            "Location",
+            "Nominal Roll",
+            "Zone",
+            "Assigned Manager",
+            "Subscription Tier",
+            "Modules",
+            "Contact Name",
+            "Contact Email",
+            "Contact Phone"
+        ];
+        const csvContent = headers.join(",") + "\n";
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "SmartSapp_School_Import_Template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast({ title: 'Template Downloaded' });
+    };
+
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -145,7 +181,11 @@ export default function BulkUploadClient() {
         setCurrentStep('MAPPING');
         setIsAiMapping(true);
         try {
-            const result = await suggestBulkMapping({ headers: fileHeaders, sampleRows: samples });
+            // FIX: Ensure only plain objects are passed to Server Functions
+            const sanitizedHeaders = JSON.parse(JSON.stringify(fileHeaders));
+            const sanitizedSamples = JSON.parse(JSON.stringify(samples));
+
+            const result = await suggestBulkMapping({ headers: sanitizedHeaders, sampleRows: sanitizedSamples });
             setMapping(result.mapping as any);
             toast({ title: 'AI Mapping Success', description: result.explanation });
         } catch (e: any) {
@@ -172,7 +212,16 @@ export default function BulkUploadClient() {
 
         for (let i = 0; i < rawData.length; i++) {
             try {
-                const result = await normalizeBulkRow({ rawData: rawData[i], mapping, context });
+                // FIX: Ensure only plain objects are passed to Server Functions
+                const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[i]));
+                const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
+                const sanitizedContext = JSON.parse(JSON.stringify(context));
+
+                const result = await normalizeBulkRow({ 
+                    rawData: sanitizedRawRow, 
+                    mapping: sanitizedMapping, 
+                    context: sanitizedContext 
+                });
                 newNormalized.push({ ...result, originalIndex: i });
             } catch (e: any) {
                 newNormalized.push({ error: e.message, originalIndex: i });
@@ -198,7 +247,11 @@ export default function BulkUploadClient() {
             const actualIdx = rowsToProcess[i];
             setCurrentRowIdx(i);
             try {
-                const result = await ingestSchoolRowAction(rawData[actualIdx], mapping, user.uid, fileName);
+                // FIX: Ensure only plain objects are passed to Server Functions
+                const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[actualIdx]));
+                const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
+
+                const result = await ingestSchoolRowAction(sanitizedRawRow, sanitizedMapping, user.uid, fileName);
                 if (result.success) {
                     setExecutionResults(prev => [...prev, { row: actualIdx, status: 'success', schoolName: result.schoolName }]);
                 } else {
@@ -249,40 +302,47 @@ export default function BulkUploadClient() {
                 <AnimatePresence mode="wait">
                     {currentStep === 'UPLOAD' && (
                         <motion.div key="upload" {...stepTransition}>
-                            <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
-                                <CardHeader className="text-center py-16 bg-muted/30 border-b relative">
-                                    <div className="absolute top-0 left-0 p-8 opacity-5"><Layers size={120} /></div>
-                                    <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-primary/5">
-                                        <Upload className="h-10 w-10 text-primary" />
-                                    </div>
-                                    <CardTitle className="text-4xl font-black tracking-tight uppercase leading-none">Institutional Ingestion</CardTitle>
-                                    <CardDescription className="text-lg font-medium max-w-md mx-auto mt-4">Automate school onboarding by mapping spreadsheet data directly to our regional database.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="p-12">
-                                    <div className="flex flex-col items-center justify-center">
-                                        <label htmlFor="bulk-file" className="w-full max-w-xl group cursor-pointer">
-                                            <div className="relative border-4 border-dashed border-muted-foreground/10 rounded-[2.5rem] p-16 text-center transition-all duration-500 group-hover:border-primary/40 group-hover:bg-primary/5 flex flex-col items-center gap-6">
-                                                <div className="p-6 bg-white rounded-3xl shadow-xl border group-hover:scale-110 transition-transform duration-500">
-                                                    <FileText className="h-12 w-12 text-primary" />
+                            <div className="space-y-6">
+                                <div className="flex justify-end">
+                                    <Button variant="outline" onClick={handleDownloadTemplate} className="rounded-xl font-bold h-10 border-primary/20 text-primary gap-2">
+                                        <Download className="h-4 w-4" /> Download CSV Template
+                                    </Button>
+                                </div>
+                                <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
+                                    <CardHeader className="text-center py-16 bg-muted/30 border-b relative">
+                                        <div className="absolute top-0 left-0 p-8 opacity-5"><Layers size={120} /></div>
+                                        <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl shadow-primary/5">
+                                            <Upload className="h-10 w-10 text-primary" />
+                                        </div>
+                                        <CardTitle className="text-4xl font-black tracking-tight uppercase leading-none">Institutional Ingestion</CardTitle>
+                                        <CardDescription className="text-lg font-medium max-w-md mx-auto mt-4">Automate school onboarding by mapping spreadsheet data directly to our regional database.</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="p-12">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <label htmlFor="bulk-file" className="w-full max-w-xl group cursor-pointer">
+                                                <div className="relative border-4 border-dashed border-muted-foreground/10 rounded-[2.5rem] p-16 text-center transition-all duration-500 group-hover:border-primary/40 group-hover:bg-primary/5 flex flex-col items-center gap-6">
+                                                    <div className="p-6 bg-white rounded-3xl shadow-xl border group-hover:scale-110 transition-transform duration-500">
+                                                        <FileText className="h-12 w-12 text-primary" />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <p className="text-xl font-black uppercase tracking-tight">Drop Document Here</p>
+                                                        <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest opacity-60">Supports .CSV and .XLSX Formats</p>
+                                                    </div>
+                                                    <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <p className="text-xl font-black uppercase tracking-tight">Drop Document Here</p>
-                                                    <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest opacity-60">Supports .CSV and .XLSX Formats</p>
-                                                </div>
-                                                <Input id="bulk-file" type="file" className="hidden" accept=".csv, .xlsx, .xls" onChange={handleFileUpload} />
-                                            </div>
-                                        </label>
-                                    </div>
-                                </CardContent>
-                                <CardFooter className="bg-muted/30 p-8 border-t flex justify-center gap-8">
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
-                                        <ShieldCheck className="h-4 w-4" /> Secure Data Transmission
-                                    </div>
-                                    <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
-                                        <Sparkles className="h-4 w-4" /> AI Field Normalization
-                                    </div>
-                                </CardFooter>
-                            </Card>
+                                            </label>
+                                        </div>
+                                    </CardContent>
+                                    <CardFooter className="bg-muted/30 p-8 border-t flex justify-center gap-8">
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
+                                            <ShieldCheck className="h-4 w-4" /> Secure Data Transmission
+                                        </div>
+                                        <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-40">
+                                            <Sparkles className="h-4 w-4" /> AI Field Normalization
+                                        </div>
+                                    </CardFooter>
+                                </Card>
+                            </div>
                         </motion.div>
                     )}
 
@@ -413,7 +473,6 @@ export default function BulkUploadClient() {
                                                     return (
                                                         <div key={idx} className="p-6 flex items-start justify-between gap-8 group hover:bg-muted/10 transition-colors">
                                                             <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-3 gap-8">
-                                                                {/* Identity */}
                                                                 <div className="flex items-start gap-4">
                                                                     <div className="p-3 bg-muted rounded-2xl border font-black text-primary text-lg flex items-center justify-center shrink-0 w-14 h-14 uppercase">
                                                                         {school?.initials || school?.name?.substring(0, 2) || '?'}
@@ -426,7 +485,6 @@ export default function BulkUploadClient() {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Logistics & Finance */}
                                                                 <div className="space-y-3">
                                                                     <div className="flex items-center gap-2">
                                                                         <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary">
@@ -441,7 +499,6 @@ export default function BulkUploadClient() {
                                                                     </div>
                                                                 </div>
 
-                                                                {/* Contacts Extraction */}
                                                                 <div className="flex flex-wrap gap-2">
                                                                     {school?.focalPersons?.map((p: any, i: number) => (
                                                                         <TooltipProvider key={i}>
@@ -469,22 +526,8 @@ export default function BulkUploadClient() {
                                                             </div>
 
                                                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    className="h-9 w-9 rounded-xl hover:bg-primary/10 hover:text-primary"
-                                                                    onClick={() => setEditingRowIdx(res.originalIndex)}
-                                                                >
-                                                                    <Pencil className="h-4 w-4" />
-                                                                </Button>
-                                                                <Button 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    className="h-9 w-9 rounded-xl text-rose-600 hover:bg-rose-50"
-                                                                    onClick={() => handleDiscardRow(res.originalIndex)}
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
+                                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl hover:bg-primary/10" onClick={() => setEditingRowIdx(res.originalIndex)}><Pencil className="h-4 w-4" /></Button>
+                                                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-rose-600 hover:bg-rose-50" onClick={() => handleDiscardRow(res.originalIndex)}><Trash2 className="h-4 w-4" /></Button>
                                                             </div>
                                                         </div>
                                                     )
@@ -587,10 +630,22 @@ export default function BulkUploadClient() {
                                         </CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-12">
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
-                                            <ResultStat label="Hubs Created" value={successCount} sub="Success" color="text-emerald-600" />
-                                            <ResultStat label="Records Failed" value={errorCount} sub="Attention Req." color={errorCount > 0 ? "text-rose-600" : "text-muted-foreground"} />
-                                            <ResultStat label="Conversion" value={`${Math.round((successCount/(successCount + errorCount))*100)}%`} sub="Efficiency" color="text-primary" />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 leading-none mb-2">Hubs Created</p>
+                                                <p className="text-5xl font-black tabular-nums tracking-tighter text-emerald-600">{successCount}</p>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Success</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 leading-none mb-2">Records Failed</p>
+                                                <p className={cn("text-5xl font-black tabular-nums tracking-tighter", errorCount > 0 ? "text-rose-600" : "text-muted-foreground")}>{errorCount}</p>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Attention Req.</p>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground opacity-60 leading-none mb-2">Conversion</p>
+                                                <p className="text-5xl font-black tabular-nums tracking-tighter text-primary">{Math.round((successCount/(successCount + errorCount || 1))*100)}%</p>
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Efficiency</p>
+                                            </div>
                                         </div>
 
                                         {errorCount > 0 && (
@@ -775,16 +830,6 @@ export default function BulkUploadClient() {
     );
 }
 
-function ResultStat({ label, value, sub, color }: { label: string, value: string | number, sub: string, color: string }) {
-    return (
-        <div className="text-center space-y-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground opacity-60 leading-none mb-2">{label}</p>
-            <p className={cn("text-5xl font-black tabular-nums tracking-tighter", color)}>{value}</p>
-            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{sub}</p>
-        </div>
-    );
-}
-
 function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: { 
     open: boolean, 
     onOpenChange: (o: boolean) => void, 
@@ -830,7 +875,7 @@ function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: {
                         </div>
                     </ScrollArea>
                 </div>
-                <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center">
+                <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between gap-3 sm:justify-between items-center text-left">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold rounded-xl px-8 h-12">Cancel</Button>
                     <Button 
                         onClick={handleSave} 
