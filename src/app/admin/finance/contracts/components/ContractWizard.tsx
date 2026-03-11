@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -45,7 +44,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfFormRenderer from '@/app/forms/[pdfId]/components/PdfFormRenderer';
-import TestDispatchDialog from '../../../components/TestDispatchDialog';
+import TestDispatchDialog from '../../../messaging/components/TestDispatchDialog';
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),
