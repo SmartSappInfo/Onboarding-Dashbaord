@@ -516,6 +516,8 @@ export interface Contract {
     sentAt?: string;
     signedAt?: string;
     updatedAt: string;
+    emailTemplateId?: string;
+    smsTemplateId?: string;
     recipients: { name: string; email?: string; phone?: string; type: string }[];
 }
 

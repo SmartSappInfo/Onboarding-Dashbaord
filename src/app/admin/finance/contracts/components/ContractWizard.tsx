@@ -52,7 +52,8 @@ import TestDispatchDialog from '@/app/admin/messaging/components/TestDispatchDia
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),
-    templateId: z.string().min(1, "Please select an invitation template."),
+    emailTemplateId: z.string().optional(),
+    smsTemplateId: z.string().optional(),
     selectedRecipientEmails: z.array(z.string()).default([]),
 });
 
@@ -85,7 +86,8 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
         resolver: zodResolver(wizardSchema),
         defaultValues: {
             pdfId: '',
-            templateId: '',
+            emailTemplateId: 'none',
+            smsTemplateId: 'none',
             selectedRecipientEmails: school.focalPersons?.filter(p => p.email).map(p => p.email) || []
         }
     });
@@ -93,7 +95,8 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
     const { watch, setValue, handleSubmit } = methods;
     const watchedPdfId = watch('pdfId');
     const watchedRecipients = watch('selectedRecipientEmails');
-    const watchedTemplateId = watch('templateId');
+    const watchedEmailId = watch('emailTemplateId');
+    const watchedSmsId = watch('smsTemplateId');
 
     // Data Subscriptions
     const pdfsQuery = useMemoFirebase(() => 
@@ -101,7 +104,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
     [firestore]);
 
     const templatesQuery = useMemoFirebase(() => 
-        firestore ? query(collection(firestore, 'message_templates'), where('category', '==', 'finance'), where('isActive', '==', true)) : null, 
+        firestore ? query(collection(firestore, 'message_templates'), where('category', 'in', ['finance', 'contracts']), where('isActive', '==', true)) : null, 
     [firestore]);
 
     const { data: pdfTemplates } = useCollection<PDFForm>(pdfsQuery);
@@ -149,6 +152,12 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
 
     const onSubmit = async (data: WizardData) => {
         if (!user || !contractId || !selectedPdf) return;
+        
+        if (data.emailTemplateId === 'none' && data.smsTemplateId === 'none') {
+            toast({ variant: 'destructive', title: 'Template Required', description: 'Please select at least one message template.' });
+            return;
+        }
+
         setIsSaving(true);
 
         const recipients = (school.focalPersons || [])
@@ -159,14 +168,15 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
             contractId,
             schoolId: school.id,
             schoolName: school.name,
-            templateId: data.templateId,
+            emailTemplateId: data.emailTemplateId,
+            smsTemplateId: data.smsTemplateId,
             recipients,
             userId: user.uid,
             publicUrl
         });
 
         if (result.success) {
-            toast({ title: 'Agreement Dispatched', description: `Contract for ${school.name} is now pending signature.` });
+            toast({ title: 'Agreements Dispatched', description: `Contracts for ${school.name} are now pending signature.` });
             onOpenChange(false);
         } else {
             toast({ variant: 'destructive', title: 'Send Failed', description: result.error });
@@ -194,11 +204,11 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
             <DialogContent className="max-w-5xl h-[90vh] flex flex-col p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl">
                 <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-8">
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-4 text-left">
                             <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
                                 <ShieldCheck className="h-6 w-6" />
                             </div>
-                            <div className="text-left">
+                            <div>
                                 <DialogTitle className="text-2xl font-black uppercase tracking-tight">Legal Execution</DialogTitle>
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{school.name}</DialogDescription>
                             </div>
@@ -219,7 +229,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                                     <div className="max-w-2xl mx-auto space-y-10 text-left">
                                         <div className="flex items-center gap-3">
                                             <div className="p-2 bg-primary/10 rounded-xl"><FileText className="h-5 w-5 text-primary" /></div>
-                                            <Label className="text-base font-black uppercase tracking-tight">Select Contract Template</Label>
+                                            <Label className="text-base font-black uppercase tracking-tight">Select Agreement Template</Label>
                                         </div>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             {pdfTemplates?.length ? pdfTemplates.map(p => (
@@ -293,7 +303,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                                                                 "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
                                                                 watchedRecipients.includes(person.email) ? "border-primary/20 bg-primary/5 shadow-sm" : "border-border/50 bg-background opacity-60"
                                                             )}>
-                                                                <div className="flex items-center gap-4">
+                                                                <div className="flex items-center gap-4 text-left">
                                                                     <Checkbox 
                                                                         id={`rec-${person.email}`} 
                                                                         checked={watchedRecipients.includes(person.email)}
@@ -323,31 +333,60 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                                             </div>
 
                                             <div className="space-y-10 text-left">
-                                                <div className="space-y-4">
+                                                <div className="space-y-6">
                                                     <div className="flex items-center gap-3">
                                                         <div className="p-2 bg-primary/10 rounded-xl"><Mail className="h-5 w-5 text-primary" /></div>
-                                                        <Label className="text-base font-black uppercase tracking-tight">Communication Template</Label>
+                                                        <Label className="text-base font-black uppercase tracking-tight">Protocol Selection</Label>
                                                     </div>
-                                                    <Controller
-                                                        name="templateId"
-                                                        control={methods.control}
-                                                        render={({ field }) => (
-                                                            <Select value={field.value} onValueChange={field.onChange}>
-                                                                <SelectTrigger className="h-14 rounded-2xl bg-muted/20 border-none shadow-inner font-black text-lg px-6">
-                                                                    <SelectValue placeholder="Pick a template..." />
-                                                                </SelectTrigger>
-                                                                <SelectContent className="rounded-2xl">
-                                                                    {msgTemplates?.map(t => (
-                                                                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
-                                                        )}
-                                                    />
+                                                    
+                                                    {/* Email Selector */}
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-blue-600 ml-1">Email Template</Label>
+                                                        <Controller
+                                                            name="emailTemplateId"
+                                                            control={methods.control}
+                                                            render={({ field }) => (
+                                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                                                        <SelectValue placeholder="No email dispatch" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="none">No Email Dispatch</SelectItem>
+                                                                        {msgTemplates?.filter(t => t.channel === 'email').map(t => (
+                                                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    {/* SMS Selector */}
+                                                    <div className="space-y-2">
+                                                        <Label className="text-[10px] font-black uppercase tracking-widest text-orange-600 ml-1">SMS Template</Label>
+                                                        <Controller
+                                                            name="smsTemplateId"
+                                                            control={methods.control}
+                                                            render={({ field }) => (
+                                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                                    <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                                                        <SelectValue placeholder="No SMS dispatch" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="rounded-xl">
+                                                                        <SelectItem value="none">No SMS Dispatch</SelectItem>
+                                                                        {msgTemplates?.filter(t => t.channel === 'sms').map(t => (
+                                                                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            )}
+                                                        />
+                                                    </div>
+
                                                     <div className="p-6 rounded-3xl bg-blue-50 border border-blue-100 flex items-start gap-4">
                                                         <Info className="h-6 w-6 text-blue-600 shrink-0 mt-0.5" />
                                                         <p className="text-[10px] font-bold text-blue-800 uppercase leading-relaxed tracking-widest opacity-80">
-                                                            Selected templates will be resolved with the institutional contract link and school context before dispatch.
+                                                            Dispatches will resolve the unique institutional signing URL and school context before delivery.
                                                         </p>
                                                     </div>
                                                 </div>
@@ -391,7 +430,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                 <DialogFooter className="p-8 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-4">
                     <div className="flex-1 flex gap-3">
                         {step > 1 && (
-                            <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="rounded-xl font-bold h-12 px-8 gap-2">
+                            <Button variant="ghost" onClick={() => setStep(s => s - 1)} className="rounded-xl font-bold h-12 px-8 gap-2 text-left">
                                 <ChevronLeft className="h-4 w-4" /> Back
                             </Button>
                         )}
@@ -403,7 +442,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                             <Button 
                                 variant="outline" 
                                 onClick={() => setIsTestModalOpen(true)}
-                                disabled={!watchedTemplateId}
+                                disabled={watchedEmailId === 'none' && watchedSmsId === 'none'}
                                 className="rounded-xl font-bold h-14 border-primary/20 text-primary px-8 gap-2"
                             >
                                 <FlaskConical className="h-5 w-5" /> Send Test
@@ -421,7 +460,7 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
                         ) : (
                             <Button 
                                 onClick={handleSubmit(onSubmit)} 
-                                disabled={isSaving || !watchedTemplateId || watchedRecipients.length === 0}
+                                disabled={isSaving || (watchedEmailId === 'none' && watchedSmsId === 'none') || watchedRecipients.length === 0}
                                 className="rounded-2xl font-black h-14 px-20 shadow-2xl bg-primary text-white uppercase tracking-[0.1em] active:scale-95 transition-all gap-3"
                             >
                                 {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Send className="h-6 w-6" />}
@@ -435,12 +474,13 @@ export default function ContractWizard({ school, open, onOpenChange }: ContractW
             <TestDispatchDialog 
                 open={isTestModalOpen}
                 onOpenChange={setIsTestModalOpen}
-                channel="email"
-                templateId={watchedTemplateId}
+                channel={watchedEmailId !== 'none' ? 'email' : 'sms'}
+                templateId={watchedEmailId !== 'none' ? watchedEmailId : watchedSmsId}
                 variables={{
                     school_name: school.name,
                     contact_name: 'Test Recipient',
                     contract_link: publicUrl,
+                    agreement_url: publicUrl,
                     link: publicUrl,
                     event_type: 'Agreement Signature Required (Test)'
                 }}

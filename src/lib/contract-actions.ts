@@ -8,6 +8,7 @@ import type { Contract, ContractStatus } from './types';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
+ * Updated to support multi-channel template dispatch.
  */
 
 /**
@@ -56,38 +57,55 @@ export async function upsertContractAction(data: {
 
 /**
  * Dispatches a contract link to recipients and updates status to 'sent'.
+ * Supports dual Email and SMS template dispatch.
  */
 export async function sendContractAction(input: {
     contractId: string;
     schoolId: string;
     schoolName: string;
-    templateId: string;
+    emailTemplateId?: string;
+    smsTemplateId?: string;
     recipients: { name: string; email?: string; phone?: string; type: string }[];
     userId: string;
     publicUrl: string;
 }) {
     try {
-        const { contractId, templateId, recipients, schoolId, schoolName, userId, publicUrl } = input;
+        const { contractId, emailTemplateId, smsTemplateId, recipients, schoolId, schoolName, userId, publicUrl } = input;
 
-        // 1. Dispatch messages via the Messaging Engine
-        const dispatchPromises = recipients.map(recipient => {
-            const target = recipient.email || recipient.phone;
-            if (!target) return Promise.resolve({ success: false });
+        // 1. Prepare Dispatches
+        const dispatchPromises: Promise<any>[] = [];
 
-            return sendMessage({
-                templateId,
-                senderProfileId: 'default',
-                recipient: target,
-                variables: {
-                    school_name: schoolName,
-                    contact_name: recipient.name,
-                    contract_link: publicUrl,
-                    agreement_url: publicUrl, // Standardized key for button resolution
-                    link: publicUrl,
-                    event_type: 'Agreement Signature Required'
-                },
-                schoolId
-            });
+        recipients.forEach(recipient => {
+            const baseVars = {
+                school_name: schoolName,
+                contact_name: recipient.name,
+                agreement_url: publicUrl,
+                contract_link: publicUrl,
+                link: publicUrl,
+                event_type: 'Agreement Execution Required'
+            };
+
+            // Queue Email
+            if (emailTemplateId && emailTemplateId !== 'none' && recipient.email) {
+                dispatchPromises.push(sendMessage({
+                    templateId: emailTemplateId,
+                    senderProfileId: 'default',
+                    recipient: recipient.email,
+                    variables: baseVars,
+                    schoolId
+                }));
+            }
+
+            // Queue SMS
+            if (smsTemplateId && smsTemplateId !== 'none' && recipient.phone) {
+                dispatchPromises.push(sendMessage({
+                    templateId: smsTemplateId,
+                    senderProfileId: 'default',
+                    recipient: recipient.phone,
+                    variables: baseVars,
+                    schoolId
+                }));
+            }
         });
 
         await Promise.allSettled(dispatchPromises);
@@ -97,6 +115,8 @@ export async function sendContractAction(input: {
             status: 'sent',
             sentAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            emailTemplateId: emailTemplateId || null,
+            smsTemplateId: smsTemplateId || null,
             recipients: recipients
         });
 
@@ -106,13 +126,14 @@ export async function sendContractAction(input: {
             userId,
             type: 'notification_sent',
             source: 'user_action',
-            description: `dispatched legal agreement to ${recipients.length} recipients for "${schoolName}"`
+            description: `dispatched legal agreements via dual-channel to ${recipients.length} recipients for "${schoolName}"`
         });
 
         revalidatePath('/admin/finance/contracts');
         return { success: true };
 
     } catch (e: any) {
+        console.error(">>> [CONTRACT:DISPATCH] Failed:", e.message);
         return { success: false, error: e.message };
     }
 }
