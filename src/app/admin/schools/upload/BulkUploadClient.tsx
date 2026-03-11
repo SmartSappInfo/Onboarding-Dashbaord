@@ -71,8 +71,8 @@ const TARGET_FIELDS = [
     { key: 'initials', label: 'Initials/Acronym' },
     { key: 'slogan', label: 'Motto/Slogan' },
     { key: 'location', label: 'Physical Location' },
-    { key: 'nominalRoll', label: 'Student Roll' },
     { key: 'zone', label: 'Regional Zone' },
+    { key: 'nominalRoll', label: 'Student Roll' },
     { key: 'assignedTo', label: 'Account Manager' },
     { key: 'package', label: 'Subscription Tier' },
     { key: 'modules', label: 'Requested Modules' },
@@ -135,8 +135,8 @@ export default function BulkUploadClient() {
             "Initials",
             "Slogan",
             "Location",
-            "Nominal Roll",
             "Zone",
+            "Nominal Roll",
             "Assigned Manager",
             "Subscription Tier",
             "Modules",
@@ -160,14 +160,14 @@ export default function BulkUploadClient() {
             "Ghana International School",
             "GIS",
             "Understanding of each other",
-            "Cantonments, Accra",
-            "1500",
+            "2nd Circular Rd, Cantonments, Accra",
             "Airport / Legon Zone",
+            "1500",
             "Default Admin",
             "Level A (Platinum)",
             "Billing, Security, Attendance",
             "2024-09-01",
-            "SmartSapp Team",
+            "Old Student Referral",
             "Yes",
             "Dr. Mary Ashun",
             "principal@gis.edu.gh",
@@ -182,7 +182,8 @@ export default function BulkUploadClient() {
             "0"
         ];
 
-        const csvContent = headers.join(",") + "\n" + sampleRow.join(",") + "\n";
+        // Ensure all values are quoted to prevent CSV splitting on embedded commas (e.g. in addresses)
+        const csvContent = headers.join(",") + "\n" + sampleRow.map(v => `"${v}"`).join(",") + "\n";
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -208,7 +209,12 @@ export default function BulkUploadClient() {
                 const h = Object.keys(data[0] as object);
                 setHeaders(h);
                 setRawData(actualData.length > 0 ? actualData : data);
-                triggerAiMapping(h, data.slice(0, 3));
+                
+                // Sanitize payload for Server Function transmission
+                const sanitizedHeaders = JSON.parse(JSON.stringify(h));
+                const sanitizedSamples = JSON.parse(JSON.stringify(data.slice(0, 3)));
+                
+                triggerAiMapping(sanitizedHeaders, sanitizedSamples);
             }
         };
 
@@ -234,10 +240,7 @@ export default function BulkUploadClient() {
         setCurrentStep('MAPPING');
         setIsAiMapping(true);
         try {
-            const sanitizedHeaders = JSON.parse(JSON.stringify(fileHeaders));
-            const sanitizedSamples = JSON.parse(JSON.stringify(samples));
-
-            const result = await suggestBulkMapping({ headers: sanitizedHeaders, sampleRows: sanitizedSamples });
+            const result = await suggestBulkMapping({ headers: fileHeaders, sampleRows: samples });
             setMapping(result.mapping as any);
             toast({ title: 'AI Mapping Success', description: result.explanation });
         } catch (e: any) {
@@ -264,6 +267,7 @@ export default function BulkUploadClient() {
 
         for (let i = 0; i < rawData.length; i++) {
             try {
+                // Ensure plain objects for Server Function
                 const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[i]));
                 const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
                 const sanitizedContext = JSON.parse(JSON.stringify(context));
