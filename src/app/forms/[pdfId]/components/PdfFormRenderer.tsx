@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -8,7 +7,7 @@ import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
-import type { PDFForm, PDFFormField, School } from '@/lib/types';
+import type { PDFForm, PDFFormField, School, PdfSession } from '@/lib/types';
 import SignaturePadModal from './SignaturePadModal';
 import DataEntryModal from './DataEntryModal';
 import { 
@@ -226,7 +225,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
   
   const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
   const [isDataEntryOpen, setIsDataEntryOpen] = React.useState(false);
-  const [activeDataFieldId, ReactsetActiveDataFieldId] = React.useState<string | null>(null);
+  const [activeDataFieldId, setActiveDataFieldId] = React.useState<string | null>(null);
   
   const [zoom, setZoom] = React.useState(1.0);
   const [baseScale, setBaseScale] = React.useState(1.3);
@@ -415,7 +414,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
             const element = document.getElementById(firstId);
             if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-            ReactsetActiveDataFieldId(firstId);
+            setActiveDataFieldId(firstId);
             setIsDataEntryOpen(true);
         }
     }
@@ -544,7 +543,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     if (field.type === 'signature' || field.type === 'photo') {
         setMediaCaptureState({ fieldId: field.id, mode: field.type === 'photo' ? 'photo' : 'signature' });
     } else if (isMobile) {
-        ReactsetActiveDataFieldId(field.id);
+        setActiveDataFieldId(field.id);
         setIsDataEntryOpen(true);
     }
   }
@@ -725,7 +724,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                 ) : (
                     <SmartSappIcon className="h-8 w-8 text-primary shrink-0" />
                 )}
-                <div className="flex flex-col min-w-0 -ml-1">
+                <div className="flex flex-col min-w-0 -ml-1 text-left">
                     <h1 className="font-semibold text-foreground truncate max-w-[200px] sm:max-w-md leading-tight text-sm sm:text-base">{pdfForm.publicTitle || pdfForm.name}</h1>
                     <p className="text-[10px] text-muted-foreground leading-none">{school?.name || pdfForm.schoolName || 'SmartSapp'}</p>
                 </div>
@@ -892,7 +891,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         {Math.round(zoom * 100)}%
                     </div>
                 </div>
-            </header>
+            </main>
 
             <SignaturePadModal
                 open={!!mediaCaptureState}
