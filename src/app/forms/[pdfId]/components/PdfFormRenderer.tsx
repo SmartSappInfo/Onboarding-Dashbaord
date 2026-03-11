@@ -356,7 +356,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     };
     updateBaseScale();
     window.addEventListener('resize', updateBaseScale);
-    return () => window.removeResizeListener('resize', updateBaseScale);
+    return () => window.removeEventListener('resize', updateBaseScale);
   }, []);
 
   React.useEffect(() => {
@@ -395,6 +395,12 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     if (missing.length > 0) {
         setMissingFields(missing);
         setShowMissingFieldsModal(true);
+    } else {
+        toast({
+            variant: 'destructive',
+            title: 'Check your answers',
+            description: 'Some fields require your attention.',
+        });
     }
   };
 
