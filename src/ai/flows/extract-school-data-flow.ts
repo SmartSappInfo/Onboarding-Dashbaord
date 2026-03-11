@@ -1,6 +1,7 @@
 'use server';
 /**
  * @fileOverview An AI flow to extract structured school data from unstructured text.
+ * Upgraded to support deep discovery of all stakeholders and secondary contact points.
  */
 
 import { ai } from '@/ai/genkit';
@@ -18,11 +19,11 @@ const ExtractSchoolDataOutputSchema = z.object({
   location: z.string().optional().describe('Physical address or general area.'),
   nominalRoll: z.number().optional().describe('Estimated total student population.'),
   focalPersons: z.array(z.object({
-    name: z.string().describe('Full name of the contact.'),
+    name: z.string().describe('Full name of the contact or office department.'),
     email: z.string().email().describe('Professional email address.'),
     phone: z.string().describe('Contact number.'),
     type: z.enum(['Champion', 'Accountant', 'Administrator', 'Principal', 'School Owner']).describe('Organizational role.')
-  })).optional().describe('Key stakeholders identified in the text.'),
+  })).optional().describe('All stakeholders and office contact points identified in the text.'),
   suggestedModuleNames: z.array(z.string()).optional().describe('Names of SmartSapp modules mentioned or implied (e.g. Billing, Attendance, Security).'),
   explanation: z.string().describe('Brief summary of what was extracted and why.'),
 });
@@ -36,7 +37,10 @@ const extractionPrompt = ai.definePrompt({
 
 ### ANALYSIS RULES:
 1. **Precision**: Extract the official name, initials (e.g. GIS for Ghana International School), and slogan exactly as they appear.
-2. **Contact Discovery**: Identify all people and their roles. Map them strictly to these roles: 'Champion', 'Accountant', 'Administrator', 'Principal', or 'School Owner'.
+2. **Deep Contact Discovery**: Thoroughly scan the text for *every* individual and contact point mentioned. 
+   - Capture every person and their specific role.
+   - If a generic phone number is provided (e.g. "Main Office: 024..."), create a focal person entry with Name: "Main Office" and Role: "Administrator".
+   - Map roles strictly to: 'Champion', 'Accountant', 'Administrator', 'Principal', or 'School Owner'.
 3. **Logistics**: Find the student population (Nominal Roll) and physical location.
 4. **Module Detection**: Identify which SmartSapp features the school needs. Common ones include 'Child Security', 'Student Billing', 'Attendance', and 'Reports'.
 5. **Formatting**: Ensure all phone numbers are preserved and emails are valid.

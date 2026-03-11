@@ -1,8 +1,7 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to normalize raw spreadsheet data into structured school records.
- * Resolves fuzzy strings to system IDs for Zones, Users, and Packages.
+ * Upgraded to harvest secondary contacts from all columns, including unmapped ones.
  */
 
 import { ai } from '@/ai/genkit';
@@ -60,7 +59,10 @@ const normalizationPrompt = ai.definePrompt({
 2. **Account Manager**: Match "assignedTo" name to our User list.
 3. **Package**: Match "package" string to our Subscription Packages. If a match is found, use its standard 'ratePerStudent' unless a custom rate is found in the row.
 4. **Modules**: Identify module names in the "modules" string and map them to our Module IDs.
-5. **Contacts**: Extract all people mentioned. Identify exactly ONE signatory (usually the Owner or Principal).
+5. **Deep Contact Discovery**: Scan *EVERY* field in the raw data (even if not mapped) to identify people and phone numbers.
+   - Capture all individuals mentioned.
+   - If you find generic numbers (e.g., "Office Line", "Security"), create entries with Role: "Administrator".
+   - Identify exactly ONE signatory (usually the Owner or Principal).
 
 ### CONTEXT:
 - **Zones**: {{#each context.zones}}{{name}} (ID: {{id}}), {{/each}}
