@@ -82,6 +82,7 @@ export async function sendContractAction(input: {
                     school_name: schoolName,
                     contact_name: recipient.name,
                     contract_link: publicUrl,
+                    agreement_url: publicUrl, // Standardized key for button resolution
                     link: publicUrl,
                     event_type: 'Agreement Signature Required'
                 },

@@ -134,6 +134,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     // 8. Resolve Metadata
     let resolvedSubject = template.channel === 'email' ? resolveVariables(template.subject || '', finalVariables) : null;
     let resolvedPreviewText = template.channel === 'email' ? resolveVariables(template.previewText || '', finalVariables) : null;
+    let resolvedLogTitle = resolveVariables(template.name, finalVariables);
 
     // 9. Perform Delivery
     let providerId = null;
@@ -163,7 +164,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     // 10. Create Audit Log
     const logData: Omit<MessageLog, 'id'> = {
-      title: template.name,
+      title: resolvedLogTitle,
       templateId: template.id,
       templateName: template.name,
       senderProfileId: sender.id,
@@ -194,7 +195,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         userId: null, 
         type: 'notification_sent',
         source: 'system',
-        description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${template.name}" to ${recipient}`,
+        description: `${scheduledAt ? 'Scheduled' : 'Sent'} ${template.channel} "${resolvedLogTitle}" to ${recipient}`,
         metadata: { 
             logId: logRef.id, 
             channel: template.channel, 
