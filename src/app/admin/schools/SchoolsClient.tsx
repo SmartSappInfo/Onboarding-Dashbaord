@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -8,7 +9,7 @@ import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,6 +138,12 @@ export default function SchoolsClient() {
         <div className="max-w-7xl mx-auto space-y-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-end gap-6">
                 <div className="flex justify-end items-center gap-3 shrink-0">
+                    <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
+                        <Link href="/admin/schools/upload">
+                            <FileUp className="mr-2 h-4 w-4" />
+                            Bulk Ingest
+                        </Link>
+                    </Button>
                     <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95">
                         <Link href="/admin/schools/new/ai">
                             <Sparkles className="h-4 w-4" /> AI Architect
