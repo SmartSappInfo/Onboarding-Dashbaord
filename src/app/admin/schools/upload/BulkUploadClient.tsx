@@ -116,7 +116,7 @@ export default function BulkUploadClient() {
     const handleDownloadTemplate = () => {
         const templateHeaders = TARGET_FIELDS.map(f => f.label);
         const sampleRow = [
-            "Ghana International School", "GIS", "Understanding of each other", "Cantonments, Accra", 
+            "Ghana International School", "GIS", "Understanding of each other.", "Cantonments, Accra", 
             "Airport / Legon Zone", "1500", "Default Admin", "Level A (Platinum)", 
             "Billing, Security, Attendance", "2024-09-01", "Referral", "Yes", 
             "Dr. Mary Ashun", "principal@gis.edu.gh", "+233302777163", "Principal", 
@@ -143,11 +143,16 @@ export default function BulkUploadClient() {
 
         const processResults = (data: any[]) => {
             if (data.length > 0) {
-                // Filter example row
-                const actualData = data.filter(row => row[Object.keys(row)[0]] !== "Ghana International School");
                 const h = Object.keys(data[0] as object);
                 setHeaders(h);
-                setRawData(actualData.length > 0 ? actualData : data);
+                
+                // Filter out the template example row if present
+                const actualData = data.filter(row => {
+                    const firstVal = String(row[h[0]] || '').toLowerCase();
+                    return !firstVal.includes('ghana international school');
+                });
+
+                setRawData(actualData);
                 
                 // DETECT STANDARD HEADERS
                 const matches = TARGET_FIELDS.filter(f => h.includes(f.label));
@@ -179,9 +184,13 @@ export default function BulkUploadClient() {
         setCurrentStep('MAPPING');
         setIsAiMapping(true);
         try {
+            // Data sanitization for server function
+            const sanitizedHeaders = JSON.parse(JSON.stringify(fileHeaders));
+            const sanitizedSamples = JSON.parse(JSON.stringify(samples));
+
             const result = await suggestBulkMapping({ 
-                headers: JSON.parse(JSON.stringify(fileHeaders)), 
-                sampleRows: JSON.parse(JSON.stringify(samples)) 
+                headers: sanitizedHeaders, 
+                sampleRows: sanitizedSamples 
             });
             setMapping(result.mapping as any);
             toast({ title: 'AI Mapping Success' });
@@ -204,9 +213,13 @@ export default function BulkUploadClient() {
             const actualIdx = rowsToProcess[i];
             setCurrentRowIdx(i);
             try {
+                // Ensure data is plain object
+                const sanitizedRow = JSON.parse(JSON.stringify(rawData[actualIdx]));
+                const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
+
                 const res = await ingestSchoolRowAction(
-                    JSON.parse(JSON.stringify(rawData[actualIdx])), 
-                    JSON.parse(JSON.stringify(mapping)), 
+                    sanitizedRow, 
+                    sanitizedMapping, 
                     user.uid, 
                     fileName
                 );
@@ -223,6 +236,17 @@ export default function BulkUploadClient() {
         }
         setFailedRowIndices(freshFailedIndices);
         setCurrentStep('COMPLETE');
+    };
+
+    const handleUpdateRow = (idx: number, updated: any) => {
+        const next = [...rawData];
+        next[idx] = updated;
+        setRawData(next);
+        setEditingRowIdx(null);
+        toast({ 
+            title: 'Record Corrected', 
+            description: `Modifications applied to row #${idx + 1}.` 
+        });
     };
 
     const progress = rawData.length > 0 ? Math.round((executionResults.length / rawData.length) * 100) : 0;
@@ -293,7 +317,7 @@ export default function BulkUploadClient() {
                     )}
 
                     {currentStep === 'EXECUTING' && (
-                        <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-black uppercase">Mission Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length}Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
+                        <motion.div key="executing" className="text-center py-20"><Loader2 className="h-16 w-16 animate-spin text-primary mx-auto mb-8" /><h2 className="text-4xl font-black uppercase">Mission Execution</h2><p className="mt-4 text-muted-foreground font-bold">{currentRowIdx + 1} of {rawData.length} Hubs Synchronized</p><div className="max-w-2xl mx-auto mt-8"><Progress value={progress} className="h-2" /></div></motion.div>
                     )}
 
                     {currentStep === 'COMPLETE' && (
@@ -306,7 +330,7 @@ export default function BulkUploadClient() {
                                 </CardHeader>
                                 <CardContent className="p-12">
                                     <div className="flex justify-between max-w-3xl mx-auto border-b pb-8 mb-8 text-left">
-                                        <div><p className="text-sm font-black uppercase text-muted-foreground mb-1">Success Rate</p><p className="text-4xl font-black text-emerald-600">{Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100)}%</p></div>
+                                        <div><p className="text-sm font-black uppercase text-muted-foreground mb-1">Success Rate</p><p className="text-4xl font-black text-emerald-600">{rawData.length > 0 ? Math.round((executionResults.filter(r => r.status === 'success').length / rawData.length) * 100) : 0}%</p></div>
                                         {failedRowIndices.length > 0 && <Button onClick={() => setCurrentStep('CORRECTION')} variant="outline" className="h-14 px-8 rounded-xl font-black uppercase tracking-widest text-xs gap-2 border-orange-200 text-orange-600 hover:bg-orange-50"><AlertCircle size={16} /> Manage {failedRowIndices.length} Failures</Button>}
                                     </div>
                                     <Button onClick={() => router.push('/admin/schools')} className="h-16 px-16 rounded-[1.5rem] font-black uppercase tracking-widest shadow-xl">Open Directory <ArrowRight className="ml-2" /></Button>
@@ -324,7 +348,15 @@ export default function BulkUploadClient() {
                                         <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm"><TableRow><TableHead className="pl-8 py-4 uppercase font-black text-[10px]">Row</TableHead><TableHead className="py-4 uppercase font-black text-[10px]">Identity</TableHead><TableHead className="py-4 uppercase font-black text-[10px]">Logic Failure</TableHead><TableHead className="text-right pr-8 uppercase font-black text-[10px]">Actions</TableHead></TableRow></TableHeader>
                                         <TableBody>
                                             {failedRowIndices.map(idx => (
-                                                <TableRow key={idx} className="group hover:bg-rose-50/30 transition-colors"><TableCell className="pl-8 font-black text-xs">#{idx + 1}</TableCell><TableCell className="font-bold text-xs">{rawData[idx][mapping['name']] || 'Untitled'}</TableCell><TableCell><Badge variant="outline" className="bg-rose-50 text-rose-600 border-none text-[10px]">{executionResults.find(r => r.row === idx)?.error || 'Logic Error'}</Badge></TableCell><TableCell className="text-right pr-8 flex items-center justify-end gap-2 py-4"><Button variant="ghost" size="icon" onClick={() => setEditingRowIdx(idx)} className="h-8 w-8 text-rose-600"><Pencil size={14} /></Button><Button variant="ghost" size="icon" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))} className="h-8 w-8 text-muted-foreground"><X size={14} /></Button></TableCell></TableRow>
+                                                <TableRow key={idx} className="group hover:bg-rose-50/30 transition-colors">
+                                                    <TableCell className="pl-8 font-black text-xs">#{idx + 1}</TableCell>
+                                                    <TableCell className="font-bold text-xs">{rawData[idx][mapping['name']] || 'Untitled'}</TableCell>
+                                                    <TableCell><Badge variant="outline" className="bg-rose-50 text-rose-600 border-none text-[10px]">{executionResults.find(r => r.row === idx)?.error || 'Logic Error'}</Badge></TableCell>
+                                                    <TableCell className="text-right pr-8 flex items-center justify-end gap-2 py-4">
+                                                        <Button variant="ghost" size="icon" onClick={() => setEditingRowIdx(idx)} className="h-8 w-8 text-rose-600"><Pencil size={14} /></Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))} className="h-8 w-8 text-muted-foreground"><X size={14} /></Button>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
                                         </TableBody>
                                     </Table>
@@ -347,7 +379,12 @@ function RowEditorDialog({ open, onOpenChange, rowIndex, data, onSave }: { open:
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
-                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0"><div className="flex items-center gap-4"><div className="p-3 bg-primary text-white rounded-xl shadow-lg"><Pencil size={24} /></div><div className="text-left"><DialogTitle className="text-xl font-black uppercase">Edit Record</DialogTitle><DialogDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Manual Correction for Row #{rowIndex + 1}</DialogDescription></div></div></DialogHeader>
+                <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-primary text-white rounded-xl shadow-lg"><Pencil size={24} /></div>
+                        <div className="text-left"><DialogTitle className="text-xl font-black uppercase">Edit Record</DialogTitle><DialogDescription className="text-xs font-bold uppercase tracking-widest opacity-60">Manual Correction for Row #{rowIndex + 1}</DialogDescription></div>
+                    </div>
+                </DialogHeader>
                 <div className="flex-1 overflow-hidden"><ScrollArea className="h-[400px]"><div className="p-8 space-y-6">{Object.entries(localData).map(([key, val]) => (<div key={key} className="space-y-1.5"><Label className="text-[10px] font-black uppercase text-muted-foreground ml-1">{key}</Label><Input value={String(val || '')} onChange={e => setLocalData((p: any) => ({ ...p, [key]: e.target.value }))} className="h-11 rounded-xl bg-muted/20 border-none font-bold" /></div>))}</div></ScrollArea></div>
                 <DialogFooter className="p-6 bg-muted/30 border-t flex justify-between"><Button variant="ghost" onClick={() => onOpenChange(false)} className="font-bold">Cancel</Button><Button onClick={() => onSave(rowIndex, localData)} className="rounded-xl font-black px-8 shadow-xl bg-primary text-white uppercase text-xs tracking-widest">Apply Corrections</Button></DialogFooter>
             </DialogContent>
