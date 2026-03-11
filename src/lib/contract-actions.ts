@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -8,7 +9,7 @@ import type { Contract, ContractStatus } from './types';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
- * Updated to support multi-channel template dispatch.
+ * Updated to support multi-channel template dispatch and bulk operations.
  */
 
 /**
@@ -89,7 +90,7 @@ export async function sendContractAction(input: {
             if (emailTemplateId && emailTemplateId !== 'none' && recipient.email) {
                 dispatchPromises.push(sendMessage({
                     templateId: emailTemplateId,
-                    senderProfileId: 'default',
+                    senderProfileId: 'default', // Fallback to default sender
                     recipient: recipient.email,
                     variables: baseVars,
                     schoolId

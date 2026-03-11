@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -26,7 +27,10 @@ import {
     Trash2,
     Loader2,
     Copy,
-    Globe
+    Globe,
+    CheckSquare,
+    X,
+    ListChecks
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,13 +52,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import ContractWizard from './components/ContractWizard';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
-    const [activeWizardSchool, setActiveWizardSchool] = React.useState<School | null>(null);
+    const [selectedSchools, setSelectedSchools] = React.useState<School[]>([]);
+    const [isWizardOpen, setIsWizardOpen] = React.useState(false);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
 
     // Data Subscriptions
@@ -107,6 +114,20 @@ export default function AgreementsClient() {
         return { total, signed, pending, actionRequired, coverage };
     }, [schools, contracts]);
 
+    const toggleSelect = (school: School) => {
+        setSelectedSchools(prev => {
+            const exists = prev.find(s => s.id === school.id);
+            if (exists) return prev.filter(s => s.id !== school.id);
+            return [...prev, school];
+        });
+    };
+
+    const handleSelectAllUninitiated = () => {
+        const uninitiated = filteredList.filter(item => !item.contract || item.contract.status === 'no_contract' || item.contract.status === 'draft');
+        setSelectedSchools(uninitiated);
+        toast({ title: 'Batch Selected', description: `${uninitiated.length} uninitiated schools identified.` });
+    };
+
     const handleCopyLink = (item: any) => {
         if (!item.contract?.pdfId) return;
         if (typeof window === 'undefined') return;
@@ -153,7 +174,7 @@ export default function AgreementsClient() {
     };
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left relative">
             <div className="max-w-7xl mx-auto space-y-10 pb-32">
                 
                 {/* Header */}
@@ -199,18 +220,27 @@ export default function AgreementsClient() {
                                 <SelectItem value="no_contract">Uninitiated</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary">
-                            <Filter className="h-4 w-4" /> Filters
+                        <Button variant="outline" onClick={handleSelectAllUninitiated} className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95">
+                            <ListChecks className="h-4 w-4" /> Select All Uninitiated
                         </Button>
                     </CardContent>
                 </Card>
 
                 {/* Institutional Registry */}
-                <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+                <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
                     <Table>
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest pl-8 py-5">Institution</TableHead>
+                                <TableHead className="w-12 pl-6 py-5">
+                                    <Checkbox 
+                                        checked={selectedSchools.length === filteredList.length && filteredList.length > 0}
+                                        onCheckedChange={(checked) => {
+                                            if (checked) setSelectedSchools(filteredList);
+                                            else setSelectedSchools([]);
+                                        }}
+                                    />
+                                </TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Institution</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Active Status</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Last Update</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest">Assigned Representative</TableHead>
@@ -221,7 +251,8 @@ export default function AgreementsClient() {
                             {isLoading ? (
                                 Array.from({ length: 5 }).map((_, i) => (
                                     <TableRow key={i}>
-                                        <TableCell className="pl-8"><Skeleton className="h-4 w-48" /></TableCell>
+                                        <TableCell className="pl-6"><Skeleton className="h-4 w-4" /></TableCell>
+                                        <TableCell><Skeleton className="h-4 w-48" /></TableCell>
                                         <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
                                         <TableCell><Skeleton className="h-4 w-40" /></TableCell>
@@ -233,12 +264,22 @@ export default function AgreementsClient() {
                                     const contract = item.contract;
                                     const status = contract?.status || 'no_contract';
                                     const isSigningInProcess = downloadingId === contract?.id;
+                                    const isSelected = !!selectedSchools.find(s => s.id === item.id);
                                     
                                     return (
-                                        <TableRow key={item.id} className="group hover:bg-muted/30 transition-colors">
-                                            <TableCell className="pl-8 py-4">
+                                        <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}>
+                                            <TableCell className="pl-6">
+                                                <Checkbox 
+                                                    checked={isSelected}
+                                                    onCheckedChange={() => toggleSelect(item)}
+                                                />
+                                            </TableCell>
+                                            <TableCell className="py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="p-2 bg-primary/5 rounded-xl border border-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all">
+                                                    <div className={cn(
+                                                        "p-2 rounded-xl border transition-all",
+                                                        isSelected ? "bg-primary text-white border-primary" : "bg-primary/5 border-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
+                                                    )}>
                                                         <Building className="h-4 w-4" />
                                                     </div>
                                                     <div className="flex flex-col">
@@ -268,7 +309,7 @@ export default function AgreementsClient() {
                                                             Download
                                                         </Button>
                                                     ) : (
-                                                        <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg" onClick={() => setActiveWizardSchool(item)}>
+                                                        <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
                                                             <Plus className="h-3 w-3" /> Initialize
                                                         </Button>
                                                     )}
@@ -304,10 +345,10 @@ export default function AgreementsClient() {
                                                                 </DropdownMenuItem>
                                                             )}
 
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
+                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
                                                                 <FileText className="h-4 w-4 text-primary" /> Preview Logic
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => setActiveWizardSchool(item)}>
+                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
                                                                 <Send className="h-4 w-4 text-primary" /> Send Agreement
                                                             </DropdownMenuItem>
                                                             
@@ -324,7 +365,7 @@ export default function AgreementsClient() {
                                 })
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="h-64 text-center">
+                                    <TableCell colSpan={6} className="h-64 text-center">
                                         <div className="flex flex-col items-center justify-center gap-3 opacity-20">
                                             <FileCheck className="h-12 w-12" />
                                             <p className="text-xs font-black uppercase tracking-widest">No matching schools</p>
@@ -337,11 +378,57 @@ export default function AgreementsClient() {
                 </div>
             </div>
 
-            {activeWizardSchool && (
+            {/* Bulk Actions Floating Bar */}
+            <AnimatePresence>
+                {selectedSchools.length > 0 && (
+                    <motion.div 
+                        initial={{ y: 100, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: 100, opacity: 0 }}
+                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-full max-w-2xl px-4"
+                    >
+                        <Card className="bg-slate-900 text-white border-none shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] rounded-[2rem] overflow-hidden">
+                            <CardContent className="p-4 flex items-center justify-between">
+                                <div className="flex items-center gap-4 pl-4">
+                                    <div className="flex items-center justify-center h-10 w-10 bg-primary/20 rounded-xl">
+                                        <ShieldCheck className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex flex-col text-left">
+                                        <span className="text-sm font-black uppercase tracking-tight">{selectedSchools.length} Institutions Selected</span>
+                                        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Bulk Signing Initialization</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        onClick={() => setIsWizardOpen(true)}
+                                        className="rounded-xl font-black uppercase text-[10px] tracking-widest h-11 px-8 bg-primary hover:bg-primary/90 shadow-xl"
+                                    >
+                                        <Zap className="h-4 w-4 mr-2" />
+                                        Initiate Bulk
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => setSelectedSchools([])}
+                                        className="h-11 w-11 rounded-xl text-white/40 hover:text-white hover:bg-white/10"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {isWizardOpen && selectedSchools.length > 0 && (
                 <ContractWizard 
-                    school={activeWizardSchool} 
-                    open={!!activeWizardSchool} 
-                    onOpenChange={(o) => !o && setActiveWizardSchool(null)} 
+                    schools={selectedSchools} 
+                    open={isWizardOpen} 
+                    onOpenChange={(o) => {
+                        setIsWizardOpen(o);
+                        if (!o) setSelectedSchools([]);
+                    }} 
                 />
             )}
         </div>
