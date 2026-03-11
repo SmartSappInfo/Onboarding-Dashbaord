@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -345,19 +346,20 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
     });
   }, [pdfForm.fields, register]);
 
+  const updateBaseScale = React.useCallback(() => {
+    if (typeof window !== 'undefined') {
+        const width = window.innerWidth;
+        if (width < 640) setBaseScale(0.9);
+        else if (width < 1024) setBaseScale(1.1);
+        else setBaseScale(1.3);
+    }
+  }, []);
+
   React.useEffect(() => {
-    const updateBaseScale = () => {
-        if (typeof window !== 'undefined') {
-            const width = window.innerWidth;
-            if (width < 640) setBaseScale(0.9);
-            else if (width < 1024) setBaseScale(1.1);
-            else setBaseScale(1.3);
-        }
-    };
     updateBaseScale();
     window.addEventListener('resize', updateBaseScale);
     return () => window.removeEventListener('resize', updateBaseScale);
-  }, []);
+  }, [updateBaseScale]);
 
   React.useEffect(() => {
     const loadPdf = async () => {
@@ -549,7 +551,6 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
 
   const renderField = (field: PDFFormField) => {
     const value = watchedValues[field.id];
-    // Sync font scaling with the canvas scale (baseScale * zoom)
     const currentTotalScale = baseScale * zoom;
     const baseFontSize = field.fontSize || 11;
     const dynamicFontSize = `${Math.round(baseFontSize * currentTotalScale)}px`;
@@ -661,7 +662,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         style={{ fontSize: 'inherit', fontWeight: 'inherit', fontStyle: 'inherit', textDecoration: 'inherit', textAlign: 'inherit', color: field.color || 'inherit', textTransform: field.textTransform === 'capitalize' ? 'none' : (field.textTransform || 'none') }}
                     />
                 )}
-                {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-events-none group-hover:desktop-field:opacity-60" />}
+                {field.type === 'time' && <Clock className="h-3 w-3 absolute right-1 top-1/2 -translate-y-1/2 opacity-20 pointer-none group-hover:desktop-field:opacity-60" />}
             </div>
         );
     }
@@ -891,7 +892,7 @@ export default function PdfFormRenderer({ pdfForm, school, isPreview = false }: 
                         {Math.round(zoom * 100)}%
                     </div>
                 </div>
-            </main>
+            </header>
 
             <SignaturePadModal
                 open={!!mediaCaptureState}

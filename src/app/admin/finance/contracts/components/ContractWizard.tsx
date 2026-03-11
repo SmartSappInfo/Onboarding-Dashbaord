@@ -20,7 +20,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { 
     FileText, 
-    Plus, 
     Check, 
     ChevronRight, 
     ChevronLeft, 
@@ -33,10 +32,7 @@ import {
     Mail,
     Smartphone,
     Info,
-    Copy,
-    Globe,
     FlaskConical,
-    ChevronDown,
     Building
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -49,7 +45,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import PdfFormRenderer from '@/app/forms/[pdfId]/components/PdfFormRenderer';
-import TestDispatchDialog from '@/app/admin/messaging/components/TestDispatchDialog';
+import TestDispatchDialog from '../../../components/TestDispatchDialog';
 
 const wizardSchema = z.object({
     pdfId: z.string().min(1, "Please select a contract template."),

@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import dynamic from 'next/dynamic';
 
 import { useFirestore } from '@/firebase';
 import type { School, Meeting } from '@/lib/types';
@@ -19,6 +20,13 @@ import KickoffMeetingHero from './kickoff-meeting-hero';
 import TrainingMeetingHero from './training-meeting-hero';
 import MeetingNotFound from './meeting-not-found';
 import RecordingSection from './recording-section';
+
+// Corrected relative paths for dynamic imports from src/components/
+const ActivityTimeline = dynamic(() => import('../app/admin/components/ActivityTimeline'), {
+    loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
+});
+
+const LogActivityModal = dynamic(() => import('../app/admin/schools/components/LogActivityModal'), { ssr: false });
 
 function MeetingPageSkeleton() {
   return (
@@ -121,8 +129,6 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
           setError(null);
 
           try {
-            // 1. Find the meeting directly using the schoolSlug and type from the URL
-            // This is safer than finding the school first, as the URL identifies the specific session.
             const meetingsCol = collection(firestore, 'meetings');
             const meetingQuery = query(
                 meetingsCol, 
@@ -136,7 +142,6 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
 
-            // 2. Filter by meeting type on the client to avoid complex index requirements
             const allMeetings = meetingSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Meeting));
             const meetingsForType = allMeetings.filter(m => {
                 const mTypeSlug = m.type?.slug || '';
@@ -149,31 +154,26 @@ export default function SchoolMeetingLoader({ schoolSlug, typeSlug }: SchoolMeet
                 return;
             }
 
-            // 3. Find the most relevant meeting (upcoming or most recent past)
             const now = new Date();
             const sorted = meetingsForType.sort((a, b) => {
                 const dateA = new Date(a.meetingTime).getTime();
                 const dateB = new Date(b.meetingTime).getTime();
-                // Prioritize upcoming sessions
                 const isAUpcoming = dateA >= now.getTime();
                 const isBUpcoming = dateB >= now.getTime();
                 if (isAUpcoming && !isBUpcoming) return -1;
                 if (!isAUpcoming && isBUpcoming) return 1;
-                // If both are in same category, sort by proximity to now
                 return Math.abs(dateA - now.getTime()) - Math.abs(dateB - now.getTime());
             });
 
             const bestMeeting = sorted[0];
             setMeeting(bestMeeting);
 
-            // 4. Fetch the school details using the ID from the meeting document
             const schoolRef = doc(firestore, 'schools', bestMeeting.schoolId);
             const schoolSnap = await getDoc(schoolRef);
 
             if (schoolSnap.exists()) {
                 setSchool({ id: schoolSnap.id, ...schoolSnap.data() } as School);
             } else {
-                // Fallback: search for school by slug if ID lookup fails
                 const schoolsCol = collection(firestore, 'schools');
                 const schoolQuery = query(schoolsCol, where('slug', '==', schoolSlug.toLowerCase()), limit(1));
                 const schoolSnapshot = await getDocs(schoolQuery);
