@@ -1,7 +1,7 @@
+
 'use server';
 /**
  * @fileOverview An AI flow to normalize raw spreadsheet data into structured school records.
- * Upgraded to harvest secondary contacts from all columns, including unmapped ones.
  */
 
 import { ai } from '@/ai/genkit';
@@ -39,7 +39,12 @@ const BulkNormalizationOutputSchema = z.object({
     zoneId: z.string().nullable().describe('The resolved ID of the geographic zone.'),
     assignedToId: z.string().nullable().describe('The resolved ID of the authorized team member.'),
     subscriptionPackageId: z.string().nullable().describe('The resolved ID of the pricing tier.'),
-    subscriptionRate: z.number().optional().describe('The effective rate (calculated or extracted).'),
+    subscriptionRate: z.number().optional().describe('The effective rate.'),
+    discountPercentage: z.number().optional().describe('The calculated discount.'),
+    arrearsBalance: z.number().optional(),
+    creditBalance: z.number().optional(),
+    billingAddress: z.string().optional(),
+    currency: z.string().optional().default('GHS'),
     moduleIds: z.array(z.string()).optional().describe('Array of resolved module IDs.'),
     focalPersons: z.array(FocalPersonSchema),
     implementationDate: z.string().optional().describe('ISO date string.'),
@@ -55,14 +60,11 @@ const normalizationPrompt = ai.definePrompt({
   prompt: `You are an expert Institutional Data Architect. Normalize the provided raw row into a SmartSapp School record.
 
 ### FUZZY MATCHING RULES:
-1. **Zone**: Match the raw location/zone string to the best fitting Zone from the context. If uncertain, use null.
+1. **Zone**: Match the raw location/zone string to the best fitting Zone from the context.
 2. **Account Manager**: Match "assignedTo" name to our User list.
-3. **Package**: Match "package" string to our Subscription Packages. If a match is found, use its standard 'ratePerStudent' unless a custom rate is found in the row.
-4. **Modules**: Identify module names in the "modules" string and map them to our Module IDs.
-5. **Deep Contact Discovery**: Scan *EVERY* field in the raw data (even if not mapped) to identify people and phone numbers.
-   - Capture all individuals mentioned.
-   - If you find generic numbers (e.g., "Office Line", "Security"), create entries with Role: "Administrator".
-   - Identify exactly ONE signatory (usually the Owner or Principal).
+3. **Package**: Match "package" string to our Subscription Packages.
+4. **Financials**: Extract arrears, credits, and custom rates. Normalize currency to 3-letter codes (GHS, USD).
+5. **Contact Discovery**: Scan ALL fields for focal persons and phone numbers. Designate exactly ONE signatory.
 
 ### CONTEXT:
 - **Zones**: {{#each context.zones}}{{name}} (ID: {{id}}), {{/each}}
@@ -89,9 +91,19 @@ const bulkNormalizationFlow = ai.defineFlow(
     outputSchema: BulkNormalizationOutputSchema,
   },
   async (input) => {
-    const { output } = await normalizationPrompt(input);
-    if (!output) throw new Error("The AI failed to normalize the institutional data.");
-    return output;
+    let retries = 0;
+    while (retries < 3) {
+        try {
+            const { output } = await normalizationPrompt(input);
+            if (!output) throw new Error("Normalization failure.");
+            return output;
+        } catch (e: any) {
+            retries++;
+            if (retries === 3) throw e;
+            await new Promise(r => setTimeout(r, 2000 * retries));
+        }
+    }
+    throw new Error("Normalization timed out.");
   }
 );
 

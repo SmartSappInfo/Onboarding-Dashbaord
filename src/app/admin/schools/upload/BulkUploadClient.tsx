@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -78,6 +79,13 @@ const TARGET_FIELDS = [
     { key: 'contactName', label: 'Primary Contact' },
     { key: 'contactEmail', label: 'Contact Email' },
     { key: 'contactPhone', label: 'Contact Phone' },
+    // Financial Profile Extensions
+    { key: 'billingAddress', label: 'Billing Address' },
+    { key: 'currency', label: 'Currency' },
+    { key: 'subscriptionRate', label: 'Effective Rate' },
+    { key: 'discountPercentage', label: 'Discount %' },
+    { key: 'arrearsBalance', label: 'Initial Arrears' },
+    { key: 'creditBalance', label: 'Initial Credit' },
 ];
 
 export default function BulkUploadClient() {
@@ -129,7 +137,13 @@ export default function BulkUploadClient() {
             "Modules",
             "Contact Name",
             "Contact Email",
-            "Contact Phone"
+            "Contact Phone",
+            "Billing Address",
+            "Currency",
+            "Effective Rate",
+            "Discount Percentage",
+            "Initial Arrears",
+            "Initial Credit"
         ];
         const csvContent = headers.join(",") + "\n";
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -181,7 +195,6 @@ export default function BulkUploadClient() {
         setCurrentStep('MAPPING');
         setIsAiMapping(true);
         try {
-            // FIX: Ensure only plain objects are passed to Server Functions
             const sanitizedHeaders = JSON.parse(JSON.stringify(fileHeaders));
             const sanitizedSamples = JSON.parse(JSON.stringify(samples));
 
@@ -212,7 +225,6 @@ export default function BulkUploadClient() {
 
         for (let i = 0; i < rawData.length; i++) {
             try {
-                // FIX: Ensure only plain objects are passed to Server Functions
                 const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[i]));
                 const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
                 const sanitizedContext = JSON.parse(JSON.stringify(context));
@@ -247,7 +259,6 @@ export default function BulkUploadClient() {
             const actualIdx = rowsToProcess[i];
             setCurrentRowIdx(i);
             try {
-                // FIX: Ensure only plain objects are passed to Server Functions
                 const sanitizedRawRow = JSON.parse(JSON.stringify(rawData[actualIdx]));
                 const sanitizedMapping = JSON.parse(JSON.stringify(mapping));
 

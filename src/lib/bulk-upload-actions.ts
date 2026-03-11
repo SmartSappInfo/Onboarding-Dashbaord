@@ -1,3 +1,4 @@
+
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -10,9 +11,6 @@ import { revalidatePath } from 'next/cache';
  * @fileOverview Server-side actions for the AI Bulk Institutional Ingestion Engine.
  */
 
-/**
- * Fetches all necessary system context for the AI Normalization engine.
- */
 async function getNormalizationContext() {
     const [zonesSnap, usersSnap, packagesSnap, modulesSnap] = await Promise.all([
         adminDb.collection('zones').orderBy('name').get(),
@@ -29,10 +27,6 @@ async function getNormalizationContext() {
     };
 }
 
-/**
- * Processes a single row from an uploaded document using AI normalization.
- * Performs fuzzy matching and creates the school record.
- */
 export async function ingestSchoolRowAction(
     rawData: any, 
     mapping: Record<string, string>, 
@@ -42,18 +36,16 @@ export async function ingestSchoolRowAction(
     try {
         const context = await getNormalizationContext();
         
-        // 1. AI Normalization
         const { normalizedSchool, explanation } = await normalizeBulkRow({
-            rawData,
-            mapping,
-            context: context as any
+            rawData: JSON.parse(JSON.stringify(rawData)),
+            mapping: JSON.parse(JSON.stringify(mapping)),
+            context: JSON.parse(JSON.stringify(context))
         });
 
         if (!normalizedSchool || !normalizedSchool.name) {
             throw new Error("AI could not extract institutional identity from this row.");
         }
 
-        // 2. Hydrate IDs back to full objects for the School record
         const selectedZone = context.zones.find(z => z.id === normalizedSchool.zoneId);
         const selectedUser = context.users.find(u => u.id === normalizedSchool.assignedToId);
         const selectedPackage = context.packages.find(p => p.id === normalizedSchool.subscriptionPackageId) as any;
@@ -62,16 +54,12 @@ export async function ingestSchoolRowAction(
             .map(id => context.modules.find(m => m.id === id))
             .filter(Boolean) as any[];
 
-        // 3. Resolve Default Stage (Welcome)
         const stagesSnap = await adminDb.collection('onboardingStages').orderBy('order').limit(1).get();
         const defaultStage = !stagesSnap.empty 
             ? { id: stagesSnap.docs[0].id, ...stagesSnap.docs[0].data() } as OnboardingStage
             : { id: 'welcome', name: 'Welcome', order: 1, color: '#3B5FFF' };
 
-        // 4. Construct Final Document
         const slug = normalizedSchool.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
-        
-        // Check for slug collisions
         const collisionSnap = await adminDb.collection('schools').where('slug', '==', slug).limit(1).get();
         const finalSlug = collisionSnap.empty ? slug : `${slug}-${Math.random().toString(36).substring(2, 5)}`;
 
@@ -87,22 +75,24 @@ export async function ingestSchoolRowAction(
             assignedTo: selectedUser 
                 ? { userId: selectedUser.id, name: selectedUser.name, email: (selectedUser as any).email }
                 : { userId: null, name: 'Unassigned', email: null },
+            // Financial Data Hydration
             subscriptionPackageId: normalizedSchool.subscriptionPackageId || null,
             subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
             subscriptionRate: normalizedSchool.subscriptionRate || selectedPackage?.ratePerStudent || 0,
+            discountPercentage: normalizedSchool.discountPercentage || 0,
+            arrearsBalance: normalizedSchool.arrearsBalance || 0,
+            creditBalance: normalizedSchool.creditBalance || 0,
+            billingAddress: normalizedSchool.billingAddress || normalizedSchool.location || '',
+            currency: normalizedSchool.currency || 'GHS',
             focalPersons: normalizedSchool.focalPersons as any,
             modules: selectedModules.map(m => ({ id: m.id, name: m.name, abbreviation: m.abbreviation, color: m.color })),
             stage: { id: defaultStage.id, name: defaultStage.name, order: defaultStage.order, color: defaultStage.color },
             createdAt: new Date().toISOString(),
             implementationDate: normalizedSchool.implementationDate || null,
-            arrearsBalance: 0,
-            creditBalance: 0,
-            currency: 'GHS',
         };
 
         const docRef = await adminDb.collection('schools').add(finalSchoolData);
 
-        // 5. Log Activity
         await logActivity({
             schoolId: docRef.id,
             schoolName: finalSchoolData.name,

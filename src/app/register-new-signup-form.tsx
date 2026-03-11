@@ -1,12 +1,29 @@
+
 "use client";
 
 import * as React from "react";
-import { useForm, FormProvider } from "react-hook-form";
+import { useForm, FormProvider, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon, X, Building, User, Mail, Phone, MapPin, Users, Zap, ShieldCheck } from "lucide-react";
-import { collection, addDoc } from 'firebase/firestore';
+import { 
+    Calendar as CalendarIcon, 
+    X, 
+    Building, 
+    User, 
+    Mail, 
+    Phone, 
+    MapPin, 
+    Users, 
+    Zap, 
+    ShieldCheck,
+    Banknote,
+    CreditCard,
+    Wallet,
+    Percent,
+    Target
+} from "lucide-react";
+import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -23,14 +40,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { Separator } from "./ui/separator";
+import { Switch } from "./ui/switch";
+import { Badge } from "./ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useFirestore, errorEmitter, FirestorePermissionError } from "@/firebase";
+import { useFirestore, errorEmitter, FirestorePermissionError, useCollection, useMemoFirebase } from "@/firebase";
 import { FocalPersonManager } from "@/app/admin/schools/components/FocalPersonManager";
+import { PackageSelect } from "@/app/admin/schools/components/PackageSelect";
+import { type SubscriptionPackage } from "@/lib/types";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const formSchema = z.object({
   organization: z.string().min(2, { message: "Organization must be at least 2 characters." }),
@@ -50,6 +70,16 @@ const formSchema = z.object({
     isSignatory: z.boolean().default(false),
   })).min(1, 'At least one focal person is required.')
     .refine(people => people.some(p => p.isSignatory), { message: 'One person must be marked as Signatory.' }),
+  
+  // Financial Profile
+  billingAddress: z.string().optional(),
+  currency: z.string().default('GHS'),
+  subscriptionPackageId: z.string().optional(),
+  subscriptionRate: z.coerce.number().default(0),
+  discountPercentage: z.coerce.number().min(0).max(100).default(0),
+  arrearsBalance: z.coerce.number().default(0),
+  creditBalance: z.coerce.number().default(0),
+
   notifySchool: z.boolean().default(true),
   notifySchoolEmails: z.array(z.string().email()).default([]),
   notifySmartSapp: z.boolean().default(true),
@@ -64,6 +94,12 @@ export default function NewSchoolSignupForm() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
+  const packagesQuery = useMemoFirebase(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'subscription_packages'), where('isActive', '==', true), orderBy('name', 'asc'));
+  }, [firestore]);
+  const { data: packages } = useCollection<SubscriptionPackage>(packagesQuery);
+
   const methods = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -74,6 +110,13 @@ export default function NewSchoolSignupForm() {
       includeDroneFootage: false,
       referee: "",
       focalPersons: [{ name: '', email: '', phone: '', type: 'School Owner', isSignatory: true }],
+      billingAddress: "",
+      currency: "GHS",
+      subscriptionPackageId: "none",
+      subscriptionRate: 0,
+      discountPercentage: 0,
+      arrearsBalance: 0,
+      creditBalance: 0,
       notifySchool: true,
       notifySchoolEmails: [],
       notifySmartSapp: true,
@@ -90,6 +133,7 @@ export default function NewSchoolSignupForm() {
 
   const watchNotifySchool = methods.watch("notifySchool");
   const watchFocalPersons = methods.watch("focalPersons");
+  const watchPackageId = methods.watch("subscriptionPackageId");
   
   const primarySignatory = watchFocalPersons.find(p => p.isSignatory) || watchFocalPersons[0];
   const watchMainEmail = primarySignatory?.email;
@@ -98,6 +142,20 @@ export default function NewSchoolSignupForm() {
   const watchNotifySchoolBySms = methods.watch("notifySchoolBySms");
   const watchMainPhone = primarySignatory?.phone;
   const isMainPhoneValid = z.string().min(10).safeParse(watchMainPhone).success;
+
+  const handleDiscountChange = (val: number) => {
+    const pkg = packages?.find(p => p.id === watchPackageId);
+    if (!pkg) return;
+    const newRate = pkg.ratePerStudent * (1 - val / 100);
+    methods.setValue('subscriptionRate', parseFloat(newRate.toFixed(2)), { shouldDirty: true });
+  };
+
+  const handleRateChange = (val: number) => {
+    const pkg = packages?.find(p => p.id === watchPackageId);
+    if (!pkg || pkg.ratePerStudent === 0) return;
+    const newDiscount = ((pkg.ratePerStudent - val) / pkg.ratePerStudent) * 100;
+    methods.setValue('discountPercentage', parseFloat(newDiscount.toFixed(2)), { shouldDirty: true });
+  };
 
   const onSubmit = async (data: FormData) => {
     
@@ -154,6 +212,8 @@ export default function NewSchoolSignupForm() {
       .replace(/\s+/g, '-')
       .replace(/[^a-z0-9-]/g, '');
 
+    const selectedPackage = packages?.find(p => p.id === data.subscriptionPackageId);
+
     const schoolData = {
       name: data.organization,
       slug,
@@ -165,6 +225,15 @@ export default function NewSchoolSignupForm() {
       includeDroneFootage: data.includeDroneFootage,
       stage: { id: 'welcome', name: 'Welcome', order: 1 },
       focalPersons: data.focalPersons,
+      // Financial Data
+      billingAddress: data.billingAddress,
+      currency: data.currency,
+      subscriptionPackageId: data.subscriptionPackageId === 'none' ? null : data.subscriptionPackageId,
+      subscriptionPackageName: selectedPackage ? selectedPackage.name : 'Standard',
+      subscriptionRate: data.subscriptionRate,
+      discountPercentage: data.discountPercentage,
+      arrearsBalance: data.arrearsBalance,
+      creditBalance: data.creditBalance,
       additionalEmails: data.notifySchoolEmails,
       additionalPhones: data.notifySchoolSmsNumbers,
       status: 'Active',
@@ -263,6 +332,143 @@ export default function NewSchoolSignupForm() {
             </CardContent>
         </Card>
 
+        {/* Financial Profile Card */}
+        <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
+            <CardHeader className="bg-muted/30 border-b p-8">
+                <div className="flex items-center gap-4">
+                    <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
+                        <Banknote className="h-6 w-6" />
+                    </div>
+                    <div>
+                        <CardTitle className="text-2xl font-black uppercase tracking-tight">Financial Profile</CardTitle>
+                        <CardDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Configure billing preferences and effective rates</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <FormField control={methods.control} name="subscriptionPackageId" render={({ field, fieldState }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Subscription Tier</FormLabel>
+                            <FormControl>
+                                <PackageSelect 
+                                    value={field.value} 
+                                    onValueChange={(val, pkg) => {
+                                        field.onChange(val);
+                                        if (pkg) {
+                                            methods.setValue('subscriptionRate', pkg.ratePerStudent, { shouldDirty: true });
+                                            methods.setValue('discountPercentage', 0, { shouldDirty: true });
+                                        }
+                                    }}
+                                    error={!!fieldState.error}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="currency" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Currency</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                    <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="rounded-xl shadow-2xl border-none">
+                                    <SelectItem value="GHS" className="font-black">Ghanaian Cedi (GH¢)</SelectItem>
+                                    <SelectItem value="USD" className="font-black">US Dollar ($)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </FormItem>
+                    )} />
+                </div>
+
+                {/* Rate and Discount Adjustment */}
+                <div className={cn(
+                    "p-6 rounded-[1.5rem] border-2 border-dashed transition-all duration-500",
+                    watchPackageId && watchPackageId !== 'none' ? "bg-primary/5 border-primary/20" : "bg-muted/10 border-border opacity-40 pointer-events-none"
+                )}>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-primary">Rate Optimization Engine</p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <FormField control={methods.control} name="discountPercentage" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Preferred Discount</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="number" 
+                                        step="0.01" 
+                                        {...field} 
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            field.onChange(val);
+                                            handleDiscountChange(val);
+                                        }}
+                                        className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                    />
+                                </FormControl>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this campus</FormDescription>
+                            </FormItem>
+                        )} />
+                        <FormField control={methods.control} name="subscriptionRate" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Target Unit Rate</FormLabel>
+                                <FormControl>
+                                    <Input 
+                                        type="number" 
+                                        step="0.01" 
+                                        {...field} 
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value) || 0;
+                                            field.onChange(val);
+                                            handleRateChange(val);
+                                        }}
+                                        className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
+                                    />
+                                </FormControl>
+                                <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Effective rate billed per student</FormDescription>
+                            </FormItem>
+                        )} />
+                    </div>
+                </div>
+
+                <FormField control={methods.control} name="billingAddress" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Remittance Address</FormLabel>
+                        <FormControl>
+                            <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
+                    <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Carried Arrears</FormLabel>
+                            <FormControl>
+                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
+                            </FormControl>
+                            <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Previous system outstanding balance</FormDescription>
+                        </FormItem>
+                    )} />
+                    <FormField control={methods.control} name="creditBalance" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Existing Credit</FormLabel>
+                            <FormControl>
+                                <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
+                            </FormControl>
+                            <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Overpayments from old system</FormDescription>
+                        </FormItem>
+                    )} />
+                </div>
+            </CardContent>
+        </Card>
+
         <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden ring-1 ring-black/5">
             <CardHeader className="bg-muted/30 border-b p-8">
                 <div className="flex items-center gap-4">
@@ -295,7 +501,7 @@ export default function NewSchoolSignupForm() {
                         control={methods.control}
                         name="implementationDate"
                         render={({ field }) => (
-                            <FormItem className="flex flex-col">
+                            <FormItem className="flex flex-col text-left">
                             <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 mb-2">Target Go-Live Date</FormLabel>
                             <Popover>
                                 <PopoverTrigger asChild>

@@ -29,6 +29,13 @@ const BulkMappingOutputSchema = z.object({
     contactEmail: z.string().optional().describe('Primary contact email.'),
     contactPhone: z.string().optional().describe('Primary contact phone.'),
     additionalContacts: z.string().optional().describe('Column containing other contact people or details.'),
+    // Financial Extensions
+    billingAddress: z.string().optional().describe('Column for financial billing address.'),
+    currency: z.string().optional().describe('Column for currency (e.g. GHS, USD).'),
+    subscriptionRate: z.string().optional().describe('Column for custom student rate.'),
+    discountPercentage: z.string().optional().describe('Column for discount percentage.'),
+    arrearsBalance: z.string().optional().describe('Column for outstanding arrears.'),
+    creditBalance: z.string().optional().describe('Column for existing credit.'),
   }).describe('Maps system field keys to the document header names.'),
   explanation: z.string().describe('Reasoning for the suggested mapping.'),
 });
@@ -50,6 +57,7 @@ Analyze the following spreadsheet headers and sample data to suggest the best ma
 - **package**: The pricing tier (e.g. Level A, Platinum).
 - **modules**: Specific features needed (e.g. Billing, Security).
 - **contactName/Email/Phone**: The primary institutional representative.
+- **Financial Profile**: billingAddress, currency, subscriptionRate, arrearsBalance, etc.
 
 ### HEADERS:
 {{#each headers}}- {{this}}
@@ -71,9 +79,19 @@ const bulkMappingFlow = ai.defineFlow(
     outputSchema: BulkMappingOutputSchema,
   },
   async (input) => {
-    const { output } = await mappingPrompt(input);
-    if (!output) throw new Error("The AI failed to suggest a valid header mapping.");
-    return output;
+    let retries = 0;
+    while (retries < 3) {
+        try {
+            const { output } = await mappingPrompt(input);
+            if (!output) throw new Error("The AI failed to suggest a valid header mapping.");
+            return output;
+        } catch (e: any) {
+            retries++;
+            if (retries === 3) throw e;
+            await new Promise(r => setTimeout(r, 2000 * retries));
+        }
+    }
+    throw new Error("Mapping process timed out.");
   }
 );
 
