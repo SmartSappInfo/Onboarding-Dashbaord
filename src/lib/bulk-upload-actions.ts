@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -50,6 +49,10 @@ export async function ingestSchoolRowAction(
             context: context as any
         });
 
+        if (!normalizedSchool || !normalizedSchool.name) {
+            throw new Error("AI could not extract institutional identity from this row.");
+        }
+
         // 2. Hydrate IDs back to full objects for the School record
         const selectedZone = context.zones.find(z => z.id === normalizedSchool.zoneId);
         const selectedUser = context.users.find(u => u.id === normalizedSchool.assignedToId);
@@ -68,10 +71,14 @@ export async function ingestSchoolRowAction(
         // 4. Construct Final Document
         const slug = normalizedSchool.name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         
+        // Check for slug collisions
+        const collisionSnap = await adminDb.collection('schools').where('slug', '==', slug).limit(1).get();
+        const finalSlug = collisionSnap.empty ? slug : `${slug}-${Math.random().toString(36).substring(2, 5)}`;
+
         const finalSchoolData: Omit<School, 'id'> = {
             name: normalizedSchool.name,
             initials: normalizedSchool.initials || normalizedSchool.name.substring(0, 3).toUpperCase(),
-            slug,
+            slug: finalSlug,
             slogan: normalizedSchool.slogan || '',
             location: normalizedSchool.location || '',
             nominalRoll: normalizedSchool.nominalRoll || 0,

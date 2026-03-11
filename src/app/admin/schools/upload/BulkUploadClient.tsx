@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -21,7 +20,11 @@ import {
     Building,
     Target,
     Layers,
-    Table as TableIcon
+    Table as TableIcon,
+    RefreshCw,
+    AlertTriangle,
+    Wand2,
+    Check
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,8 +36,9 @@ import { useUser } from '@/firebase';
 import { suggestBulkMapping } from '@/ai/flows/bulk-mapping-flow';
 import { ingestSchoolRowAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
-type Step = 'UPLOAD' | 'MAPPING' | 'EXECUTING' | 'COMPLETE';
+type Step = 'UPLOAD' | 'MAPPING' | 'EXECUTING' | 'COMPLETE' | 'CORRECTION';
 
 const TARGET_FIELDS = [
     { key: 'name', label: 'School Name', required: true },
@@ -66,6 +70,7 @@ export default function BulkUploadClient() {
     // Execution State
     const [results, setResults] = React.useState<{ row: number; status: 'success' | 'error'; schoolName?: string; error?: string }[]>([]);
     const [currentRowIdx, setCurrentRowIdx] = React.useState(0);
+    const [failedRowIndices, setFailedRowIndices] = React.useState<number[]>([]);
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -75,14 +80,15 @@ export default function BulkUploadClient() {
         const extension = file.name.split('.').pop()?.toLowerCase();
 
         if (extension === 'csv') {
-            Papa.parse(file, {
+             Papa.parse(file, {
                 header: true,
                 skipEmptyLines: true,
                 complete: (results) => {
                     if (results.data.length > 0) {
-                        setHeaders(Object.keys(results.data[0] as object));
+                        const h = Object.keys(results.data[0] as object);
+                        setHeaders(h);
                         setRawData(results.data);
-                        triggerAiMapping(Object.keys(results.data[0] as object), results.data.slice(0, 3));
+                        triggerAiMapping(h, results.data.slice(0, 3));
                     }
                 }
             });
@@ -95,9 +101,10 @@ export default function BulkUploadClient() {
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
                 if (data.length > 0) {
-                    setHeaders(Object.keys(data[0] as object));
+                    const h = Object.keys(data[0] as object);
+                    setHeaders(h);
                     setRawData(data);
-                    triggerAiMapping(Object.keys(data[0] as object), data.slice(0, 3));
+                    triggerAiMapping(h, data.slice(0, 3));
                 }
             };
             reader.readAsBinaryString(file);
@@ -109,8 +116,6 @@ export default function BulkUploadClient() {
         setIsAiMapping(true);
         try {
             const result = await suggestBulkMapping({ headers: fileHeaders, sampleRows: samples });
-            // The mapping from AI is key: systemField, value: documentHeader
-            // We store it as systemField: documentHeader
             setMapping(result.mapping as any);
             toast({ title: 'AI Mapping Success', description: result.explanation });
         } catch (e: any) {
@@ -120,34 +125,47 @@ export default function BulkUploadClient() {
         }
     };
 
-    const startExecution = async () => {
+    const startExecution = async (indicesToProcess?: number[]) => {
         if (!user) return;
+        
+        const rowsToProcess = indicesToProcess || Array.from({ length: rawData.length }, (_, i) => i);
+        
         setCurrentStep('EXECUTING');
         setCurrentRowIdx(0);
         setResults([]);
+        const freshFailedIndices: number[] = [];
 
-        for (let i = 0; i < rawData.length; i++) {
+        for (let i = 0; i < rowsToProcess.length; i++) {
+            const actualIdx = rowsToProcess[i];
             setCurrentRowIdx(i);
             try {
-                const result = await ingestSchoolRowAction(rawData[i], mapping, user.uid, fileName);
+                const result = await ingestSchoolRowAction(rawData[actualIdx], mapping, user.uid, fileName);
                 if (result.success) {
-                    setResults(prev => [...prev, { row: i, status: 'success', schoolName: result.schoolName }]);
+                    setResults(prev => [...prev, { row: actualIdx, status: 'success', schoolName: result.schoolName }]);
                 } else {
-                    setResults(prev => [...prev, { row: i, status: 'error', error: result.error }]);
+                    freshFailedIndices.push(actualIdx);
+                    setResults(prev => [...prev, { row: actualIdx, status: 'error', error: result.error }]);
                 }
             } catch (e: any) {
-                setResults(prev => [...prev, { row: i, status: 'error', error: e.message }]);
+                freshFailedIndices.push(actualIdx);
+                setResults(prev => [...prev, { row: actualIdx, status: 'error', error: e.message }]);
             }
-            // Small delay to prevent UI locking and respect burst limits
             await new Promise(r => setTimeout(r, 100));
         }
 
+        setFailedRowIndices(freshFailedIndices);
         setCurrentStep('COMPLETE');
+    };
+
+    const handleRetryFailures = () => {
+        if (failedRowIndices.length === 0) return;
+        startExecution(failedRowIndices);
     };
 
     const successCount = results.filter(r => r.status === 'success').length;
     const errorCount = results.filter(r => r.status === 'error').length;
-    const progress = rawData.length > 0 ? Math.round(((results.length) / rawData.length) * 100) : 0;
+    const totalToProcess = currentStep === 'EXECUTING' ? (failedRowIndices.length > 0 && results.length < failedRowIndices.length ? failedRowIndices.length : rawData.length) : rawData.length;
+    const progress = results.length > 0 ? Math.round((results.length / totalToProcess) * 100) : 0;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
@@ -266,7 +284,7 @@ export default function BulkUploadClient() {
                                             </div>
                                         </div>
                                         <Button 
-                                            onClick={startExecution} 
+                                            onClick={() => startExecution()} 
                                             disabled={!mapping['name']}
                                             className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
                                         >
@@ -287,7 +305,9 @@ export default function BulkUploadClient() {
                                         <div className="absolute inset-0 rounded-[2.5rem] border-4 border-primary animate-ping opacity-20" />
                                     </div>
                                     <CardTitle className="text-4xl font-black tracking-tighter uppercase leading-none text-foreground">Mission Execution</CardTitle>
-                                    <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-muted-foreground mt-4">Architecting institutional hubs: {currentRowIdx + 1} of {rawData.length}</CardDescription>
+                                    <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-muted-foreground mt-4">
+                                        {failedRowIndices.length > 0 ? 'Retrying' : 'Architecting'} institutional hubs: {currentRowIdx + 1} of {totalToProcess}
+                                    </CardDescription>
                                 </CardHeader>
                                 <CardContent className="py-20 px-12 space-y-16">
                                     <div className="space-y-8 max-w-2xl mx-auto">
@@ -336,26 +356,38 @@ export default function BulkUploadClient() {
                         <motion.div key="complete" initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }}>
                             <div className="space-y-8">
                                 <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
-                                    <CardHeader className="text-center py-16 bg-emerald-500 text-white relative">
+                                    <CardHeader className={cn(
+                                        "text-center py-16 text-white relative",
+                                        errorCount === 0 ? "bg-emerald-500" : "bg-orange-500"
+                                    )}>
                                         <div className="absolute top-0 right-0 p-8 opacity-10"><Target size={120} /></div>
                                         <div className="mx-auto bg-white/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl backdrop-blur-md border border-white/20">
-                                            <CheckCircle2 className="h-12 w-12 text-white" />
+                                            {errorCount === 0 ? <CheckCircle2 className="h-12 w-12" /> : <AlertTriangle className="h-12 w-12" />}
                                         </div>
-                                        <CardTitle className="text-4xl font-black tracking-tighter uppercase leading-none">Ingestion Successful</CardTitle>
-                                        <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-white/80 mt-4">Mission Debrief: {rawData.length} Identities Scanned</CardDescription>
+                                        <CardTitle className="text-4xl font-black tracking-tighter uppercase leading-none">
+                                            {errorCount === 0 ? 'Ingestion Successful' : 'Ingestion Partial'}
+                                        </CardTitle>
+                                        <CardDescription className="text-base font-bold uppercase tracking-[0.3em] text-white/80 mt-4">
+                                            Mission Debrief: {successCount} synchronized, {errorCount} failed.
+                                        </CardDescription>
                                     </CardHeader>
                                     <CardContent className="p-12">
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-3xl mx-auto">
                                             <ResultStat label="Hubs Created" value={successCount} sub="Success" color="text-emerald-600" />
                                             <ResultStat label="Records Failed" value={errorCount} sub="Attention Req." color={errorCount > 0 ? "text-rose-600" : "text-muted-foreground"} />
-                                            <ResultStat label="Conversion" value={`${Math.round((successCount/rawData.length)*100)}%`} sub="Efficiency" color="text-primary" />
+                                            <ResultStat label="Conversion" value={`${Math.round((successCount/(successCount + errorCount))*100)}%`} sub="Efficiency" color="text-primary" />
                                         </div>
 
                                         {errorCount > 0 && (
                                             <div className="mt-16 space-y-6 animate-in slide-in-from-bottom-4">
-                                                <div className="flex items-center gap-3 px-2">
-                                                    <AlertCircle className="h-5 w-5 text-rose-600" />
-                                                    <h3 className="text-xl font-black uppercase tracking-tight text-rose-900">Correction Protocol Required</h3>
+                                                <div className="flex items-center justify-between px-2">
+                                                    <div className="flex items-center gap-3">
+                                                        <AlertCircle className="h-5 w-5 text-rose-600" />
+                                                        <h3 className="text-xl font-black uppercase tracking-tight text-rose-900">Correction Protocol Required</h3>
+                                                    </div>
+                                                    <Button onClick={() => setCurrentStep('CORRECTION')} className="rounded-xl font-black uppercase text-[10px] tracking-widest gap-2 bg-rose-600 hover:bg-rose-700 shadow-lg">
+                                                        <Wand2 className="h-4 w-4" /> Manage Failures
+                                                    </Button>
                                                 </div>
                                                 <Card className="border-rose-100 bg-rose-50/30 overflow-hidden rounded-3xl">
                                                     <div className="p-0">
@@ -372,11 +404,7 @@ export default function BulkUploadClient() {
                                                                     <tr key={err.row}>
                                                                         <td className="p-4 pl-8 text-xs font-bold text-rose-900 uppercase">Row {err.row + 1}</td>
                                                                         <td className="p-4 text-xs font-medium text-rose-800">{err.error}</td>
-                                                                        <td className="p-4 text-right pr-8">
-                                                                            <Button variant="ghost" size="sm" className="h-8 rounded-lg font-black text-[9px] uppercase tracking-tighter text-rose-600 hover:bg-rose-100">
-                                                                                Manual Fix
-                                                                            </Button>
-                                                                        </td>
+                                                                        <td className="p-4 text-right pr-8"></td>
                                                                     </tr>
                                                                 ))}
                                                             </tbody>
@@ -394,6 +422,118 @@ export default function BulkUploadClient() {
                                         >
                                             Access Schools Directory <ChevronRight className="ml-2 h-5 w-5" />
                                         </Button>
+                                    </CardFooter>
+                                </Card>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {currentStep === 'CORRECTION' && (
+                        <motion.div key="correction" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                            <div className="space-y-8">
+                                <div className="flex items-center justify-between">
+                                    <Button variant="ghost" onClick={() => setCurrentStep('COMPLETE')} className="font-bold gap-2">
+                                        <ArrowLeft className="h-4 w-4" /> Back to Summary
+                                    </Button>
+                                    <h2 className="text-2xl font-black uppercase tracking-tight text-rose-600">Protocol Correction Console</h2>
+                                </div>
+
+                                <Card className="rounded-[2.5rem] border-none shadow-2xl overflow-hidden bg-white">
+                                    <CardHeader className="bg-rose-50 border-b border-rose-100 p-8">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-xl shadow-rose-200">
+                                                <RefreshCw className="h-6 w-6" />
+                                            </div>
+                                            <div>
+                                                <CardTitle className="text-xl font-black uppercase tracking-tight text-rose-900">Failure Reconciliation</CardTitle>
+                                                <CardDescription className="text-xs font-bold text-rose-700/60 uppercase">Adjust field mapping or discard invalid rows before retrying.</CardDescription>
+                                            </div>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="p-0">
+                                        <div className="p-8 border-b bg-muted/5">
+                                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-4">Refine Current Mappings</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                                {TARGET_FIELDS.slice(0, 3).map((field) => (
+                                                    <div key={field.key} className="space-y-1.5">
+                                                        <Label className="text-[9px] font-black uppercase text-muted-foreground ml-1">{field.label}</Label>
+                                                        <Select 
+                                                            value={mapping[field.key] || 'none'} 
+                                                            onValueChange={(val) => setMapping(prev => ({ ...prev, [field.key]: val }))}
+                                                        >
+                                                            <SelectTrigger className="h-10 rounded-xl bg-white border-primary/10 font-bold">
+                                                                <SelectValue />
+                                                            </SelectTrigger>
+                                                            <SelectContent className="rounded-xl">
+                                                                <SelectItem value="none">Ignore</SelectItem>
+                                                                {headers.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        
+                                        <ScrollArea className="h-[400px]">
+                                            <Table>
+                                                <TableHeader className="bg-muted/30 sticky top-0 z-10 shadow-sm">
+                                                    <TableRow>
+                                                        <TableHead className="pl-8 text-[10px] font-black uppercase py-4">Source Row</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase py-4">Context</TableHead>
+                                                        <TableHead className="text-[10px] font-black uppercase py-4">Failure Reason</TableHead>
+                                                        <TableHead className="text-right pr-8 text-[10px] font-black uppercase py-4">Action</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {failedRowIndices.map(idx => {
+                                                        const rowData = rawData[idx];
+                                                        const rowError = results.find(r => r.row === idx)?.error;
+                                                        return (
+                                                            <TableRow key={idx} className="group hover:bg-rose-50/20 transition-colors">
+                                                                <TableCell className="pl-8 font-black text-xs">#{idx + 1}</TableCell>
+                                                                <TableCell>
+                                                                    <div className="flex flex-col gap-1">
+                                                                        <span className="font-bold text-xs">{rowData[mapping['name']] || 'Untitled'}</span>
+                                                                        <span className="text-[9px] font-medium text-muted-foreground opacity-60 uppercase">{rowData[mapping['location']] || 'Location Unknown'}</span>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <Badge variant="outline" className="bg-rose-50 text-rose-600 border-rose-100 text-[9px] font-bold uppercase tracking-tighter">
+                                                                        {rowError || 'Validation Logic Failure'}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell className="text-right pr-8">
+                                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-rose-600 rounded-lg" onClick={() => setFailedRowIndices(p => p.filter(i => i !== idx))}>
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )
+                                                    })}
+                                                </TableBody>
+                                            </Table>
+                                        </ScrollArea>
+                                    </CardContent>
+                                    <CardFooter className="bg-rose-50/50 p-10 border-t flex flex-col gap-6">
+                                        <div className="p-6 rounded-[2rem] bg-white border border-rose-100 flex items-start gap-5 shadow-sm w-full">
+                                            <div className="p-3 bg-rose-600 text-white rounded-2xl shadow-lg"><Info className="h-6 w-6" /></div>
+                                            <div className="space-y-1">
+                                                <p className="text-sm font-black text-rose-900 uppercase tracking-tight">Recovery Protocol</p>
+                                                <p className="text-[10px] text-rose-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
+                                                    Retrying will only process the {failedRowIndices.length} rows listed above. Ensure your field mappings align with the document structure.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-4 w-full">
+                                            <Button variant="ghost" onClick={() => setCurrentStep('UPLOAD')} className="h-16 flex-1 rounded-2xl font-black uppercase text-xs tracking-widest border-2">Discard & Restart</Button>
+                                            <Button 
+                                                onClick={handleRetryFailures} 
+                                                disabled={failedRowIndices.length === 0}
+                                                className="h-16 flex-[2] rounded-2xl font-black text-xl shadow-2xl bg-rose-600 text-white hover:bg-rose-700 uppercase tracking-[0.2em] active:scale-95 transition-all gap-3"
+                                            >
+                                                <RefreshCw className="h-6 w-6" /> Re-Execute Failures
+                                            </Button>
+                                        </div>
                                     </CardFooter>
                                 </Card>
                             </div>
