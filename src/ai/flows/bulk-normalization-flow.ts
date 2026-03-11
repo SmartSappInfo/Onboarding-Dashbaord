@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to normalize raw spreadsheet data into structured school records.
@@ -48,6 +47,8 @@ const BulkNormalizationOutputSchema = z.object({
     moduleIds: z.array(z.string()).optional().describe('Array of resolved module IDs.'),
     focalPersons: z.array(FocalPersonSchema),
     implementationDate: z.string().optional().describe('ISO date string.'),
+    referee: z.string().optional(),
+    includeDroneFootage: z.boolean().optional(),
   }),
   explanation: z.string().describe('Reasoning for the normalization choices.'),
 });
@@ -65,6 +66,7 @@ const normalizationPrompt = ai.definePrompt({
 3. **Package**: Match "package" string to our Subscription Packages.
 4. **Financials**: Extract arrears, credits, and custom rates. Normalize currency to 3-letter codes (GHS, USD).
 5. **Contact Discovery**: Scan ALL fields for focal persons and phone numbers. Designate exactly ONE signatory.
+6. **Logistics**: Parse implementationDate into ISO format. Convert drone footage requests to boolean.
 
 ### CONTEXT:
 - **Zones**: {{#each context.zones}}{{name}} (ID: {{id}}), {{/each}}

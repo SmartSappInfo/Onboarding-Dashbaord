@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview An AI flow to suggest mappings between spreadsheet headers and school schema fields.
@@ -25,9 +24,13 @@ const BulkMappingOutputSchema = z.object({
     package: z.string().optional().describe('Column for Subscription Tier/Level.'),
     modules: z.string().optional().describe('Column for requested SmartSapp modules.'),
     implementationDate: z.string().optional().describe('Column for expected go-live date.'),
+    referee: z.string().optional().describe('Column for referral source.'),
+    includeDroneFootage: z.string().optional().describe('Column for drone footage request.'),
     contactName: z.string().optional().describe('Primary contact full name.'),
     contactEmail: z.string().optional().describe('Primary contact email.'),
     contactPhone: z.string().optional().describe('Primary contact phone.'),
+    contactRole: z.string().optional().describe('Role of the contact person.'),
+    isSignatory: z.string().optional().describe('Column indicating if this is the legal signatory.'),
     additionalContacts: z.string().optional().describe('Column containing other contact people or details.'),
     // Financial Extensions
     billingAddress: z.string().optional().describe('Column for financial billing address.'),
@@ -56,7 +59,9 @@ Analyze the following spreadsheet headers and sample data to suggest the best ma
 - **assignedTo**: The person in OUR team responsible for this school.
 - **package**: The pricing tier (e.g. Level A, Platinum).
 - **modules**: Specific features needed (e.g. Billing, Security).
-- **contactName/Email/Phone**: The primary institutional representative.
+- **contactName/Email/Phone/Role**: Stakeholder directory info.
+- **referee**: Who referred the school.
+- **includeDroneFootage**: Boolean flag for media services.
 - **Financial Profile**: billingAddress, currency, subscriptionRate, arrearsBalance, etc.
 
 ### HEADERS:

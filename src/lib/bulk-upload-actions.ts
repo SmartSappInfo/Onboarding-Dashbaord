@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -89,6 +88,8 @@ export async function ingestSchoolRowAction(
             stage: { id: defaultStage.id, name: defaultStage.name, order: defaultStage.order, color: defaultStage.color },
             createdAt: new Date().toISOString(),
             implementationDate: normalizedSchool.implementationDate || null,
+            referee: normalizedSchool.referee || '',
+            includeDroneFootage: normalizedSchool.includeDroneFootage || false,
         };
 
         const docRef = await adminDb.collection('schools').add(finalSchoolData);

@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -70,15 +69,21 @@ type Step = 'UPLOAD' | 'MAPPING' | 'REVIEW' | 'EXECUTING' | 'COMPLETE' | 'CORREC
 const TARGET_FIELDS = [
     { key: 'name', label: 'School Name', required: true },
     { key: 'initials', label: 'Initials/Acronym' },
+    { key: 'slogan', label: 'Motto/Slogan' },
     { key: 'location', label: 'Physical Location' },
     { key: 'nominalRoll', label: 'Student Roll' },
     { key: 'zone', label: 'Regional Zone' },
     { key: 'assignedTo', label: 'Account Manager' },
     { key: 'package', label: 'Subscription Tier' },
     { key: 'modules', label: 'Requested Modules' },
+    { key: 'implementationDate', label: 'Go-Live Date' },
+    { key: 'referee', label: 'Referral Source' },
+    { key: 'includeDroneFootage', label: 'Drone Footage' },
     { key: 'contactName', label: 'Primary Contact' },
     { key: 'contactEmail', label: 'Contact Email' },
     { key: 'contactPhone', label: 'Contact Phone' },
+    { key: 'contactRole', label: 'Contact Role' },
+    { key: 'isSignatory', label: 'Is Signatory' },
     // Financial Profile Extensions
     { key: 'billingAddress', label: 'Billing Address' },
     { key: 'currency', label: 'Currency' },
@@ -135,9 +140,14 @@ export default function BulkUploadClient() {
             "Assigned Manager",
             "Subscription Tier",
             "Modules",
+            "Implementation Date",
+            "Referee",
+            "Drone Footage",
             "Contact Name",
             "Contact Email",
             "Contact Phone",
+            "Contact Role",
+            "Is Signatory",
             "Billing Address",
             "Currency",
             "Effective Rate",
@@ -145,7 +155,34 @@ export default function BulkUploadClient() {
             "Initial Arrears",
             "Initial Credit"
         ];
-        const csvContent = headers.join(",") + "\n";
+
+        const sampleRow = [
+            "Ghana International School",
+            "GIS",
+            "Understanding of each other",
+            "Cantonments, Accra",
+            "1500",
+            "Airport / Legon Zone",
+            "Default Admin",
+            "Level A (Platinum)",
+            "Billing, Security, Attendance",
+            "2024-09-01",
+            "SmartSapp Team",
+            "Yes",
+            "Dr. Mary Ashun",
+            "principal@gis.edu.gh",
+            "+233 30 277 7163",
+            "Principal",
+            "Yes",
+            "P.O. Box 845, Accra",
+            "GHS",
+            "89.95",
+            "0",
+            "0",
+            "0"
+        ];
+
+        const csvContent = headers.join(",") + "\n" + sampleRow.join(",") + "\n";
         const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
@@ -166,9 +203,11 @@ export default function BulkUploadClient() {
 
         const processResults = (data: any[]) => {
             if (data.length > 0) {
+                // Filter out the sample row if it's identical to the GIS example
+                const actualData = data.filter(row => row["School Name"] !== "Ghana International School");
                 const h = Object.keys(data[0] as object);
                 setHeaders(h);
-                setRawData(data);
+                setRawData(actualData.length > 0 ? actualData : data);
                 triggerAiMapping(h, data.slice(0, 3));
             }
         };
@@ -316,7 +355,7 @@ export default function BulkUploadClient() {
                             <div className="space-y-6">
                                 <div className="flex justify-end">
                                     <Button variant="outline" onClick={handleDownloadTemplate} className="rounded-xl font-bold h-10 border-primary/20 text-primary gap-2">
-                                        <Download className="h-4 w-4" /> Download CSV Template
+                                        <Download className="h-4 w-4" /> Download Standard Template
                                     </Button>
                                 </div>
                                 <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
@@ -502,7 +541,7 @@ export default function BulkUploadClient() {
                                                                             {school?.nominalRoll || 0} Students
                                                                         </Badge>
                                                                         <Badge variant="outline" className="h-5 text-[8px] font-black uppercase border-emerald-200 bg-emerald-50 text-emerald-600">
-                                                                            {school?.subscriptionRate ? `GHS ${school.subscriptionRate}` : 'Rate Pending'}
+                                                                            {school?.subscriptionRate ? `${school.currency || 'GHS'} ${school.subscriptionRate}` : 'Rate Pending'}
                                                                         </Badge>
                                                                     </div>
                                                                     <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-tighter text-muted-foreground opacity-60">
