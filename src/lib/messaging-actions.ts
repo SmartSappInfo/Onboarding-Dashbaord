@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, Meeting, Submission, SurveyResponse, MessageLog } from './types';
+import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, MessageLog } from './types';
 import { revalidatePath } from 'next/cache';
 import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
@@ -32,29 +32,35 @@ export async function syncVariableRegistry() {
 
     // 2. STATIC CORE VARIABLES (Always Sync/Update)
     const staticVariables: Omit<VariableDefinition, 'id'>[] = [
+      // School (General)
       { key: 'school_name', label: 'School Name', category: 'general', source: 'static', entity: 'School', path: 'name', type: 'string' },
       { key: 'school_initials', label: 'School Initials', category: 'general', source: 'static', entity: 'School', path: 'initials', type: 'string' },
       { key: 'school_location', label: 'School Location', category: 'general', source: 'static', entity: 'School', path: 'location', type: 'string' },
       { key: 'school_phone', label: 'School Phone', category: 'general', source: 'static', entity: 'School', path: 'phone', type: 'string' },
       { key: 'school_email', label: 'School Email', category: 'general', source: 'static', entity: 'School', path: 'email', type: 'string' },
       
-      // Signatory Data (Primary variables)
+      // Signatory Data (General Context)
       { key: 'contact_name', label: 'Primary Contact Name', category: 'general', source: 'static', entity: 'School', path: 'signatory.name', type: 'string' },
       { key: 'contact_position', label: 'Primary Contact Role', category: 'general', source: 'static', entity: 'School', path: 'signatory.type', type: 'string' },
       { key: 'contact_email', label: 'Primary Contact Email', category: 'general', source: 'static', entity: 'School', path: 'signatory.email', type: 'string' },
       { key: 'contact_phone', label: 'Primary Contact Phone', category: 'general', source: 'static', entity: 'School', path: 'signatory.phone', type: 'string' },
       
-      // Financial Logic
+      // Finance Hub Variables
+      { key: 'agreement_url', label: 'Institutional Signing Link', category: 'finance', source: 'static', entity: 'Contract', path: 'publicUrl', type: 'string' },
       { key: 'school_package', label: 'Subscription Tier', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionPackageName', type: 'string' },
       { key: 'subscription_rate', label: 'Effective Unit Rate', category: 'finance', source: 'static', entity: 'School', path: 'subscriptionRate', type: 'number' },
       { key: 'subscription_total', label: 'Total Amount', category: 'finance', source: 'static', entity: 'School', path: 'nominalRoll * subscriptionRate', type: 'number' },
-      { key: 'nominal_roll', label: 'Student Count', category: 'general', source: 'static', entity: 'School', path: 'nominalRoll', type: 'number' },
+      { key: 'nominal_roll', label: 'Student Count', category: 'finance', source: 'static', entity: 'School', path: 'nominalRoll', type: 'number' },
       { key: 'arrears_balance', label: 'Outstanding Arrears', category: 'finance', source: 'static', entity: 'School', path: 'arrearsBalance', type: 'number' },
-      { key: 'agreement_url', label: 'Institutional Signing Link', category: 'finance', source: 'static', entity: 'Contract', path: 'publicUrl', type: 'string' },
+      { key: 'credit_balance', label: 'Available Credit', category: 'finance', source: 'static', entity: 'School', path: 'creditBalance', type: 'number' },
+      { key: 'currency', label: 'Billing Currency', category: 'finance', source: 'static', entity: 'School', path: 'currency', type: 'string' },
 
+      // Meetings
       { key: 'meeting_time', label: 'Meeting Time', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingTime', type: 'date' },
       { key: 'meeting_link', label: 'Meeting Link', category: 'meetings', source: 'static', entity: 'Meeting', path: 'meetingLink', type: 'string' },
       { key: 'meeting_type', label: 'Meeting Type', category: 'meetings', source: 'static', entity: 'Meeting', path: 'type.name', type: 'string' },
+      
+      // Survey Results
       { key: 'survey_score', label: 'Respondent Score', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'score', type: 'number' },
       { key: 'max_score', label: 'Survey Max Points', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'maxScore', type: 'number' },
       { key: 'outcome_label', label: 'Logic Result Name', category: 'surveys', source: 'static', entity: 'SurveyResponse', path: 'outcome.label', type: 'string' },

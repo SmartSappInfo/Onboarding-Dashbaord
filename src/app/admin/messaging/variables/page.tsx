@@ -33,7 +33,8 @@ import {
     EyeOff,
     Lock,
     LayoutList,
-    AlertCircle
+    AlertCircle,
+    Banknote
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -198,7 +199,7 @@ export default function VariableRegistryPage() {
         return (
             <TableRow className={cn("group hover:bg-muted/30 transition-colors", isHidden && "opacity-50 grayscale bg-muted/10")}>
                 <TableCell className="pl-6 w-[350px]">
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-0.5 text-left">
                         <div className="flex items-center gap-2">
                             <span className="font-bold text-sm text-foreground">{v.label}</span>
                             {isHidden && <Badge variant="secondary" className="h-4 text-[8px] uppercase px-1">Hidden</Badge>}
@@ -206,7 +207,7 @@ export default function VariableRegistryPage() {
                         <code className="text-[10px] font-mono text-primary font-black opacity-60">{"{{" + v.key + "}}"}</code>
                     </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-left">
                     <div className="flex flex-col gap-0.5">
                         <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{isConstant ? 'Global' : (v.sourceName || 'Registry')}</span>
                         <span className="text-[9px] text-muted-foreground/60 uppercase font-bold truncate max-w-[150px]">{isConstant ? 'Fixed Value' : `Path: ${v.path}`}</span>
@@ -268,10 +269,10 @@ export default function VariableRegistryPage() {
     const VariableListView = ({ category, sourceId }: { category: VariableDefinition['category'], sourceId?: string | null }) => {
         const items = filteredVars.filter(v => {
             if (v.category !== category) return false;
-            if (category === 'general' || category === 'meetings') return true; // These categories don't have sourceId filters
+            if (category === 'general' || category === 'meetings' || category === 'finance') return true; 
             
             if (sourceId && sourceId !== 'all') {
-                return v.sourceId === sourceId || v.source === 'static'; // Always show core metrics like score
+                return v.sourceId === sourceId || v.source === 'static'; 
             }
             return true;
         });
@@ -355,7 +356,7 @@ export default function VariableRegistryPage() {
                         <Button 
                             onClick={handleSync} 
                             disabled={isSyncing || isLoading}
-                            className="rounded-xl font-black h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8 transition-all active:scale-95"
+                            className="rounded-xl font-black h-12 gap-2 shadow-xl shadow-primary/20 bg-primary px-8 transition-all active:scale-95 text-white"
                         >
                             {isSyncing ? <Loader2 className="h-5 w-5 animate-spin" /> : <RefreshCw className="h-5 w-5" />}
                             Sync Data Hub
@@ -373,11 +374,11 @@ export default function VariableRegistryPage() {
                             </CardHeader>
                             <CardContent className="p-6 space-y-6">
                                 <div className="space-y-4">
-                                    <div className="flex justify-between items-end border-b pb-3">
+                                    <div className="flex justify-between items-end border-b pb-3 text-left">
                                         <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Total Registry</span>
                                         <span className="text-2xl font-black tabular-nums">{variables?.length || 0}</span>
                                     </div>
-                                    <div className="flex justify-between items-end border-b pb-3">
+                                    <div className="flex justify-between items-end border-b pb-3 text-left">
                                         <span className="text-[10px] font-black uppercase text-muted-foreground opacity-60">Active Usage</span>
                                         <span className="text-2xl font-black tabular-nums text-emerald-600">{healthMetrics.used}</span>
                                     </div>
@@ -398,27 +399,27 @@ export default function VariableRegistryPage() {
                                 </div>
                                 
                                 {healthMetrics.broken > 0 && (
-                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3 shadow-sm">
+                                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-100 flex items-start gap-3 shadow-sm text-left">
                                         <ShieldAlert className="h-4 w-4 text-rose-600 shrink-0 mt-0.5" />
                                         <div className="space-y-1">
                                             <p className="text-[9px] font-black text-rose-900 uppercase tracking-tighter">Integrity Failure Detected</p>
-                                            <p className="text-[9px] font-bold text-rose-800/70 leading-relaxed uppercase tracking-tighter">
+                                            <p className="text-[9px] font-bold text-rose-800/70 leading-relaxed uppercase tracking-tighter text-left">
                                                 {healthMetrics.broken} tag(s) exist in templates but are missing from your registry.
                                             </p>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-sm">
+                                <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-sm text-left">
                                     <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                                    <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                    <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter text-left">
                                         Hiding a variable removes it from design sidebars but preserves its logic in existing templates.
                                     </p>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        <div className="space-y-2 px-1">
+                        <div className="space-y-2 px-1 text-left">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Search Registry</Label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
@@ -439,6 +440,9 @@ export default function VariableRegistryPage() {
                                     <TabsTrigger value="general" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Building className="h-3 w-3" /> Schools
                                     </TabsTrigger>
+                                    <TabsTrigger value="finance" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
+                                        <Banknote className="h-3 w-3" /> Finance Hub
+                                    </TabsTrigger>
                                     <TabsTrigger value="meetings" className="rounded-xl font-black uppercase text-[9px] tracking-widest px-6 gap-2 data-[state=active]:bg-primary data-[state=active]:text-white">
                                         <Calendar className="h-3 w-3" /> Meetings
                                     </TabsTrigger>
@@ -456,6 +460,7 @@ export default function VariableRegistryPage() {
 
                             <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
                                 <TabsContent value="general" className="m-0"><VariableListView category="general" /></TabsContent>
+                                <TabsContent value="finance" className="m-0"><VariableListView category="finance" /></TabsContent>
                                 <TabsContent value="meetings" className="m-0"><VariableListView category="meetings" /></TabsContent>
                                 
                                 <TabsContent value="surveys" className="m-0 space-y-6">
@@ -560,7 +565,7 @@ export default function VariableRegistryPage() {
                                                     </code>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-col gap-1">
+                                                    <div className="flex flex-col gap-1 text-left">
                                                         <span className="text-[10px] font-black uppercase text-muted-foreground">Used in {item.templates.length} templates:</span>
                                                         <div className="flex flex-wrap gap-1.5">
                                                             {item.templates.map(t => (
@@ -598,9 +603,9 @@ export default function VariableRegistryPage() {
                             <div className="p-2 bg-primary/10 rounded-xl"><Globe className="h-5 w-5 text-primary" /></div>
                             <DialogTitle className="text-xl font-black uppercase tracking-tight">{editingConst ? 'Update Constant' : 'Create Global Constant'}</DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Define a permanent schema-less data point.</DialogDescription>
+                        <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground text-left">Define a permanent schema-less data point.</DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-6 py-4">
+                    <div className="space-y-6 py-4 text-left">
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Variable Key (Tag Name)</Label>
                             <div className="flex h-11 border border-border/50 rounded-xl overflow-hidden bg-muted/20 focus-within:ring-1 focus-within:ring-primary/20 shadow-inner">
