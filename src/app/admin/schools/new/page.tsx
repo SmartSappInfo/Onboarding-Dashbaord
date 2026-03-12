@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, addDoc, query, where, orderBy } from 'firebase/firestore';
 
@@ -28,6 +28,7 @@ import { ZoneSelect } from '../components/ZoneSelect';
 import { FocalPersonManager } from '../components/FocalPersonManager';
 import { ManagerSelect } from '../components/ManagerSelect';
 import { PackageSelect } from '../components/PackageSelect';
+import { MediaSelect } from '../components/media-select';
 import { logActivity } from '@/lib/activity-logger';
 import { type UserProfile, type SubscriptionPackage } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -198,7 +199,7 @@ export default function NewSchoolPage() {
               <div className="lg:col-span-2 space-y-8">
                 <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden">
                   <CardHeader className="bg-muted/30 border-b pb-6"><div className="flex items-center gap-3"><div className="p-2 bg-primary/10 rounded-xl"><Building className="h-5 w-5 text-primary" /></div><CardTitle className="text-lg font-black uppercase tracking-tight">General Identity</CardTitle></div></CardHeader>
-                  <CardContent className="p-6 space-y-6">
+                  <CardContent className="p-6 space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField control={methods.control} name="name" render={({ field }) => (
                         <FormItem className="md:col-span-2"><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Official Name</FormLabel><FormControl><Input placeholder="School name..." {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-lg" /></FormControl><FormMessage /></FormItem>
@@ -207,7 +208,19 @@ export default function NewSchoolPage() {
                         <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Initials</FormLabel><FormControl><Input {...field} className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-black text-center" /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Institutional Logo</Label>
+                        <Controller 
+                            name="logoUrl"
+                            control={methods.control}
+                            render={({ field }) => (
+                                <MediaSelect {...field} filterType="image" className="rounded-2xl" />
+                            )}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                         <FormField control={methods.control} name="status" render={({ field }) => (
                             <FormItem><FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Operational Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
@@ -283,13 +296,13 @@ export default function NewSchoolPage() {
                         )}>
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="p-2 bg-primary text-white rounded-lg shadow-sm"><Target className="h-4 w-4" /></div>
-                                <p className="text-[10px] font-black uppercase tracking-widest">Rate Adjustment Engine</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-primary">Rate Optimization Engine</p>
                             </div>
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 <FormField control={methods.control} name="discountPercentage" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Percentage Grant</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Percent className="h-3 w-3" /> Preferred Discount</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 type="number" 
@@ -303,12 +316,12 @@ export default function NewSchoolPage() {
                                                 className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Grant a school-specific reduction</FormDescription>
+                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Grant a reduction for this campus</FormDescription>
                                     </FormItem>
                                 )} />
                                 <FormField control={methods.control} name="subscriptionRate" render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Effective Unit Rate</FormLabel>
+                                        <FormLabel className="text-[10px] font-black uppercase text-primary ml-1 flex items-center gap-1.5"><Banknote className="h-3 w-3" /> Target Unit Rate</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 type="number" 
@@ -322,7 +335,7 @@ export default function NewSchoolPage() {
                                                 className="h-12 rounded-xl bg-white border-primary/10 shadow-inner font-black text-xl text-center" 
                                             />
                                         </FormControl>
-                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Final amount billed per student</FormDescription>
+                                        <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Effective rate billed per student</FormDescription>
                                     </FormItem>
                                 )} />
                             </div>
@@ -330,9 +343,9 @@ export default function NewSchoolPage() {
 
                         <FormField control={methods.control} name="billingAddress" render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Custom Billing Address</FormLabel>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Billing Remittance Address</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="If different from campus location..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
+                                    <Textarea {...field} placeholder="Specific address for financial documents..." className="min-h-[100px] rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 font-medium shadow-inner" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -341,11 +354,11 @@ export default function NewSchoolPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
                             <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Initial Arrears</FormLabel>
+                                    <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Carried Arrears</FormLabel>
                                     <FormControl>
                                         <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
                                     </FormControl>
-                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Carried forward from old system</FormDescription>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Previous system outstanding balance</FormDescription>
                                 </FormItem>
                             )} />
                             <FormField control={methods.control} name="creditBalance" render={({ field }) => (
@@ -354,7 +367,7 @@ export default function NewSchoolPage() {
                                     <FormControl>
                                         <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
                                     </FormControl>
-                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60">Existing overpayments</FormDescription>
+                                    <FormDescription className="text-[9px] uppercase font-bold tracking-tighter opacity-60 text-left">Overpayments from old system</FormDescription>
                                 </FormItem>
                             )} />
                         </div>

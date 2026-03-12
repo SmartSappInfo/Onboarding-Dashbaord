@@ -3,8 +3,8 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, where, orderBy } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
+import { doc, collection, query, where, orderBy, updateDoc } from 'firebase/firestore';
 import type { School, FocalPerson, Task } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -29,7 +29,8 @@ import {
     Clock,
     Plus,
     Circle,
-    Receipt
+    Receipt,
+    Camera
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -43,6 +44,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { useToast } from '@/hooks/use-toast';
 import SchoolBillingTab from '../components/SchoolBillingTab';
+import { MediaSelect } from '../components/media-select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
     loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -67,7 +76,11 @@ export default function SchoolDetailPage() {
     const { toast } = useToast();
     const schoolId = params.id as string;
     const firestore = useFirestore();
+    const { user: currentUser } = useFirebaseUser();
+    
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
+    const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
+    const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
 
     const schoolDocRef = useMemoFirebase(() => {
         if (!firestore || !schoolId) return null;
@@ -88,7 +101,7 @@ export default function SchoolDetailPage() {
     }, [firestore, schoolId]);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
-    // Phase 2: Navigation Entity Resolution
+    // Navigation Entity Resolution
     useSetBreadcrumb(school?.name);
 
     if (isLoading) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-[2.5rem]"/><Skeleton className="h-96 w-full rounded-[2.5rem]"/></div>;
@@ -98,6 +111,32 @@ export default function SchoolDetailPage() {
         if (firestore) {
             completeTaskNonBlocking(firestore, taskId);
             toast({ title: 'Task Completed' });
+        }
+    };
+
+    const handleLogoUpdate = async (newLogoUrl: string) => {
+        if (!firestore || !school || isUpdatingLogo) return;
+        setIsUpdatingLogo(true);
+        try {
+            await updateDoc(doc(firestore, 'schools', school.id), {
+                logoUrl: newLogoUrl,
+                updatedAt: new Date().toISOString()
+            });
+            
+            logActivity({
+                schoolId: school.id,
+                userId: currentUser?.uid || null,
+                type: 'school_updated',
+                source: 'user_action',
+                description: `updated the school logo for "${school.name}"`
+            });
+
+            toast({ title: 'Branding Synchronized', description: 'Institutional logo updated across the platform.' });
+            setIsLogoDialogOpen(false);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } finally {
+            setIsUpdatingLogo(false);
         }
     };
 
@@ -115,7 +154,7 @@ export default function SchoolDetailPage() {
     return (
         <div className="h-full overflow-y-auto bg-muted/10 pb-32">
             <div className="p-4 sm:p-6 md:p-8 max-w-7xl mx-auto space-y-8">
-                <div className="flex justify-end gap-2">
+                <div className="flex justify-end gap-2 text-left">
                     <Button variant="outline" size="sm" className="rounded-xl font-bold h-10 px-4" onClick={() => setIsLogModalOpen(true)}>
                         <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> 
                         Log Interaction
@@ -127,7 +166,7 @@ export default function SchoolDetailPage() {
                 </div>
 
                 <Card className="border-none shadow-2xl overflow-hidden bg-white rounded-[2.5rem]">
-                    <div className="h-48 bg-slate-900 relative">
+                    <div className="h-48 bg-slate-900 relative group">
                         {school.heroImageUrl && <Image src={school.heroImageUrl} alt="banner" fill className="object-cover opacity-40 grayscale group-hover:grayscale-0 transition-all duration-700" />}
                         <div className="absolute bottom-6 right-8 flex gap-3">
                              <Badge variant={getStatusBadgeVariant(school.status)} className="h-10 px-6 text-[10px] font-black uppercase tracking-widest rounded-xl shadow-2xl border-none ring-4 ring-white/10 backdrop-blur-md">{school.status}</Badge>
@@ -135,15 +174,27 @@ export default function SchoolDetailPage() {
                         </div>
                     </div>
                     <CardContent className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end md:items-center gap-8">
-                        <div className="relative h-44 w-44 rounded-[3rem] bg-white p-3 shadow-2xl ring-8 ring-white overflow-hidden border border-border/50 shrink-0">
-                            {school.logoUrl ? <Image src={school.logoUrl} alt={school.name} fill className="object-contain p-6" /> : <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-5xl font-black">{school.initials || school.name.substring(0, 2)}</div>}
+                        <div 
+                            className="relative h-44 w-44 rounded-[3rem] bg-white p-3 shadow-2xl ring-8 ring-white overflow-hidden border border-border/50 shrink-0 group cursor-pointer"
+                            onClick={() => setIsLogoDialogOpen(true)}
+                        >
+                            {school.logoUrl ? (
+                                <Image src={school.logoUrl} alt={school.name} fill className="object-contain p-6 transition-transform duration-500 group-hover:scale-110" />
+                            ) : (
+                                <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-5xl font-black">{school.initials || school.name.substring(0, 2)}</div>
+                            )}
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 text-white">
+                                <Camera className="h-8 w-8" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Change Logo</span>
+                            </div>
                         </div>
-                        <div className="flex-1 space-y-4 pt-4">
+                        <div className="flex-1 space-y-4 pt-4 text-left">
                             <div className="flex items-center gap-3">
                                 <Badge variant="outline" className="font-black border-2 text-primary border-primary/20 bg-primary/5">{school.initials}</Badge>
                                 <Separator orientation="vertical" className="h-4" />
                                 <span className="text-muted-foreground font-bold flex items-center gap-1.5 text-sm uppercase tracking-widest"><MapPin className="h-3.5 w-3.5" /> {school.zone?.name}</span>
                             </div>
+                            <h2 className="text-3xl font-black tracking-tight uppercase">{school.name}</h2>
                         </div>
                     </CardContent>
                 </Card>
@@ -276,6 +327,39 @@ export default function SchoolDetailPage() {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border-none shadow-2xl">
+                    <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
+                                <Camera className="h-6 w-6" />
+                            </div>
+                            <div className="text-left">
+                                <DialogTitle className="text-xl font-black uppercase tracking-tight">Update Logo</DialogTitle>
+                                <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select or upload a new identity.</DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+                    <div className="p-8">
+                        <MediaSelect 
+                            value={school.logoUrl} 
+                            onValueChange={handleLogoUpdate} 
+                            className="rounded-2xl" 
+                        />
+                        {isUpdatingLogo && (
+                            <div className="mt-4 flex items-center justify-center gap-2 text-primary font-black uppercase text-[10px] tracking-widest animate-pulse">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                Synchronizing Branding...
+                            </div>
+                        )}
+                    </div>
+                    <DialogFooter className="p-4 bg-muted/30 border-t flex justify-end">
+                        <Button variant="ghost" onClick={() => setIsLogoDialogOpen(false)} className="rounded-xl font-bold">Discard</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
             <LogActivityModal school={school} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
         </div>
     );

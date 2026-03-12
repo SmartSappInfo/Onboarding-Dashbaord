@@ -30,9 +30,11 @@ import { ZoneSelect } from '../../components/ZoneSelect';
 import { FocalPersonManager } from '../../components/FocalPersonManager';
 import { ManagerSelect } from '../../components/ManagerSelect';
 import { PackageSelect } from '../../components/PackageSelect';
+import { MediaSelect } from '../../components/media-select';
 import { logActivity } from '@/lib/activity-logger';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 const schoolEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -238,7 +240,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     </div>
                 </div>
               </CardHeader>
-              <CardContent className="p-6 space-y-6">
+              <CardContent className="p-6 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <FormField 
                     control={methods.control} 
@@ -276,6 +278,18 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     )} 
                   />
                 </div>
+
+                <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">Institutional Logo</Label>
+                    <Controller 
+                        name="logoUrl"
+                        control={methods.control}
+                        render={({ field }) => (
+                            <MediaSelect {...field} filterType="image" className="rounded-2xl" />
+                        )}
+                    />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
                     <FormField control={methods.control} name="initials" render={({ field }) => (
                         <FormItem>
@@ -414,7 +428,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border/50">
                         <FormField control={methods.control} name="arrearsBalance" render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Outstanding Arrears</FormLabel>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-rose-600 ml-1 flex items-center gap-1.5"><CreditCard className="h-3 w-3" /> Arrears Adjustment</FormLabel>
                                 <FormControl>
                                     <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-rose-50/50 border-none shadow-inner font-black text-rose-700" />
                                 </FormControl>
@@ -423,7 +437,7 @@ function EditSchoolForm({ schoolId }: EditFormProps) {
                         )} />
                         <FormField control={methods.control} name="creditBalance" render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Available Credit</FormLabel>
+                                <FormLabel className="text-[10px] font-black uppercase tracking-widest text-emerald-600 ml-1 flex items-center gap-1.5"><Wallet className="h-3 w-3" /> Credit Deduction</FormLabel>
                                 <FormControl>
                                     <Input type="number" step="0.01" {...field} className="h-11 rounded-xl bg-emerald-50/50 border-none shadow-inner font-black text-emerald-700" />
                                 </FormControl>
