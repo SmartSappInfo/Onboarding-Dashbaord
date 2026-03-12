@@ -36,7 +36,8 @@ import {
     AlertCircle,
     ChevronRight,
     Check,
-    Layers
+    Layers,
+    Globe
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';

@@ -39,4 +39,8 @@ Key Conventions
   - Use only for Web API access in small components.
   - Avoid for data fetching or state management.
 
+
+Code Review Before Implementations
+- Ensure all types are defined
+
 Follow Next.js docs for Data Fetching, Rendering, and Routing.
