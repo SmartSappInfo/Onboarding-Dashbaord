@@ -15,7 +15,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
-import { cn } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,7 +242,10 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     if (f.type === 'signature') {
                                         return `<td class="p-2 border border-gray-100 h-12"><div class="h-full flex items-center justify-center">${val ? `<img src="${val}" style="max-height: 40px; object-fit: contain;" />` : '-'}</div></td>`;
                                     }
-                                    return `<td class="p-3 text-xs text-gray-800 font-medium border border-gray-100 break-words">${val || '-'}</td>`;
+                                    let displayVal = val || '-';
+                                    if (f.textTransform === 'uppercase') displayVal = displayVal.toUpperCase();
+                                    else if (f.textTransform === 'capitalize') displayVal = toTitleCase(displayVal);
+                                    return `<td class="p-3 text-xs text-gray-800 font-medium border border-gray-100 break-words">${displayVal}</td>`;
                                 }).join('')}
                                 <td class="p-3 text-[10px] text-gray-500 border border-gray-100">${format(new Date(sub.submittedAt), 'MMM d, yyyy p')}</td>
                             </tr>
@@ -300,14 +303,14 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-screen overflow-hidden bg-muted/10">
+      <div className="flex flex-col h-screen overflow-hidden bg-muted/10 text-left">
         <header className="h-16 border-b bg-background px-4 sm:px-6 flex items-center justify-between shrink-0 print:hidden shadow-sm z-30">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 <div className="p-1.5 sm:p-2 bg-primary/10 rounded-lg sm:rounded-xl">
                     <SmartSappIcon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                 </div>
                 <div className="min-w-0">
-                    <h1 className="font-black text-xs sm:text-lg leading-tight truncate pr-2" title={pdfForm.name}>{pdfForm.name}</h1>
+                    <h1 className="font-black text-xs sm:text-lg leading-tight truncate pr-2 uppercase tracking-tight" title={pdfForm.name}>{pdfForm.name}</h1>
                     <p className="text-[8px] sm:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5 sm:mt-1 truncate">{pdfForm.schoolName || 'SmartSapp'}</p>
                 </div>
             </div>
@@ -437,9 +440,16 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </TableCell>
                                     {displayFields.map((field, idx) => {
                                         const value = submission.formData[field.id];
+                                        
+                                        const applyTransform = (v: string) => {
+                                            if (field.textTransform === 'uppercase') return v.toUpperCase();
+                                            if (field.textTransform === 'capitalize') return toTitleCase(v);
+                                            return v;
+                                        };
+
                                         const content = field.type === 'signature' ? (
                                             <div className="h-8 w-16 relative bg-muted/50 rounded border border-border/50 overflow-hidden">{value && <img src={value} alt="Sig" className="h-full w-full object-contain" />}</div>
-                                        ) : <span className="truncate max-w-[200px] block font-medium">{value || <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
+                                        ) : <span className="truncate max-w-[200px] block font-bold text-sm">{value ? applyTransform(String(value)) : <span className="text-muted-foreground font-normal italic opacity-50">—</span>}</span>;
                                         
                                         // Synchronize font scale with the 1.5x canvas used in previews/downloads
                                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
@@ -454,12 +464,12 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                                         justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start'
                                                     }}
                                                 >
-                                                    {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors font-bold">{content}</Link> : content}
+                                                    {idx === 0 ? <Link href={`/forms/results/${pdfForm.slug || pdfForm.id}/${submission.id}`} className="hover:text-primary transition-colors">{content}</Link> : content}
                                                 </div>
                                             </TableCell>
                                         );
                                     })}
-                                    <TableCell className="text-muted-foreground text-xs font-medium">{format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}</TableCell>
+                                    <TableCell className="text-muted-foreground text-xs font-medium uppercase tabular-nums">{format(new Date(submission.submittedAt), 'MMM d, yyyy · p')}</TableCell>
                                     <TableCell className="text-right pr-6">
                                         <div className="flex items-center justify-end gap-1">
                                             <Button asChild variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
@@ -474,7 +484,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                     </TableCell>
                                 </TableRow>
                             )) : (
-                                <TableRow><TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground font-medium">No submission records found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={displayFields.length + 3} className="h-48 text-center text-muted-foreground font-medium italic">No submission records found.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -484,14 +494,14 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
 
         {isExportingPDF && (
             <div className="fixed inset-0 z-[110] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm animate-in fade-in duration-300">
-                <Card className="w-80 shadow-2xl border-primary/20 bg-card rounded-2xl">
+                <Card className="w-80 shadow-2xl border-primary/20 bg-card rounded-2xl text-center">
                     <CardContent className="p-8 flex flex-col items-center gap-6">
                         <div className="relative">
                             <Loader2 className="h-12 w-12 animate-spin text-primary" />
                             <Printer className="h-5 w-5 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-primary" />
                         </div>
-                        <div className="text-center space-y-1">
-                            <h2 className="font-black text-xl tracking-tight">Generating Report</h2>
+                        <div className="space-y-1">
+                            <h2 className="font-black text-xl tracking-tight uppercase">Generating Report</h2>
                             <p className="text-sm text-muted-foreground font-medium">Creating A4 multi-page document...</p>
                         </div>
                         <Button variant="ghost" size="sm" onClick={() => setIsExportingPDF(false)} className="text-muted-foreground">Cancel</Button>
