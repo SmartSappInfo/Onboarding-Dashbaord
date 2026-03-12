@@ -1,18 +1,20 @@
+
 'use client';
 
 import * as React from 'react';
 import SignatureCanvas from 'react-signature-canvas';
+import Webcam from 'react-webcam';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Upload, Camera, Eraser } from 'lucide-react';
+import { Upload, Camera, Eraser, Scan, Check, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -28,10 +30,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     const sigPadRef = React.useRef<SignatureCanvas | null>(null);
     const initialsCanvasRef = React.useRef<HTMLCanvasElement>(null);
-    const videoRef = React.useRef<HTMLVideoElement>(null);
-    const photoCanvasRef = React.useRef<HTMLCanvasElement>(null);
+    const webcamRef = React.useRef<Webcam>(null);
     
-    const [activeTab, setActiveTab] = React.useState(mode === 'photo' ? 'photo' : 'draw');
+    const [activeTab, setActiveTab] = React.useState('scan');
     const [typedInitials, setTypedInitials] = React.useState('');
     const [uploadedImage, setUploadedImage] = React.useState<string | null>(null);
     const [isConsented, setIsConsented] = React.useState(false);
@@ -40,59 +41,13 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     // Camera states
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
-    const streamRef = React.useRef<MediaStream | null>(null);
 
     React.useEffect(() => {
         if (open) {
-            setActiveTab(mode === 'photo' ? 'photo' : 'draw');
+            setStep('input');
+            setActiveTab('scan');
         }
-    }, [open, mode]);
-
-     // Effect to handle camera access
-    React.useEffect(() => {
-        const startCamera = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-                streamRef.current = stream;
-                setHasCameraPermission(true);
-                
-                // We need to wait a tick for the video element to be rendered by the tab
-                setTimeout(() => {
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                }, 100);
-            } catch (error) {
-                console.error('Error accessing camera:', error);
-                setHasCameraPermission(false);
-                toast({
-                    variant: 'destructive',
-                    title: 'Camera Access Denied',
-                    description: 'Please enable camera permissions in your browser settings.',
-                });
-            }
-        };
-
-        const stopCamera = () => {
-            if (streamRef.current) {
-                streamRef.current.getTracks().forEach(track => track.stop());
-                streamRef.current = null;
-            }
-            if (videoRef.current) {
-                videoRef.current.srcObject = null;
-            }
-        };
-
-        if (open && activeTab === 'photo' && !capturedImage) {
-            startCamera();
-        } else {
-            stopCamera();
-        }
-        
-        return () => {
-           stopCamera();
-        };
-    }, [open, activeTab, capturedImage, toast]);
+    }, [open]);
 
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
@@ -101,7 +56,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
         if (activeTab === 'type') setTypedInitials('');
         if (activeTab === 'upload') setUploadedImage(null);
-        if (activeTab === 'photo') setCapturedImage(null);
+        if (activeTab === 'scan') setCapturedImage(null);
     };
 
     const resetState = () => {
@@ -122,17 +77,12 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     };
     
-    const handleCapture = () => {
-        if (videoRef.current && photoCanvasRef.current) {
-            const canvas = photoCanvasRef.current;
-            const video = videoRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true });
-            ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            setCapturedImage(canvas.toDataURL('image/png'));
+    const handleCapture = React.useCallback(() => {
+        const imageSrc = webcamRef.current?.getScreenshot();
+        if (imageSrc) {
+            setCapturedImage(imageSrc);
         }
-    };
+    }, [webcamRef]);
 
     const handleProceedToConfirm = () => {
         let dataUrl: string | null = null;
@@ -153,7 +103,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             }
         } else if (activeTab === 'upload' && uploadedImage) {
             dataUrl = uploadedImage;
-        } else if (activeTab === 'photo' && capturedImage) {
+        } else if (activeTab === 'scan' && capturedImage) {
             dataUrl = capturedImage;
         }
 
@@ -163,8 +113,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         } else {
             toast({
                 variant: 'destructive',
-                title: 'No Selection',
-                description: 'Please provide a signature or capture a photo before proceeding.',
+                title: 'No Input Detected',
+                description: 'Please provide a signature or capture a scan before proceeding.',
             });
         }
     };
@@ -186,156 +136,232 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     };
 
-    const isSignatureProvided = 
+    const isInputProvided = 
         (activeTab === 'draw' && hasDrawn) ||
         (activeTab === 'type' && typedInitials.length > 0) ||
         (activeTab === 'upload' && uploadedImage !== null) ||
-        (activeTab === 'photo' && capturedImage !== null);
+        (activeTab === 'scan' && capturedImage !== null);
+
+    const onUserMedia = () => {
+        setHasCameraPermission(true);
+    };
+
+    const onUserMediaError = () => {
+        setHasCameraPermission(false);
+        toast({
+            variant: 'destructive',
+            title: 'Camera Access Required',
+            description: 'Please enable camera permissions to scan your signature.',
+        });
+    };
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-2xl">
-                {step === 'input' && (
-                    <>
-                        <DialogHeader className="text-center sm:text-center">
-                            <DialogTitle>{mode === 'photo' ? 'Capture or Upload Photo' : 'Provide Your Signature'}</DialogTitle>
-                            <DialogDescription>Choose one of the methods below.</DialogDescription>
-                        </DialogHeader>
-                        
-                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                            <TabsList className={cn("grid w-full", mode === 'photo' ? "grid-cols-2" : "grid-cols-4")}>
-                                {mode !== 'photo' && <TabsTrigger value="draw">Draw</TabsTrigger>}
-                                {mode !== 'photo' && <TabsTrigger value="type">Type</TabsTrigger>}
-                                <TabsTrigger value="upload">Upload</TabsTrigger>
-                                <TabsTrigger value="photo">Take Photo</TabsTrigger>
-                            </TabsList>
-                            {mode !== 'photo' && (
-                                <>
-                                    <TabsContent value="draw">
-                                        <div className="mt-4 space-y-4">
-                                            <Label className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Sign your signature on this signing pad</Label>
-                                            <div className="border rounded-md bg-white relative">
-                                                <SignatureCanvas
-                                                    ref={sigPadRef}
-                                                    penColor="black"
-                                                    canvasProps={{
-                                                        className: 'w-full h-48 rounded-md',
-                                                        willreadfrequently: "true"
-                                                    }}
-                                                    onBegin={() => setHasDrawn(true)}
-                                                />
+            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2rem]">
+                <DialogHeader className="p-6 pb-2 shrink-0">
+                    <DialogTitle className="text-2xl font-black uppercase tracking-tight text-center">
+                        {mode === 'photo' ? 'Capture Identity' : 'Provide Signature'}
+                    </DialogTitle>
+                    <DialogDescription className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                        {step === 'input' ? 'Choose your preferred identity method' : 'Verify and provide legal consent'}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-hidden relative">
+                    <AnimatePresence mode="wait">
+                        {step === 'input' ? (
+                            <motion.div 
+                                key="input" 
+                                initial={{ opacity: 0, x: 20 }} 
+                                animate={{ opacity: 1, x: 0 }} 
+                                exit={{ opacity: 0, x: -20 }}
+                                className="h-full flex flex-col p-6 pt-2"
+                            >
+                                <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+                                    <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 rounded-xl mb-6">
+                                        <TabsTrigger value="scan" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Scan className="h-3 w-3" /> Scan</TabsTrigger>
+                                        <TabsTrigger value="draw" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Eraser className="h-3 w-3" /> Draw</TabsTrigger>
+                                        <TabsTrigger value="type" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Check className="h-3 w-3" /> Type</TabsTrigger>
+                                        <TabsTrigger value="upload" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Upload className="h-3 w-3" /> Upload</TabsTrigger>
+                                    </TabsList>
+
+                                    <div className="flex-1 overflow-hidden relative min-h-[300px]">
+                                        <TabsContent value="scan" className="m-0 h-full flex flex-col items-center justify-center relative">
+                                            {capturedImage ? (
+                                                <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-primary/20 bg-muted shadow-inner">
+                                                    <Image src={capturedImage} alt="Captured" fill className="object-contain p-4" />
+                                                    <Button 
+                                                        variant="secondary" 
+                                                        size="sm" 
+                                                        onClick={() => setCapturedImage(null)}
+                                                        className="absolute bottom-4 right-4 rounded-xl font-bold gap-2 shadow-lg"
+                                                    >
+                                                        <RefreshCw className="h-4 w-4" /> Retake
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <div className="w-full h-full relative group rounded-2xl overflow-hidden bg-slate-900 border-2 border-white/5 shadow-2xl">
+                                                    <Webcam
+                                                        audio={false}
+                                                        ref={webcamRef}
+                                                        screenshotFormat="image/png"
+                                                        onUserMedia={onUserMedia}
+                                                        onUserMediaError={onUserMediaError}
+                                                        videoConstraints={{ facingMode: "environment" }}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    
+                                                    {/* Scanning Frame Overlay */}
+                                                    <div className="absolute inset-0 pointer-events-none">
+                                                        <div className="absolute inset-0 bg-black/40" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 15% 100%, 15% 25%, 85% 25%, 85% 75%, 15% 75%, 15% 100%, 100% 100%, 100% 0%)' }} />
+                                                        
+                                                        {/* Corners */}
+                                                        <div className="absolute top-[25%] left-[15%] w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                        <div className="absolute top-[25%] right-[15%] w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                        <div className="absolute bottom-[25%] left-[15%] w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                        <div className="absolute bottom-[25%] right-[15%] w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                        
+                                                        {/* Scanning Line Animation */}
+                                                        <motion.div 
+                                                            animate={{ top: ['25%', '75%', '25%'] }}
+                                                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                                            className="absolute left-[15%] right-[15%] h-0.5 bg-primary/50 shadow-[0_0_10px_rgba(59,95,255,0.8)] z-10"
+                                                        />
+                                                    </div>
+
+                                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto">
+                                                        <button 
+                                                            onClick={handleCapture}
+                                                            className="w-16 h-16 rounded-full bg-white border-4 border-primary/20 flex items-center justify-center group active:scale-95 transition-all shadow-2xl"
+                                                        >
+                                                            <div className="w-12 h-12 rounded-full border-2 border-slate-200 bg-primary group-hover:scale-90 transition-transform shadow-inner flex items-center justify-center">
+                                                                <Camera className="h-6 w-6 text-white" />
+                                                            </div>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </TabsContent>
+
+                                        <TabsContent value="draw" className="m-0 h-full">
+                                            <div className="space-y-4 h-full flex flex-col">
+                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Sign within the blueprint area</Label>
+                                                <div className="flex-1 border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
+                                                    <SignatureCanvas
+                                                        ref={sigPadRef}
+                                                        penColor="black"
+                                                        canvasProps={{
+                                                            className: 'w-full h-full cursor-crosshair',
+                                                            willreadfrequently: "true"
+                                                        }}
+                                                        onBegin={() => setHasDrawn(true)}
+                                                    />
+                                                </div>
                                             </div>
-                                        </div>
-                                    </TabsContent>
-                                    <TabsContent value="type">
-                                        <div className="mt-4 space-y-4">
-                                            <Label htmlFor="initials-input" className="block text-center text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Type your name or initials</Label>
-                                            <Input 
-                                                id="initials-input" 
-                                                value={typedInitials} 
-                                                onChange={(e) => setTypedInitials(e.target.value)} 
-                                                className="text-[22px] md:text-[112px] text-center font-signature h-auto py-6 md:py-12 border-none shadow-none focus-visible:ring-0 bg-transparent" 
-                                                placeholder="Jane Doe" 
-                                            />
-                                            <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
-                                        </div>
-                                    </TabsContent>
-                                </>
-                            )}
-                            <TabsContent value="upload">
-                                <div className="mt-4">
-                                    {!uploadedImage ? (
-                                        <label htmlFor="signature-upload" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer bg-card hover:bg-muted p-6 text-center transition-colors">
-                                            <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                                            <p className="mb-2 text-sm text-muted-foreground leading-relaxed">
-                                                <span className="font-bold text-foreground">Click to upload</span> or <span className="font-bold text-foreground">drag and drop</span>
-                                                <br />
-                                                (PNG or JPG)
-                                            </p>
-                                            <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
-                                        </label>
-                                    ) : (
-                                        <div className="mt-4 p-2 border rounded-md relative flex items-center justify-center bg-muted h-48">
-                                            <Image src={uploadedImage} alt="Preview" fill className="object-contain p-2" />
-                                        </div>
-                                    )}
+                                        </TabsContent>
+
+                                        <TabsContent value="type" className="m-0 h-full flex flex-col justify-center gap-6">
+                                            <div className="space-y-4">
+                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Type your full legal name</Label>
+                                                <Input 
+                                                    value={typedInitials} 
+                                                    onChange={(e) => setTypedInitials(e.target.value)} 
+                                                    className="text-4xl sm:text-7xl text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent placeholder:opacity-10" 
+                                                    placeholder="Jane Doe" 
+                                                    autoFocus
+                                                />
+                                                <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
+                                            </div>
+                                        </TabsContent>
+
+                                        <TabsContent value="upload" className="m-0 h-full">
+                                            <div className="h-full flex flex-col">
+                                                {!uploadedImage ? (
+                                                    <label htmlFor="signature-upload" className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-2xl cursor-pointer bg-primary/[0.02] hover:bg-primary/5 p-8 text-center transition-all duration-500 group">
+                                                        <div className="p-4 bg-white rounded-2xl shadow-xl mb-4 group-hover:scale-110 transition-transform">
+                                                            <Upload className="w-8 h-8 text-primary" />
+                                                        </div>
+                                                        <p className="text-sm font-black uppercase tracking-tight">Upload Scan Profile</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase mt-1 font-bold">PNG or JPG preferred</p>
+                                                        <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
+                                                    </label>
+                                                ) : (
+                                                    <div className="flex-1 relative rounded-2xl overflow-hidden border-2 border-primary/20 bg-muted shadow-inner p-4 flex items-center justify-center">
+                                                        <Image src={uploadedImage} alt="Preview" fill className="object-contain p-4" />
+                                                        <Button 
+                                                            variant="secondary" 
+                                                            size="sm" 
+                                                            onClick={() => setUploadedImage(null)}
+                                                            className="absolute bottom-4 right-4 rounded-xl font-bold gap-2 shadow-lg"
+                                                        >
+                                                            <RefreshCw className="h-4 w-4" /> Change File
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TabsContent>
+                                    </div>
+                                </Tabs>
+                            </motion.div>
+                        ) : (
+                            <motion.div 
+                                key="confirm" 
+                                initial={{ opacity: 0, x: 20 }} 
+                                animate={{ opacity: 1, x: 0 }} 
+                                exit={{ opacity: 0, x: -20 }}
+                                className="p-8 space-y-10 text-center"
+                            >
+                                <div className="p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px]">
+                                    {signatureData && <Image src={signatureData} alt="Verification" width={400} height={200} className="object-contain" />}
                                 </div>
-                            </TabsContent>
-                            <TabsContent value="photo">
-                                <div className="mt-4 space-y-4 text-center">
-                                    <Label className="block text-muted-foreground uppercase text-[10px] tracking-widest font-bold">Capture a photo</Label>
-                                    
-                                    {hasCameraPermission === false && (
-                                        <div className="p-4 border border-destructive/50 rounded-lg bg-destructive/5 text-destructive text-sm font-bold text-center">
-                                            Camera access is required. Please enable it in your browser settings and refresh.
-                                        </div>
-                                    )}
-                                    
-                                    <div className={cn("relative w-full aspect-video rounded-md bg-black overflow-hidden", capturedImage && "hidden")}>
-                                        <video ref={videoRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+                                
+                                <div className="space-y-6">
+                                    <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-4 text-left shadow-sm">
+                                        <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm border border-blue-100"><Info className="h-5 w-5" /></div>
+                                        <p className="text-xs font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                            By selecting “Confirm” you acknowledge that this electronic identity profile will be applied to the document as a legally binding signature.
+                                        </p>
                                     </div>
 
-                                    {capturedImage && (
-                                        <div className="relative w-full aspect-video rounded-md border bg-muted overflow-hidden">
-                                            <Image src={capturedImage} alt="Captured" fill className="object-contain" />
-                                        </div>
-                                    )}
-                                    
-                                    <div className="flex justify-center gap-4">
-                                        {!capturedImage && (
-                                            <Button onClick={handleCapture} disabled={!hasCameraPermission}>
-                                                <Camera className="mr-2 h-4 w-4" />Capture
-                                            </Button>
-                                        )}
-                                        {capturedImage && (
-                                            <Button variant="outline" onClick={() => setCapturedImage(null)}>
-                                                Retake Photo
-                                            </Button>
-                                        )}
+                                    <div className="flex items-center justify-center gap-3">
+                                        <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} className="scale-125" />
+                                        <Label htmlFor="consent-toggle" className="text-base font-black uppercase tracking-tight cursor-pointer">I verify and consent</Label>
                                     </div>
-                                    <canvas ref={photoCanvasRef} className="hidden" />
                                 </div>
-                            </TabsContent>
-                        </Tabs>
-                        
-                        <DialogFooter className="mt-6 sm:justify-between">
-                             <Button variant="ghost" onClick={handleClear} disabled={!isSignatureProvided}>
-                                <Eraser className="mr-2 h-4 w-4"/>
-                                Clear
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
+                <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
+                    {step === 'input' ? (
+                        <>
+                            <Button variant="ghost" onClick={handleClear} disabled={!isInputProvided} className="font-bold rounded-xl h-12 px-6 gap-2">
+                                <Eraser className="h-4 w-4" /> Clear
                             </Button>
-                            <Button onClick={handleProceedToConfirm} disabled={!isSignatureProvided}>
-                                Next
+                            <div className="flex-1" />
+                            <Button variant="ghost" onClick={onClose} className="font-bold rounded-xl h-12 px-8">Cancel</Button>
+                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black px-12 h-12 shadow-lg uppercase tracking-widest text-xs">
+                                Review & Continue
                             </Button>
-                        </DialogFooter>
-                    </>
-                )}
-
-                {step === 'confirm' && (
-                    <>
-                        <DialogHeader className="text-center sm:text-center">
-                            <DialogTitle>Confirm {mode === 'photo' ? 'Photo' : 'Signature'}</DialogTitle>
-                            <DialogDescription>Please review and provide consent.</DialogDescription>
-                        </DialogHeader>
-
-                        <div className="my-6 flex flex-col items-center gap-6">
-                            <div className="p-4 border rounded-md bg-muted w-full max-w-sm h-32 flex items-center justify-center">
-                                {signatureData && <Image src={signatureData} alt="Final preview" width={200} height={100} className="object-contain" />}
-                            </div>
-                            <div className="p-4 rounded-xl border bg-muted/30 text-xs text-center leading-relaxed">
-                                By selecting “Confirm” you consent to electronically include this {mode === 'photo' ? 'photo' : 'signature'} in the document. This is legally binding where applicable.
-                            </div>
-                             <div className="flex items-center justify-center space-x-2 w-full">
-                                <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} />
-                                <Label htmlFor="consent-toggle" className="text-sm font-medium">I have reviewed and I consent.</Label>
-                            </div>
-                        </div>
-
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setStep('input')}>Back</Button>
-                            <Button onClick={handleFinalSign} disabled={!isConsented || !signatureData}>Confirm</Button>
-                        </DialogFooter>
-                    </>
-                )}
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2">
+                                <ArrowLeft className="h-4 w-4" /> Back
+                            </Button>
+                            <div className="flex-1" />
+                            <Button 
+                                onClick={handleFinalSign} 
+                                disabled={!isConsented || !signatureData}
+                                className="rounded-[1.5rem] font-black h-14 px-16 shadow-2xl bg-primary text-white uppercase tracking-widest text-sm transition-all active:scale-95"
+                            >
+                                <ShieldCheck className="mr-2 h-5 w-5" />
+                                Execute Signature
+                            </Button>
+                        </>
+                    )}
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
