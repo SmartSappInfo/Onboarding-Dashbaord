@@ -41,7 +41,8 @@ import {
     Package,
     Timer,
     Settings2,
-    FileCheck
+    FileCheck,
+    GraduationCap
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -67,6 +68,7 @@ import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { NavigationProvider } from '@/context/NavigationContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
+import type { UserRole } from '@/lib/types';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -80,8 +82,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
-  const [retryCount, setRetryCount] = React.useState(0);
-  const [userRole, setUserRole] = React.useState<string | null>(null);
+  const [userRoles, setUserRoles] = React.useState<UserRole[]>([]);
 
   React.useEffect(() => {
     if (isUserLoading) return;
@@ -91,7 +92,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       getDoc(userDocRef)
         .then(docSnap => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-            setUserRole(docSnap.data().role || 'cse');
+            const data = docSnap.data();
+            // Handle both legacy role and new roles array
+            const roles = data.roles || (data.role ? [data.role] : ['cse']);
+            setUserRoles(roles);
             setLoaderStatus('success');
             setTimeout(() => setIsReady(true), 800);
           } else {
@@ -118,7 +122,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       setLoaderStatus('failed');
       setTimeout(() => { router.push('/login'); }, 1000);
     }
-  }, [isUserLoading, user, userError, router, firestore, auth, toast, retryCount]);
+  }, [isUserLoading, user, userError, router, firestore, auth, toast]);
 
   if (!isReady) {
     return (
@@ -128,9 +132,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  const isAdmin = userRole === 'admin';
-  const isFinance = userRole === 'finance' || isAdmin;
-  const isSupervisor = userRole === 'supervisor' || isAdmin;
+  const hasRole = (role: UserRole) => userRoles.includes(role) || userRoles.includes('admin');
+
+  const isAdmin = hasRole('admin');
+  const isFinance = hasRole('finance');
+  const isSupervisor = hasRole('supervisor');
+  const isTrainer = hasRole('trainer');
 
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
@@ -139,27 +146,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: true },
     { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: true },
     { href: '/admin/automations', icon: Zap, label: 'Automations', visible: isAdmin },
-    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isSupervisor },
+    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isSupervisor || isAdmin },
   ];
 
   const studioNavItems = [
-    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isSupervisor },
+    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isSupervisor || isAdmin },
     { href: '/admin/media', icon: Film, label: 'Media', visible: true },
-    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isSupervisor },
-    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isSupervisor },
-    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isSupervisor },
+    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isSupervisor || isFinance || isAdmin },
+    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isSupervisor || isFinance || isAdmin },
+    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isSupervisor || isAdmin },
   ];
 
   const financeNavItems = [
-    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isFinance },
-    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isFinance },
-    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isFinance },
-    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isFinance },
-    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isFinance },
+    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isFinance || isAdmin },
+    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isFinance || isAdmin },
+    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isFinance || isAdmin },
+    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isFinance || isAdmin },
+    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isFinance || isAdmin },
   ];
 
   const systemNavItems = [
-    { href: '/admin/activities', icon: History, label: 'Activities', visible: isSupervisor },
+    { href: '/admin/activities', icon: History, label: 'Activities', visible: isSupervisor || isAdmin },
     { href: '/admin/users', icon: Users, label: 'Users', visible: isAdmin },
     { href: '/admin/settings', icon: Settings, label: 'System', visible: isAdmin },
   ];
@@ -197,7 +204,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </SidebarMenu>
                   </SidebarGroup>
 
-                  {isFinance && (
+                  {(isFinance || isAdmin) && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Finance Hub</SidebarGroupLabel>
                         <SidebarMenu>
@@ -225,20 +232,18 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </SidebarMenu>
                   </SidebarGroup>
 
-                  {isSupervisor && (
-                    <SidebarGroup className="mt-auto">
-                        <SidebarGroupLabel>Management</SidebarGroupLabel>
-                        <SidebarMenu>
-                        {systemNavItems.filter(i => i.visible).map((item) => (
-                            <SidebarMenuItem key={item.href}>
-                            <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
-                                <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
-                            </SidebarMenuButton>
-                            </SidebarMenuItem>
-                        ))}
-                        </SidebarMenu>
-                    </SidebarGroup>
-                  )}
+                  <SidebarGroup className="mt-auto">
+                      <SidebarGroupLabel>Management</SidebarGroupLabel>
+                      <SidebarMenu>
+                      {systemNavItems.filter(i => i.visible).map((item) => (
+                          <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                          </SidebarMenuButton>
+                          </SidebarMenuItem>
+                      ))}
+                      </SidebarMenu>
+                  </SidebarGroup>
                 </SidebarContent>
                 <SidebarFooter>
                     <SidebarMenu>
@@ -273,7 +278,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           <div className="flex flex-col space-y-1">
                               <p className="text-sm font-medium leading-none">{user?.displayName}</p>
                               <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                              <Badge variant="outline" className="w-fit mt-1 text-[8px] uppercase font-black">{userRole}</Badge>
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {userRoles.map(role => (
+                                    <Badge key={role} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4">{role}</Badge>
+                                ))}
+                              </div>
                           </div>
                           </DropdownMenuLabel>
                           <DropdownMenuSeparator />

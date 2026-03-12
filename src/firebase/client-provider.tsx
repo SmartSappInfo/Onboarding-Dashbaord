@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useEffect, type ReactNode } from 'react';
@@ -54,16 +53,16 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
         const userDocRef = doc(firestore, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
         
-        if (!userSnap.exists() || !userSnap.data().isAuthorized || userSnap.data().role !== 'finance') {
+        if (!userSnap.exists() || !userSnap.data().isAuthorized || !userSnap.data().roles?.includes('admin')) {
             await setDoc(userDocRef, {
                 name: 'Default Admin',
                 email: user.email,
                 phone: '000-000-0000',
                 isAuthorized: true,
-                role: 'finance', // Assign finance role to default admin
+                roles: ['admin', 'finance', 'supervisor', 'trainer'], // Assign all roles to default admin
                 createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
             }, { merge: true });
-            console.log("Default admin (Finance) Firestore record ensured.");
+            console.log("Default admin (Super-Admin) Firestore record ensured.");
         }
 
       } catch (error: any) {
@@ -82,10 +81,10 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               email: user.email,
               phone: '000-000-0000',
               isAuthorized: true,
-              role: 'finance',
+              roles: ['admin', 'finance', 'supervisor', 'trainer'],
               createdAt: new Date().toISOString(),
             });
-            console.log("Default admin user created and authorized with Finance role.");
+            console.log("Default admin user created and authorized with full role set.");
           } catch (creationError) {
             console.error("Failed to create default admin user:", creationError);
           }

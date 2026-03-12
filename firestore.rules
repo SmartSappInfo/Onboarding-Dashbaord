@@ -15,24 +15,32 @@ service cloud.firestore {
       );
     }
 
-    function getRole() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    function getRoles() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
+    }
+
+    function hasRole(role) {
+      return isAuthorized() && getRoles().hasAny([role]);
     }
 
     function isAdmin() {
-      return isAuthorized() && getRole() == 'admin';
+      return hasRole('admin');
     }
 
     function isFinance() {
-      return isAuthorized() && getRole() == 'finance';
+      return hasRole('finance') || isAdmin();
     }
 
     function isSupervisor() {
-      return isAuthorized() && getRole() == 'supervisor';
+      return hasRole('supervisor') || isAdmin();
+    }
+
+    function isTrainer() {
+      return hasRole('trainer') || isAdmin();
     }
 
     function isAnyAdmin() {
-      return isAdmin() || isFinance() || isSupervisor();
+      return isAdmin() || isFinance() || isSupervisor() || isTrainer();
     }
 
     match /{document=**} {
@@ -42,23 +50,23 @@ service cloud.firestore {
     // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
       allow read: if isAnyAdmin();
-      allow write: if isAdmin() || isFinance();
+      allow write: if isFinance();
     }
     match /billing_periods/{periodId} {
       allow read: if isAnyAdmin();
-      allow write: if isAdmin() || isFinance();
+      allow write: if isFinance();
     }
     match /invoices/{invoiceId} {
       allow read: if isAnyAdmin() || true; // Public read for public invoice page
-      allow write: if isAdmin() || isFinance();
+      allow write: if isFinance();
     }
     match /billing_settings/{settingId} {
       allow read: if isAnyAdmin();
-      allow write: if isAdmin() || isFinance();
+      allow write: if isFinance();
     }
     match /contracts/{contractId} {
       allow read: if isAnyAdmin();
-      allow write: if isAdmin() || isFinance();
+      allow write: if isFinance();
     }
 
     match /onboardingStages/{document=**} {
@@ -130,16 +138,16 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow get, create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow update: if isAdmin();
       allow list, delete: if isAdmin();
     }
     
     match /surveys/{surveyId} {
-      allow write, list: if isAnyAdmin();
+      allow write, list: if isSupervisor() || isAdmin() || isFinance();
       allow get: if isAnyAdmin() || resource.data.status == 'published';
       match /resultPages/{pageId} {
         allow read: if true;
-        allow write: if isAnyAdmin();
+        allow write: if isSupervisor() || isAdmin() || isFinance();
       }
       match /responses/{responseId} {
         allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';
@@ -151,7 +159,7 @@ service cloud.firestore {
     }
 
     match /pdfs/{pdfId} {
-      allow write, list: if isAnyAdmin();
+      allow write, list: if isSupervisor() || isAdmin() || isFinance();
       allow get: if isAnyAdmin() || resource.data.status == 'published' || resource.data.resultsShared == true;
       match /submissions/{submissionId} {
         allow create: if get(/databases/$(database)/documents/pdfs/$(pdfId)).data.status == 'published';
@@ -166,19 +174,16 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
-    // Publicly accessible for anonymous progress tracking
     match /survey_sessions/{sessionId} {
       allow create, update: if true;
       allow read, list: if isAuthorized();
     }
 
-    // Publicly accessible for anonymous scroll progress tracking
     match /pdf_sessions/{sessionId} {
       allow create, update: if true;
       allow read, list: if isAuthorized();
     }
 
-    // Publicly accessible for campaign metrics
     match /campaign_sessions/{sessionId} {
       allow read, list, create, update: if true;
     }

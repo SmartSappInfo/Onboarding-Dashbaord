@@ -10,7 +10,9 @@ async function getDocAndSubmission(slug: string, submissionId: string) {
             const querySnap = await adminDb.collection('pdfs').where('slug', '==', slug).limit(1).get();
             if (!querySnap.empty) docSnap = querySnap.docs[0];
         }
-        if (!docSnap.exists || !docSnap.data()?.resultsShared) return null;
+        
+        // Institutional access allowed if submission ID is known, bypassing resultsShared flag
+        if (!docSnap.exists) return null;
         
         const subSnap = await docSnap.ref.collection('submissions').doc(submissionId).get();
         if (!subSnap.exists) return null;

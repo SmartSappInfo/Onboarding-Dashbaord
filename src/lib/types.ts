@@ -24,7 +24,7 @@ export interface Zone {
   name: string;
 }
 
-export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse';
+export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer';
 
 export interface UserProfile {
   id: string;
@@ -34,7 +34,8 @@ export interface UserProfile {
   photoURL?: string;
   color?: string;
   isAuthorized: boolean;
-  role: UserRole;
+  role?: UserRole; // Legacy support
+  roles: UserRole[]; // Multi-role support
   createdAt: string; // ISO string
 }
 
