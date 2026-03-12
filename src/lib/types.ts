@@ -24,7 +24,31 @@ export interface Zone {
   name: string;
 }
 
-export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer';
+export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | string;
+
+export const APP_PERMISSIONS = [
+  { id: 'schools_view', label: 'View Schools', category: 'Operations' },
+  { id: 'schools_edit', label: 'Edit School Profiles', category: 'Operations' },
+  { id: 'finance_view', label: 'View Finance Hub', category: 'Finance' },
+  { id: 'finance_manage', label: 'Manage Billing & Contracts', category: 'Finance' },
+  { id: 'studios_view', label: 'View Design Studios', category: 'Studios' },
+  { id: 'studios_edit', label: 'Create Surveys/PDFs/Messages', category: 'Studios' },
+  { id: 'system_admin', label: 'Full System Management', category: 'Management' },
+  { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
+  { id: 'tasks_manage', label: 'Manage CRM Tasks', category: 'Operations' },
+  { id: 'activities_view', label: 'View Audit Timeline', category: 'Management' },
+] as const;
+
+export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string;
+  permissions: AppPermissionId[];
+  color: string;
+  createdAt: string;
+}
 
 export interface UserProfile {
   id: string;
@@ -34,8 +58,8 @@ export interface UserProfile {
   photoURL?: string;
   color?: string;
   isAuthorized: boolean;
-  role?: UserRole; // Legacy support
-  roles: UserRole[]; // Multi-role support
+  roles: string[]; // Array of Role IDs
+  permissions?: AppPermissionId[]; // Flattened permissions for security and UI
   createdAt: string; // ISO string
 }
 

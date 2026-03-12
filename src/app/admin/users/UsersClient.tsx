@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, orderBy, query, doc, updateDoc, writeBatch, getDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { UserProfile, UserRole } from '@/lib/types';
+import type { UserProfile, Role, AppPermissionId } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -19,46 +19,52 @@ import { MultiSelect } from '@/components/ui/multi-select';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
-const ROLE_OPTIONS: { value: UserRole; label: string; description: string; color: string }[] = [
-    { value: 'admin', label: 'Administrator', description: 'Full system control and user management.', color: 'bg-rose-500' },
-    { value: 'finance', label: 'Finance', description: 'Billing, invoicing, and legal agreements.', color: 'bg-emerald-500' },
-    { value: 'supervisor', label: 'Supervisor', description: 'Regional oversight and design studios.', color: 'bg-blue-500' },
-    { value: 'trainer', label: 'Trainer', description: 'Training workshops and meeting coordination.', color: 'bg-indigo-500' },
-    { value: 'cse', label: 'CSE', description: 'Institutional operations and task execution.', color: 'bg-slate-500' },
-];
-
 export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
-  const usersCol = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'users');
-  }, [firestore]);
-  
-  const usersQuery = useMemoFirebase(() => {
-    if (!usersCol) return null;
-    return query(usersCol, orderBy('createdAt', 'desc'));
-  }, [usersCol]);
+  // 1. DATA SUBSCRIPTIONS
+  const usersQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'users'), orderBy('createdAt', 'desc')) : null, 
+  [firestore]);
 
-  const { data: users, isLoading, error } = useCollection<UserProfile>(usersQuery);
+  const rolesQuery = useMemoFirebase(() => 
+    firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, 
+  [firestore]);
 
+  const { data: users, isLoading: isLoadingUsers, error } = useCollection<UserProfile>(usersQuery);
+  const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
+
+  const isLoading = isLoadingUsers || isLoadingRoles;
+
+  // 2. PERMISSION FLATTENING ENGINE
   const handleUpdateUser = async (userId: string, updates: Partial<UserProfile>) => {
-    if (!firestore) return;
+    if (!firestore || !roles) return;
     setUpdatingId(userId);
 
     const userDocRef = doc(firestore, 'users', userId);
+    
+    // If roles changed, we need to flatten the associated permissions
+    if (updates.roles) {
+        const selectedRoleObjects = roles.filter(r => updates.roles!.includes(r.id));
+        const allPerms = new Set<AppPermissionId>();
+        selectedRoleObjects.forEach(r => {
+            if (r.permissions) r.permissions.forEach(p => allPerms.add(p));
+        });
+        updates.permissions = Array.from(allPerms);
+    }
+
     try {
         await updateDoc(userDocRef, { ...updates, updatedAt: new Date().toISOString() });
-        toast({ title: 'Access Updated', description: 'User permissions synchronized.' });
+        toast({ title: 'Access Synchronized', description: 'Institutional permissions have been updated.' });
     } catch (e) {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
           requestResourceData: updates,
         }));
-        toast({ variant: 'destructive', title: 'Update Failed', description: 'Unauthorized operation.' });
+        toast({ variant: 'destructive', title: 'Update Failed' });
     } finally {
         setUpdatingId(null);
     }
@@ -68,41 +74,48 @@ export default function UsersClient() {
 
   return (
     <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
-      <div className="max-w-7xl mx-auto space-y-10">
+      <div className="max-w-7xl mx-auto space-y-10 pb-32">
         
         <div>
             <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
                 <ShieldCheck className="h-10 w-10 text-primary" />
                 Identity Command
             </h1>
-            <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional roles and cumulative permission sets.</p>
+            <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional access levels and flattened permission sets.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Permission Legend */}
+            {/* Permission Matrix Preview */}
             <div className="lg:col-span-1 space-y-6">
                 <Card className="rounded-[2rem] border-none ring-1 ring-border bg-white overflow-hidden shadow-sm">
                     <CardHeader className="bg-primary/5 border-b pb-4">
                         <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                            <Zap className="h-3 w-3" /> Permission Matrix
+                            <Zap className="h-3 w-3" /> Collective Logic
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="p-6 space-y-6">
-                        {ROLE_OPTIONS.map(r => (
-                            <div key={r.value} className="space-y-1.5">
+                        {isLoadingRoles ? (
+                            Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-xl" />)
+                        ) : roles?.map(r => (
+                            <div key={r.id} className="space-y-1.5 group cursor-help">
                                 <div className="flex items-center gap-2">
-                                    <div className={cn("w-2.5 h-2.5 rounded-full shadow-sm", r.color)} />
-                                    <span className="text-xs font-black uppercase tracking-tight">{r.label}</span>
+                                    <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: r.color }} />
+                                    <span className="text-xs font-black uppercase tracking-tight">{r.name}</span>
                                 </div>
-                                <p className="text-[10px] text-muted-foreground font-medium leading-relaxed pl-4">{r.description}</p>
+                                <p className="text-[9px] text-muted-foreground font-medium leading-relaxed pl-4 line-clamp-2 opacity-60 group-hover:opacity-100 transition-opacity">
+                                    {r.description}
+                                </p>
                             </div>
                         ))}
                         <Separator className="opacity-50" />
                         <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-inner">
                             <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                                Permissions are additive. Assigning multiple roles grants the combined access of all selections.
-                            </p>
+                            <div className="space-y-1">
+                                <p className="text-[9px] font-black text-blue-900 uppercase">Additive Access</p>
+                                <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                    Permissions are flattened across all assigned roles. Users gain the union of all capabilities.
+                                </p>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -116,7 +129,7 @@ export default function UsersClient() {
                             <TableRow>
                                 <TableHead className="w-16 pl-8 text-[10px] font-black uppercase tracking-widest py-5">Profile</TableHead>
                                 <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Corporate Identity</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Assigned Roles</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Assigned Architecture</TableHead>
                                 <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-5">Authorized</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -154,10 +167,10 @@ export default function UsersClient() {
                                         </TableCell>
                                         <TableCell className="min-w-[250px]">
                                             <MultiSelect 
-                                                options={ROLE_OPTIONS.map(r => ({ label: r.label, value: r.value }))}
-                                                value={user.roles || (user.role ? [user.role] : ['cse'])}
-                                                onChange={(vals) => handleUpdateUser(user.id, { roles: vals as UserRole[] })}
-                                                placeholder="Assign Roles..."
+                                                options={roles?.map(r => ({ label: r.name, value: r.id })) || []}
+                                                value={user.roles || []}
+                                                onChange={(vals) => handleUpdateUser(user.id, { roles: vals })}
+                                                placeholder="Assign Role Architecture..."
                                                 className="border-none bg-muted/20 hover:bg-muted/40 shadow-none rounded-xl"
                                             />
                                         </TableCell>

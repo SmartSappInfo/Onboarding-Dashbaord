@@ -2,7 +2,7 @@
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -83,6 +83,60 @@ const defaultPackages: Omit<SubscriptionPackage, 'id'>[] = [
 ];
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedRolesAndPermissions(firestore: Firestore): Promise<number> {
+    await clearCollection(firestore, 'roles');
+    const batch = writeBatch(firestore);
+    const rolesCol = collection(firestore, 'roles');
+
+    const timestamp = new Date().toISOString();
+
+    const initialRoles: Omit<Role, 'id'>[] = [
+        {
+            name: 'Administrator',
+            description: 'Full system control, user management, and configuration.',
+            color: '#f72585',
+            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Finance Officer',
+            description: 'Manages billing, invoicing, and institutional agreements.',
+            color: '#10b981',
+            permissions: ['schools_view', 'finance_view', 'finance_manage', 'studios_view', 'activities_view'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Regional Supervisor',
+            description: 'Regional oversight, performance audit, and content architecture.',
+            color: '#3b82f6',
+            permissions: ['schools_view', 'schools_edit', 'studios_view', 'studios_edit', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Institutional Trainer',
+            description: 'Focused on meeting coordination and staff training workshops.',
+            color: '#8b5cf6',
+            permissions: ['schools_view', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            createdAt: timestamp
+        },
+        {
+            name: 'Customer Success (CSE)',
+            description: 'Daily operational tasks and school profile maintenance.',
+            color: '#64748b',
+            permissions: ['schools_view', 'schools_edit', 'meetings_manage', 'tasks_manage'],
+            createdAt: timestamp
+        }
+    ];
+
+    initialRoles.forEach(role => {
+        const id = role.name.toLowerCase().replace(/\s+/g, '_');
+        batch.set(doc(rolesCol, id), role);
+    });
+
+    await batch.commit();
+    return initialRoles.length;
+}
 
 export async function seedZones(firestore: Firestore): Promise<number> {
   await clearCollection(firestore, 'zones');

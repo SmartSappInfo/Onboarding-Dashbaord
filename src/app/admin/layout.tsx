@@ -42,7 +42,8 @@ import {
     Timer,
     Settings2,
     FileCheck,
-    GraduationCap
+    GraduationCap,
+    ShieldAlert
 } from 'lucide-react';
 import { SmartSappLogo as Logo, SmartSappIcon } from '@/components/icons';
 import { useUser, useAuth, useFirestore } from '@/firebase';
@@ -68,7 +69,7 @@ import { GlobalFilterProvider } from '@/context/GlobalFilterProvider';
 import { NavigationProvider } from '@/context/NavigationContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
-import type { UserRole } from '@/lib/types';
+import type { UserRole, AppPermissionId, Role } from '@/lib/types';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
@@ -82,7 +83,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
-  const [userRoles, setUserRoles] = React.useState<UserRole[]>([]);
+  const [userPermissions, setUserPermissions] = React.useState<AppPermissionId[]>([]);
+  const [userRolesData, setUserRolesData] = React.useState<{ id: string, name: string }[]>([]);
 
   React.useEffect(() => {
     if (isUserLoading) return;
@@ -90,12 +92,27 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     if (user) {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef)
-        .then(docSnap => {
+        .then(async (docSnap) => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
             const data = docSnap.data();
-            // Handle both legacy role and new roles array
-            const roles = data.roles || (data.role ? [data.role] : ['cse']);
-            setUserRoles(roles);
+            
+            // 1. Resolve Permissions
+            // Use flattened permissions if available (optimized)
+            let perms = data.permissions || [];
+            
+            // 2. Fetch Role Names for Display
+            const roleIds = data.roles || [];
+            const roleDocs = await Promise.all(
+                roleIds.map((id: string) => getDoc(doc(firestore, 'roles', id)))
+            );
+            
+            const resolvedRoles = roleDocs
+                .filter(d => d.exists())
+                .map(d => ({ id: d.id, name: (d.data() as Role).name }));
+            
+            setUserRolesData(resolvedRoles);
+            setUserPermissions(perms);
+            
             setLoaderStatus('success');
             setTimeout(() => setIsReady(true), 800);
           } else {
@@ -132,43 +149,38 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     );
   }
 
-  const hasRole = (role: UserRole) => userRoles.includes(role) || userRoles.includes('admin');
-
-  const isAdmin = hasRole('admin');
-  const isFinance = hasRole('finance');
-  const isSupervisor = hasRole('supervisor');
-  const isTrainer = hasRole('trainer');
+  const hasPerm = (perm: AppPermissionId) => userPermissions.includes(perm) || userPermissions.includes('system_admin' as any);
 
   const coreNavItems = [
     { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
-    { href: '/admin/schools', icon: School, label: 'Schools', visible: true },
-    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: true },
-    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: true },
-    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: true },
-    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: isAdmin },
-    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isSupervisor || isAdmin },
+    { href: '/admin/schools', icon: School, label: 'Schools', visible: hasPerm('schools_view') },
+    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: hasPerm('schools_view') },
+    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: hasPerm('tasks_manage') },
+    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: hasPerm('meetings_manage') },
+    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: hasPerm('system_admin') },
+    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: hasPerm('activities_view') },
   ];
 
   const studioNavItems = [
-    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isSupervisor || isAdmin },
+    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: hasPerm('studios_view') },
     { href: '/admin/media', icon: Film, label: 'Media', visible: true },
-    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isSupervisor || isFinance || isAdmin },
-    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isSupervisor || isFinance || isAdmin },
-    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isSupervisor || isAdmin },
+    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: hasPerm('studios_view') },
+    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: hasPerm('studios_view') },
+    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: hasPerm('studios_view') },
   ];
 
   const financeNavItems = [
-    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isFinance || isAdmin },
-    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isFinance || isAdmin },
-    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isFinance || isAdmin },
-    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isFinance || isAdmin },
-    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isFinance || isAdmin },
+    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: hasPerm('finance_view') },
+    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: hasPerm('finance_view') },
+    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: hasPerm('finance_view') },
+    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: hasPerm('finance_view') },
+    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: hasPerm('finance_manage') },
   ];
 
   const systemNavItems = [
-    { href: '/admin/activities', icon: History, label: 'Activities', visible: isSupervisor || isAdmin },
-    { href: '/admin/users', icon: Users, label: 'Users', visible: isAdmin },
-    { href: '/admin/settings', icon: Settings, label: 'System', visible: isAdmin },
+    { href: '/admin/activities', icon: History, label: 'Activities', visible: hasPerm('activities_view') },
+    { href: '/admin/users', icon: Users, label: 'Users', visible: hasPerm('system_admin') },
+    { href: '/admin/settings', icon: Settings, label: 'System', visible: hasPerm('system_admin') },
   ];
 
   return (
@@ -176,7 +188,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <NavigationProvider>
         <GlobalFilterProvider>
           <SidebarProvider defaultOpen={false}>
-            <div className="flex h-screen w-full bg-background text-foreground">
+            <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
               <Sidebar collapsible="icon" className="border-r rounded-tr-lg rounded-br-lg print:hidden">
                 <SidebarHeader className="p-2">
                    <div className="flex h-10 items-center justify-start group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 px-2">
@@ -204,7 +216,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     </SidebarMenu>
                   </SidebarGroup>
 
-                  {(isFinance || isAdmin) && (
+                  {hasPerm('finance_view') && (
                     <SidebarGroup>
                         <SidebarGroupLabel>Finance Hub</SidebarGroupLabel>
                         <SidebarMenu>
@@ -273,21 +285,21 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           </Avatar>
                           </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-56" align="end" forceMount>
+                      <DropdownMenuContent className="w-64" align="end" forceMount>
                           <DropdownMenuLabel className="font-normal">
                           <div className="flex flex-col space-y-1">
-                              <p className="text-sm font-medium leading-none">{user?.displayName}</p>
-                              <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {userRoles.map(role => (
-                                    <Badge key={role} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4">{role}</Badge>
+                              <p className="text-sm font-black leading-none">{user?.displayName}</p>
+                              <p className="text-[10px] leading-none text-muted-foreground font-bold">{user?.email}</p>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {userRolesData.map(role => (
+                                    <Badge key={role.id} variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 bg-primary/5 border-primary/20 text-primary">{role.name}</Badge>
                                 ))}
                               </div>
                           </div>
                           </DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem asChild><Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link></DropdownMenuItem>
-                          {isAdmin && (
+                          {hasPerm('system_admin') && (
                             <>
                                 <DropdownMenuItem asChild><Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link></DropdownMenuItem>
                                 <DropdownMenuItem asChild><Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link></DropdownMenuItem>
@@ -299,7 +311,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       </DropdownMenu>
                   </div>
                 </header>
-                <main className="flex-1 flex flex-col overflow-auto bg-background">{children}</main>
+                <main className="flex-1 flex flex-col overflow-auto bg-background relative">{children}</main>
               </SidebarInset>
             </div>
           </SidebarProvider>

@@ -27,8 +27,6 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
   // This useEffect hook will create a default admin user for development purposes.
   useEffect(() => {
     const seedAdminUser = async () => {
-      // Disable background auth attempts on public form pages to prevent 
-      // network-request-failed errors during large payload submissions.
       if (typeof window === 'undefined' || process.env.NODE_ENV !== 'development' || pathname?.startsWith('/forms/')) {
         return;
       }
@@ -49,42 +47,46 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
             user = userCredential.user;
         }
 
-        // Ensure Firestore document exists and is authorized
         const userDocRef = doc(firestore, 'users', user.uid);
         const userSnap = await getDoc(userDocRef);
         
-        if (!userSnap.exists() || !userSnap.data().isAuthorized || !userSnap.data().roles?.includes('admin')) {
+        if (!userSnap.exists() || !userSnap.data().isAuthorized || !userSnap.data().roles?.includes('administrator')) {
             await setDoc(userDocRef, {
                 name: 'Default Admin',
                 email: user.email,
                 phone: '000-000-0000',
                 isAuthorized: true,
-                roles: ['admin', 'finance', 'supervisor', 'trainer'], // Assign all roles to default admin
+                roles: ['administrator'], 
+                permissions: [
+                    'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
+                    'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 
+                    'tasks_manage', 'activities_view'
+                ],
                 createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
             }, { merge: true });
-            console.log("Default admin (Super-Admin) Firestore record ensured.");
+            console.log("Super-Admin record ensured with multi-role permissions.");
         }
 
       } catch (error: any) {
-        if (error.code === 'auth/network-request-failed') {
-            console.warn("Dev Seeder: Network request failed. Skipping admin user seed.");
-            return;
-        }
+        if (error.code === 'auth/network-request-failed') return;
         if (error.code === 'auth/invalid-credential' || error.code === 'auth/user-not-found') {
           try {
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 
-            const userDocRef = doc(firestore, 'users', user.uid);
-            await setDoc(userDocRef, {
+            await setDoc(doc(firestore, 'users', user.uid), {
               name: 'Default Admin',
               email: user.email,
               phone: '000-000-0000',
               isAuthorized: true,
-              roles: ['admin', 'finance', 'supervisor', 'trainer'],
+              roles: ['administrator'],
+              permissions: [
+                'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
+                'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 
+                'tasks_manage', 'activities_view'
+              ],
               createdAt: new Date().toISOString(),
             });
-            console.log("Default admin user created and authorized with full role set.");
           } catch (creationError) {
             console.error("Failed to create default admin user:", creationError);
           }
