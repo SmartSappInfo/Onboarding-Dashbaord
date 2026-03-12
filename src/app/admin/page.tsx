@@ -28,7 +28,7 @@ export default async function AdminDashboardPage() {
                         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
                             <RainbowButton asChild size="sm" className="justify-start rounded-xl font-bold h-9 shadow-lg">
                                 <Link href="/admin/schools/new/ai">
-                                    <Sparkles className="h-4 w-4 mr-2" /> AI Initialize
+                                    <Sparkles className="h-4 w-4 mr-2" /> AI New School
                                 </Link>
                             </RainbowButton>
                             <Button asChild variant="outline" size="sm" className="justify-start rounded-xl font-bold h-9">

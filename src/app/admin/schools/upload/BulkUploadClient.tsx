@@ -93,8 +93,8 @@ const TARGET_FIELDS = [
 ];
 
 /**
- * @fileOverview Institutional Ingestion Engine.
- * Uses AI for field mapping and logical functions for data ingestion.
+ * @fileOverview Institutional Import Engine.
+ * Uses AI for field mapping and logical functions for data importing.
  */
 export default function BulkUploadClient() {
     const router = useRouter();
@@ -262,7 +262,7 @@ export default function BulkUploadClient() {
                             <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white">
                                 <CardHeader className="text-center py-16 bg-muted/30 border-b">
                                     <div className="mx-auto bg-primary/10 w-20 h-20 rounded-[2rem] flex items-center justify-center mb-8 shadow-xl"><Upload className="h-10 w-10 text-primary" /></div>
-                                    <CardTitle className="text-4xl font-black tracking-tight uppercase">Institutional Ingestion</CardTitle>
+                                    <CardTitle className="text-4xl font-black tracking-tight uppercase">Institutional Import</CardTitle>
                                     <CardDescription className="text-lg font-medium max-w-md mx-auto mt-4">Automate school onboarding by mapping spreadsheet data directly to our database.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="p-12">
@@ -308,9 +308,9 @@ export default function BulkUploadClient() {
                                 <CardFooter className="bg-primary/5 p-10 border-t flex flex-col gap-6">
                                     <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-5 shadow-inner">
                                         <div className="p-3 bg-white rounded-2xl text-blue-600 shadow-sm border border-blue-100"><Zap size={24} /></div>
-                                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest opacity-80 leading-relaxed">Systematic logic will resolve your Regional Zones and Managers using deterministic matching during ingestion.</p>
+                                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest opacity-80 leading-relaxed">Systematic logic will resolve your Regional Zones and Managers using deterministic matching during import.</p>
                                     </div>
-                                    <Button onClick={() => startExecution()} disabled={!mapping['name']} className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-widest gap-3"><Zap size={24} /> Launch Hub Ingestion</Button>
+                                    <Button onClick={() => startExecution()} disabled={!mapping['name']} className="w-full h-16 rounded-[1.5rem] font-black text-xl shadow-2xl bg-primary text-white uppercase tracking-widest gap-3"><Zap size={24} /> Launch Hub Import</Button>
                                 </CardFooter>
                             </Card>
                         </motion.div>
@@ -325,7 +325,7 @@ export default function BulkUploadClient() {
                             <Card className="rounded-[3rem] border-none shadow-2xl overflow-hidden bg-white text-center">
                                 <CardHeader className={cn("py-16 text-white", failedRowIndices.length === 0 ? "bg-emerald-500" : "bg-orange-500")}>
                                     <div className="mx-auto bg-white/20 w-24 h-24 rounded-[2.5rem] flex items-center justify-center mb-8 shadow-2xl"><Check size={48} /></div>
-                                    <CardTitle className="text-4xl font-black uppercase">Ingestion Report</CardTitle>
+                                    <CardTitle className="text-4xl font-black uppercase">Import Report</CardTitle>
                                     <p className="text-base font-bold uppercase tracking-widest mt-4">{executionResults.filter(r => r.status === 'success').length} Records Synchronized</p>
                                 </CardHeader>
                                 <CardContent className="p-12">

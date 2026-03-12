@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
@@ -141,7 +140,7 @@ export default function SchoolsClient() {
                     <Button asChild variant="outline" className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary hover:bg-primary/5">
                         <Link href="/admin/schools/upload">
                             <FileUp className="mr-2 h-4 w-4" />
-                            Bulk Ingest
+                            Bulk Import
                         </Link>
                     </Button>
                     <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95">
@@ -152,7 +151,7 @@ export default function SchoolsClient() {
                     <Button asChild className="rounded-xl font-bold shadow-lg h-11 px-6">
                         <Link href="/admin/schools/new">
                             <PlusCircle className="mr-2 h-5 w-5" />
-                            Initialize New School
+                            Add New School
                         </Link>
                     </Button>
                 </div>

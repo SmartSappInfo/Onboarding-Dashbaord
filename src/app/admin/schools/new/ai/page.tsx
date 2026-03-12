@@ -6,7 +6,7 @@ import { Metadata } from 'next';
  */
 
 export const metadata: Metadata = {
-  title: 'AI Institutional Architect',
+  title: 'AI New School',
   description: 'Automated institutional onboarding using generative AI extraction.',
 };
 
