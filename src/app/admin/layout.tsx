@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -38,7 +37,6 @@ import {
     CheckSquare,
     Zap,
     BarChart3,
-    Banknote,
     Receipt,
     Package,
     Timer,
@@ -69,38 +67,6 @@ import { NavigationProvider } from '@/context/NavigationContext';
 import { BreadcrumbNav } from './components/BreadcrumbNav';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
 
-const coreNavItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/admin/schools', icon: School, label: 'Schools' },
-  { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline' },
-  { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks' },
-  { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
-  { href: '/admin/automations', icon: Zap, label: 'Automations' },
-  { href: '/admin/reports', icon: BarChart3, label: 'Intelligence' },
-];
-
-const studioNavItems = [
-  { href: '/admin/portals', icon: Globe, label: 'Public Portals' },
-  { href: '/admin/media', icon: Film, label: 'Media' },
-  { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys' },
-  { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing' },
-  { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging' },
-];
-
-const financeNavItems = [
-  { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements' },
-  { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices' },
-  { href: '/admin/finance/packages', icon: Package, label: 'Packages' },
-  { href: '/admin/finance/periods', icon: Timer, label: 'Cycles' },
-  { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup' },
-];
-
-const systemNavItems = [
-  { href: '/admin/activities', icon: History, label: 'Activities' },
-  { href: '/admin/users', icon: Users, label: 'Users' },
-  { href: '/admin/settings', icon: Settings, label: 'System' },
-];
-
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -117,20 +83,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [userRole, setUserRole] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (isUserLoading) {
-      return;
-    }
+    if (isUserLoading) return;
 
     if (user) {
       const userDocRef = doc(firestore, 'users', user.uid);
       getDoc(userDocRef)
         .then(docSnap => {
           if (docSnap.exists() && docSnap.data().isAuthorized === true) {
-            setUserRole(docSnap.data().role || 'admin');
+            setUserRole(docSnap.data().role || 'cse');
             setLoaderStatus('success');
-            setTimeout(() => {
-              setIsReady(true);
-            }, 1000);
+            setTimeout(() => setIsReady(true), 800);
           } else {
             setLoaderStatus('failed');
             toast({
@@ -146,23 +108,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         })
         .catch(error => {
           console.error("Authorization check failed:", error);
-          const isNetworkError = error.message?.includes('network-request-failed') || error.code === 'unavailable';
-          if (isNetworkError) {
-            setLoaderStatus('failed');
-            toast({ variant: "destructive", title: 'Connection Error', description: 'Failed to connect to the server.' });
-          } else {
-            setLoaderStatus('failed');
-            toast({ variant: "destructive", title: 'Error', description: 'Failed to check authorization status.' });
-            setTimeout(() => { auth.signOut(); router.push('/login'); }, 1200);
-          }
+          setLoaderStatus('failed');
+          setTimeout(() => { auth.signOut(); router.push('/login'); }, 1200);
         });
     } else if (userError) {
-        if (userError.message?.includes('network-request-failed')) {
-            setLoaderStatus('failed');
-            toast({ variant: "destructive", title: 'Auth Connection Failure', description: 'The auth service is unavailable.' });
-        } else {
-            router.push('/login');
-        }
+        router.push('/login');
     } else {
       setLoaderStatus('failed');
       setTimeout(() => { router.push('/login'); }, 1000);
@@ -173,29 +123,48 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     return (
         <div className="relative h-screen w-full">
             <AuthorizationLoader status={loaderStatus} />
-            {loaderStatus === 'failed' && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-4">
-                    <Button onClick={() => setRetryCount(prev => prev + 1)} className="gap-2 shadow-2xl">
-                        <RefreshCw className="h-4 w-4" /> Retry Connection
-                    </Button>
-                    <Button variant="ghost" onClick={() => auth.signOut()} className="text-muted-foreground text-xs underline">
-                        Back to Login
-                    </Button>
-                </div>
-            )}
         </div>
     );
   }
 
-  const isFinance = userRole === 'finance' || userRole === 'admin';
+  const isAdmin = userRole === 'admin';
+  const isFinance = userRole === 'finance' || isAdmin;
+  const isSupervisor = userRole === 'supervisor' || isAdmin;
+
+  const coreNavItems = [
+    { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', visible: true },
+    { href: '/admin/schools', icon: School, label: 'Schools', visible: true },
+    { href: '/admin/pipeline', icon: Workflow, label: 'Pipeline', visible: true },
+    { href: '/admin/tasks', icon: CheckSquare, label: 'Tasks', visible: true },
+    { href: '/admin/meetings', icon: Calendar, label: 'Meetings', visible: true },
+    { href: '/admin/automations', icon: Zap, label: 'Automations', visible: isAdmin },
+    { href: '/admin/reports', icon: BarChart3, label: 'Intelligence', visible: isSupervisor },
+  ];
+
+  const studioNavItems = [
+    { href: '/admin/portals', icon: Globe, label: 'Public Portals', visible: isSupervisor },
+    { href: '/admin/media', icon: Film, label: 'Media', visible: true },
+    { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', visible: isSupervisor },
+    { href: '/admin/pdfs', icon: FileText, label: 'Doc Signing', visible: isSupervisor },
+    { href: '/admin/messaging', icon: MessageSquareText, label: 'Messaging', visible: isSupervisor },
+  ];
+
+  const financeNavItems = [
+    { href: '/admin/finance/contracts', icon: FileCheck, label: 'Agreements', visible: isFinance },
+    { href: '/admin/finance/invoices', icon: Receipt, label: 'Invoices', visible: isFinance },
+    { href: '/admin/finance/packages', icon: Package, label: 'Packages', visible: isFinance },
+    { href: '/admin/finance/periods', icon: Timer, label: 'Cycles', visible: isFinance },
+    { href: '/admin/finance/settings', icon: Settings2, label: 'Billing Setup', visible: isFinance },
+  ];
+
+  const systemNavItems = [
+    { href: '/admin/activities', icon: History, label: 'Activities', visible: isSupervisor },
+    { href: '/admin/users', icon: Users, label: 'Users', visible: isAdmin },
+    { href: '/admin/settings', icon: Settings, label: 'System', visible: isAdmin },
+  ];
 
   return (
-    <ThemeProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-    >
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <NavigationProvider>
         <GlobalFilterProvider>
           <SidebarProvider defaultOpen={false}>
@@ -217,17 +186,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                       <SidebarTrigger className="hidden md:flex mr-2 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:items-center group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:w-full group-data-[state=collapsed]:justify-center"/>
                     </div>
                     <SidebarMenu>
-                      {coreNavItems.map((item) => (
+                      {coreNavItems.filter(i => i.visible).map((item) => (
                         <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                              asChild
-                              isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))}
-                              tooltip={item.label}
-                            >
-                              <Link href={item.href}>
-                                <item.icon />
-                                <span>{item.label}</span>
-                              </Link>
+                          <SidebarMenuButton asChild isActive={pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))} tooltip={item.label}>
+                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
@@ -238,17 +200,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                     <SidebarGroup>
                         <SidebarGroupLabel>Finance Hub</SidebarGroupLabel>
                         <SidebarMenu>
-                        {financeNavItems.map((item) => (
+                        {financeNavItems.filter(i => i.visible).map((item) => (
                             <SidebarMenuItem key={item.href}>
-                            <SidebarMenuButton
-                                asChild
-                                isActive={pathname.startsWith(item.href)}
-                                tooltip={item.label}
-                                >
-                                <Link href={item.href}>
-                                    <item.icon />
-                                    <span>{item.label}</span>
-                                </Link>
+                            <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                                <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
                             </SidebarMenuButton>
                             </SidebarMenuItem>
                         ))}
@@ -259,51 +214,36 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <SidebarGroup>
                     <SidebarGroupLabel>Studios</SidebarGroupLabel>
                     <SidebarMenu>
-                      {studioNavItems.map((item) => (
+                      {studioNavItems.filter(i => i.visible).map((item) => (
                         <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                              asChild
-                              isActive={pathname.startsWith(item.href)}
-                              tooltip={item.label}
-                            >
-                              <Link href={item.href}>
-                                <item.icon />
-                                <span>{item.label}</span>
-                              </Link>
+                          <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                              <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
                     </SidebarMenu>
                   </SidebarGroup>
 
-                  <SidebarGroup className="mt-auto">
-                    <SidebarGroupLabel>Management</SidebarGroupLabel>
-                    <SidebarMenu>
-                      {systemNavItems.map((item) => (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton
-                              asChild
-                              isActive={pathname.startsWith(item.href)}
-                              tooltip={item.label}
-                            >
-                              <Link href={item.href}>
-                                <item.icon />
-                                <span>{item.label}</span>
-                              </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroup>
+                  {isSupervisor && (
+                    <SidebarGroup className="mt-auto">
+                        <SidebarGroupLabel>Management</SidebarGroupLabel>
+                        <SidebarMenu>
+                        {systemNavItems.filter(i => i.visible).map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton asChild isActive={pathname.startsWith(item.href)} tooltip={item.label}>
+                                <Link href={item.href}><item.icon /><span>{item.label}</span></Link>
+                            </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        ))}
+                        </SidebarMenu>
+                    </SidebarGroup>
+                  )}
                 </SidebarContent>
                 <SidebarFooter>
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton asChild tooltip="Go to public site">
-                                <Link href="/" target="_blank">
-                                    <ExternalLink/>
-                                    <span>Go to site</span>
-                                </Link>
+                                <Link href="/" target="_blank"><ExternalLink/><span>Go to site</span></Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
@@ -313,11 +253,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
               <SidebarInset className="min-h-0 flex-1 flex flex-col overflow-hidden">
                 <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-card/95 px-4 backdrop-blur-sm print:hidden">
                   <SidebarTrigger className="md:hidden" />
-                  
-                  <div className="flex-1 min-w-0">
-                    <BreadcrumbNav />
-                  </div>
-
+                  <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
                   <div className="flex items-center gap-2 shrink-0">
                       <AssignedUserGlobalFilter />
                       <NotificationBell />
@@ -336,31 +272,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                           <div className="flex flex-col space-y-1">
                               <p className="text-sm font-medium leading-none">{user?.displayName}</p>
                               <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                              <Badge variant="outline" className="w-fit mt-1 text-[8px] uppercase font-black">{userRole}</Badge>
                           </div>
                           </DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                          <Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                          <Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                          <Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link>
-                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild><Link href="/admin/profile"><UserIcon className="mr-2 h-4 w-4" /><span>Profile</span></Link></DropdownMenuItem>
+                          {isAdmin && (
+                            <>
+                                <DropdownMenuItem asChild><Link href="/admin/users"><Users className="mr-2 h-4 w-4" /><span>Users</span></Link></DropdownMenuItem>
+                                <DropdownMenuItem asChild><Link href="/admin/settings"><Settings className="mr-2 h-4 w-4" /><span>Settings</span></Link></DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => auth.signOut()}>
-                          <LogOut className="mr-2 h-4 w-4" />
-                          <span>Log out</span>
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => auth.signOut()}><LogOut className="mr-2 h-4 w-4" /><span>Log out</span></DropdownMenuItem>
                       </DropdownMenuContent>
                       </DropdownMenu>
                   </div>
                 </header>
-        
-                <main className="flex-1 flex flex-col overflow-auto bg-background">
-                  {children}
-                </main>
+                <main className="flex-1 flex flex-col overflow-auto bg-background">{children}</main>
               </SidebarInset>
             </div>
           </SidebarProvider>

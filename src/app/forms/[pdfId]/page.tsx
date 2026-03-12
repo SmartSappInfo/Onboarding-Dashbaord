@@ -1,4 +1,3 @@
-
 import { adminDb } from '@/lib/firebase-admin';
 import type { PDFForm, School, Contract, Submission } from '@/lib/types';
 import PdfFormRenderer from './components/PdfFormRenderer';
@@ -11,6 +10,7 @@ interface PageData {
     school?: School;
     initialData?: Record<string, any>;
     isLocked: boolean;
+    submissionId?: string;
 }
 
 async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageData | null> {
@@ -36,6 +36,7 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
         // 3. Multi-Stage Signing Logic (Agreements Only)
         let initialData = {};
         let isLocked = false;
+        let submissionId: string | undefined = undefined;
 
         if (pdfForm.isContractDocument && targetSchoolId) {
             const contractQuery = await adminDb.collection('contracts')
@@ -45,7 +46,10 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
             
             if (!contractQuery.empty) {
                 const contract = contractQuery.docs[0].data() as Contract;
-                if (contract.status === 'signed') isLocked = true;
+                if (contract.status === 'signed') {
+                    isLocked = true;
+                    submissionId = contract.submissionId;
+                }
                 
                 if (contract.submissionId) {
                     const subSnap = await adminDb.collection('pdfs').doc(pdfForm.id)
@@ -55,7 +59,7 @@ async function getPdfFormData(id: string, querySchoolId?: string): Promise<PageD
             }
         }
 
-        return { pdfForm, school, initialData, isLocked };
+        return { pdfForm, school, initialData, isLocked, submissionId };
     } catch (error) {
         console.error("Error fetching PDF form:", error);
         return null;
@@ -96,6 +100,7 @@ export default async function PublicPdfFormPage({ params, searchParams }: { para
             school={data.school} 
             initialData={data.initialData}
             isLocked={data.isLocked}
+            existingSubmissionId={data.submissionId}
         />
     );
 }

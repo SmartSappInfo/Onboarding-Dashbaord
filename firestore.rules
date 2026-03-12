@@ -15,14 +15,24 @@ service cloud.firestore {
       );
     }
 
+    function getRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuthorized() && getRole() == 'admin';
+    }
+
     function isFinance() {
-      return isSignedIn() && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'finance';
+      return isAuthorized() && getRole() == 'finance';
+    }
+
+    function isSupervisor() {
+      return isAuthorized() && getRole() == 'supervisor';
     }
 
     function isAnyAdmin() {
-      return isAuthorized() || isFinance();
+      return isAdmin() || isFinance() || isSupervisor();
     }
 
     match /{document=**} {
@@ -32,52 +42,55 @@ service cloud.firestore {
     // --- Billing & Contracts Rules ---
     match /subscription_packages/{packageId} {
       allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow write: if isAdmin() || isFinance();
     }
     match /billing_periods/{periodId} {
       allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow write: if isAdmin() || isFinance();
     }
     match /invoices/{invoiceId} {
       allow read: if isAnyAdmin() || true; // Public read for public invoice page
-      allow write: if isFinance();
+      allow write: if isAdmin() || isFinance();
     }
     match /billing_settings/{settingId} {
       allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow write: if isAdmin() || isFinance();
     }
     match /contracts/{contractId} {
       allow read: if isAnyAdmin();
-      allow write: if isFinance();
+      allow write: if isAdmin() || isFinance();
     }
 
     match /onboardingStages/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
     }
     match /media/{document=**} {
         allow read, write: if isAuthorized();
     }
      match /modules/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
     }
     match /webhooks/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAdmin() || isSupervisor();
     }
     match /zones/{document=**} {
-      allow read, write: if isAuthorized();
+      allow read: if isAuthorized();
+      allow write: if isAdmin();
     }
     match /messaging_variables/{document=**} {
       allow read, write: if isAnyAdmin();
     }
     
     match /sender_profiles/{profileId} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAdmin() || isSupervisor();
     }
     match /message_styles/{styleId} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAdmin() || isSupervisor();
     }
     match /message_templates/{templateId} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAdmin() || isSupervisor();
     }
     match /message_logs/{logId} {
       allow read, list: if isAuthorized();
@@ -94,7 +107,7 @@ service cloud.firestore {
     }
 
     match /automations/{ruleId} {
-      allow read, write: if isAuthorized();
+      allow read, write: if isAdmin();
     }
 
     match /schools/{schoolId} {
@@ -117,8 +130,8 @@ service cloud.firestore {
     
     match /users/{userId} {
       allow get, create: if isSignedIn() && request.auth.uid == userId;
-      allow update: if (isSignedIn() && request.auth.uid == userId) || isAuthorized();
-      allow list, delete: if isAuthorized();
+      allow update: if (isSignedIn() && request.auth.uid == userId) || isAdmin();
+      allow list, delete: if isAdmin();
     }
     
     match /surveys/{surveyId} {
@@ -126,7 +139,7 @@ service cloud.firestore {
       allow get: if isAnyAdmin() || resource.data.status == 'published';
       match /resultPages/{pageId} {
         allow read: if true;
-        allow write: if isAuthorized();
+        allow write: if isAnyAdmin();
       }
       match /responses/{responseId} {
         allow create: if get(/databases/$(database)/documents/surveys/$(surveyId)).data.status == 'published';

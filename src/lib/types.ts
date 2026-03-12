@@ -24,7 +24,7 @@ export interface Zone {
   name: string;
 }
 
-export type UserRole = 'admin' | 'finance';
+export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse';
 
 export interface UserProfile {
   id: string;
@@ -324,16 +324,6 @@ export interface Survey {
   updatedAt: string;
   thankYouTitle?: string;
   thankYouDescription?: string;
-  scoringEnabled?: boolean;
-  scoreDisplayMode?: 'points' | 'percentage';
-  maxScore?: number;
-  resultRules?: SurveyResultRule[];
-  startButtonText?: string;
-  showCoverPage?: boolean;
-  showSurveyTitles?: boolean;
-  webhookId?: string;
-  webhookEnabled?: boolean;
-  showDebugProcessingModal?: boolean;
   scoringEnabled?: boolean;
   scoreDisplayMode?: 'points' | 'percentage';
   maxScore?: number;

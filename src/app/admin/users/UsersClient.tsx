@@ -1,9 +1,9 @@
 'use client';
 
-import { useMemo } from 'react';
+import * as React from 'react';
 import { collection, orderBy, query, doc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { UserProfile } from '@/lib/types';
+import type { UserProfile, UserRole } from '@/lib/types';
 
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,17 +12,27 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { User as UserIcon } from 'lucide-react';
+import { User as UserIcon, ShieldCheck, UserCheck, Zap, Info, ShieldAlert, Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 
 const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={16} />;
+
+const ROLES: { value: UserRole; label: string; description: string; color: string }[] = [
+    { value: 'admin', label: 'Administrator', description: 'Full system control, users, and settings.', color: 'bg-rose-500' },
+    { value: 'finance', label: 'Finance Hub', description: 'Billing, invoicing, and legal agreements.', color: 'bg-emerald-500' },
+    { value: 'supervisor', label: 'Supervisor', description: 'Regional oversight and studio access.', color: 'bg-blue-500' },
+    { value: 'cse', label: 'CSE', description: 'Campus operations and task execution.', color: 'bg-slate-500' },
+];
 
 export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const [updatingId, setUpdatingId] = React.useState<string | null>(null);
 
   const usersCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -36,140 +46,158 @@ export default function UsersClient() {
 
   const { data: users, isLoading, error } = useCollection<UserProfile>(usersQuery);
 
-  const handleAuthorizationChange = async (user: UserProfile, isAuthorized: boolean) => {
+  const handleUpdateUser = async (userId: string, updates: Partial<UserProfile>) => {
     if (!firestore) return;
+    setUpdatingId(userId);
 
-    const userDocRef = doc(firestore, 'users', user.id);
+    const userDocRef = doc(firestore, 'users', userId);
     try {
-        await updateDoc(userDocRef, { isAuthorized });
-        toast({
-          title: 'User Updated',
-          description: `${user.name} has been ${isAuthorized ? 'authorized' : 'de-authorized'}.`,
-        });
+        await updateDoc(userDocRef, { ...updates, updatedAt: new Date().toISOString() });
+        toast({ title: 'System Synchronized', description: 'User access parameters updated.' });
     } catch (e) {
-        const permissionError = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: userDocRef.path,
           operation: 'update',
-          requestResourceData: { isAuthorized },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: 'You may not have the required permissions.',
-        });
-    }
-  };
-  
-  const handleColorChange = async (user: UserProfile, color: string) => {
-    if (!firestore) return;
-    const userDocRef = doc(firestore, 'users', user.id);
-    try {
-      await updateDoc(userDocRef, { color });
-      toast({
-        title: 'Color Updated',
-        description: `Theme color updated for ${user.name}.`,
-      });
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Update Failed' });
+          requestResourceData: updates,
+        }));
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Authorization denied.' });
+    } finally {
+        setUpdatingId(null);
     }
   };
 
-  if (error) {
-    return <div className="text-destructive p-8 text-left">Error loading users: {error.message}</div>;
-  }
+  if (error) return <div className="text-destructive p-8 text-left">Error loading repository: {error.message}</div>;
 
   return (
-    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="rounded-2xl border border-border/50 bg-card text-card-foreground shadow-sm overflow-hidden ring-1 ring-black/5">
-            <Table>
-            <TableHeader className="bg-muted/30">
-                <TableRow>
-                <TableHead className="w-16 pl-6 text-[10px] font-bold uppercase tracking-widest py-4">Brand</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Name</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Email Identity</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase tracking-widest py-4">Phone</TableHead>
-                <TableHead className="w-[180px] text-[10px] font-bold uppercase tracking-widest py-4">Joined On</TableHead>
-                <TableHead className="w-[120px] text-right pr-6 text-[10px] font-bold uppercase tracking-widest py-4">Authorized</TableHead>
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {isLoading ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                    <TableCell className="pl-6"><Skeleton className="h-8 w-8 rounded-lg" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-32 rounded" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full rounded" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-3/4 rounded" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-full rounded" /></TableCell>
-                    <TableCell className="text-right pr-6"><Skeleton className="h-6 w-10 ml-auto rounded-full" /></TableCell>
-                    </TableRow>
-                ))
-                ) : users && users.length > 0 ? (
-                users.map((user) => (
-                    <TableRow key={user.id} className="group hover:bg-muted/30 transition-colors">
-                    <TableCell className="pl-6 py-4">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-8 h-8 p-0 border-2 rounded-lg" style={{ borderColor: user.color || '#ccc' }}>
-                                <div className="w-full h-full rounded-sm" style={{ backgroundColor: user.color || '#FFFFFF' }} />
-                            </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-2">
-                            <div className="grid grid-cols-6 gap-1 mb-2">
-                                {ONBOARDING_STAGE_COLORS.map((color) => (
-                                <button
-                                    key={color}
-                                    className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === user.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
-                                    style={{ backgroundColor: color }}
-                                    onClick={() => handleColorChange(user, color)}
-                                />
-                                ))}
+    <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
+      <div className="max-w-7xl mx-auto space-y-10">
+        
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 text-foreground uppercase">
+                    <ShieldCheck className="h-10 w-10 text-primary" />
+                    Access Control Hub
+                </h1>
+                <p className="text-muted-foreground font-medium text-lg mt-1">Manage institutional roles and administrative authorization gates.</p>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Permission Legend */}
+            <div className="lg:col-span-1 space-y-6">
+                <Card className="rounded-[2rem] border-none shadow-sm ring-1 ring-border bg-white overflow-hidden">
+                    <CardHeader className="bg-primary/5 border-b pb-4">
+                        <CardTitle className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                            <Zap className="h-3 w-3" /> Capability Legend
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-6">
+                        {ROLES.map(r => (
+                            <div key={r.value} className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                    <div className={cn("w-2 h-2 rounded-full", r.color)} />
+                                    <span className="text-xs font-black uppercase tracking-tight">{r.label}</span>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground font-medium leading-relaxed pl-4">{r.description}</p>
                             </div>
-                            <div className="flex items-center gap-2 border-t pt-2 mt-2">
-                                <label htmlFor={`color-picker-${user.id}`} className="text-[10px] font-black uppercase tracking-tight">Custom</label>
-                                <Input
-                                id={`color-picker-${user.id}`}
-                                type="color"
-                                value={user.color || '#FFFFFF'}
-                                onChange={(e) => handleColorChange(user, e.target.value)}
-                                className="w-10 h-10 p-1"
-                                />
-                            </div>
-                            </PopoverContent>
-                        </Popover>
-                    </TableCell>
-                    <TableCell className="font-bold">
-                        <div className="flex items-center gap-3">
-                        <Avatar className="h-9 w-9 ring-2 ring-white shadow-sm">
-                            <AvatarImage src={user.photoURL} alt={user.name} />
-                            <AvatarFallback className="font-bold text-xs">{getInitials(user.name)}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-black uppercase tracking-tight">{user.name}</span>
+                        ))}
+                        <Separator className="opacity-50" />
+                        <div className="p-4 rounded-2xl bg-blue-50 border border-blue-100 flex items-start gap-3 shadow-inner">
+                            <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                            <p className="text-[9px] font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
+                                New signups default to the CSE role and require manual authorization before system entry.
+                            </p>
                         </div>
-                    </TableCell>
-                    <TableCell className="text-xs font-medium text-muted-foreground">{user.email}</TableCell>
-                    <TableCell className="text-xs font-mono">{user.phone || <span className="opacity-20">—</span>}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground uppercase tabular-nums">
-                        {user.createdAt ? format(new Date(user.createdAt), "MMM d, yyyy") : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                        <Switch
-                        checked={user.isAuthorized}
-                        onCheckedChange={(checked) => handleAuthorizationChange(user, checked)}
-                        aria-label={`Authorize ${user.name}`}
-                        />
-                    </TableCell>
-                    </TableRow>
-                ))
-                ) : (
-                <TableRow>
-                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic">No users found in the repository.</TableCell>
-                </TableRow>
-                )}
-            </TableBody>
-            </Table>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* User Registry */}
+            <div className="lg:col-span-3">
+                <div className="rounded-[2rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+                    <Table>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow>
+                                <TableHead className="w-16 pl-8 text-[10px] font-black uppercase tracking-widest py-5">Profile</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Corporate Identity</TableHead>
+                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">System Role</TableHead>
+                                <TableHead className="w-[120px] text-center text-[10px] font-black uppercase tracking-widest py-5">Authorized</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                Array.from({ length: 5 }).map((_, i) => (
+                                    <TableRow key={i}>
+                                        <TableCell className="pl-8"><Skeleton className="h-10 w-10 rounded-full" /></TableCell>
+                                        <TableCell><Skeleton className="h-5 w-48 rounded" /></TableCell>
+                                        <TableCell><Skeleton className="h-9 w-32 rounded-xl" /></TableCell>
+                                        <TableCell className="text-center"><Skeleton className="h-6 w-10 mx-auto rounded-full" /></TableCell>
+                                    </TableRow>
+                                ))
+                            ) : users?.length ? (
+                                users.map((user) => (
+                                    <TableRow key={user.id} className={cn("group hover:bg-muted/30 transition-colors", updatingId === user.id && "opacity-50")}>
+                                        <TableCell className="pl-8 py-6">
+                                            <div className="relative">
+                                                <Avatar className="h-11 w-11 ring-4 ring-white shadow-xl">
+                                                    <AvatarImage src={user.photoURL} alt={user.name} />
+                                                    <AvatarFallback className="font-black text-xs">{getInitials(user.name)}</AvatarFallback>
+                                                </Avatar>
+                                                {updatingId === user.id && (
+                                                    <div className="absolute inset-0 bg-white/60 rounded-full flex items-center justify-center">
+                                                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col">
+                                                <span className="font-black text-sm uppercase tracking-tight text-foreground">{user.name}</span>
+                                                <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-60 tabular-nums mt-0.5">{user.email}</span>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select 
+                                                value={user.role || 'cse'} 
+                                                onValueChange={(val: UserRole) => handleUpdateUser(user.id, { role: val })}
+                                                disabled={updatingId === user.id}
+                                            >
+                                                <SelectTrigger className="h-10 w-[160px] rounded-xl bg-muted/20 border-none shadow-none font-black text-[10px] uppercase tracking-widest transition-all hover:bg-muted/40">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                    {ROLES.map(r => (
+                                                        <SelectItem key={r.value} value={r.value} className="font-bold py-2.5">
+                                                            {r.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell className="text-center">
+                                            <Switch
+                                                checked={user.isAuthorized}
+                                                onCheckedChange={(checked) => handleUpdateUser(user.id, { isAuthorized: checked })}
+                                                className="mx-auto"
+                                                disabled={updatingId === user.id}
+                                            />
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-64 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+                                            <Users className="h-12 w-12" />
+                                            <p className="text-xs font-black uppercase tracking-widest">No identities found</p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+            </div>
         </div>
       </div>
     </div>

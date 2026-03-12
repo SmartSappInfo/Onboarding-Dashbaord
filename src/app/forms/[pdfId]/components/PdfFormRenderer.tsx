@@ -120,7 +120,7 @@ const DatePicker = ({ value, onChange, disabled, className, style, placeholder }
     );
 }
 
-export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isLocked = false, isPreview = false }: { pdfForm: PDFForm, school?: School, initialData?: Record<string, any>, isLocked?: boolean, isPreview?: boolean }) {
+export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isLocked = false, isPreview = false, existingSubmissionId }: { pdfForm: PDFForm, school?: School, initialData?: Record<string, any>, isLocked?: boolean, isPreview?: boolean, existingSubmissionId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const { toast } = useToast();
@@ -195,7 +195,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
       setIsSubmitting(true);
       
       const data = getValues();
-      // Ensure all current values are captured
       const res = await saveAgreementProgressAction(pdfForm.id, school.id, data);
       
       if (res.success) toast({ title: 'Progress Saved', description: 'Institutional data cached.' });
@@ -207,8 +206,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     if (isPreview) { toast({ title: 'Preview Mode' }); return; }
     
     // INSTITUTIONAL FLATTENING Logic:
-    // Before finalizing, we resolve all variables and static text into hardcoded values 
-    // in the payload to ensure historical accuracy.
     const flattenedData = { ...data };
     
     pdfForm.fields.forEach(field => {
@@ -275,9 +272,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     if (missingFields.length > 0) {
         const first = missingFields[0];
         const el = document.getElementById(first.id);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -285,12 +280,12 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     const value = watchedValues[field.id];
     const currentTotalScale = baseScale * zoom;
     const dynamicFontSize = `${Math.round((field.fontSize || 11) * currentTotalScale)}px`;
-    const fieldStyle: React.CSSProperties = { fontSize: dynamicFontSize, color: field.color || 'inherit', fontWeight: field.bold ? 'bold' : 'normal', fontStyle: field.italic ? 'italic' : 'normal', textDecoration: field.underline ? 'underline' : 'none', textAlign: field.alignment || 'left', display: 'flex', flexDirection: 'column', justifyContent: field.verticalAlignment === 'bottom' ? 'flex-end' : field.verticalAlignment === 'top' ? 'flex-start' : 'center', alignItems: field.alignment === 'right' ? 'flex-end' : field.alignment === 'center' ? 'center' : 'flex-start', textTransform: field.textTransform === 'capitalize' ? 'none' : (field.textTransform || 'none') };
+    const fieldStyle: React.CSSProperties = { fontSize: dynamicFontSize, color: field.color || 'inherit', fontWeight: field.bold ? 'bold' : 'normal', fontStyle: field.italic ? 'italic' : 'normal', textDecoration: field.underline ? 'underline' : 'none', textAlign: field.alignment || 'left', display: 'flex', flexDirection: 'column', justifyContent: field.verticalAlignment === 'bottom' ? 'flex-end' : field.verticalAlignment === 'top' ? 'flex-start' : 'center', alignItems: field.alignment === 'right' ? 'flex-end' : field.alignment === 'center' ? 'center' : field.alignment === 'left' ? 'flex-start' : 'flex-start', textTransform: field.textTransform === 'capitalize' ? 'none' : (field.textTransform || 'none') };
     const applyTransform = (val: string) => field.textTransform === 'uppercase' ? val.toUpperCase() : field.textTransform === 'capitalize' ? toTitleCase(val) : val;
 
     if (field.type === 'static-text' || field.type === 'variable' || isFinalizedView) {
         let text = field.type === 'static-text' ? field.staticText : field.type === 'variable' ? resolveVariableValue(field.variableKey || '', school) : value;
-        return <div className="w-full h-full flex overflow-visible" style={fieldStyle}>{(field.type === 'signature' || field.type === 'photo') ? (text && <img src={text} alt="M" className="w-full h-full object-contain" />) : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "text-black" : "text-black/80")}>{field.type === 'date' && text ? format(new Date(text), 'PPP') : applyTransform(String(text || ''))}</span>}</div>;
+        return <div className="w-full h-full flex overflow-visible" style={fieldStyle}>{(field.type === 'signature' || field.type === 'photo') ? (text && <img src={text} alt="M" className="w-full h-full object-contain" />) : <span className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "text-black/80")}>{field.type === 'date' && text ? format(new Date(text), 'PPP') : applyTransform(String(text || ''))}</span>}</div>;
     }
 
     if (!isMobile && field.type !== 'signature' && field.type !== 'photo') {
@@ -318,7 +313,12 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
       return (
           <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
-              <AlreadySignedGate schoolName={school?.name} logoUrl={school?.logoUrl} pdfName={pdfForm.name} onView={() => setIsFinalizedView(false)} />
+              <AlreadySignedGate 
+                schoolName={school?.name} 
+                logoUrl={school?.logoUrl} 
+                pdfName={pdfForm.name} 
+                onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${existingSubmissionId}`)} 
+              />
           </div>
       );
   }
@@ -330,7 +330,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
             <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
                 {school?.logoUrl ? <div className="relative h-9 w-12 shrink-0"><Image src={school.logoUrl} alt="Logo" fill className="object-contain" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
                 <div className="flex flex-col min-w-0 -ml-1 text-left">
-                    <h1 className="font-bold truncate max-w-[200px] leading-tight text-sm">
+                    <h1 className="font-bold truncate max-w-[200px] leading-tight text-sm uppercase">
                         {school?.name || pdfForm.publicTitle}
                     </h1>
                     <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.publicTitle}</p>
@@ -338,16 +338,11 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
                     <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
                         Save Progress
                     </Button>
                     {isFormComplete && (
-                        <Button 
-                            type="button" 
-                            size="sm" 
-                            onClick={handleSubmit(handlePreSubmit, onInvalid)} 
-                            className="rounded-xl font-black shadow-lg px-6 h-10 uppercase text-[10px] tracking-widest gap-2 bg-primary animate-in zoom-in duration-300"
-                        >
+                        <Button type="button" size="sm" onClick={handleSubmit(handlePreSubmit, onInvalid)} className="rounded-xl font-black shadow-lg px-6 h-10 uppercase text-[10px] tracking-widest gap-2 bg-primary animate-in zoom-in duration-300">
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             Finalize Agreement
                         </Button>
@@ -357,19 +352,11 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
             <main className="flex-grow relative overflow-hidden z-10">
                 <ScrollArea className="h-full w-full" viewportRef={viewportRef}>
                     <div ref={pageContainerRef} className="p-2 sm:p-8 flex flex-col items-center min-w-full touch-pan-x touch-pan-y" style={{ minWidth: 'fit-content' }}>
-                        {!pdfDoc ? (
-                            <Skeleton className="w-[8.5in] h-[11in] rounded-lg shadow-lg bg-card" />
-                        ) : (
+                        {!pdfDoc ? <Skeleton className="w-[8.5in] h-[11in] rounded-lg shadow-lg bg-card" /> : (
                             <div className="flex flex-col gap-4 sm:gap-8 pb-8">
                                 {Array.from({ length: pdfDoc.numPages }).map((_, index) => (
                                     <div key={index} className="page-capture-wrapper" data-page-number={index + 1}>
-                                        <PageRenderer 
-                                            pdf={pdfDoc} 
-                                            pageNumber={index + 1} 
-                                            fields={pdfForm.fields} 
-                                            renderField={renderField} 
-                                            scale={baseScale * zoom} 
-                                        />
+                                        <PageRenderer pdf={pdfDoc} pageNumber={index + 1} fields={pdfForm.fields} renderField={renderField} scale={baseScale * zoom} />
                                     </div>
                                 ))}
                             </div>
@@ -378,66 +365,19 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
             </main>
-            
-            <SignaturePadModal 
-                open={!!mediaCaptureState} 
-                onClose={() => setMediaCaptureState(null)} 
-                onSave={(dataUrl) => setValue(mediaCaptureState!.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true })} 
-                mode={mediaCaptureState?.mode || 'signature'} 
-            />
-            
-            <DataEntryModal 
-                open={isDataEntryOpen} 
-                onOpenChange={setIsDataEntryOpen} 
-                pdfForm={pdfForm} 
-                activeFieldId={activeDataFieldId} 
-            />
-            
+            <SignaturePadModal open={!!mediaCaptureState} onClose={() => setMediaCaptureState(null)} onSave={(dataUrl) => setValue(mediaCaptureState!.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true })} mode={mediaCaptureState?.mode || 'signature'} />
+            <DataEntryModal open={isDataEntryOpen} onOpenChange={setIsDataEntryOpen} pdfForm={pdfForm} activeFieldId={activeDataFieldId} />
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <AlertDialogContent className="rounded-2xl">
-                    <AlertDialogHeader>
-                        <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                            <ShieldAlert className="h-6 w-6 text-primary" />
-                        </div>
-                        <AlertDialogTitle>Execute Final Agreement?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            This document will be locked from further edits. Electronic signatures are legally binding equivalent to handwritten ones.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Review</AlertDialogCancel>
-                        <AlertDialogAction onClick={onConfirmSubmission} className="bg-primary">Confirm & Finalize</AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><ShieldAlert className="h-6 w-6 text-primary" /></div><AlertDialogTitle>Execute Final Agreement?</AlertDialogTitle><AlertDialogDescription>This document will be locked from further edits. Electronic signatures are legally binding equivalent to handwritten ones.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Review</AlertDialogCancel><AlertDialogAction onClick={onConfirmSubmission} className="bg-primary">Confirm & Finalize</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
-                    <DialogHeader>
-                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                            <AlertCircle className="h-6 w-6 text-destructive" />
-                        </div>
-                        <DialogTitle className="text-center font-black">Missing Required Information</DialogTitle>
-                        <DialogDescription className="text-center text-sm font-medium">
-                            The following fields must be completed before you can finalize this agreement:
-                        </DialogDescription>
-                    </DialogHeader>
-                    <ScrollArea className="max-h-[30vh] border rounded-xl my-4">
-                        <ul className="p-4 space-y-3">
-                            {missingFields.map((field, idx) => (
-                                <li key={idx} className="flex items-center gap-3 text-sm font-medium">
-                                    <div className="h-2 w-2 rounded-full bg-destructive shrink-0" />
-                                    <span className="font-bold truncate">{field.label}</span>
-                                    <span className="text-[10px] uppercase font-black opacity-40 ml-auto">Page {field.pageNumber}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </ScrollArea>
-                    <DialogFooter>
-                        <Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base shadow-lg">
-                            Go Fix These
-                        </Button>
-                    </DialogFooter>
+                    <DialogHeader><div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><AlertCircle className="h-6 w-6 text-destructive" /></div><DialogTitle className="text-center font-black">Missing Required Information</DialogTitle><DialogDescription className="text-center text-sm font-medium">The following fields must be completed before you can finalize this agreement:</DialogDescription></DialogHeader>
+                    <ScrollArea className="max-h-[30vh] border rounded-xl my-4"><ul className="p-4 space-y-3">{missingFields.map((field, idx) => (<li key={idx} className="flex items-center gap-3 text-sm font-medium"><div className="h-2 w-2 rounded-full bg-destructive shrink-0" /><span className="font-bold truncate">{field.label}</span><span className="text-[10px] uppercase font-black opacity-40 ml-auto">Page {field.pageNumber}</span></li>))}</ul></ScrollArea>
+                    <DialogFooter><Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base shadow-lg">Go Fix These</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
         </div>
@@ -445,22 +385,9 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   );
 }
 
-function PageRenderer({ 
-    pdf, 
-    pageNumber, 
-    fields, 
-    renderField, 
-    scale 
-}: { 
-    pdf: PDFDocumentProxy; 
-    pageNumber: number; 
-    fields: PDFFormField[]; 
-    renderField: (field: PDFFormField) => React.ReactNode; 
-    scale: number; 
-}) {
+function PageRenderer({ pdf, pageNumber, fields, renderField, scale }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[]; renderField: (field: PDFFormField) => React.ReactNode; scale: number; }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
-    
     React.useEffect(() => {
         let isMounted = true;
         pdf.getPage(pageNumber).then(page => {
@@ -470,38 +397,13 @@ function PageRenderer({
             if (canvasRef.current) {
                 const canvas = canvasRef.current;
                 const context = canvas.getContext('2d')!;
-                canvas.height = viewport.height; 
-                canvas.width = viewport.width;
+                canvas.height = viewport.height; canvas.width = viewport.width;
                 page.render({ canvasContext: context, viewport });
             }
         });
         return () => { isMounted = false; };
     }, [pdf, pageNumber, scale]);
-
     return (
-        <div 
-            className="relative mx-auto shadow-2xl bg-white border border-border transition-all flex-shrink-0" 
-            style={{ width: dimensions.width, height: dimensions.height }}
-        >
-            <canvas ref={canvasRef} className="block w-full h-full" />
-            <div className="absolute inset-0 z-20 pointer-events-none">
-                {fields.filter(f => f.pageNumber === pageNumber).map(f => (
-                    <div 
-                        key={f.id} 
-                        id={f.id} 
-                        className="pointer-events-auto" 
-                        style={{ 
-                            position: 'absolute', 
-                            left: `${f.position.x}%`, 
-                            top: `${f.position.y}%`, 
-                            width: `${f.dimensions.width}%`, 
-                            height: `${f.dimensions.height}%` 
-                        }}
-                    >
-                        {renderField(f)}
-                    </div>
-                ))}
-            </div>
-        </div>
+        <div className="relative mx-auto shadow-2xl bg-white border border-border transition-all flex-shrink-0" style={{ width: dimensions.width, height: dimensions.height }}><canvas ref={canvasRef} className="block w-full h-full" /><div className="absolute inset-0 z-20 pointer-events-none">{fields.filter(f => f.pageNumber === pageNumber).map(f => (<div key={f.id} id={f.id} className="pointer-events-auto" style={{ position: 'absolute', left: `${f.position.x}%`, top: `${f.position.y}%`, width: `${f.dimensions.width}%`, height: `${f.dimensions.height}%` }}>{renderField(f)}</div>))}</div></div>
     );
 }

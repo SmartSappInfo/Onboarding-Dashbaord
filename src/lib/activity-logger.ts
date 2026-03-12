@@ -10,8 +10,6 @@ type LogActivityInput = Omit<Activity, 'id' | 'timestamp'>;
  */
 export async function logActivity(activityData: LogActivityInput): Promise<void> {
     try {
-        // If name/slug aren't provided, attempt to look them up if a schoolId exists
-        // This is a safety measure, though usually provided by the caller
         let finalData = { ...activityData };
         
         if (activityData.schoolId && (!activityData.schoolName || !activityData.schoolSlug)) {
