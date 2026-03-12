@@ -10,12 +10,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, ShieldCheck, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, ShieldCheck, ArrowLeft, ArrowRight, Type, Pipette, Maximize2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { processSignatureImage } from '@/lib/signature-processing';
+import { Badge } from '@/components/ui/badge';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -40,8 +41,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [isConsented, setIsConsented] = React.useState(false);
     const [hasDrawn, setHasDrawn] = React.useState(false);
 
-    // Processing state
+    // Processing parameters
     const [inkSensitivity, setInkSensitivity] = React.useState(150);
+    const [strokeWeight, setStrokeWeight] = React.useState(0);
     const [isProcessing, setIsProcessing] = React.useState(false);
 
     // Camera states
@@ -55,16 +57,17 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     }, [open]);
 
-    // Handle real-time refinement when sensitivity changes
+    // Handle real-time refinement when parameters change
     React.useEffect(() => {
         if (step === 'refine' && rawCapturedImage) {
             const refine = async () => {
-                const result = await processSignatureImage(rawCapturedImage, inkSensitivity);
+                const result = await processSignatureImage(rawCapturedImage, inkSensitivity, strokeWeight);
                 setProcessedSignature(result.dataUrl);
             };
-            refine();
+            const debounceTimer = setTimeout(refine, 100);
+            return () => clearTimeout(debounceTimer);
         }
-    }, [inkSensitivity, step, rawCapturedImage]);
+    }, [inkSensitivity, strokeWeight, step, rawCapturedImage]);
 
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
@@ -87,6 +90,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         setIsConsented(false);
         setHasDrawn(false);
         setInkSensitivity(150);
+        setStrokeWeight(0);
     };
 
     const handleOpenChange = (isOpen: boolean) => {
@@ -104,7 +108,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             setStep('refine');
             
             try {
-                const result = await processSignatureImage(imageSrc, inkSensitivity);
+                const result = await processSignatureImage(imageSrc, inkSensitivity, strokeWeight);
                 setProcessedSignature(result.dataUrl);
             } catch (e) {
                 toast({ variant: 'destructive', title: 'Processing Error', description: 'Could not isolate signature.' });
@@ -112,7 +116,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 setIsProcessing(false);
             }
         }
-    }, [webcamRef, inkSensitivity, toast]);
+    }, [webcamRef, inkSensitivity, strokeWeight, toast]);
 
     const handleProceedToConfirm = () => {
         let dataUrl: string | null = null;
@@ -171,10 +175,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         (activeTab === 'type' && typedInitials.length > 0) ||
         (activeTab === 'upload' && uploadedImage !== null);
 
-    const onUserMedia = () => {
-        setHasCameraPermission(true);
-    };
-
+    const onUserMedia = () => setHasCameraPermission(true);
     const onUserMediaError = () => {
         setHasCameraPermission(false);
         toast({
@@ -186,14 +187,14 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2rem]">
+            <DialogContent className="sm:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2rem]">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight text-center">
                         {mode === 'photo' ? 'Capture Identity' : 'Provide Signature'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         {step === 'input' ? 'Choose your preferred identity method' : 
-                         step === 'refine' ? 'Fine-tune your scanned signature' :
+                         step === 'refine' ? 'Fine-tune isolated ink strokes' :
                          'Verify and provide legal consent'}
                     </DialogDescription>
                 </DialogHeader>
@@ -293,35 +294,50 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 exit={{ opacity: 0, x: -20 }}
                                 className="h-full flex flex-col p-8 space-y-8"
                             >
-                                <div className="flex-1 relative rounded-[2rem] overflow-hidden border-2 border-primary/20 bg-muted shadow-inner flex items-center justify-center pattern-checkerboard">
+                                <div className="flex-1 relative rounded-[2.5rem] overflow-hidden border-2 border-primary/20 bg-muted shadow-inner flex items-center justify-center pattern-checkerboard">
                                     {isProcessing ? (
                                         <div className="flex flex-col items-center gap-4">
                                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Isolating Ink...</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Refining Architecture...</p>
                                         </div>
                                     ) : processedSignature ? (
                                         <Image src={processedSignature} alt="Isolated" width={400} height={200} className="object-contain drop-shadow-xl p-4" />
                                     ) : null}
                                 </div>
 
-                                <div className="space-y-6">
-                                    <div className="flex items-center justify-between px-1">
-                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                            <Wand2 className="h-3 w-3" /> Ink Sensitivity
-                                        </Label>
-                                        <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white">{inkSensitivity}</Badge>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-muted/20 p-6 rounded-[2rem] border shadow-inner">
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between px-1">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                <Pipette className="h-3 w-3" /> Ink Density
+                                            </Label>
+                                            <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white text-[10px]">{inkSensitivity}</Badge>
+                                        </div>
+                                        <Slider 
+                                            value={[inkSensitivity]} 
+                                            onValueChange={([val]) => setInkSensitivity(val)} 
+                                            min={50} 
+                                            max={230} 
+                                            step={1} 
+                                            className="py-2"
+                                        />
                                     </div>
-                                    <Slider 
-                                        value={[inkSensitivity]} 
-                                        onValueChange={([val]) => setInkSensitivity(val)} 
-                                        min={50} 
-                                        max={230} 
-                                        step={1} 
-                                        className="py-2"
-                                    />
-                                    <div className="flex justify-between text-[8px] font-bold text-muted-foreground uppercase tracking-tighter px-1">
-                                        <span>Restrictive (Thin)</span>
-                                        <span>Permissive (Thick)</span>
+
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between px-1">
+                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                <Wand2 className="h-3 w-3" /> Stroke Weight
+                                            </Label>
+                                            <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white text-[10px]">{strokeWeight}</Badge>
+                                        </div>
+                                        <Slider 
+                                            value={[strokeWeight]} 
+                                            onValueChange={([val]) => setStrokeWeight(val)} 
+                                            min={0} 
+                                            max={4} 
+                                            step={0.5} 
+                                            className="py-2"
+                                        />
                                     </div>
                                 </div>
                             </motion.div>
@@ -331,7 +347,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 initial={{ opacity: 0, x: 20 }} 
                                 animate={{ opacity: 1, x: 0 }} 
                                 exit={{ opacity: 0, x: -20 }}
-                                className="p-8 space-y-10 text-center"
+                                className="p-8 space-y-10 text-center h-full flex flex-col justify-center"
                             >
                                 <div className="p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px] pattern-checkerboard">
                                     {processedSignature && <Image src={processedSignature} alt="Verification" width={400} height={200} className="object-contain drop-shadow-lg" />}
@@ -339,9 +355,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 
                                 <div className="space-y-6">
                                     <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-4 text-left shadow-sm">
-                                        <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm border border-blue-100"><Info className="h-5 w-5" /></div>
+                                        <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm border border-blue-100 shrink-0"><Info className="h-5 w-5" /></div>
                                         <p className="text-xs font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                                            By selecting “Confirm” you acknowledge that this electronic identity profile will be applied to the document as a legally binding signature.
+                                            By selecting “Execute Signature” you acknowledge that this electronic identity profile will be applied to the document as a legally binding signature.
                                         </p>
                                     </div>
 
@@ -367,7 +383,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         <>
                             <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2"><ArrowLeft className="h-4 w-4" /> Retake</Button>
                             <div className="flex-1" />
-                            <Button onClick={() => setStep('confirm')} disabled={!processedSignature} className="rounded-xl font-black px-12 h-12 shadow-lg bg-primary text-white uppercase tracking-widest text-xs gap-2">Finalize Scanned Signature <ArrowRight className="h-4 w-4" /></Button>
+                            <Button onClick={() => setStep('confirm')} disabled={!processedSignature} className="rounded-xl font-black px-12 h-12 shadow-lg bg-primary text-white uppercase tracking-widest text-xs gap-2">Verify Signature <ArrowRight className="h-4 w-4" /></Button>
                         </>
                     ) : (
                         <>
