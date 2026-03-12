@@ -22,7 +22,7 @@ import * as React from 'react';
 import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandList, CommandItem } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -303,12 +303,10 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
               {options.map((option) => (
                 <CommandItem
                   key={option.value}
-                  onMouseDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
+                  value={option.label}
+                  onPointerDown={(e) => e.preventDefault()}
                   onSelect={() => {
-                    const newSelection = new Set(selectedValues);
+                    const newSelection = new Set(value);
                     if (newSelection.has(option.value)) {
                       newSelection.delete(option.value);
                     } else {
@@ -316,6 +314,7 @@ function MultiSelect({ options, value, onChange, placeholder = "Select options..
                     }
                     onChange(Array.from(newSelection));
                   }}
+                  className="cursor-pointer"
                 >
                   <Check
                     className={cn(
@@ -1047,9 +1046,9 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                         render={({ field }) => {
                                             switch(element.type) {
                                                 case 'text':
-                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className="bg-muted/20 border-none shadow-none h-11 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Input {...field} value={field.value || ''} placeholder={element.placeholder || "Type your answer here..."} className={cn("bg-muted/20 border-none shadow-none h-12 text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl px-4 focus-visible:ring-1 focus-visible:ring-primary/20", errors[question.id] && "ring-1 ring-destructive")} />;
                                                 case 'long-text':
-                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className="bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20" />;
+                                                    return <Textarea {...field} value={field.value || ''} placeholder={element.placeholder || "Share your thoughts..."} className={cn("bg-muted/20 border-none shadow-none min-h-[100px] text-base placeholder:italic placeholder:text-muted-foreground/40 rounded-xl p-4 resize-none focus-visible:ring-1 focus-visible:ring-primary/20", errors[question.id] && "ring-1 ring-destructive")} />;
                                                 case 'yes-no':
                                                     return (
                                                         <div className="space-y-4">
@@ -1102,7 +1101,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                 case 'date':
                                                     return <DatePicker value={field.value} onChange={field.onChange} />;
                                                 case 'time':
-                                                    return <Input type="time" step="1" className="w-full sm:w-fit bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-base h-11 font-bold rounded-xl px-4" {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />;
+                                                    return <Input type="time" step="1" className={cn("w-full sm:w-fit bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 text-base h-11 font-bold rounded-xl px-4", errors[question.id] && "ring-1 ring-destructive")} {...field} value={field.value || ''} onChange={(e) => handleValueChange(e.target.value, field.onChange)} />;
                                                 case 'file-upload':
                                                     return (
                                                         <div className="flex items-center gap-2 text-sm text-muted-foreground p-3 border-2 border-dashed border-primary/20 rounded-xl h-12 w-full bg-muted/20">

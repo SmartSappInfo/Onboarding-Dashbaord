@@ -99,34 +99,41 @@ export function MultiSelect({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
         <Command className="w-full">
           <CommandInput placeholder="Search..." />
-          <CommandList>
-            <CommandEmpty>No results found.</CommandEmpty>
-            <CommandGroup className="max-h-64 overflow-auto">
+          <CommandList className="max-h-64 overflow-auto scrollbar-thin">
+            <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">No matches found.</CommandEmpty>
+            <CommandGroup>
               {options.map((option) => {
                 const isSelected = selectedValues.has(option.value);
                 return (
                   <CommandItem
                     key={option.value}
-                    onSelect={() => {
-                      if (isSelected) {
-                        selectedValues.delete(option.value);
-                      } else {
-                        selectedValues.add(option.value);
-                      }
-                      onChange(Array.from(selectedValues));
+                    value={option.label}
+                    onPointerDown={(e) => {
+                        // Prevent focus from moving away from the input while still allowing onSelect to trigger
+                        e.preventDefault();
                     }}
+                    onSelect={() => {
+                      const next = new Set(value);
+                      if (isSelected) {
+                        next.delete(option.value);
+                      } else {
+                        next.add(option.value);
+                      }
+                      onChange(Array.from(next));
+                    }}
+                    className="cursor-pointer"
                   >
                     <div
                       className={cn(
-                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary',
+                        'mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary transition-colors',
                         isSelected
                           ? 'bg-primary text-primary-foreground'
-                          : 'opacity-50 [&_svg]:invisible'
+                          : 'opacity-50 group-hover:opacity-100 [&_svg]:invisible'
                       )}
                     >
                       <Check className={cn('h-4 w-4')} />
                     </div>
-                    <span className="font-medium">{option.label}</span>
+                    <span className="font-medium flex-1">{option.label}</span>
                   </CommandItem>
                 );
               })}
