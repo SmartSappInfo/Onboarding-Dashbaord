@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -34,7 +33,7 @@ export default function AlreadySignedGate({ schoolName, logoUrl, pdfName, onView
                             <CheckCircle2 size={40} className="text-white" />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-2xl font-black uppercase tracking-tight">Mission Executed</h2>
+                            <h2 className="text-2xl font-black uppercase tracking-tight">Submitted!</h2>
                             <p className="text-sm font-bold text-white/80 uppercase tracking-widest leading-none">Agreement Fully Signed</p>
                         </div>
                     </div>
@@ -57,7 +56,7 @@ export default function AlreadySignedGate({ schoolName, logoUrl, pdfName, onView
 
                     <div className="space-y-2 text-center sm:text-left">
                         <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                            Our records indicate that the <span className="font-black text-foreground">"{pdfName}"</span> for this campus has been legally executed. No further modifications are permitted at this time.
+                            Our records indicate that the <span className="font-black text-foreground">"{pdfName}"</span> for this campus has been legally signed and submitted. No further modifications are permitted at this time.
                         </p>
                     </div>
 
@@ -67,14 +66,14 @@ export default function AlreadySignedGate({ schoolName, logoUrl, pdfName, onView
                             className="h-14 rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl shadow-primary/20 gap-3"
                         >
                             <Eye className="h-5 w-5" />
-                            View Signed Record
+                            View & Download Document
                         </Button>
                         <Button 
                             variant="ghost" 
                             onClick={() => window.close()}
                             className="h-12 rounded-xl font-bold text-muted-foreground"
                         >
-                            Exit Portal
+                            Exit Now
                         </Button>
                     </div>
                 </CardContent>
