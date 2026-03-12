@@ -10,12 +10,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, ShieldCheck, ArrowLeft, ArrowRight, Type, Pipette, Maximize2 } from 'lucide-react';
+import { Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, ShieldCheck, ArrowLeft, ArrowRight, Type, Pipette, Sun, Contrast, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { processSignatureImage } from '@/lib/signature-processing';
+import { processSignatureImage, processPhotoImage } from '@/lib/signature-processing';
 import { Badge } from '@/components/ui/badge';
 
 interface SignaturePadModalProps {
@@ -29,7 +29,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const { toast } = useToast();
     const [step, setStep] = React.useState<'input' | 'refine' | 'confirm'>('input');
     const [rawCapturedImage, setRawCapturedImage] = React.useState<string | null>(null);
-    const [processedSignature, setProcessedSignature] = React.useState<string | null>(null);
+    const [processedResult, setProcessedResult] = React.useState<string | null>(null);
 
     const sigPadRef = React.useRef<SignatureCanvas | null>(null);
     const initialsCanvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -41,14 +41,15 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [isConsented, setIsConsented] = React.useState(false);
     const [hasDrawn, setHasDrawn] = React.useState(false);
 
-    // Processing parameters
+    // Refinement parameters
     const [inkSensitivity, setInkSensitivity] = React.useState(150);
     const [strokeWeight, setStrokeWeight] = React.useState(0);
+    const [brightness, setBrightness] = React.useState(0);
+    const [contrast, setContrast] = React.useState(0);
     const [isProcessing, setIsProcessing] = React.useState(false);
 
     // Camera states
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
-    const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         if (open) {
@@ -57,17 +58,26 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     }, [open]);
 
-    // Handle real-time refinement when parameters change
+    // REAL-TIME REFINEMENT ENGINE
     React.useEffect(() => {
         if (step === 'refine' && rawCapturedImage) {
             const refine = async () => {
-                const result = await processSignatureImage(rawCapturedImage, inkSensitivity, strokeWeight);
-                setProcessedSignature(result.dataUrl);
+                try {
+                    if (mode === 'signature') {
+                        const result = await processSignatureImage(rawCapturedImage, inkSensitivity, strokeWeight);
+                        setProcessedResult(result.dataUrl);
+                    } else {
+                        const result = await processPhotoImage(rawCapturedImage, brightness, contrast);
+                        setProcessedResult(result.dataUrl);
+                    }
+                } catch (e) {
+                    console.error("Refinement failed", e);
+                }
             };
             const debounceTimer = setTimeout(refine, 100);
             return () => clearTimeout(debounceTimer);
         }
-    }, [inkSensitivity, strokeWeight, step, rawCapturedImage]);
+    }, [inkSensitivity, strokeWeight, brightness, contrast, step, rawCapturedImage, mode]);
 
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
@@ -76,21 +86,22 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
         if (activeTab === 'type') setTypedInitials('');
         if (activeTab === 'upload') setUploadedImage(null);
-        if (activeTab === 'scan') setCapturedImage(null);
+        if (activeTab === 'scan') setRawCapturedImage(null);
     };
 
     const resetState = () => {
         setStep('input');
         setRawCapturedImage(null);
-        setProcessedSignature(null);
+        setProcessedResult(null);
         setTypedInitials('');
         setUploadedImage(null);
-        setCapturedImage(null);
         sigPadRef.current?.clear();
         setIsConsented(false);
         setHasDrawn(false);
         setInkSensitivity(150);
         setStrokeWeight(0);
+        setBrightness(0);
+        setContrast(0);
     };
 
     const handleOpenChange = (isOpen: boolean) => {
@@ -108,15 +119,20 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             setStep('refine');
             
             try {
-                const result = await processSignatureImage(imageSrc, inkSensitivity, strokeWeight);
-                setProcessedSignature(result.dataUrl);
+                if (mode === 'signature') {
+                    const result = await processSignatureImage(imageSrc, inkSensitivity, strokeWeight);
+                    setProcessedResult(result.dataUrl);
+                } else {
+                    const result = await processPhotoImage(imageSrc, brightness, contrast);
+                    setProcessedResult(result.dataUrl);
+                }
             } catch (e) {
-                toast({ variant: 'destructive', title: 'Processing Error', description: 'Could not isolate signature.' });
+                toast({ variant: 'destructive', title: 'Processing Error', description: 'Could not isolate capture.' });
             } finally {
                 setIsProcessing(false);
             }
         }
-    }, [webcamRef, inkSensitivity, strokeWeight, toast]);
+    }, [webcamRef, inkSensitivity, strokeWeight, brightness, contrast, mode, toast]);
 
     const handleProceedToConfirm = () => {
         let dataUrl: string | null = null;
@@ -137,25 +153,25 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             }
         } else if (activeTab === 'upload' && uploadedImage) {
             dataUrl = uploadedImage;
-        } else if (activeTab === 'scan' && processedSignature) {
-            dataUrl = processedSignature;
+        } else if (activeTab === 'scan' && processedResult) {
+            dataUrl = processedResult;
         }
 
         if (dataUrl) {
-            setProcessedSignature(dataUrl);
+            setProcessedResult(dataUrl);
             setStep('confirm');
         } else {
             toast({
                 variant: 'destructive',
                 title: 'No Input Detected',
-                description: 'Please provide a signature or capture a scan before proceeding.',
+                description: 'Please provide an image or capture a scan before proceeding.',
             });
         }
     };
 
-    const handleFinalSign = () => {
-        if (processedSignature) {
-            onSave(processedSignature);
+    const handleFinalSave = () => {
+        if (processedResult) {
+            onSave(processedResult);
             resetState();
             onClose();
         }
@@ -181,7 +197,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         toast({
             variant: 'destructive',
             title: 'Camera Access Required',
-            description: 'Please enable camera permissions to scan your signature.',
+            description: 'Please enable camera permissions to use the scan feature.',
         });
     };
 
@@ -190,12 +206,12 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             <DialogContent className="sm:max-w-2xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2rem]">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-2xl font-black uppercase tracking-tight text-center">
-                        {mode === 'photo' ? 'Capture Identity' : 'Provide Signature'}
+                        {mode === 'photo' ? 'Document/Identity Capture' : 'Institutional Signature'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        {step === 'input' ? 'Choose your preferred identity method' : 
-                         step === 'refine' ? 'Fine-tune isolated ink strokes' :
-                         'Verify and provide legal consent'}
+                        {step === 'input' ? 'Select identity protocol' : 
+                         step === 'refine' ? `Fine-tune ${mode} fidelity` :
+                         'Verify and authorize'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -210,16 +226,16 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 className="h-full flex flex-col p-6 pt-2"
                             >
                                 <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-                                    <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 rounded-xl mb-6">
-                                        <TabsTrigger value="scan" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Scan className="h-3 w-3" /> Scan</TabsTrigger>
-                                        <TabsTrigger value="draw" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Eraser className="h-3 w-3" /> Draw</TabsTrigger>
-                                        <TabsTrigger value="type" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Check className="h-3 w-3" /> Type</TabsTrigger>
-                                        <TabsTrigger value="upload" className="gap-2 font-black uppercase text-[10px] tracking-widest"><Upload className="h-3 w-3" /> Upload</TabsTrigger>
+                                    <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1 rounded-xl mb-6 shadow-inner">
+                                        <TabsTrigger value="scan" className="gap-2 font-black uppercase text-[10px] tracking-widest transition-all"><Scan className="h-3 w-3" /> Scan</TabsTrigger>
+                                        <TabsTrigger value="draw" className="gap-2 font-black uppercase text-[10px] tracking-widest transition-all"><Eraser className="h-3 w-3" /> Draw</TabsTrigger>
+                                        <TabsTrigger value="type" className="gap-2 font-black uppercase text-[10px] tracking-widest transition-all"><Type className="h-3 w-3" /> Type</TabsTrigger>
+                                        <TabsTrigger value="upload" className="gap-2 font-black uppercase text-[10px] tracking-widest transition-all"><Upload className="h-3 w-3" /> Upload</TabsTrigger>
                                     </TabsList>
 
                                     <div className="flex-1 overflow-hidden relative min-h-[300px]">
                                         <TabsContent value="scan" className="m-0 h-full flex flex-col items-center justify-center relative">
-                                            <div className="w-full h-full relative group rounded-2xl overflow-hidden bg-slate-900 border-2 border-white/5 shadow-2xl">
+                                            <div className="w-full h-full relative group rounded-[2rem] overflow-hidden bg-slate-900 border-2 border-white/5 shadow-2xl">
                                                 <Webcam
                                                     audio={false}
                                                     ref={webcamRef}
@@ -251,7 +267,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
                                         <TabsContent value="draw" className="m-0 h-full">
                                             <div className="space-y-4 h-full flex flex-col">
-                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Sign within the blueprint area</Label>
+                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Manual Ink Entry</Label>
                                                 <div className="flex-1 border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
                                                     <SignatureCanvas ref={sigPadRef} penColor="black" canvasProps={{ className: 'w-full h-full cursor-crosshair', willreadfrequently: "true" }} onBegin={() => setHasDrawn(true)} />
                                                 </div>
@@ -260,8 +276,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
                                         <TabsContent value="type" className="m-0 h-full flex flex-col justify-center gap-6">
                                             <div className="space-y-4">
-                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Type your full legal name</Label>
-                                                <Input value={typedInitials} onChange={(e) => setTypedInitials(e.target.value)} className="text-4xl sm:text-7xl text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent placeholder:opacity-10" placeholder="Jane Doe" autoFocus />
+                                                <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Synthetic Protocol</Label>
+                                                <Input value={typedInitials} onChange={(e) => setTypedInitials(e.target.value)} className="text-4xl sm:text-7xl text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent placeholder:opacity-10 font-bold" placeholder="Jane Doe" autoFocus />
                                                 <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
                                             </div>
                                         </TabsContent>
@@ -270,9 +286,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             <div className="h-full flex flex-col">
                                                 {!uploadedImage ? (
                                                     <label htmlFor="signature-upload" className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-2xl cursor-pointer bg-primary/[0.02] hover:bg-primary/5 p-8 text-center transition-all duration-500 group">
-                                                        <div className="p-4 bg-white rounded-2xl shadow-xl mb-4 group-hover:scale-110 transition-transform"><Upload className="w-8 h-8 text-primary" /></div>
-                                                        <p className="text-sm font-black uppercase tracking-tight">Upload Scan Profile</p>
-                                                        <p className="text-[10px] text-muted-foreground uppercase mt-1 font-bold">PNG or JPG preferred</p>
+                                                        <div className="p-4 bg-white rounded-2xl shadow-xl mb-4 group-hover:scale-110 transition-transform shadow-primary/5"><Upload className="w-8 h-8 text-primary" /></div>
+                                                        <p className="text-sm font-black uppercase tracking-tight">Institutional Upload</p>
+                                                        <p className="text-[10px] text-muted-foreground uppercase mt-1 font-bold">PDF, PNG or JPG supported</p>
                                                         <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                                                     </label>
                                                 ) : (
@@ -294,51 +310,67 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 exit={{ opacity: 0, x: -20 }}
                                 className="h-full flex flex-col p-8 space-y-8"
                             >
-                                <div className="flex-1 relative rounded-[2.5rem] overflow-hidden border-2 border-primary/20 bg-muted shadow-inner flex items-center justify-center pattern-checkerboard">
+                                <div className={cn(
+                                    "flex-1 relative rounded-[2.5rem] overflow-hidden border-2 border-primary/20 bg-muted shadow-inner flex items-center justify-center",
+                                    mode === 'signature' && "pattern-checkerboard"
+                                )}>
                                     {isProcessing ? (
                                         <div className="flex flex-col items-center gap-4">
                                             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Refining Architecture...</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Analyzing Architecture...</p>
                                         </div>
-                                    ) : processedSignature ? (
-                                        <Image src={processedSignature} alt="Isolated" width={400} height={200} className="object-contain drop-shadow-xl p-4" />
+                                    ) : processedResult ? (
+                                        <div className="relative w-full h-full p-8 flex items-center justify-center">
+                                            <Image src={processedResult} alt="Isolated" width={mode === 'signature' ? 400 : 600} height={300} className="object-contain drop-shadow-2xl" />
+                                            {mode === 'signature' && <div className="absolute top-4 right-4 bg-primary text-white p-1 rounded-full animate-in zoom-in shadow-xl"><Check className="h-3 w-3" /></div>}
+                                        </div>
                                     ) : null}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-muted/20 p-6 rounded-[2rem] border shadow-inner">
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between px-1">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                <Pipette className="h-3 w-3" /> Ink Density
-                                            </Label>
-                                            <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white text-[10px]">{inkSensitivity}</Badge>
-                                        </div>
-                                        <Slider 
-                                            value={[inkSensitivity]} 
-                                            onValueChange={([val]) => setInkSensitivity(val)} 
-                                            min={50} 
-                                            max={230} 
-                                            step={1} 
-                                            className="py-2"
-                                        />
-                                    </div>
-
-                                    <div className="space-y-4">
-                                        <div className="flex items-center justify-between px-1">
-                                            <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                                                <Wand2 className="h-3 w-3" /> Stroke Weight
-                                            </Label>
-                                            <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white text-[10px]">{strokeWeight}</Badge>
-                                        </div>
-                                        <Slider 
-                                            value={[strokeWeight]} 
-                                            onValueChange={([val]) => setStrokeWeight(val)} 
-                                            min={0} 
-                                            max={4} 
-                                            step={0.5} 
-                                            className="py-2"
-                                        />
-                                    </div>
+                                    {mode === 'signature' ? (
+                                        <>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Pipette className="h-3 w-3" /> Ink Density
+                                                    </Label>
+                                                    <Badge variant="outline" className="font-black tabular-nums h-5 bg-white text-[10px]">{inkSensitivity}</Badge>
+                                                </div>
+                                                <Slider value={[inkSensitivity]} onValueChange={([val]) => setInkSensitivity(val)} min={50} max={230} step={1} className="py-2" />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Wand2 className="h-3 w-3" /> Stroke Weight
+                                                    </Label>
+                                                    <Badge variant="outline" className="font-black tabular-nums h-5 bg-white text-[10px]">{strokeWeight}</Badge>
+                                                </div>
+                                                <Slider value={[strokeWeight]} onValueChange={([val]) => setStrokeWeight(val)} min={0} max={4} step={0.5} className="py-2" />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Sun className="h-3 w-3" /> Brightness
+                                                    </Label>
+                                                    <Badge variant="outline" className="font-black tabular-nums h-5 bg-white text-[10px]">{brightness > 0 ? `+${brightness}` : brightness}</Badge>
+                                                </div>
+                                                <Slider value={[brightness]} onValueChange={([val]) => setBrightness(val)} min={-50} max={50} step={1} className="py-2" />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <div className="flex items-center justify-between px-1">
+                                                    <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                                        <Contrast className="h-3 w-3" /> Contrast
+                                                    </Label>
+                                                    <Badge variant="outline" className="font-black tabular-nums h-5 bg-white text-[10px]">{contrast > 0 ? `+${contrast}` : contrast}</Badge>
+                                                </div>
+                                                <Slider value={[contrast]} onValueChange={([val]) => setContrast(val)} min={-50} max={50} step={1} className="py-2" />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </motion.div>
                         ) : (
@@ -349,21 +381,27 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 exit={{ opacity: 0, x: -20 }}
                                 className="p-8 space-y-10 text-center h-full flex flex-col justify-center"
                             >
-                                <div className="p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px] pattern-checkerboard">
-                                    {processedSignature && <Image src={processedSignature} alt="Verification" width={400} height={200} className="object-contain drop-shadow-lg" />}
+                                <div className={cn(
+                                    "p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px]",
+                                    mode === 'signature' && "pattern-checkerboard"
+                                )}>
+                                    {processedResult && <Image src={processedResult} alt="Verification" width={400} height={200} className="object-contain drop-shadow-2xl" />}
                                 </div>
                                 
                                 <div className="space-y-6">
                                     <div className="p-6 rounded-[2rem] bg-blue-50 border border-blue-100 flex items-start gap-4 text-left shadow-sm">
                                         <div className="p-2 bg-white rounded-xl text-blue-600 shadow-sm border border-blue-100 shrink-0"><Info className="h-5 w-5" /></div>
-                                        <p className="text-xs font-bold text-blue-800 leading-relaxed uppercase tracking-tighter">
-                                            By selecting “Execute Signature” you acknowledge that this electronic identity profile will be applied to the document as a legally binding signature.
-                                        </p>
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-black text-blue-900 uppercase tracking-tight">Legal Consent Disclosure</p>
+                                            <p className="text-[10px] font-bold text-blue-800/70 leading-relaxed uppercase tracking-widest">
+                                                By executing this command, you acknowledge that this electronic identity profile is legally binding and will be permanently associated with this institutional record.
+                                            </p>
+                                        </div>
                                     </div>
 
-                                    <div className="flex items-center justify-center gap-3">
+                                    <div className="flex items-center justify-center gap-3 pt-2">
                                         <Switch id="consent-toggle" checked={isConsented} onCheckedChange={setIsConsented} className="scale-125" />
-                                        <Label htmlFor="consent-toggle" className="text-base font-black uppercase tracking-tight cursor-pointer">I verify and consent</Label>
+                                        <Label htmlFor="consent-toggle" className="text-base font-black uppercase tracking-tight cursor-pointer px-2">Verify & Commit Identity</Label>
                                     </div>
                                 </div>
                             </motion.div>
@@ -374,22 +412,22 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
                     {step === 'input' ? (
                         <>
-                            <Button variant="ghost" onClick={handleClear} className="font-bold rounded-xl h-12 px-6 gap-2"><Eraser className="h-4 w-4" /> Clear</Button>
+                            <Button variant="ghost" onClick={handleClear} className="font-bold rounded-xl h-12 px-6 gap-2"><Eraser className="h-4 w-4" /> Reset</Button>
                             <div className="flex-1" />
-                            <Button variant="ghost" onClick={onClose} className="font-bold rounded-xl h-12 px-8">Cancel</Button>
-                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black px-12 h-12 shadow-lg uppercase tracking-widest text-xs">Review & Continue</Button>
+                            <Button variant="ghost" onClick={onClose} className="font-bold rounded-xl h-12 px-8">Discard</Button>
+                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black px-12 h-12 shadow-xl uppercase tracking-widest text-xs active:scale-95 transition-all">Resolve & Continue</Button>
                         </>
                     ) : step === 'refine' ? (
                         <>
-                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2"><ArrowLeft className="h-4 w-4" /> Retake</Button>
+                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2 hover:bg-white"><ArrowLeft className="h-4 w-4" /> Recapture</Button>
                             <div className="flex-1" />
-                            <Button onClick={() => setStep('confirm')} disabled={!processedSignature} className="rounded-xl font-black px-12 h-12 shadow-lg bg-primary text-white uppercase tracking-widest text-xs gap-2">Verify Signature <ArrowRight className="h-4 w-4" /></Button>
+                            <Button onClick={() => setStep('confirm')} disabled={!processedResult} className="rounded-xl font-black px-12 h-12 shadow-xl bg-primary text-white uppercase tracking-widest text-xs gap-3 active:scale-95 transition-all">Audit Result <ArrowRight className="h-4 w-4" /></Button>
                         </>
                     ) : (
                         <>
-                            <Button variant="ghost" onClick={() => setStep(activeTab === 'scan' ? 'refine' : 'input')} className="font-bold rounded-xl h-12 px-8 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>
+                            <Button variant="ghost" onClick={() => setStep('refine')} className="font-bold rounded-xl h-12 px-8 gap-2 hover:bg-white"><ArrowLeft className="h-4 w-4" /> Adjust Fidelity</Button>
                             <div className="flex-1" />
-                            <Button onClick={handleFinalSign} disabled={!isConsented || !processedSignature} className="rounded-[1.5rem] font-black h-14 px-16 shadow-2xl bg-primary text-white uppercase tracking-widest text-sm transition-all active:scale-95"><ShieldCheck className="mr-2 h-5 w-5" /> Execute Signature</Button>
+                            <Button onClick={handleFinalSave} disabled={!isConsented || !processedResult} className="rounded-[1.5rem] font-black h-14 px-16 shadow-2xl bg-primary text-white uppercase tracking-widest text-sm transition-all active:scale-95 gap-3"><ShieldCheck className="h-5 w-5" /> Execute Secure Save</Button>
                         </>
                     )}
                 </DialogFooter>
