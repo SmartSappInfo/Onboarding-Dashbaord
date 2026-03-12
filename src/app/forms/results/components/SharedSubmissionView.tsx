@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm, Submission, PDFFormField } from '@/lib/types';
+import type { PDFForm, Submission, PDFFormField, School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Printer, Lock, Clock } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Lock, Clock, Building } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -27,7 +27,7 @@ const passwordSchema = z.object({
 
 const AUTH_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
 
-export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm: PDFForm, submission: Submission }) {
+export default function SharedSubmissionView({ pdfForm, submission, school }: { pdfForm: PDFForm, submission: Submission, school?: School }) {
   const router = useRouter();
   const { toast } = useToast();
   
@@ -214,28 +214,36 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
     );
   }
 
+  const institutionName = school?.name || pdfForm.schoolName || 'Institutional Hub';
+
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-muted/20 text-left">
        <header className="h-16 border-b bg-background px-4 flex items-center justify-between shrink-0 shadow-sm print:hidden z-30">
-            <div className="flex items-center gap-1 sm:gap-2 min-w-0">
-                <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-9 px-2 sm:px-3">
+            <div className="flex items-center gap-1 sm:gap-2 min-w-0 flex-1">
+                <Button variant="ghost" size="sm" onClick={() => router.back()} className="h-9 px-2 sm:px-3 rounded-xl hover:bg-primary/5 transition-all">
                     <ArrowLeft className="sm:mr-2 h-4 w-4" />
                     <span className="hidden sm:inline font-bold">Back</span>
                 </Button>
                 <div className="hidden sm:block h-6 w-px bg-border mx-1" />
                 <div className="min-w-0 px-2">
                     <h1 className="font-black text-sm sm:text-base leading-none truncate pr-2 uppercase tracking-tight">
-                      Record: {submission.id.substring(0,8)}
+                      RECORD: {submission.id.substring(0,8).toUpperCase()}
                     </h1>
-                    <p className="text-[9px] sm:text-[10px] text-muted-foreground mt-1 font-bold uppercase tracking-widest truncate">
-                      {pdfForm.schoolName || 'SmartSapp'} · Submitted on {format(new Date(submission.submittedAt), "MMM d, yyyy")}
-                    </p>
+                    <div className="flex items-center gap-2 mt-1 truncate">
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-black uppercase tracking-widest truncate">
+                          {institutionName}
+                        </p>
+                        <span className="text-muted-foreground/30 text-xs">·</span>
+                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-bold uppercase tracking-tighter truncate">
+                          Submitted on {format(new Date(submission.submittedAt), "MMM d, yyyy")}
+                        </p>
+                    </div>
                 </div>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-                <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest">
+                <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest active:scale-95 transition-all">
                     {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
-                    <span className="hidden sm:inline">Download Signed PDF</span>
+                    <span className="hidden sm:inline">Download Signed Copy</span>
                     <span className="sm:hidden">Download</span>
                 </Button>
             </div>
@@ -255,6 +263,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
                                     pageNumber={i+1} 
                                     fields={pdfForm.fields} 
                                     formData={submission.formData} 
+                                    school={school}
                                 />
                             </div>
                         ))}
@@ -275,7 +284,7 @@ export default function SharedSubmissionView({ pdfForm, submission }: { pdfForm:
   );
 }
 
-function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any } }) {
+function PageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any }, school?: School }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [isRendering, setIsRendering] = React.useState(true);
@@ -318,14 +327,17 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                         const storedValue = formData[field.id];
                         let val = storedValue;
                         
-                        // Fallback resolution for non-stored fields (static/variables) if necessary
-                        if (val === undefined || val === null) {
-                            if (field.type === 'static-text') val = field.staticText;
+                        // RESOLUTION HIERARCHY: Stored (Flattened) > Variable Mapping > Static Text
+                        if (val === undefined || val === null || val === '') {
+                            if (field.type === 'variable' && field.variableKey) {
+                                val = resolveVariableValue(field.variableKey, school);
+                            } else if (field.type === 'static-text') {
+                                val = field.staticText;
+                            }
                         }
 
                         if (!val) return null;
                         
-                        // Scale font by the fixed scale (1.5) used for the canvas in this view
                         const dynamicFontSize = `${Math.round((field.fontSize || 11) * 1.5)}px`;
                         const verticalAlign = field.verticalAlignment || 'center';
 
@@ -347,7 +359,7 @@ function PageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDocumentP
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
-                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : field.alignment === 'left' ? 'flex-start' : 'flex-start'
                                 }}
                             >
                                 {field.type === 'signature' || field.type === 'photo' ? (
