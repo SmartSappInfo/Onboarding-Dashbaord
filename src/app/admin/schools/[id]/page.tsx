@@ -30,7 +30,8 @@ import {
     Plus,
     Circle,
     Receipt,
-    Camera
+    Camera,
+    Loader2
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -51,6 +52,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
