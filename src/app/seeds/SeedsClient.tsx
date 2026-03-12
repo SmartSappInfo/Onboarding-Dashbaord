@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -36,9 +35,11 @@ import {
     CheckCircle2,
     AlertCircle,
     ChevronRight,
-    Check
+    Check,
+    Layers
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SmartSappLogo, SmartSappIcon } from '@/components/icons';
@@ -56,6 +57,7 @@ const DEFAULT_LAYOUT = [
 
 export default function SeedsClient() {
   const firestore = useFirestore();
+  const router = useRouter();
   const { user } = useUser();
   const { toast } = useToast();
   
