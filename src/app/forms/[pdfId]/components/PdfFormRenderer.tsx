@@ -90,6 +90,16 @@ const generateValidationSchema = (fields: PDFFormField[]) => {
 const isValueEmpty = (value: any, questionType: string): boolean => {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
+    if (questionType === 'rating' && (value === 0 || value === '0')) return true;
+    if (questionType === 'checkboxes' && typeof value === 'object') {
+        const options = (value as any).options;
+        const other = (value as any).other;
+        if (options !== undefined || other !== undefined) {
+            return (!options || options.length === 0) && !other;
+        }
+    }
+    if (value instanceof Date) return !isValid(value);
+    if (typeof value === 'object' && value !== null) return Object.keys(value).length === 0;
     return false;
 }
 
@@ -143,10 +153,11 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     defaultValues: initialData
   });
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { errors }, control } = methods;
+  const { register, handleSubmit, watch, setValue, getValues, formState: { errors }, control, trigger: validate } = methods;
   const watchedValues = watch();
 
   const isFormComplete = React.useMemo(() => {
+      // Logic: Only required user-filled fields (not variables/static) must be populated
       return pdfForm.fields
         .filter(f => f.type !== 'static-text' && f.type !== 'variable')
         .every(f => {
@@ -182,8 +193,11 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const handleSaveProgress = async () => {
       if (isPreview || !school) return;
       setIsSubmitting(true);
+      
       const data = getValues();
+      // Ensure all current values are captured
       const res = await saveAgreementProgressAction(pdfForm.id, school.id, data);
+      
       if (res.success) toast({ title: 'Progress Saved', description: 'Institutional data cached.' });
       else toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
       setIsSubmitting(false);
@@ -191,11 +205,26 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
 
   const handlePreSubmit = (data: any) => {
     if (isPreview) { toast({ title: 'Preview Mode' }); return; }
-    setPendingFormData(data);
+    
+    // INSTITUTIONAL FLATTENING Logic:
+    // Before finalizing, we resolve all variables and static text into hardcoded values 
+    // in the payload to ensure historical accuracy.
+    const flattenedData = { ...data };
+    
+    pdfForm.fields.forEach(field => {
+        if (field.type === 'static-text' && field.staticText) {
+            flattenedData[field.id] = field.staticText;
+        } else if (field.type === 'variable' && field.variableKey) {
+            const resolved = resolveVariableValue(field.variableKey, school);
+            if (resolved !== null) flattenedData[field.id] = resolved;
+        }
+    });
+
+    setPendingFormData(flattenedData);
     setShowConfirmDialog(true);
   };
 
-  const onInvalid = (errors: any) => {
+  const onInvalid = () => {
     const missing: { id: string, label: string, pageNumber: number }[] = [];
     const formData = getValues();
     
@@ -268,11 +297,11 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
         return (
             <div className="w-full h-full group/desktop-field relative" style={fieldStyle}>
                 {field.type === 'dropdown' ? (
-                    <Controller name={field.id} control={control} render={({ field: sf }) => (<Select onValueChange={sf.onChange} value={sf.value}><SelectTrigger className="w-full h-full min-h-0 p-0.5 border-transparent bg-transparent rounded-none" style={{ fontSize: 'inherit', color: field.color || 'inherit' }}><SelectValue placeholder={field.label} /></SelectTrigger><SelectContent className="rounded-xl">{(field.options || []).map((o, i) => (<SelectItem key={i} value={o}>{o}</SelectItem>))}</SelectContent></Select>)} />
+                    <Controller name={field.id} control={control} render={({ field: sf }) => (<Select onValueChange={sf.onChange} value={sf.value}><SelectTrigger className="w-full h-full min-h-0 p-0.5 border-transparent bg-transparent rounded-none shadow-none focus:ring-0" style={{ fontSize: 'inherit', color: field.color || 'inherit' }}><SelectValue placeholder={field.label} /></SelectTrigger><SelectContent className="rounded-xl">{(field.options || []).map((o, i) => (<SelectItem key={i} value={o}>{o}</SelectItem>))}</SelectContent></Select>)} />
                 ) : field.type === 'date' ? (
                     <Controller name={field.id} control={control} render={({ field: df }) => (<DatePicker value={df.value} onChange={(d) => df.onChange(d?.toISOString())} placeholder={field.label} style={{ fontSize: 'inherit', color: field.color || 'inherit' }} className={cn(errors[field.id] && "bg-destructive/5")} />)} />
                 ) : (
-                    <Input {...register(field.id)} type={field.type === 'time' ? 'time' : 'text'} placeholder={field.placeholder || field.label} className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent rounded-none", errors[field.id] && "bg-destructive/5")} style={{ fontSize: 'inherit', textAlign: 'inherit', color: field.color || 'inherit' }} />
+                    <Input {...register(field.id)} type={field.type === 'time' ? 'time' : 'text'} placeholder={field.placeholder || field.label} className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent rounded-none shadow-none focus-visible:ring-0", errors[field.id] && "bg-destructive/5")} style={{ fontSize: 'inherit', textAlign: 'inherit', color: field.color || 'inherit' }} />
                 )}
             </div>
         );
@@ -308,16 +337,21 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="hidden sm:flex rounded-xl font-bold gap-2"><Save className="h-4 w-4" /> Save Draft</Button>
-                    <Button 
-                        type="button" 
-                        size="sm" 
-                        onClick={isFormComplete ? handleSubmit(handlePreSubmit, onInvalid) : handleSubmit(handleSaveProgress, onInvalid)} 
-                        className="rounded-xl font-bold px-6"
-                    >
-                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isFormComplete ? <Send className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-                        {isFormComplete ? 'Finalize' : 'Save'}
+                    <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
+                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                        Save Progress
                     </Button>
+                    {isFormComplete && (
+                        <Button 
+                            type="button" 
+                            size="sm" 
+                            onClick={handleSubmit(handlePreSubmit, onInvalid)} 
+                            className="rounded-xl font-black shadow-lg px-6 h-10 uppercase text-[10px] tracking-widest gap-2 bg-primary animate-in zoom-in duration-300"
+                        >
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            Finalize Agreement
+                        </Button>
+                    )}
                 </div>
             </header>
             <main className="flex-grow relative overflow-hidden z-10">
