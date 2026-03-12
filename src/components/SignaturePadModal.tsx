@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -10,11 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Upload, Camera, Eraser, Scan, Check, RefreshCw } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, ShieldCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { processSignatureImage } from '@/lib/signature-processing';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -25,8 +26,9 @@ interface SignaturePadModalProps {
 
 export default function SignaturePadModal({ open, onClose, onSave, mode = 'signature' }: SignaturePadModalProps) {
     const { toast } = useToast();
-    const [step, setStep] = React.useState<'input' | 'confirm'>('input');
-    const [signatureData, setSignatureData] = React.useState<string | null>(null);
+    const [step, setStep] = React.useState<'input' | 'refine' | 'confirm'>('input');
+    const [rawCapturedImage, setRawCapturedImage] = React.useState<string | null>(null);
+    const [processedSignature, setProcessedSignature] = React.useState<string | null>(null);
 
     const sigPadRef = React.useRef<SignatureCanvas | null>(null);
     const initialsCanvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -38,6 +40,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [isConsented, setIsConsented] = React.useState(false);
     const [hasDrawn, setHasDrawn] = React.useState(false);
 
+    // Processing state
+    const [inkSensitivity, setInkSensitivity] = React.useState(150);
+    const [isProcessing, setIsProcessing] = React.useState(false);
+
     // Camera states
     const [hasCameraPermission, setHasCameraPermission] = React.useState<boolean | null>(null);
     const [capturedImage, setCapturedImage] = React.useState<string | null>(null);
@@ -48,6 +54,17 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             setActiveTab('scan');
         }
     }, [open]);
+
+    // Handle real-time refinement when sensitivity changes
+    React.useEffect(() => {
+        if (step === 'refine' && rawCapturedImage) {
+            const refine = async () => {
+                const result = await processSignatureImage(rawCapturedImage, inkSensitivity);
+                setProcessedSignature(result.dataUrl);
+            };
+            refine();
+        }
+    }, [inkSensitivity, step, rawCapturedImage]);
 
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
@@ -61,13 +78,15 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     const resetState = () => {
         setStep('input');
-        setSignatureData(null);
+        setRawCapturedImage(null);
+        setProcessedSignature(null);
         setTypedInitials('');
         setUploadedImage(null);
         setCapturedImage(null);
         sigPadRef.current?.clear();
         setIsConsented(false);
         setHasDrawn(false);
+        setInkSensitivity(150);
     };
 
     const handleOpenChange = (isOpen: boolean) => {
@@ -77,12 +96,23 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     };
     
-    const handleCapture = React.useCallback(() => {
+    const handleCapture = React.useCallback(async () => {
         const imageSrc = webcamRef.current?.getScreenshot();
         if (imageSrc) {
-            setCapturedImage(imageSrc);
+            setRawCapturedImage(imageSrc);
+            setIsProcessing(true);
+            setStep('refine');
+            
+            try {
+                const result = await processSignatureImage(imageSrc, inkSensitivity);
+                setProcessedSignature(result.dataUrl);
+            } catch (e) {
+                toast({ variant: 'destructive', title: 'Processing Error', description: 'Could not isolate signature.' });
+            } finally {
+                setIsProcessing(false);
+            }
         }
-    }, [webcamRef]);
+    }, [webcamRef, inkSensitivity, toast]);
 
     const handleProceedToConfirm = () => {
         let dataUrl: string | null = null;
@@ -103,12 +133,12 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             }
         } else if (activeTab === 'upload' && uploadedImage) {
             dataUrl = uploadedImage;
-        } else if (activeTab === 'scan' && capturedImage) {
-            dataUrl = capturedImage;
+        } else if (activeTab === 'scan' && processedSignature) {
+            dataUrl = processedSignature;
         }
 
         if (dataUrl) {
-            setSignatureData(dataUrl);
+            setProcessedSignature(dataUrl);
             setStep('confirm');
         } else {
             toast({
@@ -120,8 +150,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     };
 
     const handleFinalSign = () => {
-        if (signatureData) {
-            onSave(signatureData);
+        if (processedSignature) {
+            onSave(processedSignature);
             resetState();
             onClose();
         }
@@ -139,8 +169,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const isInputProvided = 
         (activeTab === 'draw' && hasDrawn) ||
         (activeTab === 'type' && typedInitials.length > 0) ||
-        (activeTab === 'upload' && uploadedImage !== null) ||
-        (activeTab === 'scan' && capturedImage !== null);
+        (activeTab === 'upload' && uploadedImage !== null);
 
     const onUserMedia = () => {
         setHasCameraPermission(true);
@@ -163,7 +192,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         {mode === 'photo' ? 'Capture Identity' : 'Provide Signature'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                        {step === 'input' ? 'Choose your preferred identity method' : 'Verify and provide legal consent'}
+                        {step === 'input' ? 'Choose your preferred identity method' : 
+                         step === 'refine' ? 'Fine-tune your scanned signature' :
+                         'Verify and provide legal consent'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -187,75 +218,41 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
                                     <div className="flex-1 overflow-hidden relative min-h-[300px]">
                                         <TabsContent value="scan" className="m-0 h-full flex flex-col items-center justify-center relative">
-                                            {capturedImage ? (
-                                                <div className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-primary/20 bg-muted shadow-inner">
-                                                    <Image src={capturedImage} alt="Captured" fill className="object-contain p-4" />
-                                                    <Button 
-                                                        variant="secondary" 
-                                                        size="sm" 
-                                                        onClick={() => setCapturedImage(null)}
-                                                        className="absolute bottom-4 right-4 rounded-xl font-bold gap-2 shadow-lg"
-                                                    >
-                                                        <RefreshCw className="h-4 w-4" /> Retake
-                                                    </Button>
+                                            <div className="w-full h-full relative group rounded-2xl overflow-hidden bg-slate-900 border-2 border-white/5 shadow-2xl">
+                                                <Webcam
+                                                    audio={false}
+                                                    ref={webcamRef}
+                                                    screenshotFormat="image/png"
+                                                    onUserMedia={onUserMedia}
+                                                    onUserMediaError={onUserMediaError}
+                                                    videoConstraints={{ facingMode: "environment" }}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                
+                                                <div className="absolute inset-0 pointer-events-none">
+                                                    <div className="absolute inset-0 bg-black/40" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 15% 100%, 15% 25%, 85% 25%, 85% 75%, 15% 75%, 15% 100%, 100% 100%, 100% 0%)' }} />
+                                                    <div className="absolute top-[25%] left-[15%] w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                    <div className="absolute top-[25%] right-[15%] w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                    <div className="absolute bottom-[25%] left-[15%] w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                    <div className="absolute bottom-[25%] right-[15%] w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
+                                                    <motion.div animate={{ top: ['25%', '75%', '25%'] }} transition={{ duration: 3, repeat: Infinity, ease: "linear" }} className="absolute left-[15%] right-[15%] h-0.5 bg-primary/50 shadow-[0_0_10px_rgba(59,95,255,0.8)] z-10" />
                                                 </div>
-                                            ) : (
-                                                <div className="w-full h-full relative group rounded-2xl overflow-hidden bg-slate-900 border-2 border-white/5 shadow-2xl">
-                                                    <Webcam
-                                                        audio={false}
-                                                        ref={webcamRef}
-                                                        screenshotFormat="image/png"
-                                                        onUserMedia={onUserMedia}
-                                                        onUserMediaError={onUserMediaError}
-                                                        videoConstraints={{ facingMode: "environment" }}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                    
-                                                    {/* Scanning Frame Overlay */}
-                                                    <div className="absolute inset-0 pointer-events-none">
-                                                        <div className="absolute inset-0 bg-black/40" style={{ clipPath: 'polygon(0% 0%, 0% 100%, 15% 100%, 15% 25%, 85% 25%, 85% 75%, 15% 75%, 15% 100%, 100% 100%, 100% 0%)' }} />
-                                                        
-                                                        {/* Corners */}
-                                                        <div className="absolute top-[25%] left-[15%] w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
-                                                        <div className="absolute top-[25%] right-[15%] w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
-                                                        <div className="absolute bottom-[25%] left-[15%] w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
-                                                        <div className="absolute bottom-[25%] right-[15%] w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl shadow-[0_0_15px_rgba(59,95,255,0.5)]" />
-                                                        
-                                                        {/* Scanning Line Animation */}
-                                                        <motion.div 
-                                                            animate={{ top: ['25%', '75%', '25%'] }}
-                                                            transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                                            className="absolute left-[15%] right-[15%] h-0.5 bg-primary/50 shadow-[0_0_10px_rgba(59,95,255,0.8)] z-10"
-                                                        />
-                                                    </div>
 
-                                                    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto">
-                                                        <button 
-                                                            onClick={handleCapture}
-                                                            className="w-16 h-16 rounded-full bg-white border-4 border-primary/20 flex items-center justify-center group active:scale-95 transition-all shadow-2xl"
-                                                        >
-                                                            <div className="w-12 h-12 rounded-full border-2 border-slate-200 bg-primary group-hover:scale-90 transition-transform shadow-inner flex items-center justify-center">
-                                                                <Camera className="h-6 w-6 text-white" />
-                                                            </div>
-                                                        </button>
-                                                    </div>
+                                                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 pointer-events-auto">
+                                                    <button onClick={handleCapture} className="w-16 h-16 rounded-full bg-white border-4 border-primary/20 flex items-center justify-center group active:scale-95 transition-all shadow-2xl">
+                                                        <div className="w-12 h-12 rounded-full border-2 border-slate-200 bg-primary group-hover:scale-90 transition-transform shadow-inner flex items-center justify-center">
+                                                            <Camera className="h-6 w-6 text-white" />
+                                                        </div>
+                                                    </button>
                                                 </div>
-                                            )}
+                                            </div>
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full">
                                             <div className="space-y-4 h-full flex flex-col">
                                                 <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Sign within the blueprint area</Label>
                                                 <div className="flex-1 border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
-                                                    <SignatureCanvas
-                                                        ref={sigPadRef}
-                                                        penColor="black"
-                                                        canvasProps={{
-                                                            className: 'w-full h-full cursor-crosshair',
-                                                            willreadfrequently: "true"
-                                                        }}
-                                                        onBegin={() => setHasDrawn(true)}
-                                                    />
+                                                    <SignatureCanvas ref={sigPadRef} penColor="black" canvasProps={{ className: 'w-full h-full cursor-crosshair', willreadfrequently: "true" }} onBegin={() => setHasDrawn(true)} />
                                                 </div>
                                             </div>
                                         </TabsContent>
@@ -263,13 +260,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         <TabsContent value="type" className="m-0 h-full flex flex-col justify-center gap-6">
                                             <div className="space-y-4">
                                                 <Label className="block text-center text-muted-foreground uppercase text-[9px] font-black tracking-[0.2em]">Type your full legal name</Label>
-                                                <Input 
-                                                    value={typedInitials} 
-                                                    onChange={(e) => setTypedInitials(e.target.value)} 
-                                                    className="text-4xl sm:text-7xl text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent placeholder:opacity-10" 
-                                                    placeholder="Jane Doe" 
-                                                    autoFocus
-                                                />
+                                                <Input value={typedInitials} onChange={(e) => setTypedInitials(e.target.value)} className="text-4xl sm:text-7xl text-center font-signature h-auto py-12 border-none shadow-none focus-visible:ring-0 bg-transparent placeholder:opacity-10" placeholder="Jane Doe" autoFocus />
                                                 <canvas ref={initialsCanvasRef} width="1200" height="450" className="hidden" />
                                             </div>
                                         </TabsContent>
@@ -278,9 +269,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             <div className="h-full flex flex-col">
                                                 {!uploadedImage ? (
                                                     <label htmlFor="signature-upload" className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-primary/20 rounded-2xl cursor-pointer bg-primary/[0.02] hover:bg-primary/5 p-8 text-center transition-all duration-500 group">
-                                                        <div className="p-4 bg-white rounded-2xl shadow-xl mb-4 group-hover:scale-110 transition-transform">
-                                                            <Upload className="w-8 h-8 text-primary" />
-                                                        </div>
+                                                        <div className="p-4 bg-white rounded-2xl shadow-xl mb-4 group-hover:scale-110 transition-transform"><Upload className="w-8 h-8 text-primary" /></div>
                                                         <p className="text-sm font-black uppercase tracking-tight">Upload Scan Profile</p>
                                                         <p className="text-[10px] text-muted-foreground uppercase mt-1 font-bold">PNG or JPG preferred</p>
                                                         <Input id="signature-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
@@ -288,20 +277,53 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                 ) : (
                                                     <div className="flex-1 relative rounded-2xl overflow-hidden border-2 border-primary/20 bg-muted shadow-inner p-4 flex items-center justify-center">
                                                         <Image src={uploadedImage} alt="Preview" fill className="object-contain p-4" />
-                                                        <Button 
-                                                            variant="secondary" 
-                                                            size="sm" 
-                                                            onClick={() => setUploadedImage(null)}
-                                                            className="absolute bottom-4 right-4 rounded-xl font-bold gap-2 shadow-lg"
-                                                        >
-                                                            <RefreshCw className="h-4 w-4" /> Change File
-                                                        </Button>
+                                                        <Button variant="secondary" size="sm" onClick={() => setUploadedImage(null)} className="absolute bottom-4 right-4 rounded-xl font-bold gap-2 shadow-lg"><RefreshCw className="h-4 w-4" /> Change File</Button>
                                                     </div>
                                                 )}
                                             </div>
                                         </TabsContent>
                                     </div>
                                 </Tabs>
+                            </motion.div>
+                        ) : step === 'refine' ? (
+                            <motion.div 
+                                key="refine" 
+                                initial={{ opacity: 0, x: 20 }} 
+                                animate={{ opacity: 1, x: 0 }} 
+                                exit={{ opacity: 0, x: -20 }}
+                                className="h-full flex flex-col p-8 space-y-8"
+                            >
+                                <div className="flex-1 relative rounded-[2rem] overflow-hidden border-2 border-primary/20 bg-muted shadow-inner flex items-center justify-center pattern-checkerboard">
+                                    {isProcessing ? (
+                                        <div className="flex flex-col items-center gap-4">
+                                            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary animate-pulse">Isolating Ink...</p>
+                                        </div>
+                                    ) : processedSignature ? (
+                                        <Image src={processedSignature} alt="Isolated" width={400} height={200} className="object-contain drop-shadow-xl p-4" />
+                                    ) : null}
+                                </div>
+
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between px-1">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <Wand2 className="h-3 w-3" /> Ink Sensitivity
+                                        </Label>
+                                        <Badge variant="outline" className="font-bold tabular-nums h-5 bg-white">{inkSensitivity}</Badge>
+                                    </div>
+                                    <Slider 
+                                        value={[inkSensitivity]} 
+                                        onValueChange={([val]) => setInkSensitivity(val)} 
+                                        min={50} 
+                                        max={230} 
+                                        step={1} 
+                                        className="py-2"
+                                    />
+                                    <div className="flex justify-between text-[8px] font-bold text-muted-foreground uppercase tracking-tighter px-1">
+                                        <span>Restrictive (Thin)</span>
+                                        <span>Permissive (Thick)</span>
+                                    </div>
+                                </div>
                             </motion.div>
                         ) : (
                             <motion.div 
@@ -311,8 +333,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 exit={{ opacity: 0, x: -20 }}
                                 className="p-8 space-y-10 text-center"
                             >
-                                <div className="p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px]">
-                                    {signatureData && <Image src={signatureData} alt="Verification" width={400} height={200} className="object-contain" />}
+                                <div className="p-8 bg-slate-50 border-2 border-dashed rounded-[3rem] shadow-inner relative flex items-center justify-center min-h-[200px] pattern-checkerboard">
+                                    {processedSignature && <Image src={processedSignature} alt="Verification" width={400} height={200} className="object-contain drop-shadow-lg" />}
                                 </div>
                                 
                                 <div className="space-y-6">
@@ -336,29 +358,22 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
                     {step === 'input' ? (
                         <>
-                            <Button variant="ghost" onClick={handleClear} disabled={!isInputProvided} className="font-bold rounded-xl h-12 px-6 gap-2">
-                                <Eraser className="h-4 w-4" /> Clear
-                            </Button>
+                            <Button variant="ghost" onClick={handleClear} className="font-bold rounded-xl h-12 px-6 gap-2"><Eraser className="h-4 w-4" /> Clear</Button>
                             <div className="flex-1" />
                             <Button variant="ghost" onClick={onClose} className="font-bold rounded-xl h-12 px-8">Cancel</Button>
-                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black px-12 h-12 shadow-lg uppercase tracking-widest text-xs">
-                                Review & Continue
-                            </Button>
+                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black px-12 h-12 shadow-lg uppercase tracking-widest text-xs">Review & Continue</Button>
+                        </>
+                    ) : step === 'refine' ? (
+                        <>
+                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2"><ArrowLeft className="h-4 w-4" /> Retake</Button>
+                            <div className="flex-1" />
+                            <Button onClick={() => setStep('confirm')} disabled={!processedSignature} className="rounded-xl font-black px-12 h-12 shadow-lg bg-primary text-white uppercase tracking-widest text-xs gap-2">Finalize Scanned Signature <ArrowRight className="h-4 w-4" /></Button>
                         </>
                     ) : (
                         <>
-                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold rounded-xl h-12 px-8 gap-2">
-                                <ArrowLeft className="h-4 w-4" /> Back
-                            </Button>
+                            <Button variant="ghost" onClick={() => setStep(activeTab === 'scan' ? 'refine' : 'input')} className="font-bold rounded-xl h-12 px-8 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>
                             <div className="flex-1" />
-                            <Button 
-                                onClick={handleFinalSign} 
-                                disabled={!isConsented || !signatureData}
-                                className="rounded-[1.5rem] font-black h-14 px-16 shadow-2xl bg-primary text-white uppercase tracking-widest text-sm transition-all active:scale-95"
-                            >
-                                <ShieldCheck className="mr-2 h-5 w-5" />
-                                Execute Signature
-                            </Button>
+                            <Button onClick={handleFinalSign} disabled={!isConsented || !processedSignature} className="rounded-[1.5rem] font-black h-14 px-16 shadow-2xl bg-primary text-white uppercase tracking-widest text-sm transition-all active:scale-95"><ShieldCheck className="mr-2 h-5 w-5" /> Execute Signature</Button>
                         </>
                     )}
                 </DialogFooter>
