@@ -14,9 +14,29 @@ import {
     seedRolesAndPermissions 
 } from '@/lib/seed';
 import { 
-    Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, 
-    Film, School as SchoolIcon, History, MessageSquareText, 
-    MapPin, CheckSquare, Banknote, ShieldAlert, Lock, Key, ArrowRight, Zap, Globe
+    Loader2, 
+    RefreshCw, 
+    Database, 
+    ShieldCheck, 
+    ClipboardList, 
+    Film, 
+    School as SchoolIcon, 
+    History, 
+    MessageSquareText, 
+    MapPin, 
+    CheckSquare, 
+    Banknote, 
+    ShieldAlert, 
+    Lock, 
+    Key, 
+    ArrowRight, 
+    Zap, 
+    Layout,
+    Info,
+    CheckCircle2,
+    AlertCircle,
+    ChevronRight,
+    Check
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
