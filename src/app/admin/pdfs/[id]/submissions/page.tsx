@@ -12,7 +12,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
 import { 
     ArrowLeft, Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Clock, Users, Trash2, 
-    CheckSquare, MoreVertical, MoreHorizontal, FileText, BarChart3, TrendingUp, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2
+    CheckSquare, MoreVertical, MoreHorizontal, FileText, BarChart3, TrendingUp, TrendingDown, Target, Share2, Lock, Zap, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
@@ -41,7 +41,6 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
@@ -404,7 +403,7 @@ export default function SubmissionsPage() {
                 )}
             </div>
 
-            <TabsContent value="list" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <TabsContent value="list" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4 text-left">
@@ -800,7 +799,7 @@ function SilentPageRenderer({ pdf, pageNumber, fields, formData }: { pdf: PDFDoc
                                     display: 'flex',
                                     flexDirection: 'column',
                                     justifyContent: verticalAlign === 'center' ? 'center' : verticalAlign === 'bottom' ? 'flex-end' : 'flex-start',
-                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : 'flex-start'
+                                    alignItems: field.alignment === 'center' ? 'center' : field.alignment === 'right' ? 'flex-end' : field.alignment === 'left' ? 'flex-start' : 'flex-start'
                                 }}
                             >
                                 {field.type === 'signature' ? (
