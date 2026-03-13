@@ -17,7 +17,6 @@ const initialZones = [
   'Airport / Legon Zone',
   'North Legon/Adenta/Madina/Dodowa Zone',
   'Pokuase Zone',
-  'Eastern / Ashanti / Brong Ahafo',
   'External Zone (Other Regions)',
 ];
 
@@ -81,6 +80,56 @@ const defaultPackages: Omit<SubscriptionPackage, 'id'>[] = [
     { name: 'Level B (Growth)', description: 'Standard tier for growing institutions.', ratePerStudent: 49.97, billingTerm: 'term', currency: 'GHS', isActive: true },
     { name: 'Level C (Foundation)', description: 'Entry-level tier for security basics.', ratePerStudent: 39.97, billingTerm: 'term', currency: 'GHS', isActive: true },
 ];
+
+const surveyData = [
+    {
+      internalName: 'Parent Engagement Survey',
+      title: 'Parent Experience Questionnaire',
+      description: 'Help us improve your child\'s school journey by sharing your thoughts on our digital services.',
+      slug: 'parents-survey',
+      status: 'published',
+      elements: [
+        { id: 'q_name', type: 'text', title: 'What is your full name?', isRequired: true },
+        { id: 'q_rating', type: 'rating', title: 'How would you rate the school\'s digital communication?', isRequired: true },
+      ],
+    },
+    {
+      internalName: 'School Administrator Survey',
+      title: 'Institutional Onboarding Assessment',
+      description: 'Tell us about your school\'s current management systems and onboarding goals.',
+      slug: 'schools-survey',
+      status: 'published',
+      elements: [
+        { id: 'q_school_name', type: 'text', title: 'Official School Name', isRequired: true },
+        { id: 'q_tech_stack', type: 'multiple-choice', title: 'Primary current management system?', options: ['Manual/Paper', 'Excel Spreadsheets', 'Cloud Software', 'In-house System'], isRequired: true },
+      ],
+    }
+];
+
+const defaultStages = [
+    { name: 'Welcome', order: 1, color: '#f72585' },
+    { name: 'Setup', order: 2, color: '#7209b7' },
+    { name: 'Training', order: 3, color: '#4361ee' },
+    { name: 'Go-Live', order: 4, color: '#4cc9f0' },
+];
+
+const defaultModules = [
+    { name: 'Child Security', abbreviation: 'SEC', color: '#f72585', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
+    { name: 'Connected Community', abbreviation: 'COM', color: '#b5179e', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
+];
+
+// --- HELPER FUNCTIONS ---
+
+async function clearCollection(firestore: Firestore, collectionPath: string) {
+  const collectionRef = collection(firestore, collectionPath);
+  const querySnapshot = await getDocs(collectionRef);
+  if (querySnapshot.empty) return;
+  const batch = writeBatch(firestore);
+  querySnapshot.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+}
 
 // --- SEEDING FUNCTIONS ---
 
@@ -233,17 +282,6 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
     
     await batch.commit();
     return dataToSeed.length;
-}
-
-async function clearCollection(firestore: Firestore, collectionPath: string) {
-  const collectionRef = collection(firestore, collectionPath);
-  const querySnapshot = await getDocs(collectionRef);
-  if (querySnapshot.empty) return;
-  const batch = writeBatch(firestore);
-  querySnapshot.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-  await batch.commit();
 }
 
 export async function seedMeetings(firestore: Firestore): Promise<number> {
@@ -655,52 +693,4 @@ export async function seedBillingData(firestore: Firestore): Promise<number> {
 
     await batch.commit();
     return defaultPackages.length + 2;
-}
-
-const surveyData = [
-    {
-      internalName: 'Parent Engagement Survey',
-      title: 'Parent Experience Questionnaire',
-      description: 'Help us improve your child\'s school journey by sharing your thoughts on our digital services.',
-      slug: 'parents-survey',
-      status: 'published',
-      elements: [
-        { id: 'q_name', type: 'text', title: 'What is your full name?', isRequired: true },
-        { id: 'q_rating', type: 'rating', title: 'How would you rate the school\'s digital communication?', isRequired: true },
-      ],
-    },
-    {
-      internalName: 'School Administrator Survey',
-      title: 'Institutional Onboarding Assessment',
-      description: 'Tell us about your school\'s current management systems and onboarding goals.',
-      slug: 'schools-survey',
-      status: 'published',
-      elements: [
-        { id: 'q_school_name', type: 'text', title: 'Official School Name', isRequired: true },
-        { id: 'q_tech_stack', type: 'multiple-choice', title: 'Primary current management system?', options: ['Manual/Paper', 'Excel Spreadsheets', 'Cloud Software', 'In-house System'], isRequired: true },
-      ],
-    }
-];
-
-const defaultStages = [
-    { name: 'Welcome', order: 1, color: '#f72585' },
-    { name: 'Setup', order: 2, color: '#7209b7' },
-    { name: 'Training', order: 3, color: '#4361ee' },
-    { name: 'Go-Live', order: 4, color: '#4cc9f0' },
-];
-
-const defaultModules = [
-    { name: 'Child Security', abbreviation: 'SEC', color: '#f72585', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
-    { name: 'Connected Community', abbreviation: 'COM', color: '#b5179e', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
-];
-
-async function clearCollection(firestore: Firestore, collectionPath: string) {
-  const collectionRef = collection(firestore, collectionPath);
-  const querySnapshot = await getDocs(collectionRef);
-  if (querySnapshot.empty) return;
-  const batch = writeBatch(firestore);
-  querySnapshot.forEach((doc) => {
-    batch.delete(doc.ref);
-  });
-  await batch.commit();
 }
