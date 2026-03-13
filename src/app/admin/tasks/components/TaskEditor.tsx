@@ -26,6 +26,8 @@ import {
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Loader2, 
     Save, 
@@ -48,7 +50,7 @@ import {
     Calendar,
     Layout
 } from 'lucide-react';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder } from '@/lib/types';
 import { cn } from '@/lib/utils';
