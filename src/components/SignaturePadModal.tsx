@@ -261,7 +261,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card text-left">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
-                        Your Signature
+                        Apply Your Signature
                     </DialogTitle>
                     <DialogDescription className="text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                         {step === 'input' ? 'Choose input method' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}

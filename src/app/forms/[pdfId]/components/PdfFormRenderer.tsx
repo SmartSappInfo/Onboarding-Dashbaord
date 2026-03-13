@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Dialog, 
     DialogContent, 
@@ -163,7 +163,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const watchedValues = watch();
 
   const isFormComplete = React.useMemo(() => {
-      // Logic: Only required user-filled fields (not variables/static) must be populated
       return pdfForm.fields
         .filter(f => f.type !== 'static-text' && f.type !== 'variable')
         .every(f => {
@@ -266,7 +265,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const handlePreSubmit = (data: any) => {
     if (isPreview) { toast({ title: 'Preview Mode' }); return; }
     
-    // INSTITUTIONAL FLATTENING Logic:
     const flattenedData = { ...data };
     
     pdfForm.fields.forEach(field => {
@@ -311,18 +309,35 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   };
 
   const onConfirmSubmission = async () => {
-    if (!pendingFormData || !school) return;
+    if (!pendingFormData) return;
     setIsSubmitting(true);
     setShowConfirmDialog(false);
 
     try {
-        const res = await finalizeAgreementAction(pdfForm.id, school.id, pendingFormData);
-        if (res.success) {
-            setIsFinalizedView(true);
-            toast({ title: 'Agreement Finalized', description: 'Document locked and archived.' });
-        } else throw new Error(res.error);
+        if (school) {
+            // Agreement/Contract Path
+            const res = await finalizeAgreementAction(pdfForm.id, school.id, pendingFormData);
+            if (res.success) {
+                setIsFinalizedView(true);
+                toast({ title: 'Agreement Finalized', description: 'Document locked and archived.' });
+            } else throw new Error(res.error);
+        } else {
+            // General Public Form Path
+            const res = await fetch('/api/pdfs/submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    pdfId: pdfForm.id,
+                    formData: pendingFormData
+                })
+            });
+            const result = await res.json();
+            if (res.ok) {
+                onSubmitted();
+            } else throw new Error(result.error);
+        }
     } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Finalization Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Submission Failed', description: e.message });
     } finally {
         setIsSubmitting(false);
     }
@@ -399,7 +414,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
                     {!isFormComplete ? (
-                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
+                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !school} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
                             {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
                             {isMobile ? 'Save' : 'Save Progress'}
                         </Button>
@@ -427,44 +442,21 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
 
-                {/* Zoom Controls Overlay */}
                 <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3 print:hidden">
                     <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        type="button"
-                                        className="h-8 w-8 rounded-full mb-2 shrink-0" 
-                                        onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
-                                    >
+                                    <Button variant="ghost" size="icon" type="button" className="h-8 w-8 rounded-full mb-2 shrink-0" onClick={() => setZoom(p => Math.min(p + 0.1, 3))}>
                                         <ZoomIn className="h-4 w-4 text-primary" />
                                     </Button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left">Zoom In</TooltipContent>
                             </Tooltip>
-                            
-                            <Slider 
-                                orientation="vertical" 
-                                min={0.5} 
-                                max={3} 
-                                step={0.05} 
-                                value={[zoom]} 
-                                onValueChange={([v]) => setZoom(v)} 
-                                className="flex-grow py-2" 
-                            />
-                            
+                            <Slider orientation="vertical" min={0.5} max={3} step={0.05} value={[zoom]} onValueChange={([v]) => setZoom(v)} className="flex-grow py-2" />
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        type="button"
-                                        className="h-8 w-8 rounded-full mt-2 shrink-0" 
-                                        onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
-                                    >
+                                    <Button variant="ghost" size="icon" type="button" className="h-8 w-8 rounded-full mt-2 shrink-0" onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}>
                                         <ZoomOut className="h-4 w-4 text-primary" />
                                     </Button>
                                 </TooltipTrigger>

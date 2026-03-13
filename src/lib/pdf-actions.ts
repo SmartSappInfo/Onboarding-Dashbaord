@@ -8,6 +8,7 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { toTitleCase } from './utils';
 import { sendMessage } from './messaging-engine';
 import { triggerInternalNotification } from './notification-engine';
+import { format } from 'date-fns';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -234,36 +235,72 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
 
 /**
  * Finalizes an agreement (Full Execution).
+ * Upgraded to resolve/create submission dynamically if missing.
  */
 export async function finalizeAgreementAction(pdfId: string, schoolId: string, formData: any) {
     try {
         const timestamp = new Date().toISOString();
         const pdfRef = adminDb.collection('pdfs').doc(pdfId);
         const pdfSnap = await pdfRef.get();
+        if (!pdfSnap.exists) throw new Error("PDF Template not found.");
         const pdfData = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
 
-        // 1. Update Submission to Final
+        // 1. Resolve Contract Context
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol.where('schoolId', '==', schoolId).limit(1).get();
         
-        if (contractQuery.empty) throw new Error("Contract record not initialized.");
-        const contractDoc = contractQuery.docs[0];
-        const submissionId = contractDoc.data().submissionId;
+        let contractRef;
+        let submissionId;
 
-        if (!submissionId) throw new Error("Submission record not found.");
+        if (contractQuery.empty) {
+            // Create contract record if it doesn't exist (safety fallback)
+            const newContract = await contractsCol.add({
+                schoolId,
+                schoolName: (formData.school_name || pdfData.schoolName || 'School'),
+                pdfId,
+                pdfName: pdfData.name || 'Agreement',
+                status: 'signed',
+                createdAt: timestamp,
+                updatedAt: timestamp,
+                signedAt: timestamp,
+                recipients: []
+            });
+            contractRef = newContract;
+        } else {
+            contractRef = contractQuery.docs[0].ref;
+            submissionId = contractQuery.docs[0].data().submissionId;
+        }
 
-        await pdfRef.collection('submissions').doc(submissionId).update({
-            formData,
-            submittedAt: timestamp,
-            status: 'submitted'
-        });
-
-        // 2. Lock Contract
-        await contractDoc.ref.update({
-            status: 'signed',
-            signedAt: timestamp,
-            updatedAt: timestamp
-        });
+        // 2. Resolve or Create Submission Record
+        if (!submissionId) {
+            // Create fresh submission if one wasn't created during "Save Progress"
+            const subRef = await pdfRef.collection('submissions').add({
+                pdfId,
+                schoolId,
+                formData,
+                submittedAt: timestamp,
+                status: 'submitted'
+            });
+            submissionId = subRef.id;
+            await contractRef.update({ 
+                submissionId,
+                status: 'signed',
+                signedAt: timestamp,
+                updatedAt: timestamp
+            });
+        } else {
+            // Update existing partial submission to final status
+            await pdfRef.collection('submissions').doc(submissionId).update({
+                formData,
+                submittedAt: timestamp,
+                status: 'submitted'
+            });
+            await contractRef.update({
+                status: 'signed',
+                signedAt: timestamp,
+                updatedAt: timestamp
+            });
+        }
 
         // 3. Dispatch Automations (Notifications)
         if (pdfData.confirmationMessagingEnabled && pdfData.confirmationTemplateId) {
@@ -293,13 +330,14 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         }
 
         if (pdfData.adminAlertsEnabled) {
+            const contractData = (await contractRef.get()).data();
             await triggerInternalNotification({
                 schoolId,
                 notifyManager: pdfData.adminAlertNotifyManager,
                 specificUserIds: pdfData.adminAlertSpecificUserIds,
                 emailTemplateId: pdfData.adminAlertEmailTemplateId,
                 smsTemplateId: pdfData.adminAlertSmsTemplateId,
-                variables: { ...formData, event_type: 'Agreement Executed', school_name: contractDoc.data().schoolName },
+                variables: { ...formData, event_type: 'Agreement Executed', school_name: contractData?.schoolName || 'Institution' },
                 channel: pdfData.adminAlertChannel
             });
         }
