@@ -1,4 +1,3 @@
-
 'use client';
 import {
   MessageSquare,
@@ -13,6 +12,8 @@ import {
   User,
   Bot,
   FileText,
+  CheckCircle2,
+  PlusCircle
 } from 'lucide-react';
 import type { Activity } from '@/lib/types';
 
@@ -27,12 +28,14 @@ export const getActivityIcon = (type: Activity['type']): React.ElementType => {
     school_updated: PenSquare,
     form_submission: BadgeCheck,
     notification_sent: Bell,
-    school_created: PenSquare,
+    school_created: PlusCircle,
     school_assigned: User,
     pdf_uploaded: FileText,
     pdf_published: FileText,
     pdf_form_submitted: FileText,
     pdf_status_changed: BadgeCheck,
+    task_created: PlusCircle,
+    task_completed: CheckCircle2
   };
   return iconMap[type] || Bot;
 };

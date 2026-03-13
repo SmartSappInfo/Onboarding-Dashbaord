@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -15,10 +14,14 @@ import {
     Circle, 
     Building, 
     Link as LinkIcon,
-    Bell
+    Bell,
+    ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, isToday, isPast } from 'date-fns';
+import { getTaskInterlinkUrl } from '@/lib/task-actions';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: any }> = {
     urgent: { color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -59,6 +62,7 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
     const P = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.medium;
     const isDone = task.status === 'done';
     const isOverdue = isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && !isDone;
+    const interlinkUrl = getTaskInterlinkUrl(task);
 
     return (
         <Card 
@@ -79,10 +83,13 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
                             <Badge variant="outline" className={cn("text-[7px] font-black uppercase h-4 px-1.5 rounded-sm border-none shadow-xs", P.color)}>
                                 <P.icon className="h-2 w-2 mr-1" /> {task.priority}
                             </Badge>
-                            {task.relatedEntityType && (
-                                <div className="p-1 bg-blue-500/10 rounded text-blue-600">
-                                    <LinkIcon className="h-2.5 w-2.5" />
-                                </div>
+                            {task.reminders?.length > 0 && (
+                                <Badge variant="outline" className={cn(
+                                    "text-[7px] font-black uppercase h-4 px-1.5 rounded-sm border-none gap-1",
+                                    task.reminders.some(r => !r.sent) ? "bg-primary/10 text-primary" : "bg-slate-100 text-slate-400"
+                                )}>
+                                    <Bell className="h-2 w-2" /> {task.reminders.length}
+                                </Badge>
                             )}
                         </div>
                         <h4 className={cn("font-black text-xs uppercase tracking-tight leading-tight truncate text-foreground", isDone && "line-through opacity-40")}>
@@ -109,8 +116,19 @@ export default function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
                             <Clock className="h-2.5 w-2.5" />
                             {isToday(new Date(task.dueDate)) ? 'Today' : format(new Date(task.dueDate), 'MMM d')}
                         </div>
-                        {task.reminders?.length > 0 && (
-                            <Bell className="h-2.5 w-2.5 text-primary opacity-40" />
+                        
+                        {interlinkUrl && (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="h-6 w-6 rounded-lg text-primary opacity-0 group-hover:opacity-100 transition-opacity bg-primary/5 border border-primary/10"
+                                asChild
+                                onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking link
+                            >
+                                <Link href={interlinkUrl}>
+                                    <ArrowRight className="h-3 w-3" />
+                                </Link>
+                            </Button>
                         )}
                     </div>
                 </div>

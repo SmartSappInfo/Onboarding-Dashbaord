@@ -438,7 +438,7 @@ export interface Activity {
   schoolName?: string;
   schoolSlug?: string;
   userId?: string | null;
-  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed';
+  type: 'note' | 'call' | 'visit' | 'email' | 'school_created' | 'school_assigned' | 'meeting_created' | 'pipeline_stage_changed' | 'school_updated' | 'form_submission' | 'notification_sent' | 'pdf_uploaded' | 'pdf_published' | 'pdf_form_submitted' | 'pdf_status_changed' | 'task_created' | 'task_completed';
   source: 'manual' | 'user_action' | 'system' | 'public';
   timestamp: string;
   description: string;

@@ -11,6 +11,32 @@ import {
 } from 'firebase/firestore';
 import type { Task, TaskStatus, TaskPriority, TaskCategory } from './types';
 import { errorEmitter, FirestorePermissionError } from '@/firebase';
+import { logActivity } from './activity-logger';
+
+/**
+ * Resolves the navigation path for a task's linked record.
+ */
+export function getTaskInterlinkUrl(task: Task): string | null {
+    if (!task.relatedEntityType || !task.relatedEntityId) return null;
+    
+    if (task.relatedEntityType === 'SurveyResponse' && task.relatedParentId) {
+        return `/admin/surveys/${task.relatedParentId}/results/${task.relatedEntityId}`;
+    }
+    
+    if (task.relatedEntityType === 'Submission' && task.relatedParentId) {
+        return `/admin/pdfs/${task.relatedParentId}/submissions/${task.relatedEntityId}`;
+    }
+    
+    if (task.relatedEntityType === 'School') {
+        return `/admin/schools/${task.relatedEntityId}`;
+    }
+
+    if (task.relatedEntityType === 'Meeting') {
+        return `/admin/meetings/${task.relatedEntityId}/edit`;
+    }
+
+    return null;
+}
 
 /**
  * Creates a new administrative task. (Non-blocking)
@@ -28,7 +54,18 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
         reminderSent: false,
     };
 
-    return addDoc(tasksCol, taskData).catch(async (error) => {
+    return addDoc(tasksCol, taskData).then(docRef => {
+        // Log to timeline
+        logActivity({
+            schoolId: task.schoolId || '',
+            userId: null, 
+            type: 'task_created',
+            source: 'system',
+            description: `initialized a new task protocol: "${task.title}"`,
+            metadata: { taskId: docRef.id, category: task.category }
+        });
+        return docRef;
+    }).catch(async (error) => {
         const permissionError = new FirestorePermissionError({
             path: tasksCol.path,
             operation: 'create',
@@ -50,14 +87,28 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
         updatedAt: timestamp,
     };
 
+    const isMarkingDone = updates.status === 'done';
+
     // Logic: Capture completedAt if status moves to 'done'
-    if (updates.status === 'done' && !updates.completedAt) {
+    if (isMarkingDone && !updates.completedAt) {
         data.completedAt = timestamp;
     } else if (updates.status && updates.status !== 'done') {
         data.completedAt = null; // Reopened
     }
 
-    updateDoc(taskRef, data).catch(async (error) => {
+    updateDoc(taskRef, data).then(() => {
+        if (isMarkingDone) {
+            // Log resolution
+            logActivity({
+                schoolId: updates.schoolId || '',
+                userId: null,
+                type: 'task_completed',
+                source: 'system',
+                description: `successfully resolved task: "${updates.title || 'Mission Record'}"`,
+                metadata: { taskId }
+            });
+        }
+    }).catch(async (error) => {
         const permissionError = new FirestorePermissionError({
             path: taskRef.path,
             operation: 'update',
