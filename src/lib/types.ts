@@ -34,6 +34,7 @@ export const APP_PERMISSIONS = [
   { id: 'studios_view', label: 'View Design Studios', category: 'Studios' },
   { id: 'studios_edit', label: 'Create Surveys/PDFs/Messages', category: 'Studios' },
   { id: 'system_admin', label: 'Full System Management', category: 'Management' },
+  { id: 'system_user_switch', label: 'Switch User Context', category: 'Management' },
   { id: 'meetings_manage', label: 'Schedule & Edit Meetings', category: 'Operations' },
   { id: 'tasks_manage', label: 'Manage CRM Tasks', category: 'Operations' },
   { id: 'activities_view', label: 'View Audit Timeline', category: 'Management' },

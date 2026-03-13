@@ -273,7 +273,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   <SidebarTrigger className="md:hidden" />
                   <div className="flex-1 min-w-0"><BreadcrumbNav /></div>
                   <div className="flex items-center gap-2 shrink-0">
-                      <AssignedUserGlobalFilter />
+                      {hasPerm('system_user_switch') && <AssignedUserGlobalFilter />}
                       <NotificationBell />
                       <ThemeToggle />
                       <DropdownMenu>
