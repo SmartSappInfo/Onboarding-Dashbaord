@@ -54,12 +54,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 export default function InvoicesClient() {
     const firestore = useFirestore();
     const router = useRouter();
     const { user } = useUser();
     const { toast } = useToast();
+    const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
 
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
@@ -83,20 +85,35 @@ export default function InvoicesClient() {
         firestore ? query(collection(firestore, 'billing_periods'), where('status', '==', 'open'), orderBy('startDate', 'desc')) : null, 
     [firestore]);
 
-    const { data: invoices, isLoading } = useCollection<Invoice>(invoicesQuery);
+    const { data: invoices, isLoading: isLoadingInvoices } = useCollection<Invoice>(invoicesQuery);
     const { data: schools } = useCollection<School>(schoolsQuery);
     const { data: periods } = useCollection<BillingPeriod>(periodsQuery);
+
+    const schoolAssignmentMap = React.useMemo(() => {
+        if (!schools) return new Map<string, string | null>();
+        return new Map(schools.map(s => [s.id, s.assignedTo?.userId || null]));
+    }, [schools]);
 
     const filteredInvoices = React.useMemo(() => {
         if (!invoices) return [];
         let temp = invoices;
+
+        // 1. GLOBAL USER FILTER (Resolves via school assignment)
+        if (assignedUserId) {
+            temp = temp.filter(invoice => {
+                const assignedTo = schoolAssignmentMap.get(invoice.schoolId);
+                if (assignedUserId === 'unassigned') return !assignedTo;
+                return assignedTo === assignedUserId;
+            });
+        }
+
         if (statusFilter !== 'all') temp = temp.filter(i => i.status === statusFilter);
         if (searchTerm) {
             const s = searchTerm.toLowerCase();
             temp = temp.filter(i => i.schoolName.toLowerCase().includes(s) || i.invoiceNumber.toLowerCase().includes(s));
         }
         return temp;
-    }, [invoices, statusFilter, searchTerm]);
+    }, [invoices, statusFilter, searchTerm, assignedUserId, schoolAssignmentMap]);
 
     const handleGenerate = async () => {
         if (!selectedSchoolId || !selectedPeriodId || !user) return;
@@ -127,6 +144,8 @@ export default function InvoicesClient() {
             default: return <Badge variant="outline" className="text-[8px] h-5 uppercase px-2 font-black">{status}</Badge>;
         }
     };
+
+    const isLoading = isLoadingInvoices || isLoadingFilter;
 
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
@@ -174,9 +193,13 @@ export default function InvoicesClient() {
                                 <SelectItem value="overdue">Overdue</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Button variant="outline" className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary">
-                            <Filter className="h-4 w-4" /> More Filters
-                        </Button>
+                        
+                        <div className="flex items-center gap-2 px-4 h-11 rounded-xl bg-primary/5 border border-primary/10">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-primary/60">Filtered For:</Label>
+                            <Badge variant="outline" className="h-6 font-black uppercase text-[9px] border-primary/20 bg-white text-primary">
+                                {assignedUserId === 'unassigned' ? 'Unassigned' : users?.find(u => u.id === assignedUserId)?.name || 'Everyone'}
+                            </Badge>
+                        </div>
                     </CardContent>
                 </Card>
 
@@ -287,7 +310,7 @@ export default function InvoicesClient() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">1. Target Institution</Label>
                             <Select onValueChange={setSelectedSchoolId} value={selectedSchoolId || ''}>
-                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                     <SelectValue placeholder="Select school..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
@@ -298,7 +321,7 @@ export default function InvoicesClient() {
                         <div className="space-y-2">
                             <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">2. Billing Period</Label>
                             <Select onValueChange={setSelectedPeriodId} value={selectedPeriodId || ''}>
-                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
+                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold">
                                     <SelectValue placeholder="Select cycle..." />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">

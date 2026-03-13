@@ -1,9 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, where, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Task, UserProfile, School, TaskPriority, TaskStatus, TaskCategory } from '@/lib/types';
+import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
 import { format, isToday, isPast, isTomorrow } from 'date-fns';
 import { 
     CheckCircle2, 
@@ -29,8 +29,7 @@ import {
     CheckSquare,
     ListChecks,
     ArrowRight,
-    Square,
-    ChevronLeft
+    Square
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -79,6 +78,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     critical: { label: 'Critical', color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },
@@ -108,10 +108,10 @@ export default function TasksClient() {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
     const { toast } = useToast();
+    const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     
     const [statusFilter, setStatusFilter] = React.useState<string>('pending');
     const [priorityFilter, setPriorityFilter] = React.useState<string>('all');
-    const [assignedFilter, setAssignedFilter] = React.useState<string>(currentUser?.uid || 'all');
     const [searchTerm, setSearchTerm] = React.useState('');
 
     // Selection State
@@ -135,7 +135,7 @@ export default function TasksClient() {
     const usersQuery = useMemoFirebase(() => firestore ? collection(firestore, 'users') : null, [firestore]);
     const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
 
-    const { data: allTasks, isLoading } = useCollection<Task>(tasksQuery);
+    const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
     const { data: users } = useCollection<UserProfile>(usersQuery);
     const { data: schools } = useCollection<School>(schoolsQuery);
 
@@ -144,14 +144,24 @@ export default function TasksClient() {
         return allTasks.filter(task => {
             const matchesStatus = statusFilter === 'all' ? true : task.status === statusFilter;
             const matchesPriority = priorityFilter === 'all' ? true : task.priority === priorityFilter;
-            const matchesAssigned = assignedFilter === 'all' ? true : task.assignedTo === assignedFilter;
+            
+            // GLOBAL FILTER LOGIC
+            let matchesAssigned = true;
+            if (assignedUserId) {
+                if (assignedUserId === 'unassigned') {
+                    matchesAssigned = !task.assignedTo;
+                } else {
+                    matchesAssigned = task.assignedTo === assignedUserId;
+                }
+            }
+
             const matchesSearch = searchTerm ? 
                 task.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                 task.schoolName?.toLowerCase().includes(searchTerm.toLowerCase()) 
                 : true;
             return matchesStatus && matchesPriority && matchesAssigned && matchesSearch;
         });
-    }, [allTasks, statusFilter, priorityFilter, assignedFilter, searchTerm]);
+    }, [allTasks, statusFilter, priorityFilter, assignedUserId, searchTerm]);
 
     const handleSaveTask = async (values: any) => {
         if (!firestore || !currentUser) return;
@@ -279,6 +289,8 @@ export default function TasksClient() {
         return null;
     };
 
+    const isLoading = isLoadingTasks || isLoadingFilter;
+
     return (
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
             <div className="max-w-6xl mx-auto space-y-8 pb-32">
@@ -337,17 +349,13 @@ export default function TasksClient() {
                                 <SelectItem value="low">Low</SelectItem>
                             </SelectContent>
                         </Select>
-                        <Select value={assignedFilter} onValueChange={setAssignedFilter}>
-                            <SelectTrigger className="w-[200px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest">
-                                <SelectValue placeholder="Assignee" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="all">Everyone's Tasks</SelectItem>
-                                {users?.map(u => (
-                                    <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        
+                        <div className="flex items-center gap-2 px-4 h-11 rounded-xl bg-primary/5 border border-primary/10">
+                            <Label className="text-[9px] font-black uppercase tracking-widest text-primary/60">Filtered For:</Label>
+                            <Badge variant="outline" className="h-6 font-black uppercase text-[9px] border-primary/20 bg-white text-primary">
+                                {assignedUserId === 'unassigned' ? 'Unassigned' : users?.find(u => u.id === assignedUserId)?.name || 'Everyone'}
+                            </Badge>
+                        </div>
                     </CardContent>
                 </Card>
 

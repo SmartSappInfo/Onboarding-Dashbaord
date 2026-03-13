@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { School, Contract, UserProfile } from '@/lib/types';
 import { 
     FileCheck, 
@@ -61,10 +61,13 @@ import {
     TooltipProvider, 
     TooltipTrigger 
 } from '@/components/ui/tooltip';
+import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
+    const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
+    
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedSchools, setSelectedSchools] = React.useState<School[]>([]);
@@ -83,18 +86,29 @@ export default function AgreementsClient() {
     const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsCol);
     const { data: contracts, isLoading: isLoadingContracts } = useCollection<Contract>(contractsCol);
 
-    const isLoading = isLoadingSchools || isLoadingContracts;
+    const isLoading = isLoadingSchools || isLoadingContracts || isLoadingFilter;
 
     // Logic to merge Schools with their specific Contract records
     const schoolsWithContracts = React.useMemo(() => {
         if (!schools) return [];
+        
+        // 1. GLOBAL USER FILTER
+        let baseSchools = schools;
+        if (assignedUserId) {
+            if (assignedUserId === 'unassigned') {
+                baseSchools = baseSchools.filter(s => !s.assignedTo?.userId);
+            } else {
+                baseSchools = baseSchools.filter(s => s.assignedTo?.userId === assignedUserId);
+            }
+        }
+
         const contractMap = new Map(contracts?.map(c => [c.schoolId, c]) || []);
 
-        return schools.map(school => ({
+        return baseSchools.map(school => ({
             ...school,
             contract: contractMap.get(school.id) || null
         }));
-    }, [schools, contracts]);
+    }, [schools, contracts, assignedUserId]);
 
     const filteredList = React.useMemo(() => {
         let list = schoolsWithContracts;
@@ -112,14 +126,14 @@ export default function AgreementsClient() {
     }, [schoolsWithContracts, searchTerm, statusFilter]);
 
     const stats = React.useMemo(() => {
-        const total = schools?.length || 0;
-        const signed = contracts?.filter(c => c.status === 'signed').length || 0;
-        const pending = contracts?.filter(c => c.status === 'sent').length || 0;
+        const total = schoolsWithContracts.length;
+        const signed = filteredList.filter(item => item.contract?.status === 'signed').length;
+        const pending = filteredList.filter(item => item.contract?.status === 'sent').length;
         const actionRequired = total - signed;
         const coverage = total > 0 ? Math.round((signed / total) * 100) : 0;
 
         return { total, signed, pending, actionRequired, coverage };
-    }, [schools, contracts]);
+    }, [schoolsWithContracts, filteredList]);
 
     const toggleSelect = (school: School) => {
         setSelectedSchools(prev => {
