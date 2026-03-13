@@ -365,7 +365,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         <TabsContent value="upload" className="m-0 h-full">
                                             <label htmlFor="sig-upload" className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl flex flex-col items-center justify-center cursor-pointer bg-primary/[0.02] hover:bg-primary/5 transition-all group shadow-inner">
                                                 <Upload className="h-10 w-10 text-primary mb-3 opacity-40 group-hover:opacity-100 transition-opacity" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Import Institutional Scan (.jpg, .png)</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Import Signature Image (.jpg, .png)</span>
                                                 <Input id="sig-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                                             </label>
                                         </TabsContent>
@@ -375,11 +375,11 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         ) : step === 'refine' ? (
                             <motion.div 
                                 key="refine" 
-                                initial={{ opacity: 0, x: 10 }} 
+                                initial={{ opacity: 0, x: 5 }} 
                                 animate={{ opacity: 1, x: 0 }} 
-                                className="h-full flex flex-col p-6 pt-0 space-y-6"
+                                className="h-full flex flex-col p-2 pt-0 space-y-2"
                             >
-                                <div className="flex-1 w-full aspect-square sm:aspect-video relative rounded-[2rem] overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
+                                <div className="flex-1 w-full aspect-video p-2 sm:aspect-video relative rounded-[1.5rem] overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
                                     <Cropper
                                         image={filteredBaseImageUrl || rawCapturedImage!}
                                         crop={crop}
@@ -393,7 +393,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         showGrid={true}
                                         style={{
                                             containerStyle: { borderRadius: '1.5rem' },
-                                            cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
+                                            cropAreaStyle: { border: '1px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)', margin: '0px', padding: '0px' }
                                         }}
                                     />
                                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
@@ -436,7 +436,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </div>
                                         <div className="flex items-center gap-3 opacity-40">
                                             <div className="h-1 w-8 rounded-full bg-primary" />
-                                            <span className="text-[8px] font-black uppercase tracking-tighter">Logic Pipeline Active</span>
+                                            <span className="text-[8px] font-black uppercase tracking-tighter">Auto Edit On</span>
                                         </div>
                                     </div>
                                 </div>

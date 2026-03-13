@@ -24,6 +24,7 @@ Syntax and Formatting
 UI and Styling
 - Use Shadcn UI, Radix, and Tailwind for components and styling.
 - Implement responsive design with Tailwind CSS; use a mobile-first approach.
+- Use common UI workds, Simple english and easy to understand terms for UI copy for titles, descriptions, buttons, etc.
 
 Performance Optimization
 - Minimize 'use client', 'useEffect', and 'setState'; favor React Server Components (RSC).
@@ -42,5 +43,7 @@ Key Conventions
 
 Code Review Before Implementations
 - Ensure all types are defined
+- Ensure all lucid react icons are properly imported
+- review all imports and ensure they are well implemented
 
 Follow Next.js docs for Data Fetching, Rendering, and Routing.

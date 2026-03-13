@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import { format, isValid, parseISO } from 'date-fns';
-import { SmartSappIcon } from '@/components/icons';
+import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,10 +141,16 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
   const [pendingFormData, setPendingFormData] = React.useState<any>(null);
   const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
-  const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageNumber: number }[]>([]);
+  const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
 
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
+
+  // Zoom Handling Refs
+  const zoomRef = React.useRef(zoom);
+  React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
+  const touchStartDist = React.useRef<number | null>(null);
+  const startZoom = React.useRef<number>(1.0);
 
   const validationSchema = React.useMemo(() => generateValidationSchema(pdfForm.fields), [pdfForm.fields]);
   const methods = useForm({
@@ -190,6 +196,61 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     return () => window.removeEventListener('resize', updateBaseScale);
   }, [updateBaseScale]);
 
+  // Gestural & Wheel Zoom Listeners
+  React.useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY;
+        const factor = Math.exp(delta * 0.005);
+        setZoom(prev => Math.min(Math.max(prev * factor, 0.5), 3.0));
+      }
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        touchStartDist.current = dist;
+        startZoom.current = zoomRef.current;
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartDist.current !== null) {
+        e.preventDefault();
+        const dist = Math.hypot(
+          e.touches[0].pageX - e.touches[1].pageX,
+          e.touches[0].pageY - e.touches[1].pageY
+        );
+        const factor = dist / touchStartDist.current;
+        const newZoom = Math.min(Math.max(startZoom.current * factor, 0.5), 3.0);
+        setZoom(newZoom);
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchStartDist.current = null;
+    };
+
+    viewport.addEventListener('wheel', onWheel, { passive: false });
+    viewport.addEventListener('touchstart', onTouchStart, { passive: false });
+    viewport.addEventListener('touchmove', onTouchMove, { passive: false });
+    viewport.addEventListener('touchend', onTouchEnd);
+    
+    return () => {
+      viewport.removeEventListener('wheel', onWheel);
+      viewport.removeEventListener('touchstart', onTouchStart);
+      viewport.removeEventListener('touchmove', onTouchMove);
+      viewport.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [setZoom]);
+
   const handleSaveProgress = async () => {
       if (isPreview || !school) return;
       setIsSubmitting(true);
@@ -222,7 +283,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   };
 
   const onInvalid = () => {
-    const missing: { id: string, label: string, pageNumber: number }[] = [];
+    const missing: { id: string, label: string, pageIndex: number }[] = [];
     const formData = getValues();
     
     pdfForm.fields
@@ -232,7 +293,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 missing.push({
                     id: field.id,
                     label: field.label || field.placeholder || 'Field',
-                    pageNumber: field.pageNumber
+                    pageIndex: field.pageNumber
                 });
             }
         });
@@ -337,14 +398,15 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
-                        {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
-                        Save Progress
-                    </Button>
-                    {isFormComplete && (
+                    {!isFormComplete ? (
+                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
+                            {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {isMobile ? 'Save' : 'Save Progress'}
+                        </Button>
+                    ) : (
                         <Button type="button" size="sm" onClick={handleSubmit(handlePreSubmit, onInvalid)} className="rounded-xl font-black shadow-lg px-6 h-10 uppercase text-[10px] tracking-widest gap-2 bg-primary animate-in zoom-in duration-300">
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                            Finalize Agreement
+                            {isMobile ? 'Finalize' : 'Finalize Agreement'}
                         </Button>
                     )}
                 </div>
@@ -364,6 +426,56 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                     </div>
                     <ScrollBar orientation="horizontal" />
                 </ScrollArea>
+
+                {/* Zoom Controls Overlay */}
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 z-[60] flex flex-col items-center gap-3 print:hidden">
+                    <div className="flex flex-col items-center bg-background/95 backdrop-blur-sm rounded-full border p-2 shadow-2xl h-48">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        type="button"
+                                        className="h-8 w-8 rounded-full mb-2 shrink-0" 
+                                        onClick={() => setZoom(p => Math.min(p + 0.1, 3))}
+                                    >
+                                        <ZoomIn className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom In</TooltipContent>
+                            </Tooltip>
+                            
+                            <Slider 
+                                orientation="vertical" 
+                                min={0.5} 
+                                max={3} 
+                                step={0.05} 
+                                value={[zoom]} 
+                                onValueChange={([v]) => setZoom(v)} 
+                                className="flex-grow py-2" 
+                            />
+                            
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        type="button"
+                                        className="h-8 w-8 rounded-full mt-2 shrink-0" 
+                                        onClick={() => setZoom(p => Math.max(p - 0.1, 0.5))}
+                                    >
+                                        <ZoomOut className="h-4 w-4 text-primary" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">Zoom Out</TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </div>
+                    <div className="bg-primary text-primary-foreground px-2 py-1 rounded-md text-[10px] font-bold shadow-lg tabular-nums border border-primary/20">
+                        {Math.round(zoom * 100)}%
+                    </div>
+                </div>
             </main>
             <SignaturePadModal open={!!mediaCaptureState} onClose={() => setMediaCaptureState(null)} onSave={(dataUrl) => setValue(mediaCaptureState!.fieldId, dataUrl, { shouldDirty: true, shouldValidate: true })} mode={mediaCaptureState?.mode || 'signature'} />
             <DataEntryModal open={isDataEntryOpen} onOpenChange={setIsDataEntryOpen} pdfForm={pdfForm} activeFieldId={activeDataFieldId} />
@@ -376,7 +488,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader><div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><AlertCircle className="h-6 w-6 text-destructive" /></div><DialogTitle className="text-center font-black">Missing Required Information</DialogTitle><DialogDescription className="text-center text-sm font-medium">The following fields must be completed before you can finalize this agreement:</DialogDescription></DialogHeader>
-                    <ScrollArea className="max-h-[30vh] border rounded-xl my-4"><ul className="p-4 space-y-3">{missingFields.map((field, idx) => (<li key={idx} className="flex items-center gap-3 text-sm font-medium"><div className="h-2 w-2 rounded-full bg-destructive shrink-0" /><span className="font-bold truncate">{field.label}</span><span className="text-[10px] uppercase font-black opacity-40 ml-auto">Page {field.pageNumber}</span></li>))}</ul></ScrollArea>
+                    <ScrollArea className="max-h-[30vh] border rounded-xl my-4"><ul className="p-4 space-y-3">{missingFields.map((field, idx) => (<li key={idx} className="flex items-center gap-3 text-sm font-medium"><div className="h-2 w-2 rounded-full bg-destructive shrink-0" /><span className="font-bold truncate">{field.label}</span><span className="text-[10px] uppercase font-black opacity-40 ml-auto">Page {field.pageIndex + 1}</span></li>))}</ul></ScrollArea>
                     <DialogFooter><Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base shadow-lg">Go Fix These</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
