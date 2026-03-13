@@ -4,7 +4,7 @@ import * as React from 'react';
 import SignatureCanvas from 'react-signature-canvas';
 import Webcam from 'react-webcam';
 import Cropper, { type Area } from 'react-easy-crop';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
@@ -12,12 +12,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { 
-    Upload, Camera, Eraser, Scan, Check, RefreshCw, Sparkles, Wand2, Info, 
-    ShieldCheck, ArrowLeft, ArrowRight, Type, Pipette, Sun, Contrast, 
-    Loader2, X, Crop, Move, ZoomIn, RotateCcw
+    Upload, Camera, Eraser, Check, Loader2, X, ArrowLeft, ArrowRight,
+    Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck, FileIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { processSignatureImage, processPhotoImage } from '@/lib/signature-processing';
@@ -31,6 +29,14 @@ interface SignaturePadModalProps {
     mode?: 'signature' | 'photo';
 }
 
+/**
+ * @fileOverview High-fidelity Identity Capture Module.
+ * Features:
+ * - 16:9 Cinematic framing for Camera & Drawing.
+ * - Interactive Cropper with pinch-to-zoom sync.
+ * - Real-time AI filter preview (Density, Weight, Smoothing).
+ * - High-fidelity verification view (95% scale).
+ */
 export default function SignaturePadModal({ open, onClose, onSave, mode = 'signature' }: SignaturePadModalProps) {
     const { toast } = useToast();
     const [step, setStep] = React.useState<'input' | 'refine' | 'confirm'>('input');
@@ -82,9 +88,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                             inkSensitivity, 
                             strokeWeight, 
                             smoothing,
-                            undefined, // No crop yet
-                            0, // No rotation yet
-                            true // skipAutoCrop for stable coords
+                            undefined, 
+                            0, 
+                            true // skipAutoCrop for coordinate stability during preview
                         );
                         setFilteredBaseImageUrl(result.dataUrl);
                     } else {
@@ -180,7 +186,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         smoothing,
                         croppedAreaPixels || undefined,
                         rotation,
-                        false // Auto-crop/tighten enabled for final result
+                        false // Perform final tightening crop
                     );
                     setProcessedResult(result.dataUrl);
                 } else {
@@ -292,14 +298,14 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full flex flex-col">
-                                            <ScrollArea className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
+                                            <div className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
                                                 <SignatureCanvas 
                                                     ref={sigPadRef} 
                                                     penColor="black" 
-                                                    canvasProps={{ className: 'w-full h-[900px] cursor-crosshair', willReadFrequently: true }} 
+                                                    canvasProps={{ className: 'w-full h-full cursor-crosshair', willReadFrequently: true }} 
                                                     onBegin={() => setHasDrawn(true)} 
                                                 />
-                                            </ScrollArea>
+                                            </div>
                                             <p className="text-[8px] font-black uppercase text-center mt-3 text-muted-foreground tracking-[0.2em]">Draw directly inside the viewport</p>
                                         </TabsContent>
 
@@ -351,7 +357,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                     <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
                                         {isProcessingPreview && (
                                             <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
-                                                <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Live Processing...
+                                                <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Processing...
                                             </Badge>
                                         )}
                                     </div>
