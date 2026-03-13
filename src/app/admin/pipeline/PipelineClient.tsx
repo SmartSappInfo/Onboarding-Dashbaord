@@ -4,7 +4,6 @@
 import * as React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import KanbanBoard from './components/KanbanBoard';
-import StageEditor from './components/StageEditor';
 import { 
     Workflow, 
     ListChecks, 
@@ -16,7 +15,8 @@ import {
     ChevronDown, 
     LayoutList,
     ShieldCheck,
-    RotateCcw
+    RotateCcw,
+    Settings2
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,6 +26,7 @@ import type { Pipeline, Zone, LifecycleStatus } from '@/lib/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 export default function PipelineClient() {
   const firestore = useFirestore();
@@ -77,7 +78,7 @@ export default function PipelineClient() {
                     <Workflow className="h-6 w-6" />
                 </div>
                 <div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 text-left">
                         <Select value={currentPipelineId || ''} onValueChange={setCurrentPipelineId}>
                             <SelectTrigger className="h-9 border-none shadow-none focus:ring-0 p-0 text-xl font-black uppercase tracking-tight gap-2 w-auto bg-transparent">
                                 <SelectValue placeholder="Select Pipeline..." />
@@ -101,17 +102,18 @@ export default function PipelineClient() {
             <div className="flex items-center gap-3 bg-muted/30 p-1 rounded-2xl border shadow-inner">
                 <Button 
                     variant="ghost" 
-                    onClick={() => {}} 
                     className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest text-primary bg-white shadow-sm px-6"
                 >
                     <Workflow className="mr-2 h-4 w-4" /> Board
                 </Button>
                 <Button 
                     variant="ghost" 
-                    onClick={() => {}} 
+                    asChild
                     className="h-10 rounded-xl font-black uppercase text-[10px] tracking-widest text-muted-foreground opacity-60 hover:opacity-100 px-6"
                 >
-                    <ListChecks className="mr-2 h-4 w-4" /> Config
+                    <Link href="/admin/pipeline/settings">
+                        <Settings2 className="mr-2 h-4 w-4" /> Pipeline Studio
+                    </Link>
                 </Button>
             </div>
         </div>

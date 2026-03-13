@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import * as React from 'react';
@@ -38,12 +37,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import { GripVertical, Plus, Trash2, Loader2 } from 'lucide-react';
+import { GripVertical, Plus, Trash2, Loader2, Pencil } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 
+interface StageEditorProps {
+    pipelineId: string;
+}
 
 function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameChange, newName, saveRename, onColorChange }: {
   stage: OnboardingStage;
@@ -80,6 +82,7 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
                 {ONBOARDING_STAGE_COLORS.map((color) => (
                     <button
                         key={color}
+                        type="button"
                         className={cn("w-6 h-6 rounded-md border transition-transform hover:scale-110", color === stage.color && 'ring-2 ring-ring ring-offset-2 ring-offset-background')}
                         style={{ backgroundColor: color }}
                         onClick={() => onColorChange(stage.id, color)}
@@ -117,19 +120,25 @@ function SortableStageItem({ stage, onDelete, isEditing, onToggleEdit, onNameCha
   );
 }
 
-export default function StageEditor() {
+export default function StageEditor({ pipelineId }: StageEditorProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   
   const stagesQuery = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'onboardingStages'), orderBy('order', 'asc'));
-  }, [firestore]);
+    if (!firestore || !pipelineId) return null;
+    return query(
+        collection(firestore, 'onboardingStages'), 
+        where('pipelineId', '==', pipelineId),
+        orderBy('order', 'asc')
+    );
+  }, [firestore, pipelineId]);
+  
   const { data: stages, isLoading } = useCollection<OnboardingStage>(stagesQuery);
   
   const [localStages, setLocalStages] = React.useState<OnboardingStage[]>([]);
   const [newStageName, setNewStageName] = React.useState('');
   const [isAdding, setIsAdding] = React.useState(false);
+
   const [editingStageId, setEditingStageId] = React.useState<string | null>(null);
   const [editingStageName, setEditingStageName] = React.useState('');
   const [stageToDelete, setStageToDelete] = React.useState<OnboardingStage | null>(null);
@@ -165,10 +174,15 @@ export default function StageEditor() {
   };
 
   const handleAddStage = async () => {
-    if (!newStageName.trim() || !firestore) return;
+    if (!newStageName.trim() || !firestore || !pipelineId) return;
     setIsAdding(true);
     const maxOrder = localStages.reduce((max, s) => Math.max(max, s.order), 0);
-    const newStage = { name: newStageName.trim(), order: maxOrder + 1, color: `#${Math.floor(Math.random()*16777215).toString(16)}` };
+    const newStage = { 
+        name: newStageName.trim(), 
+        order: maxOrder + 1, 
+        color: ONBOARDING_STAGE_COLORS[Math.floor(Math.random() * ONBOARDING_STAGE_COLORS.length)],
+        pipelineId
+    };
 
     try {
       await addDoc(collection(firestore, 'onboardingStages'), newStage);
@@ -206,7 +220,7 @@ export default function StageEditor() {
       });
       
       await batch.commit();
-      toast({ title: 'Stage Deleted', description: `"${stageToDelete.name}" was deleted and associated schools were moved to "${welcomeStage.name}".`});
+      toast({ title: 'Stage Deleted', description: `"${stageToDelete.name}" was deleted and affected schools were moved.`});
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete stage.' });
     } finally {
@@ -264,19 +278,16 @@ export default function StageEditor() {
 
   return (
     <>
-        <Card>
-            <CardHeader>
-                <CardTitle>Onboarding Stages</CardTitle>
-                <CardDescription>
-                Manage the stages of your school onboarding pipeline. Drag to reorder, double-click to rename.
-                </CardDescription>
+        <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-white">
+            <CardHeader className="bg-muted/10 border-b pb-6">
+                <CardTitle className="text-sm font-black uppercase tracking-widest text-foreground">Pipeline Progression Map</CardTitle>
+                <CardDescription className="text-xs font-medium">Define the chronological stages for institutions in this workflow.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-6 space-y-6">
                 {isLoading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
+                <div className="space-y-3">
+                    <Skeleton className="h-14 w-full rounded-xl" />
+                    <Skeleton className="h-14 w-full rounded-xl" />
                 </div>
                 ) : (
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -302,31 +313,40 @@ export default function StageEditor() {
                     </SortableContext>
                 </DndContext>
                 )}
-                <div className="flex gap-2 pt-4">
-                <Input
-                    placeholder="New stage name..."
-                    value={newStageName}
-                    onChange={(e) => setNewStageName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
-                />
-                <Button onClick={handleAddStage} disabled={isAdding}>
-                    {isAdding ? <Loader2 className="animate-spin" /> : <Plus />}
-                    <span className="ml-2">Add Stage</span>
-                </Button>
+                
+                {localStages.length === 0 && !isLoading && (
+                    <div className="py-12 text-center border-2 border-dashed rounded-xl opacity-20">
+                        <Workflow className="h-10 w-10 mx-auto mb-2" />
+                        <p className="text-[10px] font-black uppercase tracking-widest">No stages defined</p>
+                    </div>
+                )}
+
+                <div className="flex gap-2 pt-4 border-t border-dashed">
+                    <Input
+                        placeholder="Add new stage name..."
+                        value={newStageName}
+                        onChange={(e) => setNewStageName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddStage()}
+                        className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                    />
+                    <Button onClick={handleAddStage} disabled={isAdding || !newStageName.trim()} className="h-11 rounded-xl font-bold shadow-lg gap-2">
+                        {isAdding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                        Initialize
+                    </Button>
                 </div>
             </CardContent>
         </Card>
         <AlertDialog open={!!stageToDelete} onOpenChange={(open) => !open && setStageToDelete(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent className="rounded-[2rem]">
               <AlertDialogHeader>
-                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                      This action will delete the stage "{stageToDelete?.name}". All schools currently in this stage will be moved to "{localStages.find(s=>s.order===1)?.name || 'Welcome'}". This cannot be undone.
+                  <AlertDialogTitle className="font-black uppercase tracking-tight">Purge Workflow Stage?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-sm font-medium">
+                      Deleting <span className="font-bold text-foreground">"{stageToDelete?.name}"</span> is immutable. Affected schools will be reset to the primary entry stage.
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteStage}>Delete</AlertDialogAction>
+                  <AlertDialogCancel className="rounded-xl font-bold">Retain Stage</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteStage} className="rounded-xl font-black bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-xl">Confirm Deletion</AlertDialogAction>
               </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
