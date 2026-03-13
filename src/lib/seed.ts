@@ -1,8 +1,9 @@
+
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId } from '@/lib/types';
+import type { School, Meeting, MediaAsset, Survey, UserProfile, OnboardingStage, Module, Activity, PDFForm, PDFFormField, SenderProfile, MessageStyle, MessageTemplate, MessageLog, Zone, FocalPerson, SchoolStatus, Task, TaskPriority, TaskCategory, TaskStatus, SubscriptionPackage, BillingPeriod, BillingSettings, Role, AppPermissionId, Pipeline } from '@/lib/types';
 import { MEETING_TYPES } from '@/lib/types';
 import { ONBOARDING_STAGE_COLORS } from './colors';
 import { addDays, format, isAfter, startOfToday, subDays, subHours } from 'date-fns';
@@ -62,48 +63,17 @@ const mediaData: Omit<MediaAsset, 'id'>[] = [
   },
 ];
 
-const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status'>[] = [
-  { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', contactPerson: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163' },
-  { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', contactPerson: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100' },
-  { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543' },
-  { name: 'SOS-Hermann Gmeiner International College', initials: 'SOS-HGIC', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, includeDroneFootage: false, referee: 'SOS-CV Ghana', contactPerson: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231' },
-  { name: 'Wesley Girls\' High School', initials: 'WGHS', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', contactPerson: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218' },
-  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', initials: 'PRESEC', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', contactPerson: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907' },
-  { name: 'Galaxy International School', initials: 'Galaxy', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', contactPerson: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472' },
-  { name: 'Tema International School', initials: 'TIS', slogan: 'Service, Strength and Stability.', location: 'Tema, Ghana', nominalRoll: 500, includeDroneFootage: false, referee: 'IB Network', contactPerson: 'Admissions Dean', email: 'admissions@tis.edu.gh', phone: '+233 30 330 5134' },
-  { name: 'Ridge School', initials: 'Ridge', slogan: 'Loyalty and Service.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: false, referee: 'Parent Alumni', contactPerson: 'Mrs. S. Nelson', email: 'info@ridgeschool.edu.gh', phone: '+233 30 222 2962' },
-  { name: 'Faith Montessori School', initials: 'Faith', slogan: 'Godliness and Academic Excellence.', location: 'Gbawe, Accra', nominalRoll: 1000, includeDroneFootage: true, referee: 'SmartSapp Support', contactPerson: 'Mr. Oswald Amoo', email: 'admin@faithmontessori.edu.gh', phone: '+233 30 231 2345' },
-];
-
-const defaultPackages: Omit<SubscriptionPackage, 'id'>[] = [
-    { name: 'Level A (Platinum)', description: 'Premium institutional tier with high-fidelity analytics.', ratePerStudent: 89.95, billingTerm: 'term', currency: 'GHS', isActive: true },
-    { name: 'Level B (Growth)', description: 'Standard tier for growing institutions.', ratePerStudent: 49.97, billingTerm: 'term', currency: 'GHS', isActive: true },
-    { name: 'Level C (Foundation)', description: 'Entry-level tier for security basics.', ratePerStudent: 39.97, billingTerm: 'term', currency: 'GHS', isActive: true },
-];
-
-const surveyData = [
-    {
-      internalName: 'Parent Engagement Survey',
-      title: 'Parent Experience Questionnaire',
-      description: 'Help us improve your child\'s school journey by sharing your thoughts on our digital services.',
-      slug: 'parents-survey',
-      status: 'published',
-      elements: [
-        { id: 'q_name', type: 'text', title: 'What is your full name?', isRequired: true },
-        { id: 'q_rating', type: 'rating', title: 'How would you rate the school\'s digital communication?', isRequired: true },
-      ],
-    },
-    {
-      internalName: 'School Administrator Survey',
-      title: 'Institutional Onboarding Assessment',
-      description: 'Tell us about your school\'s current management systems and onboarding goals.',
-      slug: 'schools-survey',
-      status: 'published',
-      elements: [
-        { id: 'q_school_name', type: 'text', title: 'Official School Name', isRequired: true },
-        { id: 'q_tech_stack', type: 'multiple-choice', title: 'Primary current management system?', options: ['Manual/Paper', 'Excel Spreadsheets', 'Cloud Software', 'In-house System'], isRequired: true },
-      ],
-    }
+const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'createdAt' | 'logoUrl' | 'heroImageUrl' | 'modules' | 'zone' | 'focalPersons' | 'status' | 'lifecycleStatus' | 'pipelineId'>[] = [
+  { name: 'Ghana International School', initials: 'GIS', slogan: 'Understanding of each other.', location: 'Accra, Ghana', nominalRoll: 1500, includeDroneFootage: true, referee: 'SmartSapp Team', focalPersons: [{ name: 'Dr. Mary Ashun', email: 'principal@gis.edu.gh', phone: '+233 30 277 7163', type: 'Principal', isSignatory: true }] },
+  { name: 'Lincoln Community School', initials: 'LCS', slogan: 'Learning and community, hand in hand.', location: 'Accra, Ghana', nominalRoll: 800, includeDroneFootage: false, referee: 'Ama Serwaa', focalPersons: [{ name: 'John Smith', email: 'admissions@lincoln.edu.gh', phone: '+233 30 221 8100', type: 'Administrator', isSignatory: true }] },
+  { name: 'Adisadel College', initials: 'ADISCO', slogan: 'Vel Primus Vel Cum Primis.', location: 'Cape Coast, Ghana', nominalRoll: 2000, includeDroneFootage: true, referee: 'Old Boys Association', focalPersons: [{ name: 'The Headmaster', email: 'info@adisadelcollege.net', phone: '+233 33 213 2543', type: 'Principal', isSignatory: true }] },
+  { name: 'SOS-Hermann Gmeiner International College', initials: 'SOS-HGIC', slogan: 'Knowledge and Service.', location: 'Tema, Ghana', nominalRoll: 400, includeDroneFootage: false, referee: 'SOS-CV Ghana', focalPersons: [{ name: 'The Principal', email: 'hgic.info@sos-ghana.org', phone: '+233 30 330 5231', type: 'Principal', isSignatory: true }] },
+  { name: 'Wesley Girls\' High School', initials: 'WGHS', slogan: 'Live Pure, Speak True, Right Wrong, Follow the King.', location: 'Cape Coast, Ghana', nominalRoll: 1800, includeDroneFootage: false, referee: 'GES', focalPersons: [{ name: 'The Headmistress', email: 'info@wesleygirls.edu.gh', phone: '+233 33 213 2218', type: 'Principal', isSignatory: true }] },
+  { name: 'Presbyterian Boys\' Secondary School (PRESEC)', initials: 'PRESEC', slogan: 'In Lumine Tuo Videbimus Lumen.', location: 'Legon, Accra', nominalRoll: 2500, includeDroneFootage: true, referee: 'Old Boys Association', focalPersons: [{ name: 'The Headmaster', email: 'info@preseclegon.edu.gh', phone: '+233 30 250 0907', type: 'Principal', isSignatory: true }] },
+  { name: 'Galaxy International School', initials: 'Galaxy', slogan: 'Gateway to the Future.', location: 'Accra, Ghana', nominalRoll: 600, includeDroneFootage: true, referee: 'Corporate Referral', focalPersons: [{ name: 'Admissions Office', email: 'info@galaxy.edu.gh', phone: '+233 30 254 5472', type: 'Administrator', isSignatory: true }] },
+  { name: 'Tema International School', initials: 'TIS', slogan: 'Service, Strength and Stability.', location: 'Tema, Ghana', nominalRoll: 500, includeDroneFootage: false, referee: 'IB Network', focalPersons: [{ name: 'Admissions Dean', email: 'admissions@tis.edu.gh', phone: '+233 30 330 5134', type: 'Administrator', isSignatory: true }] },
+  { name: 'Ridge School', initials: 'Ridge', slogan: 'Loyalty and Service.', location: 'Accra, Ghana', nominalRoll: 1200, includeDroneFootage: false, referee: 'Parent Alumni', focalPersons: [{ name: 'Mrs. S. Nelson', email: 'info@ridgeschool.edu.gh', phone: '+233 30 222 2962', type: 'Principal', isSignatory: true }] },
+  { name: 'Faith Montessori School', initials: 'Faith', slogan: 'Godliness and Academic Excellence.', location: 'Gbawe, Accra', nominalRoll: 1000, includeDroneFootage: true, referee: 'SmartSapp Support', focalPersons: [{ name: 'Mr. Oswald Amoo', email: 'admin@faithmontessori.edu.gh', phone: '+233 30 231 2345', type: 'Administrator', isSignatory: true }] },
 ];
 
 const defaultStages = [
@@ -132,6 +102,66 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 }
 
 // --- SEEDING FUNCTIONS ---
+
+export async function seedPipelines(firestore: Firestore): Promise<string> {
+    await clearCollection(firestore, 'pipelines');
+    await clearCollection(firestore, 'onboardingStages');
+    
+    const batch = writeBatch(firestore);
+    const pipelinesCol = collection(firestore, 'pipelines');
+    const stagesCol = collection(firestore, 'onboardingStages');
+
+    const timestamp = new Date().toISOString();
+
+    // 1. Primary Onboarding Pipeline
+    const onboardingId = 'institutional_onboarding';
+    const onboardingStages = [
+        { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
+        { id: 'setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
+        { id: 'training', name: 'Staff Training', order: 3, color: '#7209b7', pipelineId: onboardingId },
+        { id: 'live', name: 'Active (Go-Live)', order: 4, color: '#4361ee', pipelineId: onboardingId },
+    ];
+
+    onboardingStages.forEach(s => {
+        batch.set(doc(stagesCol, s.id), s);
+    });
+
+    const onboardingPipeline: Omit<Pipeline, 'id'> = {
+        name: 'Institutional Onboarding',
+        description: 'Standard lifecycle for new campus integration.',
+        stageIds: onboardingStages.map(s => s.id),
+        accessRoles: ['administrator', 'regional_supervisor', 'finance_officer'],
+        createdAt: timestamp
+    };
+
+    batch.set(doc(pipelinesCol, onboardingId), onboardingPipeline);
+
+    // 2. Lead Acquisition Pipeline
+    const salesId = 'sales_acquisition';
+    const salesStages = [
+        { id: 'contacted', name: 'Contact Established', order: 1, color: '#f59e0b', pipelineId: salesId },
+        { id: 'demo', name: 'Demo Scheduled', order: 2, color: '#d97706', pipelineId: salesId },
+        { id: 'negotiation', name: 'Contract Review', order: 3, color: '#b45309', pipelineId: salesId },
+        { id: 'closed', name: 'Closed Won', order: 4, color: '#10b981', pipelineId: salesId },
+    ];
+
+    salesStages.forEach(s => {
+        batch.set(doc(stagesCol, s.id), s);
+    });
+
+    const salesPipeline: Omit<Pipeline, 'id'> = {
+        name: 'Lead Pipeline',
+        description: 'Sales cycle for prospective institutions.',
+        stageIds: salesStages.map(s => s.id),
+        accessRoles: ['administrator', 'regional_supervisor'],
+        createdAt: timestamp
+    };
+
+    batch.set(doc(pipelinesCol, salesId), salesPipeline);
+
+    await batch.commit();
+    return onboardingId;
+}
 
 export async function seedRolesAndPermissions(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'roles');
@@ -258,6 +288,8 @@ export async function seedSchools(firestore: Firestore): Promise<number> {
             name,
             slug,
             status: schoolSource.status || 'Active',
+            lifecycleStatus: schoolSource.lifecycleStatus || (index % 5 === 0 ? 'Active' : 'Onboarding'),
+            pipelineId: schoolSource.pipelineId || 'institutional_onboarding',
             logoUrl: schoolSource.logoUrl || `https://logo.clearbit.com/${slug}.com`,
             heroImageUrl: schoolSource.heroImageUrl || `https://picsum.photos/seed/${slug}/1200/800`,
             stage: schoolSource.stage || (stages.length > 0 ? stages[index % stages.length] : undefined),
@@ -360,26 +392,39 @@ export async function seedOnboardingStages(firestore: Firestore): Promise<{ stag
     const oldStagesSnapshot = await getDocs(stagesCollection);
     oldStagesSnapshot.forEach((doc) => batch.delete(doc.ref));
     const newStagesMap = new Map<string, OnboardingStage>();
-    defaultStages.forEach((stageData) => {
-        const id = stageData.name.toLowerCase().replace(/\s+/g, '-');
-        const docRef = doc(stagesCollection, id);
+    
+    // Default stages for the primary onboarding pipeline
+    const onboardingId = 'institutional_onboarding';
+    const onboardingStages = [
+        { id: 'welcome', name: 'Welcome', order: 1, color: '#f72585', pipelineId: onboardingId },
+        { id: 'setup', name: 'Identity Setup', order: 2, color: '#b5179e', pipelineId: onboardingId },
+        { id: 'training', name: 'Staff Training', order: 3, color: '#7209b7', pipelineId: onboardingId },
+        { id: 'live', name: 'Active (Go-Live)', order: 4, color: '#4361ee', pipelineId: onboardingId },
+    ];
+
+    onboardingStages.forEach((stageData) => {
+        const docRef = doc(stagesCollection, stageData.id);
         batch.set(docRef, stageData);
-        newStagesMap.set(id, { id, ...stageData });
+        newStagesMap.set(stageData.id, stageData as any);
     });
+
     const schoolsSnapshot = await getDocs(schoolsCollection);
     let schoolsUpdated = 0;
-    const welcomeStage = newStagesMap.get('welcome');
+    const welcomeStage = onboardingStages[0];
     schoolsSnapshot.forEach(schoolDoc => {
         const school = schoolDoc.data() as School;
         const currentStageId = school.stage?.id;
         let newStageData = (currentStageId && newStagesMap.has(currentStageId)) ? newStagesMap.get(currentStageId) : welcomeStage;
         if (newStageData) {
-            batch.update(schoolDoc.ref, { stage: { id: newStageData.id, name: newStageData.name, order: newStageData.order, color: newStageData.color } });
+            batch.update(schoolDoc.ref, { 
+                stage: { id: newStageData.id, name: newStageData.name, order: newStageData.order, color: newStageData.color },
+                pipelineId: onboardingId
+            });
             schoolsUpdated++;
         }
     });
     await batch.commit();
-    return { stagesCreated: defaultStages.length, schoolsUpdated };
+    return { stagesCreated: onboardingStages.length, schoolsUpdated };
 }
 
 export async function seedModules(firestore: Firestore): Promise<number> {

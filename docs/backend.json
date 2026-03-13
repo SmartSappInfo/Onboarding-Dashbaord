@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -12,7 +13,21 @@
         "photoURL": { "type": "string" },
         "color": { "type": "string" },
         "isAuthorized": { "type": "boolean" },
-        "role": { "type": "string", "enum": ["admin", "finance"] },
+        "roles": { "type": "array", "items": { "type": "string" } },
+        "permissions": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "Pipeline": {
+      "title": "Pipeline",
+      "description": "Definition of an operational workflow with a sequence of stages.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "stageIds": { "type": "array", "items": { "type": "string" } },
+        "accessRoles": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" }
       }
     },
@@ -122,7 +137,8 @@
         "name": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
-        "type": { "type": "string", "enum": ["Champion", "Accountant", "Administrator", "Principal", "School Owner"] },
+        "type": { "type": "string" },
+        "isSignatory": { "type": "boolean" },
         "isBillingOfficer": { "type": "boolean" },
         "isContractSignatory": { "type": "boolean" }
       }
@@ -145,6 +161,8 @@
         "arrearsBalance": { "type": "number" },
         "creditBalance": { "type": "number" },
         "status": { "type": "string", "enum": ["Active", "Inactive", "Archived"] },
+        "lifecycleStatus": { "type": "string", "enum": ["Onboarding", "Active", "Churned"] },
+        "pipelineId": { "type": "string" },
         "zone": { "$ref": "#/entities/Zone" },
         "focalPersons": { "type": "array", "items": { "$ref": "#/entities/FocalPerson" } },
         "stage": { "type": "object" },
@@ -263,42 +281,6 @@
         "isActive": { "type": "boolean" },
         "actions": { "type": "array" }
       }
-    },
-    "SurveySession": {
-      "title": "Survey Session",
-      "description": "Tracking record for an individual survey participant's progress.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "surveyId": { "type": "string" },
-        "maxStepReached": { "type": "number" },
-        "isSubmitted": { "type": "boolean" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "PdfSession": {
-      "title": "PDF Session",
-      "description": "Tracking record for an individual PDF signer's scroll progress and completion.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "pdfId": { "type": "string" },
-        "maxPageReached": { "type": "number" },
-        "isSubmitted": { "type": "boolean" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
-    },
-    "CampaignSession": {
-      "title": "Campaign Session",
-      "description": "Analytics tracking for marketing campaign pages.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "campaignId": { "type": "string" },
-        "selectedOption": { "type": "string", "enum": ["school", "parent"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
-      }
     }
   },
   "auth": {
@@ -308,6 +290,10 @@
     "/users/{userId}": {
       "schema": "#/entities/UserProfile",
       "description": "User profiles managed by admins."
+    },
+    "/pipelines/{pipelineId}": {
+      "schema": "#/entities/Pipeline",
+      "description": "Operational workflow definitions."
     },
     "/zones/{zoneId}": {
       "schema": "#/entities/Zone",
@@ -344,34 +330,6 @@
     "/automations/{ruleId}": {
       "schema": "#/entities/AutomationRule",
       "description": "Global trigger hub rules."
-    },
-    "/survey_sessions/{sessionId}": {
-      "schema": "#/entities/SurveySession",
-      "description": "Ephemeral tracking of survey progress."
-    },
-    "/pdf_sessions/{sessionId}": {
-      "schema": "#/entities/PdfSession",
-      "description": "Ephemeral tracking of PDF document engagement."
-    },
-    "/campaign_sessions/{sessionId}": {
-      "schema": "#/entities/CampaignSession",
-      "description": "Real-time engagement metrics for marketing pages."
-    },
-    "/subscription_packages/{packageId}": {
-      "schema": "#/entities/SubscriptionPackage",
-      "description": "Pricing tiers."
-    },
-    "/billing_periods/{periodId}": {
-      "schema": "#/entities/BillingPeriod",
-      "description": "Billing cycles."
-    },
-    "/invoices/{invoiceId}": {
-      "schema": "#/entities/Invoice",
-      "description": "Generated invoices."
-    },
-    "/billing_settings/{settingId}": {
-      "schema": "#/entities/BillingSettings",
-      "description": "Global tax and signature rules."
     }
   }
 }

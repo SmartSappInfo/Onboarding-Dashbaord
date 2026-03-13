@@ -1,3 +1,4 @@
+
 export const MEETING_TYPES = [
   { id: 'parent', name: 'Parent Engagement', slug: 'parent-engagement' },
   { id: 'kickoff', name: 'Kickoff', slug: 'kickoff' },
@@ -9,6 +10,7 @@ export type MeetingType = typeof MEETING_TYPES[number];
 export type FocalPersonType = 'Champion' | 'Accountant' | 'Administrator' | 'Principal' | 'School Owner' | string;
 
 export type SchoolStatus = 'Active' | 'Inactive' | 'Archived';
+export type LifecycleStatus = 'Onboarding' | 'Active' | 'Churned';
 
 export interface FocalPerson {
   name: string;
@@ -24,6 +26,15 @@ export interface FocalPerson {
 export interface Zone {
   id: string;
   name: string;
+}
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  description?: string;
+  stageIds: string[];
+  accessRoles: string[];
+  createdAt: string;
 }
 
 export type UserRole = 'admin' | 'finance' | 'supervisor' | 'cse' | 'trainer' | string;
@@ -63,7 +74,7 @@ export interface UserProfile {
   color?: string;
   isAuthorized: boolean;
   roles: string[]; // Array of Role IDs
-  permissions?: AppPermissionId[]; // Flattened permissions for security and UI
+  permissions?: AppPermissionId[]; // Flattened permissions
   createdAt: string; // ISO string
 }
 
@@ -73,6 +84,7 @@ export interface DashboardLayout {
 
 export interface OnboardingStage {
   id: string;
+  pipelineId: string;
   name: string;
   order: number;
   color?: string;
@@ -87,6 +99,8 @@ export interface School {
   logoUrl?: string;
   heroImageUrl?: string;
   status: SchoolStatus;
+  lifecycleStatus: LifecycleStatus;
+  pipelineId: string;
   zone?: Zone;
   focalPersons: FocalPerson[];
   location?: string;
@@ -94,8 +108,8 @@ export interface School {
   currency?: string;
   subscriptionPackageId?: string;
   subscriptionPackageName?: string;
-  subscriptionRate?: number; // Effective rate after discount
-  discountPercentage?: number; // School-specific discount
+  subscriptionRate?: number;
+  discountPercentage?: number;
   billingTerm?: string;
   nominalRoll?: number;
   arrearsBalance?: number;
