@@ -96,7 +96,7 @@ export async function seedRolesAndPermissions(firestore: Firestore): Promise<num
             name: 'Administrator',
             description: 'Full system control, user management, and configuration.',
             color: '#f72585',
-            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
             createdAt: timestamp
         },
         {
@@ -693,3 +693,14 @@ const defaultModules = [
     { name: 'Child Security', abbreviation: 'SEC', color: '#f72585', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
     { name: 'Connected Community', abbreviation: 'COM', color: '#b5179e', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
 ];
+
+async function clearCollection(firestore: Firestore, collectionPath: string) {
+  const collectionRef = collection(firestore, collectionPath);
+  const querySnapshot = await getDocs(collectionRef);
+  if (querySnapshot.empty) return;
+  const batch = writeBatch(firestore);
+  querySnapshot.forEach((doc) => {
+    batch.delete(doc.ref);
+  });
+  await batch.commit();
+}

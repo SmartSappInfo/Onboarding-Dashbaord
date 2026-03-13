@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { collection, query, orderBy } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useFirebase } from '@/firebase';
 import type { School, Contract, UserProfile } from '@/lib/types';
 import { 
     FileCheck, 
@@ -52,6 +52,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import ContractWizard from './components/ContractWizard';
+import WithdrawContractModal from './components/WithdrawContractModal';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -72,7 +73,24 @@ export default function AgreementsClient() {
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedSchools, setSelectedSchools] = React.useState<School[]>([]);
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
+    const [withdrawingSchool, setWithdrawingSchool] = React.useState<School | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+
+    // Permission Check
+    const [userPermissions, setUserPermissions] = React.useState<string[]>([]);
+    const { user } = useUser();
+    
+    React.useEffect(() => {
+        if (user && firestore) {
+            const fetchPerms = async () => {
+                const snap = await (await import('firebase/firestore')).getDoc(doc(firestore, 'users', user.uid));
+                if (snap.exists()) setUserPermissions(snap.data().permissions || []);
+            };
+            fetchPerms();
+        }
+    }, [user, firestore]);
+
+    const canPurge = userPermissions.includes('contracts_delete') || userPermissions.includes('system_admin');
 
     // Data Subscriptions
     const schoolsCol = useMemoFirebase(() => 
@@ -399,7 +417,7 @@ export default function AgreementsClient() {
                                                                             className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
                                                                             asChild
                                                                         >
-                                                                            <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                            <a href={`/forms/${item.contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
                                                                                 <Globe className="h-4 w-4" />
                                                                             </a>
                                                                         </Button>
@@ -462,19 +480,18 @@ export default function AgreementsClient() {
                                                                     </>
                                                                 )}
 
-                                                                <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
-                                                                    <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><FileText className="h-4 w-4" /></div>
-                                                                    <span className="font-bold text-sm">Preview Logic</span>
-                                                                </DropdownMenuItem>
-
-                                                                <DropdownMenuSeparator className="my-2 mx-2" />
-                                                                <DropdownMenuItem 
-                                                                    className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
-                                                                    onClick={() => toast({ title: 'Withdrawal Protocol', description: 'This feature will purge the contract record.' })}
-                                                                >
-                                                                    <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
-                                                                    <span className="font-bold text-sm">Withdraw Contract</span>
-                                                                </DropdownMenuItem>
+                                                                {canPurge && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator className="my-2 mx-2" />
+                                                                        <DropdownMenuItem 
+                                                                            className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
+                                                                            onClick={() => setWithdrawingSchool(item)}
+                                                                        >
+                                                                            <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Withdraw Contract</span>
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
                                                             </DropdownMenuContent>
                                                         </DropdownMenu>
                                                     </div>
@@ -497,7 +514,7 @@ export default function AgreementsClient() {
                     </div>
                 </div>
 
-                {/* Bulk Actions Floating Bar - Minimalist Redesign */}
+                {/* Bulk Actions Floating Bar */}
                 <AnimatePresence>
                     {selectedSchools.length > 0 && (
                         <motion.div 
@@ -548,6 +565,14 @@ export default function AgreementsClient() {
                             setIsWizardOpen(o);
                             if (!o) setSelectedSchools([]);
                         }} 
+                    />
+                )}
+
+                {withdrawingSchool && (
+                    <WithdrawContractModal 
+                        school={withdrawingSchool} 
+                        open={!!withdrawingSchool} 
+                        onOpenChange={(o) => !o && setWithdrawingSchool(null)} 
                     />
                 )}
             </div>

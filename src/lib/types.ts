@@ -31,6 +31,7 @@ export const APP_PERMISSIONS = [
   { id: 'schools_edit', label: 'Edit School Profiles', category: 'Operations' },
   { id: 'finance_view', label: 'View Finance Hub', category: 'Finance' },
   { id: 'finance_manage', label: 'Manage Billing & Contracts', category: 'Finance' },
+  { id: 'contracts_delete', label: 'Purge Legal Records', category: 'Finance' },
   { id: 'studios_view', label: 'View Design Studios', category: 'Studios' },
   { id: 'studios_edit', label: 'Create Surveys/PDFs/Messages', category: 'Studios' },
   { id: 'system_admin', label: 'Full System Management', category: 'Management' },
@@ -519,7 +520,7 @@ export interface Submission {
   formData: { [key: string]: any };
 }
 
-export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'signed';
+export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'signed' | 'partially_signed';
 
 export interface Contract {
     id: string;

@@ -58,7 +58,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
                 isAuthorized: true,
                 roles: ['administrator'], 
                 permissions: [
-                    'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
+                    'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete',
                     'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
                     'tasks_manage', 'activities_view'
                 ],
@@ -81,7 +81,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               isAuthorized: true,
               roles: ['administrator'],
               permissions: [
-                'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
+                'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'contracts_delete',
                 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
                 'tasks_manage', 'activities_view'
               ],

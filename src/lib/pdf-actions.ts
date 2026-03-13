@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb, adminStorage } from './firebase-admin';
@@ -317,6 +316,48 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         return { success: true };
     } catch (e: any) {
         console.error(">>> [PDF:FINALIZE] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Resets an institutional contract record and deletes associated submissions.
+ * Requires high-level administrative authorization.
+ */
+export async function purgeContractAction(schoolId: string, submissionIds: string[], userId: string) {
+    try {
+        const batch = adminDb.batch();
+        
+        // 1. Delete associated submissions across all relevant PDF subcollections
+        // We iterate PDFs because submissions are nested
+        const pdfsSnap = await adminDb.collection('pdfs').get();
+        for (const pdfDoc of pdfsSnap.docs) {
+            const subCol = pdfDoc.ref.collection('submissions');
+            for (const subId of submissionIds) {
+                batch.delete(subCol.doc(subId));
+            }
+        }
+
+        // 2. Remove or reset the primary contract link
+        const contractsCol = adminDb.collection('contracts');
+        const contractQuery = await contractsCol.where('schoolId', '==', schoolId).limit(1).get();
+        if (!contractQuery.empty) {
+            batch.delete(contractQuery.docs[0].ref);
+        }
+
+        await batch.commit();
+
+        await logActivity({
+            schoolId,
+            userId,
+            type: 'pdf_status_changed',
+            source: 'user_action',
+            description: `purged legal agreement history and ${submissionIds.length} submissions for school`
+        });
+
+        revalidatePath('/admin/finance/contracts');
+        return { success: true };
+    } catch (e: any) {
         return { success: false, error: e.message };
     }
 }

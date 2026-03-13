@@ -162,7 +162,7 @@ export default function RoleEditor() {
                     <Card key={role.id} className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border bg-white overflow-hidden group hover:ring-primary/20 transition-all">
                         <CardHeader className="p-6 pb-4 flex flex-row items-center justify-between border-b bg-muted/5">
                             <div className="flex items-center gap-3">
-                                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: role.color }} />
+                                <div className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0" style={{ backgroundColor: role.color }} />
                                 <CardTitle className="text-sm font-black uppercase tracking-tight">{role.name}</CardTitle>
                             </div>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
