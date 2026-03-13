@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -71,6 +72,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import TaskEditor from './components/TaskEditor';
+import TaskBoard from './components/TaskBoard';
 import { logActivity } from '@/lib/activity-logger';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
@@ -534,13 +536,10 @@ export default function TasksClient() {
                     </TabsContent>
 
                     <TabsContent value="board" className="m-0 outline-none h-[calc(100vh-350px)]">
-                        <div className="h-full flex flex-col items-center justify-center text-center p-12 border-4 border-dashed rounded-[4rem] bg-card/50 opacity-20 gap-4">
-                            <Layers className="h-16 w-16" />
-                            <div className="space-y-1">
-                                <h3 className="text-xl font-black uppercase tracking-tight">Phase 3: Workflow Board</h3>
-                                <p className="text-xs font-bold uppercase tracking-widest">Drag-and-drop Kanban implementation incoming.</p>
-                            </div>
-                        </div>
+                        <TaskBoard 
+                            tasks={filteredTasks} 
+                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>
