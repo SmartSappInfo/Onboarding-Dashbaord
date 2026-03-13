@@ -607,7 +607,7 @@ export async function seedTasks(firestore: Firestore): Promise<number> {
     if (schoolsSnap.empty || usersSnap.empty) return 0;
 
     const schools = schoolsSnap.docs.map(d => ({ id: d.id, ...d.data() } as School));
-    const users = usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
+    const users = usersSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as UserProfile));
 
     const priorities: TaskPriority[] = ['low', 'medium', 'high', 'critical'];
     const categories: TaskCategory[] = ['call', 'visit', 'document', 'training', 'general'];

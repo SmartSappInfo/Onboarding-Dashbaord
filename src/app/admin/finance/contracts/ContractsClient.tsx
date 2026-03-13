@@ -1,8 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser, useFirebase } from '@/firebase';
+import { collection, query, orderBy, doc, getDoc } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { School, Contract, UserProfile } from '@/lib/types';
 import { 
     FileCheck, 
@@ -83,7 +83,8 @@ export default function AgreementsClient() {
     React.useEffect(() => {
         if (user && firestore) {
             const fetchPerms = async () => {
-                const snap = await (await import('firebase/firestore')).getDoc(doc(firestore, 'users', user.uid));
+                const userDocRef = doc(firestore, 'users', user.uid);
+                const snap = await getDoc(userDocRef);
                 if (snap.exists()) setUserPermissions(snap.data().permissions || []);
             };
             fetchPerms();
