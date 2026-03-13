@@ -31,7 +31,8 @@ import {
     X,
     ListChecks,
     RotateCcw,
-    ExternalLink
+    ExternalLink,
+    ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,6 +64,17 @@ import {
     TooltipTrigger 
 } from '@/components/ui/tooltip';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
+import { deleteContractAction } from '@/lib/contract-actions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
@@ -75,6 +87,10 @@ export default function AgreementsClient() {
     const [isWizardOpen, setIsWizardOpen] = React.useState(false);
     const [withdrawingSchool, setWithdrawingSchool] = React.useState<School | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
+
+    // Single Contract Deletion State
+    const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, school: School } | null>(null);
+    const [isPurging, setIsPurging] = React.useState(false);
 
     // Permission Check
     const [userPermissions, setUserPermissions] = React.useState<string[]>([]);
@@ -200,6 +216,31 @@ export default function AgreementsClient() {
             toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
         } finally {
             setDownloadingId(null);
+        }
+    };
+
+    const handlePurgeConfirmed = async () => {
+        if (!contractToPurge || !user) return;
+        setIsPurging(true);
+        const { contract, school } = contractToPurge;
+        
+        try {
+            const result = await deleteContractAction(
+                contract.id, 
+                contract.pdfId, 
+                contract.submissionId || null, 
+                school.id, 
+                user.uid
+            );
+            
+            if (result.success) {
+                toast({ title: 'Agreement Purged', description: 'Record and associated signed document removed.' });
+                setContractToPurge(null);
+            } else throw new Error(result.error);
+        } catch (e: any) {
+            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+        } finally {
+            setIsPurging(false);
         }
     };
 
@@ -481,15 +522,28 @@ export default function AgreementsClient() {
                                                                     </>
                                                                 )}
 
-                                                                {canPurge && (
+                                                                {canPurge && contract && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator className="my-2 mx-2" />
+                                                                        <DropdownMenuItem 
+                                                                            className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
+                                                                            onClick={() => setContractToPurge({ contract, school: item })}
+                                                                        >
+                                                                            <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Purge Record</span>
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+
+                                                                {canPurge && !contract && (
                                                                     <>
                                                                         <DropdownMenuSeparator className="my-2 mx-2" />
                                                                         <DropdownMenuItem 
                                                                             className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
                                                                             onClick={() => setWithdrawingSchool(item)}
                                                                         >
-                                                                            <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
-                                                                            <span className="font-bold text-sm">Withdraw Contract</span>
+                                                                            <div className="p-1.5 bg-destructive/10 rounded-lg"><History className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Audit & Purge History</span>
                                                                         </DropdownMenuItem>
                                                                     </>
                                                                 )}
@@ -576,6 +630,34 @@ export default function AgreementsClient() {
                         onOpenChange={(o) => !o && setWithdrawingSchool(null)} 
                     />
                 )}
+
+                {/* Single Purge Confirmation */}
+                <AlertDialog open={!!contractToPurge} onOpenChange={(o) => !o && setContractToPurge(null)}>
+                    <AlertDialogContent className="rounded-[2rem]">
+                        <AlertDialogHeader>
+                            <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                                <ShieldAlert className="h-6 w-6 text-destructive" />
+                            </div>
+                            <AlertDialogTitle className="text-center font-black uppercase tracking-tight">Purge Agreement Record?</AlertDialogTitle>
+                            <AlertDialogDescription className="text-center text-sm font-medium">
+                                You are about to permanently remove the agreement record for <span className="font-bold text-foreground">"{contractToPurge?.school.name}"</span>. 
+                                <br/><br/>
+                                <strong className="text-destructive uppercase text-[10px] tracking-widest">Impact Alert:</strong> This will also delete the corresponding signed PDF from the Doc Signing module, ensuring no orphan data remains. This action is irreversible.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="sm:justify-center gap-3 mt-4">
+                            <AlertDialogCancel disabled={isPurging} className="rounded-xl font-bold px-8">Retain Record</AlertDialogCancel>
+                            <AlertDialogAction 
+                                onClick={handlePurgeConfirmed} 
+                                disabled={isPurging}
+                                className="rounded-xl font-black px-10 shadow-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-all active:scale-95"
+                            >
+                                {isPurging ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                Confirm Purge
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
             </div>
         </TooltipProvider>
     );

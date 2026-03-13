@@ -1,4 +1,3 @@
-
 'use server';
 
 import { adminDb } from './firebase-admin';
@@ -135,6 +134,42 @@ export async function sendContractAction(input: {
 
     } catch (e: any) {
         console.error(">>> [CONTRACT:DISPATCH] Failed:", e.message);
+        return { success: false, error: e.message };
+    }
+}
+
+/**
+ * Permanently purges a contract record and its associated submission from the system.
+ * Prevents orphan rows in the Doc Signing module.
+ */
+export async function deleteContractAction(contractId: string, pdfId: string, submissionId: string | null, schoolId: string, userId: string) {
+    try {
+        const batch = adminDb.batch();
+        
+        // 1. Delete primary Contract doc
+        batch.delete(adminDb.collection('contracts').doc(contractId));
+
+        // 2. Delete linked Submission doc to prevent orphan results
+        if (pdfId && submissionId) {
+            batch.delete(adminDb.collection('pdfs').doc(pdfId).collection('submissions').doc(submissionId));
+        }
+
+        await batch.commit();
+
+        // 3. Log activity for audit trail
+        await logActivity({
+            schoolId,
+            userId,
+            type: 'pdf_status_changed',
+            source: 'user_action',
+            description: `permanently purged the agreement record and associated signed document.`,
+            metadata: { contractId, pdfId, submissionId }
+        });
+
+        revalidatePath('/admin/finance/contracts');
+        return { success: true };
+    } catch (e: any) {
+        console.error(">>> [CONTRACT:PURGE] Failed:", e.message);
         return { success: false, error: e.message };
     }
 }
