@@ -5,15 +5,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, seedRolesAndPermissions } from '@/lib/seed';
-import { Loader2, RefreshCcw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert } from 'lucide-react';
+import { seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, seedOnboardingStages, seedModules, seedActivities, seedPdfForms, seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, seedRolesAndPermissions, seedPipelines } from '@/lib/seed';
+import { Loader2, RefreshCw, Database, ShieldCheck, ClipboardList, Film, School as SchoolIcon, History, MessageSquareText, MapPin, CheckSquare, Banknote, ShieldAlert, Workflow } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import ModuleEditor from './components/ModuleEditor';
 import ZoneEditor from './components/ZoneEditor';
 import RoleEditor from './components/RoleEditor';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -29,7 +29,7 @@ export default function SettingsClient() {
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
-    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle',
+    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle'
   });
 
   const handleSeed = async (seeder: Seeder) => {
@@ -59,6 +59,7 @@ export default function SettingsClient() {
         else if (seeder === 'tasks') { count = await seedTasks(firestore); name = 'CRM Tasks'; }
         else if (seeder === 'billing') { count = await seedBillingData(firestore); name = 'Billing Hubs'; }
         else if (seeder === 'roles') { count = await seedRolesAndPermissions(firestore); name = 'Roles & Permissions'; }
+        else if (seeder === 'pipelines') { count = await seedPipelines(firestore); name = 'Workflows'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -95,9 +96,9 @@ export default function SettingsClient() {
             <div>
                 <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-4 ml-1">Structural Configuration</h3>
                 <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" size="sm" onClick={() => handleSeed('stages')} disabled={seedingStatus.stages === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.stages === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
-                        Seed Stages
+                    <Button variant="outline" size="sm" onClick={() => handleSeed('pipelines')} disabled={seedingStatus.pipelines === 'seeding'} className="rounded-xl font-bold">
+                        {seedingStatus.pipelines === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Workflow className="mr-2 h-4 w-4 text-primary" />}
+                        Seed Workflows
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('roles')} disabled={seedingStatus.roles === 'seeding'} className="rounded-xl font-bold">
                         {seedingStatus.roles === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4 text-primary" />}

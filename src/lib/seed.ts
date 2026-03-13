@@ -1,4 +1,3 @@
-
 'use client';
 
 import { collection, writeBatch, getDocs, doc, query, where, orderBy, limit, addDoc, setDoc } from 'firebase/firestore';
@@ -76,16 +75,35 @@ const baseSchoolData: Omit<School, 'id' | 'slug' | 'stage' | 'assignedTo' | 'cre
   { name: 'Faith Montessori School', initials: 'Faith', slogan: 'Godliness and Academic Excellence.', location: 'Gbawe, Accra', nominalRoll: 1000, includeDroneFootage: true, referee: 'SmartSapp Support', focalPersons: [{ name: 'Mr. Oswald Amoo', email: 'admin@faithmontessori.edu.gh', phone: '+233 30 231 2345', type: 'Administrator', isSignatory: true }] },
 ];
 
-const defaultStages = [
-    { name: 'Welcome', order: 1, color: '#f72585' },
-    { name: 'Setup', order: 2, color: '#7209b7' },
-    { name: 'Training', order: 3, color: '#4361ee' },
-    { name: 'Go-Live', order: 4, color: '#4cc9f0' },
-];
-
 const defaultModules = [
     { name: 'Child Security', abbreviation: 'SEC', color: '#f72585', description: 'Ensures safe drop-off and pick-up of students.', order: 1 },
     { name: 'Connected Community', abbreviation: 'COM', color: '#b5179e', description: 'Enhances communication between school, teachers, and parents.', order: 2 },
+    { name: 'Student Billing', abbreviation: 'BIL', color: '#4361ee', description: 'Automated termly invoicing and arrears management.', order: 3 },
+    { name: 'Health Monitor', abbreviation: 'HLT', color: '#4cc9f0', description: 'Digital health logs and infirmary tracking.', order: 4 },
+];
+
+const defaultPackages: Omit<SubscriptionPackage, 'id'>[] = [
+    { name: 'Platinum Hub', description: 'Full feature access with high-priority support.', ratePerStudent: 85.50, billingTerm: 'term', currency: 'GHS', isActive: true },
+    { name: 'Premium Cloud', description: 'Core functional modules for digital operations.', ratePerStudent: 65.00, billingTerm: 'term', currency: 'GHS', isActive: true },
+    { name: 'Starter Suite', description: 'Essential security and communication tools.', ratePerStudent: 45.00, billingTerm: 'term', currency: 'GHS', isActive: true },
+];
+
+const surveyData = [
+  {
+    title: 'School Readiness Audit',
+    internalName: 'Institutional Readiness v1',
+    description: 'A comprehensive assessment to determine digital transformation readiness.',
+    status: 'published' as const,
+    scoringEnabled: true,
+    maxScore: 100,
+    elements: [
+      { id: 'q1', type: 'yes-no', title: 'Do you have stable internet?', isRequired: true, enableScoring: true, yesScore: 20, noScore: 0 },
+      { id: 'q2', type: 'multiple-choice', title: 'Total students?', options: ['< 100', '100-500', '500+'], isRequired: true, enableScoring: true, optionScores: [10, 30, 50] },
+    ],
+    resultRules: [
+      { id: 'rule1', label: 'Highly Ready', minScore: 70, maxScore: 100, priority: 1, pageId: 'page1' }
+    ]
+  }
 ];
 
 // --- HELPER FUNCTIONS ---
@@ -103,7 +121,7 @@ async function clearCollection(firestore: Firestore, collectionPath: string) {
 
 // --- SEEDING FUNCTIONS ---
 
-export async function seedPipelines(firestore: Firestore): Promise<string> {
+export async function seedPipelines(firestore: Firestore): Promise<number> {
     await clearCollection(firestore, 'pipelines');
     await clearCollection(firestore, 'onboardingStages');
     
@@ -160,7 +178,7 @@ export async function seedPipelines(firestore: Firestore): Promise<string> {
     batch.set(doc(pipelinesCol, salesId), salesPipeline);
 
     await batch.commit();
-    return onboardingId;
+    return 2;
 }
 
 export async function seedRolesAndPermissions(firestore: Firestore): Promise<number> {

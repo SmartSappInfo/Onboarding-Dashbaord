@@ -10,7 +10,7 @@ import {
     seedMedia, seedSchools, seedMeetings, seedSurveys, seedUserAvatars, 
     seedOnboardingStages, seedModules, seedActivities, seedPdfForms, 
     seedMessaging, seedZones, seedMessageLogs, seedTasks, seedBillingData, 
-    seedRolesAndPermissions 
+    seedRolesAndPermissions, seedPipelines 
 } from '@/lib/seed';
 import { 
     Loader2, 
@@ -37,7 +37,8 @@ import {
     ChevronRight,
     Check,
     Layers,
-    Globe
+    Globe,
+    Workflow
 } from 'lucide-react';
 import { doc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -48,7 +49,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
 type SeedingState = 'idle' | 'seeding' | 'success' | 'error';
-type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles';
+type Seeder = 'media' | 'schools' | 'meetings' | 'surveys' | 'users' | 'stages' | 'layout' | 'modules' | 'activities' | 'pdfs' | 'messaging' | 'zones' | 'logs' | 'tasks' | 'billing' | 'roles' | 'pipelines';
 
 const DEFAULT_LAYOUT = [
     'userAssignments', 'taskWidget', 'messagingWidget', 'pipelinePieChart', 
@@ -68,7 +69,7 @@ export default function SeedsClient() {
     media: 'idle', schools: 'idle', meetings: 'idle', surveys: 'idle', 
     users: 'idle', stages: 'idle', layout: 'idle', modules: 'idle', 
     activities: 'idle', pdfs: 'idle', messaging: 'idle', zones: 'idle', 
-    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle',
+    logs: 'idle', tasks: 'idle', billing: 'idle', roles: 'idle', pipelines: 'idle'
   });
 
   const handleUnlock = (e: React.FormEvent) => {
@@ -113,6 +114,7 @@ export default function SeedsClient() {
         else if (seeder === 'tasks') { count = await seedTasks(firestore); name = 'CRM Tasks'; }
         else if (seeder === 'billing') { count = await seedBillingData(firestore); name = 'Billing Hubs'; }
         else if (seeder === 'roles') { count = await seedRolesAndPermissions(firestore); name = 'Roles & Permissions'; }
+        else if (seeder === 'pipelines') { count = await seedPipelines(firestore); name = 'Workflows'; }
         else if (seeder === 'stages') {
           const { stagesCreated } = await seedOnboardingStages(firestore);
           count = stagesCreated;
@@ -210,6 +212,7 @@ export default function SeedsClient() {
                         <CardDescription className="text-xs font-medium uppercase tracking-widest text-primary/60">Initialize foundational collections and logical hubs.</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 grid grid-cols-1 gap-4">
+                        <SeedButton label="Workflows & Pipelines" seeder="pipelines" status={seedingStatus.pipelines} onClick={() => handleSeed('pipelines')} icon={Workflow} />
                         <SeedButton label="Roles & Permissions" seeder="roles" status={seedingStatus.roles} onClick={() => handleSeed('roles')} icon={ShieldAlert} />
                         <SeedButton label="Onboarding Stages" seeder="stages" status={seedingStatus.stages} onClick={() => handleSeed('stages')} icon={RefreshCw} />
                         <SeedButton label="Functional Modules" seeder="modules" status={seedingStatus.modules} onClick={() => handleSeed('modules')} icon={RefreshCw} />
@@ -238,7 +241,7 @@ export default function SeedsClient() {
                 </Card>
 
                 {/* Communication Infrastructure */}
-                <Card className="rounded-[2.5rem] border-none shadow-sm ring-1 ring-border overflow-hidden bg-white">
+                <Card className="rounded-[2.5rem] border-none bg-white shadow-sm ring-1 ring-border overflow-hidden">
                     <CardHeader className="bg-blue-50 border-b p-8">
                         <CardTitle className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
                             <Globe className="h-5 w-5 text-blue-600" /> Messaging Hub
