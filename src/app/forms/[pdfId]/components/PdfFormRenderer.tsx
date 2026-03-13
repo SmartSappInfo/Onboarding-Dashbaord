@@ -162,6 +162,17 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const { register, handleSubmit, watch, setValue, getValues, formState: { errors }, control, trigger: validate } = methods;
   const watchedValues = watch();
 
+  // Auto-populate empty date fields with today's date on mount
+  React.useEffect(() => {
+    let hasUpdated = false;
+    pdfForm.fields.forEach(field => {
+        if (field.type === 'date' && !watchedValues[field.id]) {
+            setValue(field.id, new Date().toISOString(), { shouldValidate: true, shouldDirty: false });
+            hasUpdated = true;
+        }
+    });
+  }, [pdfForm.fields, setValue]);
+
   const isFormComplete = React.useMemo(() => {
       return pdfForm.fields
         .filter(f => f.type !== 'static-text' && f.type !== 'variable')

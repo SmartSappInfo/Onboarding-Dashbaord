@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm, Controller, useWatch } from 'react-hook-form';
@@ -757,6 +756,18 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
     // Initial pulse
     React.useEffect(() => { recordStepPulse(currentPageIndex); }, [currentPageIndex, recordStepPulse]);
 
+    // Auto-populate date fields with today's date if empty
+    React.useEffect(() => {
+        survey.elements.filter(isQuestion).forEach(q => {
+            if (q.type === 'date') {
+                const currentVal = form.getValues(q.id);
+                if (!currentVal) {
+                    form.setValue(q.id, new Date(), { shouldValidate: true, shouldDirty: false });
+                }
+            }
+        });
+    }, [survey.elements, form]);
+
     // Automation Status Tracking
     const [automationStatuses, setAutomationStatuses] = React.useState<AutomationStatus[]>([]);
     const [isStatusModalOpen, setIsStatusModalOpen] = React.useState(false);
@@ -855,7 +866,7 @@ export default function SurveyForm({ survey, onSubmitted, isPreview = false }: S
                 if (isValueEmpty(data[q.id], q.type)) {
                     form.setError(q.id, { type: 'manual', message: getRequiredMessage(q.type) });
                     const pageIdx = pages.findIndex(p => p.some(el => el.id === q.id));
-                    const cleanLabel = q.title.replace(/<[^>]*>?/gm, '').trim();
+                    const cleanTitle = q.title.replace(/<[^>]*>?/gm, '').trim();
                     missing.push({ id: q.id, label: cleanLabel || 'Question', pageIndex: pageIdx });
                 }
             }
