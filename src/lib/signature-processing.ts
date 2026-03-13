@@ -34,7 +34,7 @@ export async function processSignatureImage(
   sourceUrl: string, 
   threshold: number = 150,
   thickness: number = 0,
-  smoothing: number = 0,
+  smoothing: number = 1, // Default smoothing per requirement
   cropArea?: { x: number, y: number, width: number, height: number },
   rotation: number = 0,
   skipAutoCrop: boolean = false

@@ -14,7 +14,7 @@ import { Slider } from '@/components/ui/slider';
 import { 
     Upload, Camera, Eraser, Check, Loader2, X, ArrowLeft, ArrowRight,
     Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck, Target,
-    RotateCw
+    RotateCw, Maximize
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -47,9 +47,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [isConsented, setIsConsented] = React.useState(false);
     const [hasDrawn, setHasDrawn] = React.useState(false);
 
+    // Refinement Parameters
     const [inkSensitivity, setInkSensitivity] = React.useState(150);
-    const [strokeWeight, setStrokeWeight] = React.useState(0);
-    const [smoothing, setSmoothing] = React.useState(0);
+    const [strokeWeight, setStrokeWeight] = React.useState(0); // Fixed at 0 per requirement
+    const [smoothing, setSmoothing] = React.useState(1); // Fixed at 1 per requirement
     const [brightness, setBrightness] = React.useState(0);
     const [contrast, setContrast] = React.useState(0);
     
@@ -68,6 +69,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     }, [open]);
 
+    // Live Preview Engine
     React.useEffect(() => {
         if (step === 'refine' && rawCapturedImage) {
             const generatePreview = async () => {
@@ -77,8 +79,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                         const result = await processSignatureImage(
                             rawCapturedImage, 
                             inkSensitivity, 
-                            strokeWeight, 
-                            smoothing,
+                            0, // Fixed weight
+                            1, // Fixed smoothing
                             undefined, 
                             0, 
                             true
@@ -97,7 +99,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             const debounceTimer = setTimeout(generatePreview, 100);
             return () => clearTimeout(debounceTimer);
         }
-    }, [inkSensitivity, strokeWeight, smoothing, brightness, contrast, step, rawCapturedImage, mode]);
+    }, [inkSensitivity, brightness, contrast, step, rawCapturedImage, mode]);
 
     const handleFocus = async (e: React.MouseEvent | React.TouchEvent) => {
         if (!webcamRef.current || !webcamRef.current.video) return;
@@ -109,11 +111,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         const x = ((clientX - rect.left) / rect.width) * 100;
         const y = ((clientY - rect.top) / rect.height) * 100;
 
-        // Visual feedback
         setFocusPoint({ x, y });
         setTimeout(() => setFocusPoint(null), 1000);
 
-        // Hardware focus request (where supported)
         try {
             const stream = webcamRef.current.stream;
             if (stream) {
@@ -126,7 +126,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 }
             }
         } catch (err) {
-            console.warn("Manual focus not supported by this browser/hardware.");
+            console.warn("Manual focus not supported.");
         }
     };
 
@@ -151,10 +151,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         setIsConsented(false);
         setHasDrawn(false);
         setInkSensitivity(150);
-        setStrokeWeight(0);
-        setSmoothing(0);
-        setBrightness(0);
-        setContrast(0);
         setCrop({ x: 0, y: 0 });
         setZoom(1);
         setRotation(0);
@@ -205,8 +201,8 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                     const result = await processSignatureImage(
                         rawCapturedImage, 
                         inkSensitivity, 
-                        strokeWeight, 
-                        smoothing,
+                        0, // weight
+                        1, // smoothing
                         croppedAreaPixels || undefined,
                         rotation,
                         false
@@ -265,7 +261,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
             <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card text-left">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
-                        {mode === 'photo' ? 'Photo Identity' : 'Your Signature'}
+                        Your Signature
                     </DialogTitle>
                     <DialogDescription className="text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                         {step === 'input' ? 'Choose input method' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}
@@ -305,7 +301,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                     className="w-full h-full object-cover"
                                                 />
                                                 
-                                                {/* Focus Visual Indicator */}
                                                 <AnimatePresence>
                                                     {focusPoint && (
                                                         <motion.div
@@ -384,89 +379,66 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 animate={{ opacity: 1, x: 0 }} 
                                 className="h-full flex flex-col p-6 pt-0 space-y-6"
                             >
-                                <div className="flex gap-4 items-center flex-1 min-h-0">
-                                    {/* Left Sidebar: Zoom */}
-                                    <div className="flex flex-col items-center h-full gap-2 p-2 bg-muted/30 rounded-2xl border shadow-inner">
-                                        <ZoomIn className="h-3 w-3 text-primary opacity-40" />
-                                        <Slider
-                                            orientation="vertical"
-                                            value={[zoom]}
-                                            onValueChange={([v]) => setZoom(v)}
-                                            min={1} max={3} step={0.1}
-                                            className="h-full py-4"
-                                        />
-                                        <span className="text-[8px] font-black opacity-40 tabular-nums">{zoom.toFixed(1)}x</span>
-                                    </div>
-
-                                    {/* Central Canvas */}
-                                    <div className="flex-1 aspect-video relative rounded-3xl overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
-                                        <Cropper
-                                            image={filteredBaseImageUrl || rawCapturedImage!}
-                                            crop={crop}
-                                            zoom={zoom}
-                                            rotation={rotation}
-                                            aspect={16 / 9}
-                                            onCropChange={setCrop}
-                                            onZoomChange={setZoom}
-                                            onRotationChange={setRotation}
-                                            onCropComplete={handleOnCropComplete}
-                                            showGrid={true}
-                                            style={{
-                                                containerStyle: { borderRadius: '1.5rem' },
-                                                cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
-                                            }}
-                                        />
-                                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
-                                            {isProcessingPreview && (
-                                                <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
-                                                    <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Processing...
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Right Sidebar: Rotate */}
-                                    <div className="flex flex-col items-center h-full gap-2 p-2 bg-muted/30 rounded-2xl border shadow-inner">
-                                        <RotateCw className="h-3 w-3 text-primary opacity-40" />
-                                        <Slider
-                                            orientation="vertical"
-                                            value={[rotation]}
-                                            onValueChange={([v]) => setRotation(v)}
-                                            min={-180} max={180} step={1}
-                                            className="h-full py-4"
-                                        />
-                                        <span className="text-[8px] font-black opacity-40 tabular-nums">{rotation}°</span>
+                                {/* Full-Width Viewport */}
+                                <div className="flex-1 w-full aspect-video relative rounded-[2rem] overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
+                                    <Cropper
+                                        image={filteredBaseImageUrl || rawCapturedImage!}
+                                        crop={crop}
+                                        zoom={zoom}
+                                        rotation={rotation}
+                                        aspect={16 / 9}
+                                        onCropChange={setCrop}
+                                        onZoomChange={setZoom}
+                                        onRotationChange={setRotation}
+                                        onCropComplete={handleOnCropComplete}
+                                        showGrid={true}
+                                        style={{
+                                            containerStyle: { borderRadius: '1.5rem' },
+                                            cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
+                                        }}
+                                    />
+                                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
+                                        {isProcessingPreview && (
+                                            <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
+                                                <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Normalizing...
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="space-y-4 px-2">
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
-                                        <div className="space-y-1.5">
+                                {/* Integrated Control Panel (Bottom) */}
+                                <div className="space-y-6 bg-muted/20 p-5 rounded-[2rem] border shadow-inner">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                        <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <Sun className="h-3 w-3" /> Density
+                                                    <ZoomIn className="h-3.5 w-3.5" /> Focal Zoom
                                                 </Label>
-                                                <span className="text-[9px] font-mono opacity-40">{inkSensitivity}</span>
+                                                <span className="text-[9px] font-mono font-black tabular-nums">{zoom.toFixed(1)}x</span>
                                             </div>
-                                            <Slider value={[inkSensitivity]} onValueChange={([v]) => setInkSensitivity(v)} min={50} max={230} step={1} className="py-1" />
+                                            <Slider value={[zoom]} onValueChange={([v]) => setZoom(v)} min={1} max={3} step={0.1} />
                                         </div>
-                                        <div className="space-y-1.5">
+                                        <div className="space-y-3">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <Wand2 className="h-3 w-3" /> Weight
+                                                    <RotateCw className="h-3.5 w-3.5" /> Rotation
                                                 </Label>
-                                                <span className="text-[9px] font-mono opacity-40">+{strokeWeight}</span>
+                                                <span className="text-[9px] font-mono font-black tabular-nums">{rotation}°</span>
                                             </div>
-                                            <Slider value={[strokeWeight]} onValueChange={([v]) => setStrokeWeight(v)} min={0} max={4} step={0.5} className="py-1" />
+                                            <Slider value={[rotation]} onValueChange={([v]) => setRotation(v)} min={-180} max={180} step={1} />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <div className="flex justify-between items-center px-1">
-                                                <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <Sparkles className="h-3 w-3" /> Smoothing
-                                                </Label>
-                                                <span className="text-[9px] font-mono opacity-40">{smoothing}x</span>
-                                            </div>
-                                            <Slider value={[smoothing]} onValueChange={([v]) => setSmoothing(v)} min={0} max={5} step={1} className="py-1" />
+                                    </div>
+                                    
+                                    <div className="pt-4 border-t border-primary/10 flex items-center justify-between px-1">
+                                        <div className="space-y-2 flex-grow max-w-[200px]">
+                                            <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
+                                                <Sun className="h-3.5 w-3.5" /> Ink Density
+                                            </Label>
+                                            <Slider value={[inkSensitivity]} onValueChange={([v]) => setInkSensitivity(v)} min={50} max={230} step={1} />
+                                        </div>
+                                        <div className="flex items-center gap-3 opacity-40">
+                                            <div className="h-1 w-8 rounded-full bg-primary" />
+                                            <span className="text-[8px] font-black uppercase tracking-tighter">Logic Pipeline Active</span>
                                         </div>
                                     </div>
                                 </div>
