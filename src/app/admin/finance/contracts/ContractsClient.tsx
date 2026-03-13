@@ -30,7 +30,8 @@ import {
     CheckSquare,
     X,
     ListChecks,
-    RotateCcw
+    RotateCcw,
+    ExternalLink
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,6 +55,12 @@ import ContractWizard from './components/ContractWizard';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Tooltip, 
+    TooltipContent, 
+    TooltipProvider, 
+    TooltipTrigger 
+} from '@/components/ui/tooltip';
 
 export default function AgreementsClient() {
     const firestore = useFirestore();
@@ -182,311 +189,355 @@ export default function AgreementsClient() {
     const hasActiveFilters = searchTerm !== '' || statusFilter !== 'all';
 
     return (
-        <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left relative">
-            <div className="max-w-7xl mx-auto space-y-10 pb-32">
-                
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div>
-                        <h1 className="text-3xl font-black tracking-tight text-foreground uppercase flex items-center gap-3">
-                            <FileCheck className="h-8 w-8 text-primary" />
-                            Agreements & Contracts
-                        </h1>
-                        <p className="text-muted-foreground font-medium mt-1">Manage all agreements and legal contracts executions.</p>
+        <TooltipProvider>
+            <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left relative">
+                <div className="max-w-7xl mx-auto space-y-10 pb-32">
+                    
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground uppercase flex items-center gap-3">
+                                <FileCheck className="h-8 w-8 text-primary" />
+                                Agreements & Contracts
+                            </h1>
+                            <p className="text-muted-foreground font-medium mt-1">Manage all agreements and legal contracts executions.</p>
+                        </div>
+                    </div>
+
+                    {/* Dashboard Metrics */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard 
+                            label="% Signed" 
+                            value={`${stats.coverage}%`} 
+                            sub="Compliance Velocity" 
+                            icon={Target} 
+                            color="text-primary" 
+                            bg="bg-primary/10" 
+                            onClick={() => setStatusFilter('all')}
+                        />
+                        <StatCard 
+                            label="Doc Signed" 
+                            value={stats.signed} 
+                            sub="Completed Contracts" 
+                            icon={ShieldCheck} 
+                            color="text-emerald-600" 
+                            bg="bg-emerald-50" 
+                            onClick={() => setStatusFilter('signed')}
+                        />
+                        <StatCard 
+                            label="Awaiting Signature" 
+                            value={stats.pending} 
+                            sub="Pending in Inbox" 
+                            icon={Clock} 
+                            color="text-blue-600" 
+                            bg="bg-blue-50" 
+                            onClick={() => setStatusFilter('sent')}
+                        />
+                        <StatCard 
+                            label="Unassigned" 
+                            value={stats.actionRequired} 
+                            sub="Missing or Drafts" 
+                            icon={AlertCircle} 
+                            color="text-rose-600" 
+                            bg="bg-rose-50" 
+                            onClick={() => setStatusFilter('no_contract')}
+                        />
+                    </div>
+
+                    {/* Search & Filters */}
+                    <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
+                        <CardContent className="p-4 flex flex-wrap items-center gap-4">
+                            <div className="flex-grow min-w-[240px] relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
+                                <Input 
+                                    placeholder="Search by school name..." 
+                                    value={searchTerm}
+                                    onChange={e => setSearchTerm(e.target.value)}
+                                    className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
+                                />
+                            </div>
+                            <Select value={statusFilter} onValueChange={setStatusFilter}>
+                                <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all">
+                                    <SelectValue placeholder="All Status" />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                    <SelectItem value="all">Global Compliance</SelectItem>
+                                    <SelectItem value="signed">Doc Signed</SelectItem>
+                                    <SelectItem value="sent">Awaiting Sign</SelectItem>
+                                    <SelectItem value="draft">Draft Protocol</SelectItem>
+                                    <SelectItem value="no_contract">Unassigned</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            
+                            {hasActiveFilters && (
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={clearFilters} 
+                                    className="rounded-xl font-bold h-11 gap-2 text-muted-foreground hover:text-primary transition-all"
+                                >
+                                    <RotateCcw className="h-4 w-4" /> Show All
+                                </Button>
+                            )}
+
+                            <Button 
+                                variant="outline" 
+                                onClick={handleSelectAllUnprepared} 
+                                className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95"
+                            >
+                                <ListChecks className="h-4 w-4" /> Select All Unprepared
+                            </Button>
+                        </CardContent>
+                    </Card>
+
+                    {/* Institutional Registry */}
+                    <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
+                        <Table>
+                            <TableHeader className="bg-muted/30">
+                                <TableRow>
+                                    <TableHead className="w-12 pl-6 py-5">
+                                        <Checkbox 
+                                            checked={selectedSchools.length === filteredList.length && filteredList.length > 0}
+                                            onCheckedChange={(checked) => {
+                                                if (checked) setSelectedSchools(filteredList);
+                                                else setSelectedSchools([]);
+                                            }}
+                                        />
+                                    </TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Institution</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Active Status</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Last Update</TableHead>
+                                    <TableHead className="text-[10px] font-black uppercase tracking-widest">Assigned Representative</TableHead>
+                                    <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Management</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {isLoading ? (
+                                    Array.from({ length: 5 }).map((_, i) => (
+                                        <TableRow key={i}>
+                                            <TableCell className="pl-6"><Skeleton className="h-4 w-4" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                                            <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                                            <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                                            <TableCell className="text-right pr-8"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                                        </TableRow>
+                                    ))
+                                ) : filteredList.length > 0 ? (
+                                    filteredList.map((item) => {
+                                        const contract = item.contract;
+                                        const status = contract?.status || 'no_contract';
+                                        const isSigningInProcess = downloadingId === contract?.id;
+                                        const isSelected = !!selectedSchools.find(s => s.id === item.id);
+                                        
+                                        return (
+                                            <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}>
+                                                <TableCell className="pl-6">
+                                                    <Checkbox 
+                                                        checked={isSelected}
+                                                        onCheckedChange={() => toggleSelect(item)}
+                                                    />
+                                                </TableCell>
+                                                <TableCell className="py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn(
+                                                            "p-2 rounded-xl border transition-all",
+                                                            isSelected ? "bg-primary text-white border-primary" : "bg-primary/5 border-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
+                                                        )}>
+                                                            <Building className="h-4 w-4" />
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="font-black text-sm uppercase tracking-tight text-foreground">{item.name}</span>
+                                                            <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{item.zone?.name || 'Unassigned Zone'}</span>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>{getStatusBadge(status)}</TableCell>
+                                                <TableCell className="text-[10px] font-bold text-muted-foreground uppercase">
+                                                    {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
+                                                </TableCell>
+                                                <TableCell className="text-xs font-medium text-foreground/80">
+                                                    {item.focalPersons?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
+                                                </TableCell>
+                                                <TableCell className="text-right pr-8">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {/* Always Visible Quick Actions */}
+                                                        {contract?.pdfId && (
+                                                            <div className="flex items-center gap-1 mr-1 border-r border-border/50 pr-1 animate-in fade-in duration-500">
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
+                                                                            onClick={() => handleCopyLink(item)}
+                                                                        >
+                                                                            <Copy className="h-4 w-4" />
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>Copy Signing Link</TooltipContent>
+                                                                </Tooltip>
+                                                                
+                                                                <Tooltip>
+                                                                    <TooltipTrigger asChild>
+                                                                        <Button 
+                                                                            variant="ghost" 
+                                                                            size="icon" 
+                                                                            className="h-8 w-8 text-primary hover:bg-primary/5 rounded-lg shrink-0"
+                                                                            asChild
+                                                                        >
+                                                                            <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                                <Globe className="h-4 w-4" />
+                                                                            </a>
+                                                                        </Button>
+                                                                    </TooltipTrigger>
+                                                                    <TooltipContent>View Signing Page</TooltipContent>
+                                                                </Tooltip>
+                                                            </div>
+                                                        )}
+
+                                                        <DropdownMenu modal={false}>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted transition-colors"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end" className="w-60 rounded-2xl border-none shadow-2xl p-2 animate-in zoom-in-95 duration-200">
+                                                                <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Agreement Protocols</DropdownMenuLabel>
+                                                                
+                                                                {status === 'signed' ? (
+                                                                    <>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => contract && handleDownload(contract)} disabled={isSigningInProcess}>
+                                                                            <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600">
+                                                                                {isSigningInProcess ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                                                                            </div>
+                                                                            <span className="font-bold text-sm">Download Signed PDF</span>
+                                                                        </DropdownMenuItem>
+                                                                        {contract?.submissionId && (
+                                                                            <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
+                                                                                <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>
+                                                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
+                                                                                    <span className="font-bold text-sm">View Legal Record</span>
+                                                                                </Link>
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
+                                                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Plus className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Prep Contract</span>
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
+                                                                            <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Send className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Send Agreement</span>
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+
+                                                                {contract?.pdfId && (
+                                                                    <>
+                                                                        <DropdownMenuSeparator className="my-1 mx-2" />
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => handleCopyLink(item)}>
+                                                                            <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Copy className="h-4 w-4" /></div>
+                                                                            <span className="font-bold text-sm">Copy Link</span>
+                                                                        </DropdownMenuItem>
+                                                                        <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
+                                                                            <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
+                                                                                <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Open Portal</span>
+                                                                            </a>
+                                                                        </DropdownMenuItem>
+                                                                    </>
+                                                                )}
+
+                                                                <DropdownMenuItem className="gap-3 rounded-xl p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
+                                                                    <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><FileText className="h-4 w-4" /></div>
+                                                                    <span className="font-bold text-sm">Preview Logic</span>
+                                                                </DropdownMenuItem>
+
+                                                                <DropdownMenuSeparator className="my-2 mx-2" />
+                                                                <DropdownMenuItem 
+                                                                    className="text-destructive gap-3 rounded-xl p-2.5 focus:bg-destructive/10 focus:text-destructive"
+                                                                    onClick={() => toast({ title: 'Withdrawal Protocol', description: 'This feature will purge the contract record.' })}
+                                                                >
+                                                                    <div className="p-1.5 bg-destructive/10 rounded-lg"><Trash2 className="h-4 w-4" /></div>
+                                                                    <span className="font-bold text-sm">Withdraw Contract</span>
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="h-64 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-3 opacity-20">
+                                                <FileCheck className="h-12 w-12" />
+                                                <p className="text-xs font-black uppercase tracking-widest">No matching schools</p>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </div>
                 </div>
 
-                {/* Dashboard Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard 
-                        label="% Signed" 
-                        value={`${stats.coverage}%`} 
-                        sub="Compliance Velocity" 
-                        icon={Target} 
-                        color="text-primary" 
-                        bg="bg-primary/10" 
-                        onClick={() => setStatusFilter('all')}
-                    />
-                    <StatCard 
-                        label="Doc Signed" 
-                        value={stats.signed} 
-                        sub="Completed Contracts" 
-                        icon={ShieldCheck} 
-                        color="text-emerald-600" 
-                        bg="bg-emerald-50" 
-                        onClick={() => setStatusFilter('signed')}
-                    />
-                    <StatCard 
-                        label="Awaiting Signature" 
-                        value={stats.pending} 
-                        sub="Pending in Inbox" 
-                        icon={Clock} 
-                        color="text-blue-600" 
-                        bg="bg-blue-50" 
-                        onClick={() => setStatusFilter('sent')}
-                    />
-                    <StatCard 
-                        label="Unassigned" 
-                        value={stats.actionRequired} 
-                        sub="Missing or Drafts" 
-                        icon={AlertCircle} 
-                        color="text-rose-600" 
-                        bg="bg-rose-50" 
-                        onClick={() => setStatusFilter('no_contract')}
-                    />
-                </div>
-
-                {/* Search & Filters */}
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-2xl overflow-hidden bg-card">
-                    <CardContent className="p-4 flex flex-wrap items-center gap-4">
-                        <div className="flex-grow min-w-[240px] relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-40" />
-                            <Input 
-                                placeholder="Search by school name..." 
-                                value={searchTerm}
-                                onChange={e => setSearchTerm(e.target.value)}
-                                className="pl-10 h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                            />
-                        </div>
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] h-11 rounded-xl bg-muted/20 border-none font-black uppercase text-[10px] tracking-widest transition-all">
-                                <SelectValue placeholder="All Status" />
-                            </SelectTrigger>
-                            <SelectContent className="rounded-xl">
-                                <SelectItem value="all">Global Compliance</SelectItem>
-                                <SelectItem value="signed">Doc Signed</SelectItem>
-                                <SelectItem value="sent">Awaiting Sign</SelectItem>
-                                <SelectItem value="draft">Draft Protocol</SelectItem>
-                                <SelectItem value="no_contract">Unassigned</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        
-                        {hasActiveFilters && (
-                            <Button 
-                                variant="ghost" 
-                                onClick={clearFilters} 
-                                className="rounded-xl font-bold h-11 gap-2 text-muted-foreground hover:text-primary transition-all"
-                            >
-                                <RotateCcw className="h-4 w-4" /> Show All
-                            </Button>
-                        )}
-
-                        <Button 
-                            variant="outline" 
-                            onClick={handleSelectAllUnprepared} 
-                            className="rounded-xl font-bold h-11 gap-2 border-primary/20 text-primary transition-all active:scale-95"
+                {/* Bulk Actions Floating Bar - Minimalist Redesign */}
+                <AnimatePresence>
+                    {selectedSchools.length > 0 && (
+                        <motion.div 
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-fit min-w-[320px]"
                         >
-                            <ListChecks className="h-4 w-4" /> Select All Unprepared
-                        </Button>
-                    </CardContent>
-                </Card>
-
-                {/* Institutional Registry */}
-                <div className="rounded-[2.5rem] border border-border/50 bg-card shadow-sm overflow-hidden ring-1 ring-black/5">
-                    <Table>
-                        <TableHeader className="bg-muted/30">
-                            <TableRow>
-                                <TableHead className="w-12 pl-6 py-5">
-                                    <Checkbox 
-                                        checked={selectedSchools.length === filteredList.length && filteredList.length > 0}
-                                        onCheckedChange={(checked) => {
-                                            if (checked) setSelectedSchools(filteredList);
-                                            else setSelectedSchools([]);
-                                        }}
-                                    />
-                                </TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest py-5">Institution</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Active Status</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Last Update</TableHead>
-                                <TableHead className="text-[10px] font-black uppercase tracking-widest">Assigned Representative</TableHead>
-                                <TableHead className="text-right pr-8 text-[10px] font-black uppercase tracking-widest">Management</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading ? (
-                                Array.from({ length: 5 }).map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell className="pl-6"><Skeleton className="h-4 w-4" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-48" /></TableCell>
-                                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
-                                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
-                                        <TableCell className="text-right pr-8"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
-                                    </TableRow>
-                                ))
-                            ) : filteredList.length > 0 ? (
-                                filteredList.map((item) => {
-                                    const contract = item.contract;
-                                    const status = contract?.status || 'no_contract';
-                                    const isSigningInProcess = downloadingId === contract?.id;
-                                    const isSelected = !!selectedSchools.find(s => s.id === item.id);
-                                    
-                                    return (
-                                        <TableRow key={item.id} className={cn("group transition-colors", isSelected ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-muted/30")}>
-                                            <TableCell className="pl-6">
-                                                <Checkbox 
-                                                    checked={isSelected}
-                                                    onCheckedChange={() => toggleSelect(item)}
-                                                />
-                                            </TableCell>
-                                            <TableCell className="py-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={cn(
-                                                        "p-2 rounded-xl border transition-all",
-                                                        isSelected ? "bg-primary text-white border-primary" : "bg-primary/5 border-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
-                                                    )}>
-                                                        <Building className="h-4 w-4" />
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span className="font-black text-sm uppercase tracking-tight text-foreground">{item.name}</span>
-                                                        <span className="text-[9px] font-bold text-muted-foreground uppercase opacity-60 italic">{item.zone?.name || 'Unassigned Zone'}</span>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>{getStatusBadge(status)}</TableCell>
-                                            <TableCell className="text-[10px] font-bold text-muted-foreground uppercase">
-                                                {contract?.updatedAt ? format(new Date(contract.updatedAt), 'MMM d, yyyy') : '—'}
-                                            </TableCell>
-                                            <TableCell className="text-xs font-medium text-foreground/80">
-                                                {item.focalPersons?.find(p => p.isSignatory)?.name || 'No Primary Contact'}
-                                            </TableCell>
-                                            <TableCell className="text-right pr-8">
-                                                <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    {status === 'signed' ? (
-                                                        <Button 
-                                                            variant="outline" 
-                                                            size="sm" 
-                                                            disabled={isSigningInProcess}
-                                                            className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest border-emerald-200 text-emerald-600 hover:bg-emerald-50"
-                                                            onClick={() => contract && handleDownload(contract)}
-                                                        >
-                                                            {isSigningInProcess ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Download className="h-3 w-3 mr-1.5" />}
-                                                            Download
-                                                        </Button>
-                                                    ) : (
-                                                        <Button className="h-8 rounded-lg font-black text-[9px] uppercase tracking-widest gap-1.5 shadow-lg" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
-                                                            <Plus className="h-3 w-3" /> Initialize
-                                                        </Button>
-                                                    )}
-                                                    <DropdownMenu modal={false}>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl">
-                                                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-muted-foreground px-3 py-2">Workflow Options</DropdownMenuLabel>
-                                                            
-                                                            {status !== 'no_contract' && (
-                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => handleCopyLink(item)}>
-                                                                    <Copy className="h-4 w-4 text-primary" />
-                                                                    <span className="font-bold text-sm">Copy Signing Link</span>
-                                                                </DropdownMenuItem>
-                                                            )}
-
-                                                            {status === 'signed' && contract?.submissionId && (
-                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
-                                                                    <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>
-                                                                        <Eye className="h-4 w-4 text-primary" />
-                                                                        <span className="font-bold text-sm">View Legal Record</span>
-                                                                    </Link>
-                                                                </DropdownMenuItem>
-                                                            )}
-
-                                                            {status !== 'signed' && status !== 'no_contract' && contract?.pdfId && (
-                                                                <DropdownMenuItem className="gap-3 rounded-lg p-2.5" asChild>
-                                                                    <a href={`/forms/${contract.pdfId}?schoolId=${item.id}`} target="_blank" rel="noopener noreferrer">
-                                                                        <Globe className="h-4 w-4 text-primary" />
-                                                                        <span className="font-bold text-sm">View Signing Portal</span>
-                                                                    </a>
-                                                                </DropdownMenuItem>
-                                                            )}
-
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
-                                                                <FileText className="h-4 w-4 text-primary" /> Preview Logic
-                                                            </DropdownMenuItem>
-                                                            <DropdownMenuItem className="gap-3 rounded-lg p-2.5" onClick={() => { setSelectedSchools([item]); setIsWizardOpen(true); }}>
-                                                                <Send className="h-4 w-4 text-primary" /> Send Agreement
-                                                            </DropdownMenuItem>
-                                                            
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem className="text-destructive gap-3 rounded-lg p-2.5 focus:bg-destructive/10">
-                                                                <Trash2 className="h-4 w-4" /> Purge Protocol
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })
-                            ) : (
-                                <TableRow>
-                                    <TableCell colSpan={6} className="h-64 text-center">
-                                        <div className="flex flex-col items-center justify-center gap-3 opacity-20">
-                                            <FileCheck className="h-12 w-12" />
-                                            <p className="text-xs font-black uppercase tracking-widest">No matching schools</p>
+                            <Card className="bg-slate-900/95 backdrop-blur-md text-white border-none shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
+                                <CardContent className="p-2 flex items-center justify-between gap-6">
+                                    <div className="flex items-center gap-3 pl-4 pr-2">
+                                        <div className="flex items-center justify-center h-8 w-8 bg-primary/20 rounded-lg">
+                                            <ShieldCheck className="h-4 w-4 text-primary" />
                                         </div>
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
-            </div>
-
-            {/* Bulk Actions Floating Bar - Minimalist Redesign */}
-            <AnimatePresence>
-                {selectedSchools.length > 0 && (
-                    <motion.div 
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 100, opacity: 0 }}
-                        className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] w-fit min-w-[320px]"
-                    >
-                        <Card className="bg-slate-900/95 backdrop-blur-md text-white border-none shadow-[0_20px_50px_rgba(0,0,0,0.3)] rounded-2xl overflow-hidden ring-1 ring-white/10">
-                            <CardContent className="p-2 flex items-center justify-between gap-6">
-                                <div className="flex items-center gap-3 pl-4 pr-2">
-                                    <div className="flex items-center justify-center h-8 w-8 bg-primary/20 rounded-lg">
-                                        <ShieldCheck className="h-4 w-4 text-primary" />
+                                        <span className="text-xs font-bold uppercase tracking-tight whitespace-nowrap">
+                                            {selectedSchools.length} Selection{selectedSchools.length !== 1 ? 's' : ''}
+                                        </span>
                                     </div>
-                                    <span className="text-xs font-bold uppercase tracking-tight whitespace-nowrap">
-                                        {selectedSchools.length} Selection{selectedSchools.length !== 1 ? 's' : ''}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl">
-                                    <Button 
-                                        onClick={() => setIsWizardOpen(true)}
-                                        size="sm"
-                                        className="rounded-lg font-black uppercase text-[10px] tracking-widest h-9 px-6 bg-primary hover:bg-primary/90 transition-all"
-                                    >
-                                        <Zap className="h-3 w-3 mr-2" />
-                                        Prep Bulk
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => setSelectedSchools([])}
-                                        className="h-9 w-9 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                                    <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-xl">
+                                        <Button 
+                                            onClick={() => setIsWizardOpen(true)}
+                                            size="sm"
+                                            className="rounded-lg font-black uppercase text-[10px] tracking-widest h-9 px-6 bg-primary hover:bg-primary/90 transition-all"
+                                        >
+                                            <Zap className="h-3 w-3 mr-2" />
+                                            Prep Bulk
+                                        </Button>
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={() => setSelectedSchools([])}
+                                            className="h-9 w-9 rounded-lg text-white/40 hover:text-white hover:bg-white/10"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
 
-            {isWizardOpen && selectedSchools.length > 0 && (
-                <ContractWizard 
-                    schools={selectedSchools} 
-                    open={isWizardOpen} 
-                    onOpenChange={(o) => {
-                        setIsWizardOpen(o);
-                        if (!o) setSelectedSchools([]);
-                    }} 
-                />
-            )}
-        </div>
+                {isWizardOpen && selectedSchools.length > 0 && (
+                    <ContractWizard 
+                        schools={selectedSchools} 
+                        open={isWizardOpen} 
+                        onOpenChange={(o) => {
+                            setIsWizardOpen(o);
+                            if (!o) setSelectedSchools([]);
+                        }} 
+                    />
+                )}
+            </div>
+        </TooltipProvider>
     );
 }
 
