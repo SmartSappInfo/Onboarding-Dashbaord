@@ -8,7 +8,7 @@ import type { School, OnboardingStage, Zone, SchoolStatus } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, Workflow, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +42,8 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/comp
 import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
 import ChangeStageModal from './components/ChangeStageModal';
+import ChangeStatusModal from './components/ChangeStatusModal';
+import TransferPipelineModal from './components/TransferPipelineModal';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { cn } from '@/lib/utils';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -68,6 +70,8 @@ export default function SchoolsClient() {
   const [schoolToDelete, setSchoolToDelete] = useState<School | null>(null);
   const [assigningSchool, setAssigningSchool] = useState<School | null>(null);
   const [changingStageSchool, setChangingStageSchool] = useState<School | null>(null);
+  const [changingStatusSchool, setChangingStatusSchool] = useState<School | null>(null);
+  const [transferringSchool, setTransferringSchool] = useState<School | null>(null);
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
   const [searchTerm, setSearchTerm] = useState('');
@@ -143,7 +147,7 @@ export default function SchoolsClient() {
                             Bulk Import
                         </Link>
                     </Button>
-                    <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95">
+                    <RainbowButton asChild className="h-11 px-6 gap-2 font-black uppercase text-[10px] tracking-widest shadow-xl transition-all active:scale-95 text-white">
                         <Link href="/admin/schools/new/ai">
                             <Sparkles className="h-4 w-4" /> AI Architect
                         </Link>
@@ -265,18 +269,33 @@ export default function SchoolsClient() {
                                         <MoreHorizontal className="h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl w-48">
-                                    <DropdownMenuLabel className="text-[10px] uppercase font-black text-muted-foreground px-3">Management</DropdownMenuLabel>
-                                    <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}`}><Eye className="mr-2 h-4 w-4" /> View Console</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href={`/admin/schools/${school.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Profile</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild><Link href={`/admin/meetings/new?schoolId=${school.id}`}><CalendarPlus className="mr-2 h-4 w-4" /> Schedule Meeting</Link></DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
+                                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-none shadow-2xl">
+                                    <DropdownMenuLabel className="text-[10px] font-black uppercase text-muted-foreground px-3 py-2">Management</DropdownMenuLabel>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/schools/${school.id}`}><div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">View Console</span></Link></DropdownMenuItem>
+                                    
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setChangingStatusSchool(school)}>
+                                        <div className="p-1.5 bg-emerald-50 rounded-lg text-emerald-600"><ShieldCheck className="h-3.5 w-3.5" /></div>
+                                        <span className="font-bold text-sm">Update Lifecycle</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuItem className="rounded-xl p-2.5 gap-3" onClick={() => setTransferringSchool(school)}>
+                                        <div className="p-1.5 bg-blue-50 rounded-lg text-blue-600"><ArrowRightLeft className="h-3.5 w-3.5" /></div>
+                                        <span className="font-bold text-sm">Transfer Pipeline</span>
+                                    </DropdownMenuItem>
+
+                                    <DropdownMenuSeparator className="my-2" />
+                                    
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/schools/${school.id}/edit`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Edit className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Edit Profile</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3"><Link href={`/admin/meetings/new?schoolId=${school.id}`}><div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><CalendarPlus className="h-3.5 w-3.5" /></div><span className="font-bold text-sm">Schedule Session</span></Link></DropdownMenuItem>
+                                    <DropdownMenuItem asChild className="rounded-xl p-2.5 gap-3">
                                         <Link href={`/admin/messaging/composer?schoolId=${school.id}&recipient=${signatory?.email || signatory?.phone || ''}`}>
-                                            <Send className="mr-2 h-4 w-4" /> Send Message
+                                            <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Send className="h-3.5 w-3.5" /></div>
+                                            <span className="font-bold text-sm">Send Message</span>
                                         </Link>
                                     </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10" onClick={() => setSchoolToDelete(school)}><Trash2 className="mr-2 h-4 w-4" /> Delete School</DropdownMenuItem>
+                                    
+                                    <DropdownMenuSeparator className="my-2" />
+                                    <DropdownMenuItem className="text-destructive focus:bg-destructive/10 rounded-xl p-2.5 gap-3" onClick={() => setSchoolToDelete(school)}><Trash2 className="h-3.5 w-3.5" /><span className="font-bold text-sm">Delete School</span></DropdownMenuItem>
                                 </DropdownMenuContent>
                                 </DropdownMenu>
                             </div>
@@ -294,8 +313,11 @@ export default function SchoolsClient() {
       <AlertDialog open={!!schoolToDelete} onOpenChange={(open) => !open && setSchoolToDelete(null)}>
         <AlertDialogContent className="rounded-2xl"><AlertDialogHeader><AlertDialogTitle className="font-black">Delete School?</AlertDialogTitle><AlertDialogDescription>This will permanently remove <span className="font-bold">{schoolToDelete?.name}</span> and all its interaction history. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteSchool} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold">Delete Campus</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
       </AlertDialog>
+      
       <AssignUserModal school={assigningSchool} open={!!assigningSchool} onOpenChange={(open) => !open && setAssigningSchool(null)} />
       <ChangeStageModal school={changingStageSchool} open={!!changingStageSchool} onOpenChange={(open) => !open && setChangingStageSchool(null)} />
+      <ChangeStatusModal school={changingStatusSchool} open={!!changingStatusSchool} onOpenChange={(open) => !open && setChangingStatusSchool(null)} />
+      <TransferPipelineModal school={transferringSchool} open={!!transferringSchool} onOpenChange={(open) => !open && setTransferringSchool(null)} />
     </TooltipProvider>
   );
 }
