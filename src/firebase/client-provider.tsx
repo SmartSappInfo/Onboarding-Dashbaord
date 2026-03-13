@@ -59,7 +59,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
                 roles: ['administrator'], 
                 permissions: [
                     'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
-                    'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 
+                    'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
                     'tasks_manage', 'activities_view'
                 ],
                 createdAt: userSnap.exists() ? userSnap.data().createdAt : new Date().toISOString(),
@@ -82,7 +82,7 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
               roles: ['administrator'],
               permissions: [
                 'schools_view', 'schools_edit', 'finance_view', 'finance_manage', 
-                'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 
+                'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 
                 'tasks_manage', 'activities_view'
               ],
               createdAt: new Date().toISOString(),

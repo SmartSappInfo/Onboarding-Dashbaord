@@ -96,7 +96,7 @@ export async function seedRolesAndPermissions(firestore: Firestore): Promise<num
             name: 'Administrator',
             description: 'Full system control, user management, and configuration.',
             color: '#f72585',
-            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'studios_view', 'studios_edit', 'system_admin', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            permissions: ['schools_view', 'schools_edit', 'finance_view', 'finance_manage', 'studios_view', 'studios_edit', 'system_admin', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
             createdAt: timestamp
         },
         {
@@ -110,7 +110,7 @@ export async function seedRolesAndPermissions(firestore: Firestore): Promise<num
             name: 'Regional Supervisor',
             description: 'Regional oversight, performance audit, and content architecture.',
             color: '#3b82f6',
-            permissions: ['schools_view', 'schools_edit', 'studios_view', 'studios_edit', 'meetings_manage', 'tasks_manage', 'activities_view'],
+            permissions: ['schools_view', 'schools_edit', 'studios_view', 'studios_edit', 'system_user_switch', 'meetings_manage', 'tasks_manage', 'activities_view'],
             createdAt: timestamp
         },
         {
