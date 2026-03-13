@@ -263,8 +263,11 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                     <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
                         Apply Your Signature
                     </DialogTitle>
-                    <DialogDescription className="text-center text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                        {step === 'input' ? 'Choose input method' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}
+                    <DialogDescription className={cn(
+                        "text-center text-[9px] font-bold uppercase tracking-widest",
+                        step === 'input' ? "text-destructive" : "text-muted-foreground"
+                    )}>
+                        {step === 'input' ? 'Choose only one format to sign' : step === 'refine' ? 'Refine & Frame' : 'Verify Result'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -288,7 +291,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
                                     <div className="flex-1 overflow-hidden relative">
                                         <TabsContent value="scan" className="m-0 h-full flex flex-col items-center">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Point the Camera to Your Signature to Scan</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Sign your signature on a piece of paper. Point to it to capture</p>
                                             <div 
                                                 className="w-full aspect-video relative rounded-2xl overflow-hidden bg-slate-900 border shadow-2xl group cursor-crosshair"
                                                 onPointerDown={handleFocus}
@@ -339,7 +342,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full flex flex-col">
-                                            <p className="text-[10px] font-black uppercase text-center mb-4 text-primary tracking-widest">Draw directly inside the viewport</p>
+                                            <p className="text-[10px] font-black uppercase text-center mb-4 text-primary tracking-widest">Use your finger to sign your signature on the screen</p>
                                             <div className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl bg-white relative overflow-hidden shadow-inner">
                                                 <SignatureCanvas 
                                                     ref={sigPadRef} 
@@ -351,7 +354,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         </TabsContent>
 
                                         <TabsContent value="type" className="m-0 h-full flex flex-col justify-center text-center">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Sign with Your Initials to Sign</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Type Your Initials Here</p>
                                             <Input 
                                                 value={typedInitials} 
                                                 onChange={(e) => setTypedInitials(e.target.value)} 
@@ -365,7 +368,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                         <TabsContent value="upload" className="m-0 h-full">
                                             <label htmlFor="sig-upload" className="w-full aspect-video border-2 border-dashed border-primary/20 rounded-2xl flex flex-col items-center justify-center cursor-pointer bg-primary/[0.02] hover:bg-primary/5 transition-all group shadow-inner">
                                                 <Upload className="h-10 w-10 text-primary mb-3 opacity-40 group-hover:opacity-100 transition-opacity" />
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Import Signature Image (.jpg, .png)</span>
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-primary/60">Tap to select your signature from your gallery</span>
                                                 <Input id="sig-upload" type="file" className="hidden" onChange={handleFileChange} accept="image/png, image/jpeg" />
                                             </label>
                                         </TabsContent>
