@@ -1,11 +1,10 @@
-
 'use client';
 
 import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
-import { format, isToday, isPast, isTomorrow, isValid } from 'date-fns';
+import { format, isToday, isPast, isTomorrow } from 'date-fns';
 import { 
     CheckCircle2, 
     Circle, 
@@ -24,17 +23,15 @@ import {
     Loader2,
     Search,
     Pencil,
-    Send,
     ArrowRight,
     X,
     CheckSquare,
     ListChecks,
-    History,
     Zap,
     Layers,
     Bell,
     User as UserIcon,
-    AlertCircle,
+    ShieldCheck,
     Square
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,8 +47,7 @@ import {
     updateTaskNonBlocking,
     createTaskNonBlocking,
     bulkDeleteTasks,
-    bulkCompleteTasks,
-    bulkUpdateTasks
+    bulkCompleteTasks
 } from '@/lib/task-actions';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -156,8 +152,10 @@ export default function TasksClient() {
     const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
 
     const { data: allTasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
-    const { data: users } = useCollection<UserProfile>(usersQuery);
-    const { data: schools } = useCollection<School>(schoolsQuery);
+    const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
+    const { data: schools, isLoading: isLoadingSchools } = useCollection<School>(schoolsQuery);
+
+    const isLoading = isLoadingTasks || isLoadingFilter || isLoadingUsers || isLoadingSchools;
 
     const filteredTasks = React.useMemo(() => {
         if (!allTasks) return [];
@@ -180,7 +178,8 @@ export default function TasksClient() {
             if (smartFilter === 'today') {
                 matchesSmart = isToday(new Date(task.dueDate)) && task.status !== 'done';
             } else if (smartFilter === 'overdue') {
-                matchesSmart = isPast(new Date(task.dueDate)) && !isToday(new Date(task.dueDate)) && task.status !== 'done';
+                const date = new Date(task.dueDate);
+                matchesSmart = isPast(date) && !isToday(date) && task.status !== 'done';
             }
 
             return matchesStatus && matchesPriority && matchesAssigned && matchesSearch && matchesSmart;
@@ -192,7 +191,10 @@ export default function TasksClient() {
         if (!allTasks) return { today: 0, overdue: 0, mine: 0 };
         return {
             today: allTasks.filter(t => isToday(new Date(t.dueDate)) && t.status !== 'done').length,
-            overdue: allTasks.filter(t => isPast(new Date(t.dueDate)) && !isToday(new Date(t.dueDate)) && t.status !== 'done').length,
+            overdue: allTasks.filter(t => {
+                const date = new Date(t.dueDate);
+                return isPast(date) && !isToday(date) && t.status !== 'done';
+            }).length,
             mine: allTasks.filter(t => t.assignedTo === currentUser?.uid && t.status !== 'done').length
         };
     }, [allTasks, currentUser]);
@@ -295,7 +297,7 @@ export default function TasksClient() {
         <div className="h-full overflow-y-auto p-4 sm:p-6 md:p-8 bg-muted/5 text-left">
             <div className="max-w-6xl mx-auto space-y-10 pb-32">
                 
-                {/* Executive Action Header */}
+                {/* Action Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <h1 className="text-4xl font-black tracking-tighter text-foreground uppercase flex items-center gap-4">
@@ -322,7 +324,7 @@ export default function TasksClient() {
                     </div>
                 </div>
 
-                {/* Smart Filter Dashboard */}
+                {/* Dashboard Metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <button 
                         onClick={() => setSmartFilter(smartFilter === 'overdue' ? 'none' : 'overdue')}
@@ -544,7 +546,7 @@ export default function TasksClient() {
                 </Tabs>
             </div>
 
-            {/* BULK ACTION CONSOLE */}
+            {/* Bulk Action Bar */}
             <AnimatePresence>
                 {selectedIds.length > 0 && (
                     <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[100] w-full max-w-2xl px-4">
