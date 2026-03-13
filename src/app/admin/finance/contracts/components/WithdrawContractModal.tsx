@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
     Trash2, 
@@ -25,16 +26,15 @@ import {
     CheckCircle2,
     X
 } from 'lucide-react';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import type { School, PDFForm, Submission } from '@/lib/types';
+import { useFirestore } from '@/firebase';
+import { collection, query, where, getDocs, doc } from 'firebase/firestore';
 import { purgeContractAction } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface WithdrawContractModalProps {
-    school: School;
+    school: { id: string; name: string };
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -142,11 +142,11 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                         <ScrollArea className="h-full">
                             <div className="p-8 space-y-10">
                                 {/* Institutional Context */}
-                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-muted/30 border border-border shadow-inner">
-                                    <div className="p-3 bg-white rounded-xl shadow-sm"><Building className="h-6 w-6 text-rose-600" /></div>
-                                    <div>
+                                <div className="flex items-center gap-5 p-5 rounded-2xl bg-muted/30 border border-border shadow-inner text-left">
+                                    <div className="p-3 bg-white rounded-xl shadow-sm shrink-0"><Building className="h-6 w-6 text-rose-600" /></div>
+                                    <div className="min-w-0">
                                         <p className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Target Institution</p>
-                                        <p className="text-lg font-black uppercase text-foreground">{school.name}</p>
+                                        <p className="text-lg font-black uppercase text-foreground truncate">{school.name}</p>
                                     </div>
                                 </div>
 
@@ -191,8 +191,8 @@ export default function WithdrawContractModal({ school, open, onOpenChange }: Wi
                                 </div>
 
                                 {/* Warning Block */}
-                                <div className="p-6 rounded-[2rem] bg-rose-50 border border-rose-100 flex items-start gap-5 shadow-inner">
-                                    <div className="p-2.5 bg-white rounded-xl text-rose-600 shadow-sm border border-rose-100 mt-1"><AlertTriangle className="h-5 w-5" /></div>
+                                <div className="p-6 rounded-[2rem] bg-rose-50 border border-rose-100 flex items-start gap-5 shadow-inner text-left">
+                                    <div className="p-2.5 bg-white rounded-xl text-rose-600 shadow-sm border border-rose-100 mt-1 shrink-0"><AlertTriangle className="h-5 w-5" /></div>
                                     <div className="space-y-1">
                                         <p className="text-sm font-black text-rose-900 uppercase tracking-tight">Purge Policy Notice</p>
                                         <p className="text-[10px] text-rose-700 leading-relaxed font-bold uppercase tracking-widest opacity-80">
