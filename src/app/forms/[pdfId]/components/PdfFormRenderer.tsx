@@ -130,6 +130,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isDownloading, setIsDownloading] = React.useState(false);
   const [isFinalizedView, setIsFinalizedView] = React.useState(isLocked);
+  const [createdSubmissionId, setCreatedSubmissionId] = React.useState<string | null>(null);
   
   const [mediaCaptureState, setMediaCaptureState] = React.useState<{ fieldId: string, mode: 'signature' | 'photo' } | null>(null);
   const [isDataEntryOpen, setIsDataEntryOpen] = React.useState(false);
@@ -146,7 +147,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const pageContainerRef = React.useRef<HTMLDivElement>(null);
   const viewportRef = React.useRef<HTMLDivElement>(null);
 
-  // Zoom Handling Refs
   const zoomRef = React.useRef(zoom);
   React.useEffect(() => { zoomRef.current = zoom; }, [zoom]);
   const touchStartDist = React.useRef<number | null>(null);
@@ -195,7 +195,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     return () => window.removeEventListener('resize', updateBaseScale);
   }, [updateBaseScale]);
 
-  // Gestural & Wheel Zoom Listeners
   React.useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
@@ -253,10 +252,8 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const handleSaveProgress = async () => {
       if (isPreview || !school) return;
       setIsSubmitting(true);
-      
       const data = getValues();
       const res = await saveAgreementProgressAction(pdfForm.id, school.id, data);
-      
       if (res.success) toast({ title: 'Progress Saved', description: 'Institutional data cached.' });
       else toast({ variant: 'destructive', title: 'Save Failed', description: res.error });
       setIsSubmitting(false);
@@ -264,9 +261,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
 
   const handlePreSubmit = (data: any) => {
     if (isPreview) { toast({ title: 'Preview Mode' }); return; }
-    
     const flattenedData = { ...data };
-    
     pdfForm.fields.forEach(field => {
         if (field.type === 'static-text' && field.staticText) {
             flattenedData[field.id] = field.staticText;
@@ -275,7 +270,6 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
             if (resolved !== null) flattenedData[field.id] = resolved;
         }
     });
-
     setPendingFormData(flattenedData);
     setShowConfirmDialog(true);
   };
@@ -283,28 +277,16 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   const onInvalid = () => {
     const missing: { id: string, label: string, pageIndex: number }[] = [];
     const formData = getValues();
-    
-    pdfForm.fields
-        .filter(f => f.type !== 'static-text' && f.type !== 'variable')
-        .forEach(field => {
-            if (field.required && isValueEmpty(formData[field.id], field.type)) {
-                missing.push({
-                    id: field.id,
-                    label: field.label || field.placeholder || 'Field',
-                    pageIndex: field.pageNumber
-                });
-            }
-        });
-
+    pdfForm.fields.filter(f => f.type !== 'static-text' && f.type !== 'variable').forEach(field => {
+        if (field.required && isValueEmpty(formData[field.id], field.type)) {
+            missing.push({ id: field.id, label: field.label || field.placeholder || 'Field', pageIndex: field.pageNumber });
+        }
+    });
     if (missing.length > 0) {
         setMissingFields(missing);
         setShowMissingFieldsModal(true);
     } else {
-        toast({
-            variant: 'destructive',
-            title: 'Action Required',
-            description: 'Please review the marked fields on the document.',
-        });
+        toast({ variant: 'destructive', title: 'Action Required', description: 'Please review the marked fields on the document.' });
     }
   };
 
@@ -315,25 +297,22 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
 
     try {
         if (school) {
-            // Agreement/Contract Path
             const res = await finalizeAgreementAction(pdfForm.id, school.id, pendingFormData);
-            if (res.success) {
+            if (res.success && res.submissionId) {
+                setCreatedSubmissionId(res.submissionId);
                 setIsFinalizedView(true);
                 toast({ title: 'Agreement Finalized', description: 'Document locked and archived.' });
             } else throw new Error(res.error);
         } else {
-            // General Public Form Path
             const res = await fetch('/api/pdfs/submit', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    pdfId: pdfForm.id,
-                    formData: pendingFormData
-                })
+                body: JSON.stringify({ pdfId: pdfForm.id, formData: pendingFormData })
             });
             const result = await res.json();
             if (res.ok) {
-                onSubmitted();
+                setCreatedSubmissionId(result.submissionId);
+                setIsFinalizedView(true);
             } else throw new Error(result.error);
         }
     } catch (e: any) {
@@ -386,6 +365,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
   }
 
   if (isFinalizedView) {
+      const activeSubmissionId = existingSubmissionId || createdSubmissionId;
       return (
           <div className="min-h-screen flex flex-col bg-slate-50 relative overflow-hidden">
               <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
@@ -393,7 +373,7 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
                 schoolName={school?.name} 
                 logoUrl={school?.logoUrl} 
                 pdfName={pdfForm.name} 
-                onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${existingSubmissionId}`)} 
+                onView={() => router.push(`/forms/results/${pdfForm.slug || pdfForm.id}/${activeSubmissionId}`)} 
               />
           </div>
       );
@@ -403,18 +383,18 @@ export default function PdfFormRenderer({ pdfForm, school, initialData = {}, isL
     <FormProvider {...methods}>
         <div className="light flex flex-col h-[100dvh] overflow-hidden relative" style={{ backgroundColor: pdfForm.backgroundColor || '#F1F5F9' }}>
             <BackgroundPattern pattern={pdfForm.backgroundPattern} color={pdfForm.patternColor} />
-            <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0">
+            <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-md border-b px-4 h-14 flex items-center gap-2 shadow-sm shrink-0 text-left">
                 {school?.logoUrl ? <div className="relative h-9 w-12 shrink-0"><Image src={school.logoUrl} alt="Logo" fill className="object-contain" /></div> : <SmartSappIcon className="h-8 w-8 text-primary" />}
-                <div className="flex flex-col min-w-0 -ml-1 text-left">
-                    <h1 className="font-bold truncate max-w-[200px] leading-tight text-sm uppercase">
+                <div className="flex flex-col min-w-0 -ml-1">
+                    <h1 className="font-black truncate max-w-[200px] leading-tight text-xs uppercase tracking-tight">
                         {school?.name || pdfForm.publicTitle}
                     </h1>
-                    <p className="text-[10px] text-muted-foreground leading-none">{pdfForm.publicTitle}</p>
+                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-tighter leading-none">{pdfForm.publicTitle}</p>
                 </div>
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
                     {!isFormComplete ? (
-                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !school} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95">
+                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !school} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95 border-primary/20 text-primary">
                             {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
                             {isMobile ? 'Save' : 'Save Progress'}
                         </Button>

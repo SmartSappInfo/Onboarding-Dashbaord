@@ -235,7 +235,6 @@ export async function saveAgreementProgressAction(pdfId: string, schoolId: strin
 
 /**
  * Finalizes an agreement (Full Execution).
- * Upgraded to resolve/create submission dynamically if missing.
  */
 export async function finalizeAgreementAction(pdfId: string, schoolId: string, formData: any) {
     try {
@@ -253,7 +252,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
         let submissionId;
 
         if (contractQuery.empty) {
-            // Create contract record if it doesn't exist (safety fallback)
             const newContract = await contractsCol.add({
                 schoolId,
                 schoolName: (formData.school_name || pdfData.schoolName || 'School'),
@@ -273,7 +271,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
 
         // 2. Resolve or Create Submission Record
         if (!submissionId) {
-            // Create fresh submission if one wasn't created during "Save Progress"
             const subRef = await pdfRef.collection('submissions').add({
                 pdfId,
                 schoolId,
@@ -289,7 +286,6 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                 updatedAt: timestamp
             });
         } else {
-            // Update existing partial submission to final status
             await pdfRef.collection('submissions').doc(submissionId).update({
                 formData,
                 submittedAt: timestamp,
@@ -318,11 +314,20 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                     });
                 } catch (err) {}
 
+                const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+                const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
+
                 await sendMessage({
                     templateId: pdfData.confirmationTemplateId,
                     senderProfileId: pdfData.confirmationSenderProfileId || 'default',
                     recipient: String(recipient),
-                    variables: { ...formData, form_name: pdfData.name, submission_date: format(new Date(), 'PPPP') },
+                    variables: { 
+                        ...formData, 
+                        form_name: pdfData.name, 
+                        submission_date: format(new Date(), 'PPPP'),
+                        result_url,
+                        download_url: result_url
+                    },
                     attachments: attachments.length > 0 ? attachments : undefined,
                     schoolId
                 });
@@ -337,7 +342,12 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
                 specificUserIds: pdfData.adminAlertSpecificUserIds,
                 emailTemplateId: pdfData.adminAlertEmailTemplateId,
                 smsTemplateId: pdfData.adminAlertSmsTemplateId,
-                variables: { ...formData, event_type: 'Agreement Executed', school_name: contractData?.schoolName || 'Institution' },
+                variables: { 
+                    ...formData, 
+                    event_type: 'Agreement Executed', 
+                    school_name: contractData?.schoolName || 'Institution',
+                    submission_id: submissionId
+                },
                 channel: pdfData.adminAlertChannel
             });
         }
@@ -351,7 +361,7 @@ export async function finalizeAgreementAction(pdfId: string, schoolId: string, f
             metadata: { pdfId, submissionId }
         });
 
-        return { success: true };
+        return { success: true, submissionId };
     } catch (e: any) {
         console.error(">>> [PDF:FINALIZE] Failed:", e.message);
         return { success: false, error: e.message };
@@ -367,7 +377,6 @@ export async function purgeContractAction(schoolId: string, submissionIds: strin
         const batch = adminDb.batch();
         
         // 1. Delete associated submissions across all relevant PDF subcollections
-        // We iterate PDFs because submissions are nested
         const pdfsSnap = await adminDb.collection('pdfs').get();
         for (const pdfDoc of pdfsSnap.docs) {
             const subCol = pdfDoc.ref.collection('submissions');

@@ -31,7 +31,6 @@ export async function POST(req: Request) {
     }
 
     // Determine the target school for contract logic
-    // Priority: Explicitly submitted schoolId (from unique shared link) > Template-bound schoolId
     const targetSchoolId = submittedSchoolId || pdfData.schoolId;
 
     const timestamp = new Date().toISOString();
@@ -45,15 +44,15 @@ export async function POST(req: Request) {
     };
 
     const submissionRef = await pdfRef.collection('submissions').add(submissionData);
+    const submissionId = submissionRef.id;
 
     // 1. CONTRACT CLOSURE LOGIC
-    // If this is a formal contract and we have a target school, find the institutional record and close it.
     if (pdfData.isContractDocument && targetSchoolId) {
         console.log(`>>> [CONTRACT:SYNC] Closing agreement for school: ${targetSchoolId}`);
         const contractsCol = adminDb.collection('contracts');
         const contractQuery = await contractsCol
             .where('schoolId', '==', targetSchoolId)
-            .where('status', 'in', ['sent', 'draft'])
+            .where('status', 'in', ['sent', 'draft', 'partially_signed'])
             .limit(1)
             .get();
         
@@ -62,18 +61,17 @@ export async function POST(req: Request) {
             await contractDoc.ref.update({
                 status: 'signed',
                 signedAt: timestamp,
-                submissionId: submissionRef.id,
+                submissionId: submissionId,
                 updatedAt: timestamp
             });
             
-            // Log specific legal activity
             await logActivity({
                 schoolId: targetSchoolId,
                 userId: null,
                 type: 'pdf_status_changed',
                 source: 'public',
                 description: `legally executed agreement: "${pdfData.name}"`,
-                metadata: { pdfId, submissionId: submissionRef.id, contractId: contractDoc.id }
+                metadata: { pdfId, submissionId, contractId: contractDoc.id }
             });
         }
     }
@@ -84,7 +82,6 @@ export async function POST(req: Request) {
         const recipientValue = recipientField ? formData[recipientField.id] : null;
 
         if (recipientValue) {
-            console.log(`>>> [AUTOMATION] Triggering PDF Confirmation for ${recipientValue}`);
             let attachments = [];
             try {
                 const pdfBuffer = await generatePdfBuffer(pdfData, formData);
@@ -97,6 +94,9 @@ export async function POST(req: Request) {
                 console.error(">>> [AUTOMATION] PDF Generation failed for email attachment:", genError);
             }
 
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://onboarding.smartsapp.com';
+            const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
+
             await sendMessage({
                 templateId: pdfData.confirmationTemplateId,
                 senderProfileId: pdfData.confirmationSenderProfileId,
@@ -105,8 +105,10 @@ export async function POST(req: Request) {
                 variables: {
                     ...formData,
                     form_name: pdfData.name,
-                    submission_id: submissionRef.id,
+                    submission_id: submissionId,
                     submission_date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+                    result_url,
+                    download_url: result_url
                 },
                 schoolId: targetSchoolId || undefined
             });
@@ -125,14 +127,14 @@ export async function POST(req: Request) {
             variables: {
                 ...formData,
                 form_name: pdfData.name,
-                submission_id: submissionRef.id,
+                submission_id: submissionId,
                 event_type: pdfData.isContractDocument ? 'Contract Signed' : 'Doc Signed',
                 school_name: pdfData.schoolName || 'Unknown'
             }
         });
     }
 
-    // Log general activity if not already logged by contract closure
+    // Log general activity if not already logged
     if (!pdfData.isContractDocument || !targetSchoolId) {
         await logActivity({
             schoolId: targetSchoolId || '',
@@ -140,11 +142,11 @@ export async function POST(req: Request) {
             type: 'pdf_form_submitted',
             source: 'public',
             description: `Submission received for "${pdfData?.name}"`,
-            metadata: { pdfId, submissionId: submissionRef.id }
+            metadata: { pdfId, submissionId }
         });
     }
 
-    return Response.json({ submissionId: submissionRef.id });
+    return Response.json({ submissionId });
   } catch (error: any) {
     console.error(">>> [API: SUBMIT] Error:", error);
     return Response.json({ error: error.message }, { status: 500 });
