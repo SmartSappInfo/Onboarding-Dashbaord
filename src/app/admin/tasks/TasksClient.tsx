@@ -69,7 +69,7 @@ import {
 } from '@/components/ui/tooltip';
 import TaskEditor from './components/TaskEditor';
 import TaskBoard from './components/TaskBoard';
-import { logActivity } from '@/lib/activity-logger';
+import TaskCalendar from './components/TaskCalendar';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import {
@@ -383,6 +383,9 @@ export default function TasksClient() {
                             <TabsTrigger value="board" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg">
                                 <Layers className="h-4 w-4" /> Board View
                             </TabsTrigger>
+                            <TabsTrigger value="calendar" className="rounded-xl font-black uppercase text-[10px] tracking-widest px-8 gap-2 data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-lg">
+                                <Calendar className="h-4 w-4" /> Calendar
+                            </TabsTrigger>
                         </TabsList>
 
                         <div className="flex flex-wrap items-center gap-4 flex-1 justify-end">
@@ -540,6 +543,13 @@ export default function TasksClient() {
                     <TabsContent value="board" className="m-0 outline-none h-[calc(100vh-350px)]">
                         <TaskBoard 
                             tasks={filteredTasks} 
+                            onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="calendar" className="m-0 outline-none animate-in fade-in slide-in-from-bottom-2 duration-500">
+                        <TaskCalendar 
+                            tasks={filteredTasks}
                             onTaskClick={(t) => { setEditingTask(t); setEditorOpen(true); }}
                         />
                     </TabsContent>
