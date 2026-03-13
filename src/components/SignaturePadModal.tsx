@@ -13,7 +13,8 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { 
     Upload, Camera, Eraser, Check, Loader2, X, ArrowLeft, ArrowRight,
-    Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck
+    Sun, Wand2, Sparkles, RotateCcw, ZoomIn, ShieldCheck, Target,
+    RotateCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -58,6 +59,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
     const [croppedAreaPixels, setCroppedAreaPixels] = React.useState<Area | null>(null);
     
     const [isProcessingPreview, setIsProcessingPreview] = React.useState(false);
+    const [focusPoint, setFocusPoint] = React.useState<{ x: number, y: number } | null>(null);
 
     React.useEffect(() => {
         if (open) {
@@ -97,6 +99,37 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         }
     }, [inkSensitivity, strokeWeight, smoothing, brightness, contrast, step, rawCapturedImage, mode]);
 
+    const handleFocus = async (e: React.MouseEvent | React.TouchEvent) => {
+        if (!webcamRef.current || !webcamRef.current.video) return;
+
+        const rect = webcamRef.current.video.getBoundingClientRect();
+        const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+
+        const x = ((clientX - rect.left) / rect.width) * 100;
+        const y = ((clientY - rect.top) / rect.height) * 100;
+
+        // Visual feedback
+        setFocusPoint({ x, y });
+        setTimeout(() => setFocusPoint(null), 1000);
+
+        // Hardware focus request (where supported)
+        try {
+            const stream = webcamRef.current.stream;
+            if (stream) {
+                const track = stream.getVideoTracks()[0];
+                const capabilities = track.getCapabilities() as any;
+                if (capabilities.focusMode) {
+                    await track.applyConstraints({
+                        advanced: [{ focusMode: 'continuous' } as any]
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn("Manual focus not supported by this browser/hardware.");
+        }
+    };
+
     const handleClear = () => {
         if (activeTab === 'draw' && sigPadRef.current) {
             sigPadRef.current.clear();
@@ -126,6 +159,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
         setZoom(1);
         setRotation(0);
         setCroppedAreaPixels(null);
+        setFocusPoint(null);
     };
 
     const handleOpenChange = (isOpen: boolean) => {
@@ -228,7 +262,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
-            <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card">
+            <DialogContent className="sm:max-w-xl max-h-[95vh] overflow-hidden flex flex-col p-0 border-none shadow-2xl rounded-[2.5rem] bg-card text-left">
                 <DialogHeader className="p-6 pb-2 shrink-0">
                     <DialogTitle className="text-xl font-black uppercase tracking-tight text-center">
                         {mode === 'photo' ? 'Photo Identity' : 'Your Signature'}
@@ -259,7 +293,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                     <div className="flex-1 overflow-hidden relative">
                                         <TabsContent value="scan" className="m-0 h-full flex flex-col items-center">
                                             <p className="text-[10px] font-black uppercase tracking-widest text-primary mb-4 text-center">Point the Camera to Your Signature to Scan</p>
-                                            <div className="w-full aspect-video relative rounded-2xl overflow-hidden bg-slate-900 border shadow-2xl group">
+                                            <div 
+                                                className="w-full aspect-video relative rounded-2xl overflow-hidden bg-slate-900 border shadow-2xl group cursor-crosshair"
+                                                onPointerDown={handleFocus}
+                                            >
                                                 <Webcam
                                                     audio={false}
                                                     ref={webcamRef}
@@ -267,6 +304,25 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                     videoConstraints={{ aspectRatio: 1.7777777778, facingMode: "environment" }}
                                                     className="w-full h-full object-cover"
                                                 />
+                                                
+                                                {/* Focus Visual Indicator */}
+                                                <AnimatePresence>
+                                                    {focusPoint && (
+                                                        <motion.div
+                                                            initial={{ scale: 1.5, opacity: 0 }}
+                                                            animate={{ scale: 1, opacity: 1 }}
+                                                            exit={{ scale: 0.8, opacity: 0 }}
+                                                            className="absolute pointer-events-none z-20 border-2 border-primary w-12 h-12 -ml-6 -mt-6 rounded-sm shadow-[0_0_10px_rgba(59,95,255,0.5)]"
+                                                            style={{ left: `${focusPoint.x}%`, top: `${focusPoint.y}%` }}
+                                                        >
+                                                            <div className="absolute top-1/2 left-0 w-2 h-0.5 bg-primary -translate-y-1/2" />
+                                                            <div className="absolute top-1/2 right-0 w-2 h-0.5 bg-primary -translate-y-1/2" />
+                                                            <div className="absolute top-0 left-1/2 w-0.5 h-2 bg-primary -translate-x-1/2" />
+                                                            <div className="absolute bottom-0 left-1/2 w-0.5 h-2 bg-primary -translate-x-1/2" />
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+
                                                 <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center p-8 sm:p-12">
                                                     <div className="w-full h-full border-2 border-dashed border-white/20 rounded-xl relative">
                                                         <motion.div 
@@ -277,13 +333,14 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                                     </div>
                                                 </div>
                                                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-                                                    <button onClick={handleCapture} className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl active:scale-95 transition-all group-hover:scale-105">
+                                                    <button onClick={(e) => { e.stopPropagation(); handleCapture(); }} className="w-16 h-16 rounded-full bg-white flex items-center justify-center shadow-2xl active:scale-95 transition-all group-hover:scale-105">
                                                         <div className="w-12 h-12 rounded-full border-2 border-slate-200 bg-primary flex items-center justify-center">
                                                             <Camera className="h-6 w-6 text-white" />
                                                         </div>
                                                     </button>
                                                 </div>
                                             </div>
+                                            <p className="text-[8px] font-bold uppercase text-muted-foreground/40 mt-3 tracking-widest italic">Tap on screen to focus</p>
                                         </TabsContent>
 
                                         <TabsContent value="draw" className="m-0 h-full flex flex-col">
@@ -327,34 +384,63 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                 animate={{ opacity: 1, x: 0 }} 
                                 className="h-full flex flex-col p-6 pt-0 space-y-6"
                             >
-                                <div className="w-full aspect-video relative rounded-3xl overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
-                                    <Cropper
-                                        image={filteredBaseImageUrl || rawCapturedImage!}
-                                        crop={crop}
-                                        zoom={zoom}
-                                        rotation={rotation}
-                                        aspect={16 / 9}
-                                        onCropChange={setCrop}
-                                        onZoomChange={setZoom}
-                                        onRotationChange={setRotation}
-                                        onCropComplete={handleOnCropComplete}
-                                        showGrid={true}
-                                        style={{
-                                            containerStyle: { borderRadius: '1.5rem' },
-                                            cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
-                                        }}
-                                    />
-                                    <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
-                                        {isProcessingPreview && (
-                                            <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
-                                                <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Processing...
-                                            </Badge>
-                                        )}
+                                <div className="flex gap-4 items-center flex-1 min-h-0">
+                                    {/* Left Sidebar: Zoom */}
+                                    <div className="flex flex-col items-center h-full gap-2 p-2 bg-muted/30 rounded-2xl border shadow-inner">
+                                        <ZoomIn className="h-3 w-3 text-primary opacity-40" />
+                                        <Slider
+                                            orientation="vertical"
+                                            value={[zoom]}
+                                            onValueChange={([v]) => setZoom(v)}
+                                            min={1} max={3} step={0.1}
+                                            className="h-full py-4"
+                                        />
+                                        <span className="text-[8px] font-black opacity-40 tabular-nums">{zoom.toFixed(1)}x</span>
+                                    </div>
+
+                                    {/* Central Canvas */}
+                                    <div className="flex-1 aspect-video relative rounded-3xl overflow-hidden bg-white border-2 border-primary/20 shadow-2xl group ring-1 ring-black/5">
+                                        <Cropper
+                                            image={filteredBaseImageUrl || rawCapturedImage!}
+                                            crop={crop}
+                                            zoom={zoom}
+                                            rotation={rotation}
+                                            aspect={16 / 9}
+                                            onCropChange={setCrop}
+                                            onZoomChange={setZoom}
+                                            onRotationChange={setRotation}
+                                            onCropComplete={handleOnCropComplete}
+                                            showGrid={true}
+                                            style={{
+                                                containerStyle: { borderRadius: '1.5rem' },
+                                                cropAreaStyle: { border: '2px solid hsl(var(--primary))', boxShadow: '0 0 0 9999px rgba(0,0,0,0.6)' }
+                                            }}
+                                        />
+                                        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-3">
+                                            {isProcessingPreview && (
+                                                <Badge className="bg-primary/80 backdrop-blur-md uppercase text-[8px] font-black tracking-widest animate-pulse">
+                                                    <Loader2 className="h-2.5 w-2.5 mr-1.5 animate-spin" /> Processing...
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Sidebar: Rotate */}
+                                    <div className="flex flex-col items-center h-full gap-2 p-2 bg-muted/30 rounded-2xl border shadow-inner">
+                                        <RotateCw className="h-3 w-3 text-primary opacity-40" />
+                                        <Slider
+                                            orientation="vertical"
+                                            value={[rotation]}
+                                            onValueChange={([v]) => setRotation(v)}
+                                            min={-180} max={180} step={1}
+                                            className="h-full py-4"
+                                        />
+                                        <span className="text-[8px] font-black opacity-40 tabular-nums">{rotation}°</span>
                                     </div>
                                 </div>
 
                                 <div className="space-y-4 px-2">
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-4">
                                         <div className="space-y-1.5">
                                             <div className="flex justify-between items-center px-1">
                                                 <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
@@ -382,24 +468,6 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                             </div>
                                             <Slider value={[smoothing]} onValueChange={([v]) => setSmoothing(v)} min={0} max={5} step={1} className="py-1" />
                                         </div>
-                                        <div className="space-y-1.5">
-                                            <div className="flex justify-between items-center px-1">
-                                                <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <RotateCcw className="h-3 w-3" /> Rotation
-                                                </Label>
-                                                <span className="text-[9px] font-mono opacity-40">{rotation}°</span>
-                                            </div>
-                                            <Slider value={[rotation]} onValueChange={([v]) => setRotation(v)} min={-180} max={180} step={1} className="py-1" />
-                                        </div>
-                                        <div className="space-y-1.5 sm:col-span-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-2">
-                                                    <ZoomIn className="h-3 w-3" /> Zoom
-                                                </Label>
-                                                <span className="text-[9px] font-mono opacity-40">{zoom.toFixed(1)}x</span>
-                                            </div>
-                                            <Slider value={[zoom]} onValueChange={([v]) => setZoom(v)} min={1} max={3} step={0.1} className="py-1" />
-                                        </div>
                                     </div>
                                 </div>
                             </motion.div>
@@ -420,9 +488,9 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                                     </div>
                                 </div>
 
-                                <div className="p-12 bg-white border-2 border-dashed border-border rounded-[3rem] shadow-2xl relative flex items-center justify-center min-h-[350px] group overflow-hidden">
+                                <div className="p-4 bg-white border-2 border-dashed border-border rounded-[3rem] shadow-2xl relative flex items-center justify-center min-h-[350px] group overflow-hidden">
                                     {processedResult ? (
-                                        <div className="relative w-full h-full flex items-center justify-center p-4">
+                                        <div className="relative w-full h-full flex items-center justify-center p-2">
                                             <img 
                                                 src={processedResult} 
                                                 alt="Final Processed Identity" 
