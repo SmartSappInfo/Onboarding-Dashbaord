@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
@@ -50,6 +50,7 @@ import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -405,7 +406,7 @@ export default function SubmissionsPage() {
             </div>
 
             <TabsContent value="list" className="m-0 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <Card className="bg-card shadow-sm border-border/50 rounded-xl">
                         <CardContent className="p-4 flex items-center gap-4 text-left">
                             <div className="bg-primary/10 p-2.5 rounded-xl"><Users className="h-5 w-5 text-primary" /></div>
@@ -564,7 +565,7 @@ export default function SubmissionsPage() {
                                 <Table>
                                     <TableHeader><TableRow className="hover:bg-transparent bg-muted/20"><TableHead className="pl-8 py-4 text-[9px] font-black uppercase">Transition</TableHead><TableHead className="text-right pr-8 py-4 text-[9px] font-black uppercase">Loss %</TableHead></TableRow></TableHeader>
                                     <TableBody>{dropoffInsights.slice(0, 5).map((insight, idx) => (
-                                        <TableRow key={insight.from + insight.to} className="group transition-colors"><TableCell className="pl-8 py-4"><p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p><p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Signers Lost</p></TableCell><TableCell className="text-right pr-8 py-4"><Badge variant="outline" className={cn("h-5 text-[9px] font-black uppercase border-none", insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600")}>{insight.lossPercentage.toFixed(0)}%</Badge></TableCell></TableRow>
+                                        <TableRow key={insight.from + insight.to} className="group transition-colors"><TableCell className="pl-8 py-4"><p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p><p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Users Lost</p></TableCell><TableCell className="text-right pr-8 py-4"><Badge variant="outline" className={cn("h-5 text-[9px] font-black uppercase border-none", insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600")}>{insight.lossPercentage.toFixed(0)}%</Badge></TableCell></TableRow>
                                     ))}</TableBody>
                                 </Table>
                             ) : (
