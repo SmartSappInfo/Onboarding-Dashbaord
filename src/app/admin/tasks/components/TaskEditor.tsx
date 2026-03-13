@@ -48,15 +48,20 @@ import {
     Smartphone,
     X,
     Calendar,
-    Layout
+    Layout,
+    StickyNote,
+    Paperclip,
+    Trash2,
+    PlusCircle
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
-import type { Task, UserProfile, School, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder } from '@/lib/types';
+import type { Task, UserProfile, School, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder, TaskNote, TaskAttachment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { MediaSelect } from '../../schools/components/media-select';
 
 const taskSchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -74,6 +79,21 @@ const taskSchema = z.object({
         channels: z.array(z.enum(['notification', 'email', 'sms'])).min(1, 'Select at least one channel.'),
         sent: z.boolean().default(false),
     })).max(3, 'Maximum 3 reminders allowed.'),
+    // Notes
+    notes: z.array(z.object({
+        id: z.string(),
+        content: z.string().min(1, 'Note content required.'),
+        createdAt: z.string(),
+        authorName: z.string().optional()
+    })).default([]),
+    // Attachments
+    attachments: z.array(z.object({
+        id: z.string(),
+        name: z.string(),
+        url: z.string().url(),
+        type: z.string(),
+        createdAt: z.string()
+    })).default([]),
     // Record Interlinking
     relatedEntityType: z.enum(['SurveyResponse', 'Submission', 'Meeting', 'School']).optional().nullable(),
     relatedParentId: z.string().optional().nullable(),
@@ -92,6 +112,7 @@ interface TaskEditorProps {
 
 export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving }: TaskEditorProps) {
     const firestore = useFirestore();
+    const { user: currentUser } = useUser();
     
     const usersQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'users'), where('isAuthorized', '==', true), orderBy('name')) : null, [firestore]);
     const schoolsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'schools'), orderBy('name', 'asc')) : null, [firestore]);
@@ -115,6 +136,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             schoolId: '',
             dueDate: new Date(),
             reminders: [],
+            notes: [],
+            attachments: [],
             relatedEntityType: null,
             relatedParentId: null,
             relatedEntityId: null,
@@ -123,10 +146,22 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     const { register, handleSubmit, control, reset, setValue } = form;
     
-    const { fields: reminders, append, remove } = useFieldArray({
+    const { fields: reminders, append: appendReminder, remove: removeReminder } = useFieldArray({
         control,
         name: 'reminders'
     });
+
+    const { fields: notes, append: appendNote, remove: removeNote } = useFieldArray({
+        control,
+        name: 'notes'
+    });
+
+    const { fields: attachments, append: appendAttachment, remove: removeAttachment } = useFieldArray({
+        control,
+        name: 'attachments'
+    });
+
+    const [newNoteContent, setNewNoteContent] = React.useState('');
 
     const watchedEntityType = useWatch({ control, name: 'relatedEntityType' });
     const watchedParentId = useWatch({ control, name: 'relatedParentId' });
@@ -161,6 +196,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                         ...r,
                         reminderTime: new Date(r.reminderTime)
                     })),
+                    notes: task.notes || [],
+                    attachments: task.attachments || [],
                     relatedEntityType: task.relatedEntityType || null,
                     relatedParentId: task.relatedParentId || null,
                     relatedEntityId: task.relatedEntityId || null,
@@ -176,6 +213,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     schoolId: '',
                     dueDate: new Date(),
                     reminders: [],
+                    notes: [],
+                    attachments: [],
                     relatedEntityType: null,
                     relatedParentId: null,
                     relatedEntityId: null,
@@ -183,6 +222,31 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
             }
         }
     }, [open, task, reset]);
+
+    const handleAddNote = () => {
+        if (!newNoteContent.trim() || !currentUser) return;
+        appendNote({
+            id: `note_${Date.now()}`,
+            content: newNoteContent.trim(),
+            createdAt: new Date().toISOString(),
+            authorName: currentUser.displayName || 'System'
+        });
+        setNewNoteContent('');
+    };
+
+    const handleAddAttachment = (url: string) => {
+        if (!url) return;
+        const fileName = url.split('/').pop()?.split('?')[0] || 'document';
+        const decodedName = decodeURIComponent(fileName).substring(fileName.indexOf('-') + 1);
+        
+        appendAttachment({
+            id: `att_${Date.now()}`,
+            name: decodedName,
+            url,
+            type: 'document',
+            createdAt: new Date().toISOString()
+        });
+    };
 
     const onSubmit = async (data: TaskFormValues) => {
         const payload = {
@@ -199,7 +263,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-2xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
+            <DialogContent className="sm:max-w-3xl h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl">
                 <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col h-full">
                     <DialogHeader className="p-8 bg-muted/30 border-b shrink-0">
                         <div className="flex items-center gap-4">
@@ -211,7 +275,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                     Task Studio
                                 </DialogTitle>
                                 <DialogDescription className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-                                    Define objectives, schedule milestones, and set logic-based reminders.
+                                    Define objectives, schedule milestones, and manage historical context.
                                 </DialogDescription>
                             </div>
                         </div>
@@ -220,7 +284,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                     <div className="flex-1 overflow-hidden bg-background">
                         <ScrollArea className="h-full">
                             <div className="p-8 space-y-10">
-                                {/* Core Details */}
+                                {/* Section 1: Core Definitions */}
                                 <div className="space-y-6">
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Mission Title</Label>
@@ -235,12 +299,12 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         <Textarea 
                                             {...register('description')} 
                                             placeholder="Provide detailed context for the assigned manager..." 
-                                            className="min-h-[120px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner"
+                                            className="min-h-[100px] rounded-2xl bg-muted/20 border-none p-6 font-medium leading-relaxed shadow-inner"
                                         />
                                     </div>
                                 </div>
 
-                                {/* Flow Control */}
+                                {/* Section 2: Logistics & Owners */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-4">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1">1. Priority Protocol</Label>
@@ -248,7 +312,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                             name="priority"
                                             control={control}
                                             render={({ field }) => (
-                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+                                                <div className="grid grid-cols-2 gap-2 bg-muted/30 p-1.5 rounded-2xl border shadow-inner">
                                                     {(['low', 'medium', 'high', 'urgent'] as const).map(p => (
                                                         <button
                                                             key={p}
@@ -281,12 +345,12 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="todo">To Do</SelectItem>
-                                                        <SelectItem value="in_progress">In Progress</SelectItem>
-                                                        <SelectItem value="waiting">Waiting on External</SelectItem>
-                                                        <SelectItem value="review">Under Review</SelectItem>
-                                                        <SelectItem value="done">Completed</SelectItem>
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl">
+                                                        <SelectItem value="todo" className="font-bold">To Do (Backlog)</SelectItem>
+                                                        <SelectItem value="in_progress" className="font-bold text-blue-600">In Progress</SelectItem>
+                                                        <SelectItem value="waiting" className="font-bold text-orange-600">Waiting</SelectItem>
+                                                        <SelectItem value="review" className="font-bold text-purple-600">Review</SelectItem>
+                                                        <SelectItem value="done" className="font-bold text-emerald-600">Done (Resolved)</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             )}
@@ -294,11 +358,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                     </div>
                                 </div>
 
-                                <Separator className="bg-border/50" />
-
-                                {/* Assignment & Timing */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
                                             <User className="h-3 w-3" /> Account Manager
                                         </Label>
@@ -310,7 +371,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
                                                         <SelectValue placeholder="Assign logic owner..." />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl">
                                                         {users?.map(u => (
                                                             <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                                                         ))}
@@ -320,7 +381,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                         />
                                     </div>
 
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
                                             <Building className="h-3 w-3" /> Campus Context
                                         </Label>
@@ -332,7 +393,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                     <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-none font-bold">
                                                         <SelectValue placeholder="No school binding" />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
+                                                    <SelectContent className="rounded-xl border-none shadow-2xl">
                                                         <SelectItem value="none">Global / Generic</SelectItem>
                                                         {schools?.map(s => (
                                                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
@@ -345,7 +406,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1 flex items-center gap-2">
                                             <Calendar className="h-3 w-3" /> Implementation Start
                                         </Label>
@@ -357,7 +418,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                             )}
                                         />
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-black uppercase tracking-widest text-primary ml-1 flex items-center gap-2">
                                             <Target className="h-3 w-3" /> Dead-line Target
                                         </Label>
@@ -373,8 +434,88 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
                                 <Separator className="bg-border/50" />
 
-                                {/* Reminders Engine */}
-                                <div className="space-y-6">
+                                {/* Section 3: Reminders, Notes & Assets */}
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 text-left">
+                                    <div className="space-y-8">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between px-1">
+                                                <div className="flex items-center gap-2">
+                                                    <StickyNote className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-black uppercase tracking-widest">Protocol Ledger</h4>
+                                                </div>
+                                                <Badge variant="secondary" className="font-black tabular-nums">{notes.length}</Badge>
+                                            </div>
+                                            
+                                            <div className="space-y-4">
+                                                <div className="flex gap-2">
+                                                    <Textarea 
+                                                        value={newNoteContent} 
+                                                        onChange={e => setNewNoteContent(e.target.value)}
+                                                        placeholder="Add an internal note..."
+                                                        className="min-h-[80px] rounded-xl bg-muted/20 border-none shadow-inner text-xs"
+                                                    />
+                                                    <Button type="button" onClick={handleAddNote} disabled={!newNoteContent.trim()} size="icon" className="h-auto w-12 rounded-xl shrink-0 bg-primary text-white shadow-lg">
+                                                        <Plus className="h-5 w-5" />
+                                                    </Button>
+                                                </div>
+
+                                                <div className="space-y-3">
+                                                    {notes.map((note, idx) => (
+                                                        <div key={note.id} className="p-4 rounded-xl bg-muted/10 border group relative">
+                                                            <div className="flex items-center justify-between mb-1.5">
+                                                                <p className="text-[9px] font-black uppercase text-primary/60">{note.authorName} · {format(new Date(note.createdAt), 'MMM d, HH:mm')}</p>
+                                                                <button type="button" onClick={() => removeNote(idx)} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive">
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
+                                                            </div>
+                                                            <p className="text-xs font-medium leading-relaxed">{note.content}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-8">
+                                        <div className="space-y-6">
+                                            <div className="flex items-center justify-between px-1">
+                                                <div className="flex items-center gap-2">
+                                                    <Paperclip className="h-4 w-4 text-primary" />
+                                                    <h4 className="text-xs font-black uppercase tracking-widest">Asset Binding</h4>
+                                                </div>
+                                                <Badge variant="secondary" className="font-black tabular-nums">{attachments.length}</Badge>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <div className="p-1.5 rounded-2xl bg-muted/20 border-2 border-dashed border-border flex items-center justify-center">
+                                                    <MediaSelect 
+                                                        onValueChange={handleAddAttachment}
+                                                        className="border-none shadow-none bg-transparent"
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    {attachments.map((att, idx) => (
+                                                        <div key={att.id} className="flex items-center justify-between p-3 rounded-xl bg-white border shadow-sm group">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <FileText className="h-4 w-4 text-primary shrink-0" />
+                                                                <a href={att.url} target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold uppercase tracking-tight truncate hover:underline">{att.name}</a>
+                                                            </div>
+                                                            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity rounded-lg" onClick={() => removeAttachment(idx)}>
+                                                                <X className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <Separator className="bg-border/50" />
+
+                                {/* Section 4: Reminders Engine */}
+                                <div className="space-y-6 text-left">
                                     <div className="flex items-center justify-between px-1">
                                         <div className="flex items-center gap-2">
                                             <Bell className="h-4 w-4 text-primary" />
@@ -384,11 +525,11 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                             type="button" 
                                             variant="outline" 
                                             size="sm" 
-                                            onClick={() => append({ reminderTime: new Date(), channels: ['notification'], sent: false })}
+                                            onClick={() => appendReminder({ reminderTime: new Date(), channels: ['notification'], sent: false })}
                                             disabled={reminders.length >= 3}
                                             className="h-8 rounded-xl font-bold border-dashed border-2 text-[10px] uppercase tracking-widest"
                                         >
-                                            <Plus className="h-3 w-3 mr-1.5" /> Set Event
+                                            <Plus className="h-3 w-3 mr-1.5" /> Set Alarm
                                         </Button>
                                     </div>
 
@@ -448,7 +589,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                             variant="ghost" 
                                                             size="icon" 
                                                             className="h-9 w-9 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" 
-                                                            onClick={() => remove(index)}
+                                                            onClick={() => removeReminder(index)}
                                                         >
                                                             <X className="h-4 w-4" />
                                                         </Button>
@@ -465,8 +606,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
 
                                 <Separator className="bg-border/50" />
 
-                                {/* Interlinking Hub */}
-                                <div className="space-y-6">
+                                {/* Section 5: Record Interlinking */}
+                                <div className="space-y-6 text-left">
                                     <div className="flex items-center gap-2">
                                         <LinkIcon className="h-4 w-4 text-primary" />
                                         <h4 className="text-xs font-black uppercase tracking-widest text-foreground">Record Interlinking</h4>
@@ -487,10 +628,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                             setValue('relatedEntityId', null);
                                                         }}
                                                     >
-                                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold shadow-inner">
                                                             <SelectValue placeholder="No Link" />
                                                         </SelectTrigger>
-                                                        <SelectContent className="rounded-xl">
+                                                        <SelectContent className="rounded-xl border-none shadow-2xl">
                                                             <SelectItem value="none">Independent</SelectItem>
                                                             <SelectItem value="SurveyResponse">Survey Result</SelectItem>
                                                             <SelectItem value="Submission">Doc Signing Record</SelectItem>
@@ -510,10 +651,10 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                     control={control}
                                                     render={({ field }) => (
                                                         <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold">
+                                                            <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none font-bold shadow-inner">
                                                                 <SelectValue placeholder="Select context..." />
                                                             </SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
+                                                            <SelectContent className="rounded-xl border-none shadow-2xl">
                                                                 {watchedEntityType === 'SurveyResponse' 
                                                                     ? surveys?.map(s => <SelectItem key={s.id} value={s.id}>{s.internalName || s.title}</SelectItem>)
                                                                     : pdfs?.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
@@ -536,7 +677,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving 
                                                             <SelectTrigger className="h-12 rounded-xl bg-primary/5 border-primary/20 text-primary font-black">
                                                                 <SelectValue placeholder="Choose specific entry..." />
                                                             </SelectTrigger>
-                                                            <SelectContent className="rounded-xl">
+                                                            <SelectContent className="rounded-xl border-none shadow-2xl">
                                                                 {watchedEntityType === 'SurveyResponse' 
                                                                     ? responses?.map(r => (
                                                                         <SelectItem key={r.id} value={r.id}>

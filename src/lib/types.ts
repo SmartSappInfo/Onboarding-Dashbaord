@@ -17,6 +17,8 @@ export interface FocalPerson {
   type: FocalPersonType;
   isSignatory: boolean;
   isBillingOfficer?: boolean;
+  notes?: { id: string; content: string; createdAt: string }[];
+  attachments?: { id: string; name: string; url: string; type: string; createdAt: string }[];
 }
 
 export interface Zone {
@@ -683,6 +685,21 @@ export interface TaskReminder {
   sent: boolean;
 }
 
+export interface TaskNote {
+  id: string;
+  content: string;
+  createdAt: string;
+  authorName?: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -701,6 +718,8 @@ export interface Task {
   createdAt: string; // ISO string
   reminderSent: boolean; // Legacy
   reminders: TaskReminder[];
+  notes?: TaskNote[];
+  attachments?: TaskAttachment[];
   source: 'manual' | 'automation' | 'system';
   automationId?: string;
   
