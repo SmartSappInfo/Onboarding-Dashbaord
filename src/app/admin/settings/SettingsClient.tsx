@@ -105,7 +105,7 @@ export default function SettingsClient() {
                         Seed Roles
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('modules')} disabled={seedingStatus.modules === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        {seedingStatus.modules === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
                         Seed Modules
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('zones')} disabled={seedingStatus.zones === 'seeding'} className="rounded-xl font-bold">
@@ -117,11 +117,11 @@ export default function SettingsClient() {
                         Seed Billing Hubs
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('users')} disabled={seedingStatus.users === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        {seedingStatus.users === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
                         Update Avatars
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => handleSeed('layout')} disabled={seedingStatus.layout === 'seeding'} className="rounded-xl font-bold">
-                        {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4 text-primary" />}
+                        {seedingStatus.layout === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4 text-primary" />}
                         Reset Layout
                     </Button>
                 </div>
@@ -135,7 +135,7 @@ export default function SettingsClient() {
                         Migrate Schools
                     </Button>
                     <Button onClick={() => handleSeed('meetings')} disabled={seedingStatus.meetings === 'seeding'} className="rounded-xl font-bold shadow-sm">
-                        {seedingStatus.meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                        {seedingStatus.meetings === 'seeding' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
                         Seed Meetings
                     </Button>
                     <Button onClick={() => handleSeed('media')} disabled={seedingStatus.media === 'seeding'} className="rounded-xl font-bold shadow-sm">
